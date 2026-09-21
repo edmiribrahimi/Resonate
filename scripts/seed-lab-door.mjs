@@ -473,7 +473,55 @@ async function teardown() {
  * chiave non basta, perche' le chiavi di quei residui non sono state scritte.
  */
 async function reset() {
-  const tabelle = ["tickets", "ticket_tiers", "party_assignments", "event_parties", "events", "venues", "profiles"];
+  // ── L'ORDINE E' FIGLIO→PADRE, E L'ELENCO E' DERIVATO DA `pg_constraint` ───
+  //
+  // **Riderivato il 2026-09-21 (piano 50-02) perche' `--reset` si era FERMATO:**
+  //
+  //     23503: update or delete on table "ticket_tiers" violates foreign key
+  //     constraint "ticket_orders_tier_id_fkey" on table "ticket_orders"
+  //
+  // L'elenco precedente aveva sette tabelle e non nominava `ticket_orders`, che
+  // la fase 49 ha introdotto con un `ON DELETE RESTRICT` verso `ticket_tiers`.
+  // E' la regola 3 del docblock in testa a questo file, quella scritta dopo
+  // l'incidente delle 63 righe, applicata a se stessa: **un insieme di cascate
+  // si rilegge dal catalogo, non si ricorda.**
+  //
+  // Le sei tabelle aggiunte, con la chiave che le rende bloccanti:
+  //
+  //   ticket_orders      → ticket_tiers   RESTRICT   (fase 49)
+  //   pending_purchases  → ticket_tiers   RESTRICT
+  //   door_scan_events   → auth.users     NO ACTION  su `operator_id`
+  //   attendances        → auth.users     NO ACTION  su `checked_in_by`
+  //   ticket_refunds     → auth.users     NO ACTION  su `requested_by`
+  //   guest_list_entries → profiles       NO ACTION  su `added_by`
+  //
+  // Le due della porta — `door_scan_events` e `attendances` — non bloccavano una
+  // `delete` di tabella: bloccavano la cancellazione degli ACCOUNT, che questo
+  // script fa dopo e **senza guardare l'esito**. Un laboratorio azzerato a meta'
+  // con un messaggio di successo e' peggio di uno non azzerato.
+  //
+  // `artists`, `production_plan` e `production_space` sono qui per completezza:
+  // hanno anch'esse una chiave bloccante verso `venues`, `event_parties` o
+  // `auth.users`, e oggi sono vuote sul laboratorio — cioe' esattamente la
+  // condizione in cui una riga mancante non si nota.
+  const tabelle = [
+    "ticket_orders",
+    "pending_purchases",
+    "ticket_refunds",
+    "door_scan_events",
+    "attendances",
+    "tickets",
+    "ticket_tiers",
+    "party_assignments",
+    "production_plan",
+    "event_parties",
+    "events",
+    "artists",
+    "production_space",
+    "venues",
+    "guest_list_entries",
+    "profiles",
+  ];
   for (const t of tabelle) {
     const r = await sql(`delete from public.${t} returning id`);
     console.log(`  ${t.padEnd(20)} ${r.length} riga/e`);
@@ -482,14 +530,28 @@ async function reset() {
   const SRK = process.env.LAB_SUPABASE_SERVICE_ROLE_KEY;
   const res = await fetch(AUTH, { headers: { apikey: SRK, Authorization: `Bearer ${SRK}` } });
   const { users = [] } = res.ok ? await res.json() : {};
+  // L'ESITO SI GUARDA. Prima non si guardava, e una cancellazione rifiutata da
+  // una chiave esterna contava lo stesso nel totale stampato: il laboratorio
+  // restava popolato e la riga finale diceva «azzerato».
+  let rimossi = 0;
+  const falliti = [];
   for (const u of users) {
-    await fetch(`${AUTH}/${u.id}`, {
+    const del = await fetch(`${AUTH}/${u.id}`, {
       method: "DELETE",
       headers: { apikey: SRK, Authorization: `Bearer ${SRK}`, "Content-Type": "application/json" },
       body: JSON.stringify({ should_soft_delete: false }),
     });
+    if (del.ok) rimossi += 1;
+    // L'id, mai l'indirizzo: un messaggio d'errore raggiunge un log, e un log
+    // raggiunge uno screenshot.
+    else falliti.push(`${u.id} (${del.status})`);
   }
-  console.log(`  account             ${users.length}`);
+  console.log(`  account             ${rimossi}/${users.length}`);
+  if (falliti.length) {
+    console.error(`\nATTENZIONE: ${falliti.length} account NON rimossi: ${falliti.join(", ")}`);
+    console.error("Il laboratorio NON e' azzerato. Cerca la chiave esterna che li trattiene.");
+    process.exit(1);
+  }
   console.log(`\nLaboratorio ${REF} azzerato.`);
 }
 
