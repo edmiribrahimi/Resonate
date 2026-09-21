@@ -393,7 +393,7 @@ Plans:
 > **mai** sul biglietto: `holder_label` resta un progressivo e il biglietto resta
 > al portatore (`D-49-03`).
 
-**Plans:** 9/12 plans executed
+**Plans:** 10/12 plans executed
 
 Plans:
 **Wave 1**
@@ -425,7 +425,7 @@ Plans:
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 50-10-PLAN.md — le otto procedure percorse sul laboratorio, signup spento compreso
+- [x] 50-10-PLAN.md — le otto procedure percorse sul laboratorio, signup spento compreso
 
 **Wave 8** *(blocked on Wave 7 completion)*
 

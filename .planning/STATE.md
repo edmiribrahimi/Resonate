@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: Completato 50-09-PLAN.md — la sottrazione chiusa, REG-05 a zero dal catalogo, e le otto procedure scritte prima di percorrerle
-last_updated: "2026-09-21T15:07:55.608Z"
+stopped_at: Completato 50-10-PLAN.md — le otto procedure percorse, P-50-8 dal proprietario a radio spenta, A1 confermata sul campo
+last_updated: "2026-09-21T16:11:13.616Z"
 last_activity: 2026-09-21
 progress:
   total_phases: 51
   completed_phases: 48
   total_plans: 371
-  completed_plans: 369
-  percent: 99
+  completed_plans: 370
+  percent: 100
 ---
 
 # State: Resonate
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 50 (Via le iscrizioni) — EXECUTING
-Plan: 7 of 12
+Plan: 8 of 12
 undici, contati dai SUMMARY su disco.
 
 **Cosa e' in produzione — DEPLOYATO il 2026-09-07.** Le sei migration erano
@@ -460,6 +460,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase ?]: 50-02: la query 1.5(a) sulle funzioni va spogliata dei commenti prima della regex, o restituisce tre falsi positivi; quella sulle policy va cercata su profiles+status, perche' get_user_status|requires_approved era cieca gia' prima
 - [Phase ?]: 50-05: la prenotazione di una serata gratuita si fa da un modulo che chiede nome e mail e produce biglietti veri
 - [Phase ?]: 50-05: la capienza di una serata gratuita si conta su due sorgenti — biglietti della serata e righe storiche di rsvps — finche' lo storico esiste
+- [Phase ?]: 50-10: A1 confermata sul campo — con disable_signup acceso sul laboratorio, cinque creazioni di account su quattro percorsi di servizio sono riuscite; A.2 in produzione non e' bloccato da questa prova
+- [Phase ?]: 50-10: il nome dell'acquirente sullo schermo della porta resta una DECISIONE del proprietario — il percorso critico della porta non si modifica di rimbalzo a una verifica (deferred-items.md §7)
 
 ## Accumulated Context
 
@@ -579,7 +581,7 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-09-21T15:07:55.604Z
+**Last session:** 2026-09-21T16:11:01.698Z
 **Stopped at:** Completato 50-09-PLAN.md — la sottrazione chiusa, REG-05 a zero dal catalogo, e le otto procedure scritte prima di percorrerle
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
