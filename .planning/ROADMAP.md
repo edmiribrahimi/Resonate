@@ -393,7 +393,7 @@ Plans:
 > **mai** sul biglietto: `holder_label` resta un progressivo e il biglietto resta
 > al portatore (`D-49-03`).
 
-**Plans:** 6/12 plans executed
+**Plans:** 7/12 plans executed
 
 Plans:
 **Wave 1**
@@ -413,7 +413,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 50-05-PLAN.md — le superfici della prenotazione gratuita, e via il pulsante RSVP
+- [x] 50-05-PLAN.md — le superfici della prenotazione gratuita, e via il pulsante RSVP
 
 **Wave 5** *(blocked on Wave 4 completion)*
 

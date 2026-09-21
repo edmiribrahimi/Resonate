@@ -244,3 +244,48 @@ dichiarata su come il livello di prenotazione si mostra all'organizer (che
 
 **Chi la chiude:** chiunque tocchi quella superficie, o il piano che dara' una
 faccia alla capienza di una serata gratuita.
+
+---
+
+## Con la colonna `status` via, chi ha una sessione non vede piu' ne' il modulo della prenotazione ne' il controllo d'acquisto
+
+**Trovata:** piano 50-05 (2026-09-21), **misurata sul laboratorio**, dove la
+migration della fase e' gia' applicata e `profiles.status` **non esiste piu'**.
+**Fuori perimetro perche':** il piano 50-05 ordina esplicitamente di montare il
+modulo *«alle stesse condizioni di prima»* — e' una sostituzione di controllo,
+non un cambio di chi vede cosa — e il docblock della pagina dichiara che
+toccare `isApproved` e' **un cambio di verdetto su chi puo' comprare**, che
+pretende un'autorizzazione scritta propria.
+
+I due rami della pagina della serata si disegnano cosi':
+
+| Ramo | Condizione | `src/app/(public)/events/[slug]/page.tsx` |
+|---|---|---|
+| acquisto | `!isAuthenticated \|\| isApproved \|\| status === "pending"` | `:1738` |
+| prenotazione gratuita | `!isAuthenticated \|\| isApproved` | `:1826` |
+
+`isApproved` e' `status === "approved"` (`:430`), e `status` arriva da
+`getAccessContext()`. **Quando la colonna non c'e' piu', quel valore e' `null`
+per tutti**: entrambe le condizioni restano vere solo per chi **non** ha una
+sessione. Cioe' un anonimo prenota e compra, e chi ha fatto login **non vede
+nessuno dei due controlli**.
+
+**Misurato, non dedotto:** sul laboratorio, entrato come socio con la sessione
+attiva, la pagina di `lab-free-night` renderizza **zero campi** del modulo
+(`document.querySelectorAll('input')` → `[]`), mentre da anonimo, sulla stessa
+pagina e nello stesso minuto, il modulo c'e' e prenota.
+
+**Perche' oggi in produzione non si vede:** il verso del deploy e' **codice
+prima, migration dopo** (`D-50-24`), e finche' la colonna esiste un socio
+approvato passa. **Il difetto si apre nell'istante del `DROP COLUMN`**, ed e'
+esattamente la meta' della finestra che quella decisione non copre: D-50-24
+chiede che il codice regga *la colonna ancora presente*, e questa e' la
+condizione opposta.
+
+**Cosa serve:** il piano che toglie `status` dal codice (50-09, e cio' che la
+11 dispiega) deve togliere **anche queste due condizioni**, non solo le
+letture della colonna. Un `grep` per `profiles.status` non le trova: qui la
+colonna non si nomina, si nomina un valore che da lei discende.
+
+**Chi la chiude:** 50-09 / 50-11, prima che la migration raggiunga la
+produzione.

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: Completato 50-04-PLAN.md — l'ordine a totale zero esiste; la superficie che lo chiama e' del piano 50-05
-last_updated: "2026-09-21T13:59:44.693Z"
+stopped_at: Completato 50-05-PLAN.md — il modulo della prenotazione gratuita esiste, P-50-7 percorsa sul laboratorio
+last_updated: "2026-09-21T14:22:11.396Z"
 last_activity: 2026-09-21
 progress:
   total_phases: 51
   completed_phases: 48
   total_plans: 371
-  completed_plans: 366
+  completed_plans: 367
   percent: 99
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 50 (Via le iscrizioni) — EXECUTING
-Plan: 4 of 12
+Plan: 5 of 12
 undici, contati dai SUMMARY su disco.
 
 **Cosa e' in produzione — DEPLOYATO il 2026-09-07.** Le sei migration erano
@@ -458,6 +458,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase ?]: 50-02: membership.active perde le quattro concessioni ma NON la chiave: toglierla mentre CAP.MEMBERSHIP_ACTIVE vive in keys.ts lascerebbe verify:capabilities rosso, che e' cio' che D-50-28 vieta
 - [Phase ?]: 50-02: P5 di rls-baseline-compare.mjs non si riscrive: quel file confronta due artefatti su disco, non un database, e la stringa e' la forma con cui pg_policies stampava quel predicato PRIMA della fase 32
 - [Phase ?]: 50-02: la query 1.5(a) sulle funzioni va spogliata dei commenti prima della regex, o restituisce tre falsi positivi; quella sulle policy va cercata su profiles+status, perche' get_user_status|requires_approved era cieca gia' prima
+- [Phase ?]: 50-05: la prenotazione di una serata gratuita si fa da un modulo che chiede nome e mail e produce biglietti veri
+- [Phase ?]: 50-05: la capienza di una serata gratuita si conta su due sorgenti — biglietti della serata e righe storiche di rsvps — finche' lo storico esiste
 
 ## Accumulated Context
 
@@ -577,8 +579,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-09-21T13:59:41.572Z
-**Stopped at:** Completato 50-04-PLAN.md — l'ordine a totale zero esiste; la superficie che lo chiama e' del piano 50-05
+**Last session:** 2026-09-21T14:22:11.392Z
+**Stopped at:** Completato 50-05-PLAN.md — il modulo della prenotazione gratuita esiste, P-50-7 percorsa sul laboratorio
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
