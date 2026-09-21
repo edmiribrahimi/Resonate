@@ -1,9 +1,37 @@
 /**
- * seed.mjs — twelve personas and two differently-owned rows in every table.
+ * seed.mjs — four personas and two differently-owned rows in every table.
  *
- * (Nine until plan 43-08, which added the `staff` row of the grid. The count is
- * never written down twice: everything below derives it from
- * `PERSONA_ROLES.length × PERSONA_STATUSES.length`.)
+ * (Nine until plan 43-08, which added the `staff` row of the grid; twelve from
+ * then until phase 50. The count is never written down twice: everything below
+ * derives it from `PERSONA_ROLES.length`.)
+ *
+ * ── HOW MANY PEOPLE THERE WERE, HOW MANY REMAIN, AND WHY ──────────────────
+ *
+ * TWELVE grid personas, then FOUR. The grid had two axes, ROLE and STATUS —
+ * four roles × three statuses — and phase 50 deletes `profiles.status` from the
+ * database altogether (D-50-01). A column that does not exist cannot be an axis,
+ * so the grid collapses onto its remaining one: `master`, `organizer`, `member`,
+ * `staff`, one persona each. Nobody was dropped for being surplus; eight of the
+ * twelve were a state, and the state is gone.
+ *
+ * SIX MORE WENT WITH THEM, and they are the ones worth naming. `FORBIDDEN_WRITES`
+ * held six rows — `organizer/pending`, `organizer/rejected`, `master/pending`,
+ * `master/rejected`, `staff/pending`, `staff/rejected` — whose whole purpose was
+ * to be REFUSED by phase 43's role-implies-approved CHECK, and this file was the
+ * only place in the repository that ever watched that rule refuse anything
+ * (ROLE-02's only automated detector, `43-VALIDATION.md`). The rule is dropped by
+ * the same migration that drops the column: the detector is not being deleted
+ * while the thing it watched survives — it is being retired WITH it. Said out
+ * loud because a harness that quietly slims down makes whoever reads it in six
+ * months think something was lost.
+ *
+ * *In italiano, perche' il conto va detto nella lingua in cui questa fase e'
+ * stata decisa: erano DODICI persone nella griglia, piu' SEI scritture rifiutate,
+ * e restano QUATTRO persone — una per ruolo. Nessuna e' stata tolta perche' di
+ * troppo: otto erano uno stato, e lo stato non esiste piu'.*
+ *
+ * The four that remain still satisfy the two guarantees below: `member` and
+ * `master` are two distinct owners, and every RLS table still gets two rows.
  *
  * WHY THE SHAPE OF THE DATA IS THE WHOLE POINT. `32-RESEARCH.md` § *Pitfall 3*:
  * production is nearly empty, thirteen of its twenty tables hold no rows, and
@@ -14,7 +42,7 @@
  *
  *   1. every one of the 20 RLS tables holds **at least two** rows;
  *   2. every table that HAS an owner column holds rows owned by **two different
- *      personas** — one `member/approved`, one `master/approved`.
+ *      personas** — one `member`, one `master`.
  *
  * Without (2) "mine" and "not mine" are indistinguishable, `auth.uid() = user_id`
  * is satisfied by everything or by nothing, and the baseline is a green screen
@@ -42,26 +70,23 @@
  * `1`, while every code here is `RSN-SEED000<n>` — three zeroes in the middle.
  * A seeded code can therefore never collide with a member's.
  *
- * WHY THIS FILE ALSO CARRIES ROLE-02's ONLY AUTOMATED DETECTOR. Phase 43 adds a
- * database rule — a staff role implies `approved` — and six of the twelve
- * personas above become unrepresentable the moment it lands. Losing them would
- * cost the sixteen write-matrix cells that caught phase 32's worst defect, so
- * the seed drops the constraint around the persona loop and restores it after
- * (D-05). Having dropped and restored it, the seed is then the one place in this
- * repository that can watch the rule refuse a write — so it does, deliberately,
- * rather than trusting the DDL. See `ROLE_IMPLIES_APPROVED` below.
+ * NOTHING HERE WRITES `profiles.status`, AND THAT IS WHAT MAKES IT RUN ON BOTH
+ * SIDES OF PHASE 50's MIGRATION. The column is `NOT NULL DEFAULT 'approved'`
+ * until the migration lands, so an insert that does not name it satisfies it by
+ * itself — and every persona is then approved, which is the only thing phase
+ * 43's role-implies-approved CHECK ever asked of a staff role, so this file no
+ * longer has to drop and restore that constraint. After the migration the column
+ * is gone and the same statements keep working.
  */
 
 import { createHash } from 'node:crypto';
 
 import {
   PERSONA_ROLES,
-  PERSONA_STATUSES,
   PROBE_FUTURE_INSTANT,
   PROBE_PAYLOADS,
   PROBE_TEXT,
   compareStrings,
-  pkExpression,
   say,
   substituteReferences,
 } from '../rls-baseline.mjs';
@@ -151,111 +176,26 @@ const REFERENCEABLE = [
 const DERIVED_REFERENCES = { party_series_format: 'formats' };
 
 /**
- * ── The pre-registered declaration of ROLE-02's rule ──────────────────────
+ * ── WHAT USED TO BE HERE, AND WHY IT IS NOT ──────────────────────────────
  *
- * WHAT IT IS. Phase 43 decision D-04: an account holding a staff role
- * (`master`, `organizer`, `staff`) is `approved` **by database rule**, not by a
- * convention four call sites remembered. Plan 43-06 adds it as a CHECK on
- * `public.profiles`.
+ * `ROLE_IMPLIES_APPROVED` (the pre-registered declaration of phase 43's rule
+ * D-04), `NOT_VALID_SUFFIX` and `FORBIDDEN_WRITES` (the six refused rows that
+ * were ROLE-02's only automated detector in this repository) stood here until
+ * phase 50.
  *
- * WHY IT IS DECLARED HERE INSTEAD OF READ. Written down, not derived from the
- * database, for the reason `verify-capabilities.mjs:107-121` gives about its own
- * constant and `rls-baseline.mjs:113-130` about its floors: **a check that reads
- * its expectation off the thing it is checking cannot fail.** The seed asserts
- * reality against this declaration and never the reverse.
+ * They were not deleted to make a run go green — which is precisely what the
+ * paragraph they carried forbade. They were retired with their subject: phase 50
+ * drops `profiles.status`, and phase 43's rule is a CHECK on that column,
+ * dropped by the same migration. A detector whose rule no longer exists is not a
+ * detector; keeping it would have meant asserting the presence of a constraint
+ * the schema deliberately no longer holds, and the seed would have refused to
+ * run on its own declaration.
  *
- * HOW IT IS MAINTAINED. `present` is `false` until plan 43-06 lands, and 43-06
- * flips it to `true` **in the same commit as the migration**. A disagreement
- * between this declaration and the container is a failure of one of the two —
- * either the migration shipped without its declaration, or the declaration
- * claims a rule the database does not hold. **It is never a reason to edit this
- * constant so a run goes green.** Editing it to silence a throw converts the
- * only automated detector ROLE-02 has into a comment. That is the same move
- * `assertDiscriminating` forbids by name below: investigate the seed, never
- * lower the requirement.
- *
- * `renderedDef` is Postgres' own printing of the constraint, measured in the
- * container by plan 43-03 task 3 and pinned here — Postgres re-prints a
- * predicate in its own normal form, so the comparison cannot be against the
- * migration's source text.
+ * The consequence, said instead of discovered: ROLE-02 has no automated evidence
+ * any more, because the requirement it guarded has been withdrawn (D-50-01,
+ * D-50-04). If a rule of that shape is ever wanted again, the shape to copy is
+ * in git history at this line, not in memory.
  */
-const ROLE_IMPLIES_APPROVED = {
-  name: 'profiles_role_implies_approved',
-  /** Exactly as plan 43-06's migration writes it. */
-  predicate: "role not in ('master','organizer','staff') or status = 'approved'",
-  /**
-   * Flipped to `true` by plan 43-06, in the same commit as the migration
-   * `supabase/migrations/20260808001000_role_implies_approved.sql`, exactly as
-   * the paragraph above requires. From here on the assertions below are live:
-   * they read the real constraint, not a scratch one.
-   */
-  present: true,
-  /**
-   * `pg_get_constraintdef(oid)` as production would render it — i.e. WITHOUT
-   * the trailing marker a `NOT VALID` constraint carries.
-   *
-   * MEASURED 2026-08-08 in `postgres:17.6`, against a throwaway migration
-   * carrying `predicate` above verbatim, and COPIED from the run rather than
-   * composed: Postgres re-prints `role not in (…)` as `role <> ALL (ARRAY[…])`,
-   * so a hand-written expectation would have been wrong in a way that looks
-   * right. See `assertConstraintObject` for how the one legitimate difference
-   * from production is enumerated rather than wildcarded.
-   */
-  renderedDef:
-    "CHECK (((role <> ALL (ARRAY['master'::text, 'organizer'::text, 'staff'::text])) OR (status = 'approved'::text)))",
-};
-
-/**
- * The single tolerated difference between the container's constraint and
- * production's, spelled out instead of matched loosely.
- *
- * The restore below is `NOT VALID` — mandatory, see the `finally` — and Postgres
- * marks that in `pg_get_constraintdef` with this exact suffix. One enumerated
- * alternative, never a wildcard: `rls-baseline-compare.mjs` takes the same line,
- * because a comparison with a wildcard in it stops being able to fail.
- */
-const NOT_VALID_SUFFIX = ' NOT VALID';
-
-/**
- * The SIX states the rule forbids — the ones D-05 exists to keep seedable, and
- * the ones assertion 2 then proves are actually refused.
- *
- * **Six, not four, since plan 43-08.** `ROLE_IMPLIES_APPROVED.predicate` names
- * three roles — `master`, `organizer`, `staff` — and two non-approved statuses
- * exist, so the rule forbids 3 × 2 = 6 pairs. Until 43-08 this list held only
- * the four that the persona grid could produce, because `staff` was not a
- * persona; the moment it became one, a list of four would have been a detector
- * that watched two thirds of the rule and reported a green for the whole of it.
- * `staff/pending` and `staff/rejected` are the two the phase itself created, so
- * they are precisely the two whose refusal was least evidenced.
- *
- * They obey this file's identity convention exactly as the twelve personas do
- * (threat T-32-04-02): an id whose first group is the literal `43000004` —
- * phase 43, plan 03 — an address at the reserved `.invalid` TLD that can reach
- * no inbox, a name that is a ROLE and never a person, and a membership code
- * `handle_new_user()` **cannot** mint, since its alphabet
- * `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` contains neither `0` nor `1`.
- *
- * None of these rows is ever written: every one of the six is refused. They are
- * built to the convention anyway, because the day one of them IS written is the
- * day the rule stopped working, and on that day the row must still be
- * unmistakably synthetic.
- */
-const FORBIDDEN_WRITES = [
-  { role: 'organizer', status: 'pending' },
-  { role: 'organizer', status: 'rejected' },
-  { role: 'master', status: 'pending' },
-  { role: 'master', status: 'rejected' },
-  { role: 'staff', status: 'pending' },
-  { role: 'staff', status: 'rejected' },
-].map((cell, i) => ({
-  ...cell,
-  label: `${cell.role}/${cell.status}`,
-  id: `43000004-0000-4000-8000-${String(i + 1).padStart(12, '0')}`,
-  email: `seed-forbidden-${cell.role}-${cell.status}@example.invalid`,
-  fullName: `Seed Forbidden ${cell.role} ${cell.status}`,
-  membershipCode: `RSN-SEED430${i + 1}`,
-}));
 
 /**
  * ── THE THIRD AXIS ────────────────────────────────────────────────────────
@@ -274,12 +214,14 @@ const FORBIDDEN_WRITES = [
  * assigned account cannot produce that pair; two accounts on the same night
  * cannot either.
  *
- * THE NEAREST PRECEDENT IN THIS FILE IS `FORBIDDEN_WRITES`, and it is only
- * NEAR. That list grew from four to six when `staff` became a persona — an axis
- * that got LONGER. This is an axis that did not exist, so the shape below is
- * designed rather than copied, and the design rule taken from that precedent is
- * the one that matters: **a detector that watches part of a rule reports a green
- * for the whole of it.** Seeding two of these three would be exactly that.
+ * THE NEAREST PRECEDENT IN THIS FILE WAS `FORBIDDEN_WRITES`, retired in phase
+ * 50 with the rule it watched (see the note where it stood). It was only NEAR
+ * anyway: that list grew from four to six when `staff` became a persona — an
+ * axis that got LONGER. This is an axis that did not exist, so the shape below
+ * is designed rather than copied, and the design rule taken from that precedent
+ * is the one that matters: **a detector that watches part of a rule reports a
+ * green for the whole of it.** Seeding two of these three would be exactly
+ * that.
  *
  * WHY THE FOURTH ROW — the REVOKED one — IS NOT OPTIONAL. It is the only place
  * in this harness where a revoked assignment exists at all, and it answers two
@@ -307,10 +249,12 @@ const FORBIDDEN_WRITES = [
  * plan 35-02 pinned as the probe's `assigned_by` fallback: two blocks, two
  * purposes, and neither can be mistaken for the other or for an account.
  *
- * ALL FOUR ARE `staff/approved`, deliberately. Role and status are held
- * CONSTANT so that the only thing left varying is the assignment — that is what
- * makes this an axis rather than four more cells. It also means they satisfy
- * `profiles_role_implies_approved` on their own and need no relaxation of it.
+ * ALL FOUR ARE `staff`, deliberately. The role is held CONSTANT so that the
+ * only thing left varying is the assignment — that is what makes this an axis
+ * rather than four more cells. (Until phase 50 they were `staff/approved`, and
+ * the approved half was what let them satisfy phase 43's role-implies-approved
+ * CHECK without relaxing it. There is no status left to hold constant, and no
+ * constraint left to satisfy.)
  *
  * ── WHY THERE IS A FOURTH ACCOUNT, AND WHY IT CARRIES A DIFFERENT KEY ──────
  *
@@ -370,8 +314,7 @@ const THIRD_AXIS_PERSONAS = [
 ].map((persona, i) => ({
   ...persona,
   role: 'staff',
-  status: 'approved',
-  label: `staff/approved · ${persona.axis}`,
+  label: `staff · ${persona.axis}`,
   id: `35000001-0000-4000-8000-${String(i + 1).padStart(12, '0')}`,
   email: `seed-staff-${persona.key}@example.invalid`,
   fullName: `Seed Persona staff ${persona.axis}`,
@@ -391,33 +334,34 @@ function seedUuid(seed) {
 }
 
 /**
- * The twelve grid personas, in a fixed order, with their synthetic identities.
+ * The four grid personas, in a fixed order, with their synthetic identities.
  *
- * **The nesting order of these two loops is what assigns `index`, and `index` is
- * what the write matrix's `update` probe follows** — see the long comment on
- * `PERSONA_ROLES` in `rls-baseline.mjs` and `assertProbeRowSatisfiesTheRule`
- * below, which asserts the consequence on every run.
+ * **The order of `PERSONA_ROLES` is what assigns `index`, and `index` is what
+ * the write matrix's `update` probe follows** — see the long comment on
+ * `PERSONA_ROLES` in `rls-baseline.mjs`. `min(pk)` on `public.profiles` is
+ * therefore `PERSONA_ROLES[0]`, today `master`.
+ *
+ * TWO LOOPS UNTIL PHASE 50, one now: the inner one walked `PERSONA_STATUSES`
+ * and there is no status column left to walk. The ids keep the same shape and
+ * the same `32000004…` block, so index 1 still names the same persona it always
+ * did.
  */
 function buildPersonas() {
   const personas = [];
   let index = 0;
   for (const role of PERSONA_ROLES) {
-    for (const status of PERSONA_STATUSES) {
-      index += 1;
-      const label = `${role}/${status}`;
-      personas.push({
-        label,
-        role,
-        status,
-        // Readable rather than hashed: a persona uuid is read by a human far
-        // more often than the row uuids are.
-        id: `32000004-0000-4000-8000-${String(index).padStart(12, '0')}`,
-        email: `seed-${role}-${status}@example.invalid`,
-        // A ROLE, never a person. `.planning/` and this repository are public.
-        fullName: `Seed Persona ${role} ${status}`,
-        membershipCode: `RSN-SEED000${index}`,
-      });
-    }
+    index += 1;
+    personas.push({
+      label: role,
+      role,
+      // Readable rather than hashed: a persona uuid is read by a human far
+      // more often than the row uuids are.
+      id: `32000004-0000-4000-8000-${String(index).padStart(12, '0')}`,
+      email: `seed-${role}@example.invalid`,
+      // A ROLE, never a person. `.planning/` and this repository are public.
+      fullName: `Seed Persona ${role}`,
+      membershipCode: `RSN-SEED000${index}`,
+    });
   }
   return personas;
 }
@@ -463,52 +407,6 @@ function referencedBy(payload) {
     }
   }
   return [...found].sort(compareStrings);
-}
-
-/** The constraint as the container actually holds it, or `null` if it is absent. */
-async function readRoleImpliesApproved(admin) {
-  const { rows } = await admin.query(
-    `select pg_get_constraintdef(oid) as def, convalidated
-       from pg_constraint
-      where conrelid = 'public.profiles'::regclass
-        and contype = 'c'
-        and conname = $1`,
-    [ROLE_IMPLIES_APPROVED.name]
-  );
-  return rows[0] ?? null;
-}
-
-/**
- * The declaration and the database must agree before a single persona is
- * inserted, and BOTH directions of disagreement are a refusal.
- *
- * The asymmetry is the point. A missing constraint when one is declared means
- * every assertion below would pass by having nothing to test. A present
- * constraint when none is declared means the seed was one statement away from
- * pushing four forbidden personas at a rule it does not know the shape of — and
- * whatever it then observed would be about an unknown object.
- */
-function assertDeclarationAgrees(observed) {
-  const { name, present } = ROLE_IMPLIES_APPROVED;
-
-  if (present && !observed) {
-    throw new Error(
-      `the declaration says "${name}" exists on public.profiles and the container does not have it. ` +
-        'Either plan 43-06 has not landed and `present` was flipped early, or a migration was removed ' +
-        'while the flag stayed true. Do NOT flip the flag back to make this pass — the flag records ' +
-        'what the migrations are supposed to contain. Nothing about ROLE-02 was measured.'
-    );
-  }
-
-  if (!present && observed) {
-    throw new Error(
-      `the container holds "${name}" on public.profiles and the declaration says it does not exist. ` +
-        'A migration landed without `ROLE_IMPLIES_APPROVED.present` being flipped in the same commit, ' +
-        'and the four forbidden personas were about to be seeded against a rule this file does not ' +
-        'know the shape of. Flip `present` to true and pin `renderedDef` from the migration; do not ' +
-        'delete the constraint. Nothing about ROLE-02 was measured.'
-    );
-  }
 }
 
 async function ownerColumnsOf(admin) {
@@ -562,43 +460,20 @@ export async function seedContainer(admin) {
   const owners = await ownerColumnsOf(admin);
   const personas = buildPersonas();
   const byLabel = new Map(personas.map((p) => [p.label, p]));
-  const rowOwners = [byLabel.get('member/approved'), byLabel.get('master/approved')];
+  const rowOwners = [byLabel.get('member'), byLabel.get('master')];
 
-  // ── the seam ROLE-02 and ROLE-03 share ───────────────────────────────────
+  // ── NO CONSTRAINT IS DROPPED HERE ANY MORE ───────────────────────────────
   //
-  // Before anything is written: the declaration and the database must agree
-  // about whether the rule exists at all.
-  assertDeclarationAgrees(await readRoleImpliesApproved(admin));
-
-  // Six of the twelve personas below violate the rule by construction —
-  // `organizer/pending`, `organizer/rejected`, `master/pending`,
-  // `master/rejected`, and since plan 43-08 `staff/pending` and
-  // `staff/rejected`. They are the only reason phase 32's write matrix caught
-  // its worst defect, sixteen cells and every one of them theirs, so D-05 keeps
-  // them seedable by dropping the constraint here and restoring it in the
-  // `finally` below.
+  // Until phase 50 this line dropped phase 43's role-implies-approved CHECK and
+  // a `finally` restored it `NOT VALID`, because six of the twelve personas
+  // violated it by construction (phase 43 D-05). None of the four below
+  // violates anything: no persona carries a status, the column's own
+  // `DEFAULT 'approved'` answers for them while it still exists, and after the
+  // migration neither the column nor the constraint is there to answer to.
   //
-  // A CHECK leaves no gentler route, and that is measured rather than assumed
-  // (`43-RESEARCH.md` § B.1, § B.3, all in `postgres:17.6`): a CHECK cannot be
-  // DEFERRABLE, `NOT VALID` still refuses every new violating insert, and
-  // neither SECURITY DEFINER, nor superuser, nor `session_replication_role =
-  // 'replica'` bypasses it. Drop-and-restore is the only option that works.
-  // `relaxed` is not decoration. The restore below lives in a `finally`, and an
-  // exception thrown from a `finally` REPLACES the exception from the `try` —
-  // so a restore attempted when no drop happened would report
-  //   constraint "profiles_role_implies_approved" for relation "profiles" already exists
-  // in place of the seed's real failure. Measured: that is exactly what this
-  // harness printed while plan 43-03 task 3 was proving the drop necessary. A
-  // path that swallows a distinguishable cause into a misleading message is the
-  // pattern `meta-gates.md` forbids, so the restore is bound to the drop having
-  // actually run rather than to the declaration.
-  let relaxed = false;
-  if (ROLE_IMPLIES_APPROVED.present) {
-    await admin.query(`alter table public.profiles drop constraint "${ROLE_IMPLIES_APPROVED.name}"`);
-    relaxed = true;
-  }
+  // The drop-and-restore is not being skipped — it has nothing left to relax.
 
-  // ── the twelve personas ──────────────────────────────────────────────────
+  // ── the four personas ────────────────────────────────────────────────────
   //
   // The trigger `on_auth_user_created` mints a membership code with `random()`.
   // It is real product behaviour and it is left installed; it is only silenced
@@ -613,9 +488,9 @@ export async function seedContainer(admin) {
         [p.id, p.email]
       );
       await admin.query(
-        `insert into public.profiles (id, email, full_name, membership_code, role, status)
-         values ($1::uuid, $2, $3, $4, $5, $6)`,
-        [p.id, p.email, p.fullName, p.membershipCode, p.role, p.status]
+        `insert into public.profiles (id, email, full_name, membership_code, role)
+         values ($1::uuid, $2, $3, $4, $5)`,
+        [p.id, p.email, p.fullName, p.membershipCode, p.role]
       );
     }
 
@@ -628,51 +503,23 @@ export async function seedContainer(admin) {
     // nights exist — see `seedThirdAxis`.
     //
     // They are appended AFTER the grid and their ids sort after `32000004…`, and
-    // that is load-bearing twice over: `resolvePersonas` resolves each grid cell
-    // to its LOWEST id, so `staff/approved` keeps resolving to the grid persona
-    // and no matrix row moves; and `min(pk)` on `public.profiles` keeps naming
-    // `master/approved`, which is what `assertProbeRowSatisfiesTheRule` below
-    // exists to protect.
+    // that is load-bearing: `resolvePersonas` resolves each grid cell to its
+    // LOWEST id, so `staff` keeps resolving to the grid persona and no matrix
+    // row moves; and `min(pk)` on `public.profiles` keeps naming `master`.
     for (const p of THIRD_AXIS_PERSONAS) {
       await admin.query(
         `insert into auth.users (id, email, raw_user_meta_data) values ($1::uuid, $2, '{}'::jsonb)`,
         [p.id, p.email]
       );
       await admin.query(
-        `insert into public.profiles (id, email, full_name, membership_code, role, status)
-         values ($1::uuid, $2, $3, $4, $5, $6)`,
-        [p.id, p.email, p.fullName, p.membershipCode, p.role, p.status]
+        `insert into public.profiles (id, email, full_name, membership_code, role)
+         values ($1::uuid, $2, $3, $4, $5)`,
+        [p.id, p.email, p.fullName, p.membershipCode, p.role]
       );
     }
   } finally {
     await admin.query('alter table auth.users enable trigger on_auth_user_created');
-
-    // `NOT VALID` IS MANDATORY, and the reason is measured rather than reasoned:
-    // by the time this line runs, six of the rows just seeded violate the
-    // predicate, and a plain `add constraint` fails with
-    //   ERROR: check constraint "…" of relation "profiles" is violated by some row
-    // `[VERIFIED: postgres:17.6, 43-RESEARCH.md § B.3, and reproduced against
-    // this harness by plan 43-03 task 3]`. `NOT VALID` skips the validating scan
-    // of existing rows; it does NOT relax enforcement — every new violating
-    // write is still refused, which is exactly what assertion 2 then proves.
-    //
-    // The price is real and is asserted rather than hidden: the container's
-    // constraint is `convalidated = false` where production's is `true`, and no
-    // capture would notice — B1 dumps policies, B2/B3 fingerprint personas, and
-    // none of the three reads `pg_constraint`. See `assertConstraintObject`.
-    if (relaxed) {
-      await admin.query(
-        `alter table public.profiles
-           add constraint "${ROLE_IMPLIES_APPROVED.name}"
-           check (${ROLE_IMPLIES_APPROVED.predicate})
-           not valid`
-      );
-    }
   }
-
-  await assertConstraintObject(admin);
-  await assertForbiddenWritesRefused(admin);
-  await assertProbeRowSatisfiesTheRule(admin);
 
   // ── every other table, two rows, two owners ──────────────────────────────
   const seededIds = new Map([['profiles', personas.map((p) => p.id)]]);
@@ -746,7 +593,7 @@ export async function seedContainer(admin) {
   // evaluated at the insert. Both have to exist first.
   await seedThirdAxis(admin, {
     nights: seededIds.get('event_parties') ?? [],
-    granter: byLabel.get('master/approved'),
+    granter: byLabel.get('master'),
   });
   await assertThirdAxis(admin, { nights: seededIds.get('event_parties') ?? [] });
 
@@ -755,7 +602,7 @@ export async function seedContainer(admin) {
   // once the assignments behind them are known to be live and per-night.
   await assertDoorRegisterByAssignment(admin, {
     nights: seededIds.get('event_parties') ?? [],
-    granter: byLabel.get('master/approved'),
+    granter: byLabel.get('master'),
   });
 
   return assertDiscriminating(admin, allTables, owners, [...personas, ...THIRD_AXIS_PERSONAS]);
@@ -773,21 +620,22 @@ export async function seedContainer(admin) {
  *   | unassigned         | REVOKED              | —       |
  *
  * Read down the "night 1" column and the axis is visible: three accounts with
- * the same role and the same status, and three different answers.
+ * the same role, and three different answers.
  *
- * `assigned_by` is `master/approved`, an account from the grid and never one of
+ * `assigned_by` is `master`, an account from the grid and never one of
  * the three: `party_assignments_no_self_grant` (ASSIGN-04) refuses a row whose
  * granter is its subject, and a seed that tripped it would fail here with
  * `23514` instead of producing data. The distinctness is asserted rather than
  * argued, because the failure mode of getting it wrong is a seed that cannot
  * run at all and a reader who has to work out why.
  *
- * NO CONSTRAINT IS RELAXED HERE, and that is a decision. The seed drops
- * `profiles_role_implies_approved` around the persona loop because six of the
- * twelve grid personas are unrepresentable without it (D-05). Nothing of the
- * kind applies to this table: all three accounts are `staff`, all three are
- * `approved`, and `party_assignments_assignee_role_fk` must therefore hold on
- * every one of these rows. **If it does not, the seed has just found a defect in
+ * NO CONSTRAINT IS RELAXED HERE, and that is a decision — one that outlived its
+ * counter-example. Until phase 50 the seed dropped phase 43's
+ * role-implies-approved CHECK around the persona loop, because six of the twelve
+ * grid personas were unrepresentable without it (D-05). Nothing of the kind ever
+ * applied to this table: all three accounts are `staff`, and
+ * `party_assignments_assignee_role_fk` must therefore hold on every one of these
+ * rows. **If it does not, the seed has just found a defect in
  * the key and must fail loudly rather than seed around it** — which is what an
  * unguarded `insert` does, and why there is no `try` here.
  */
@@ -801,7 +649,7 @@ async function seedThirdAxis(admin, { nights, granter }) {
   }
   if (!granter) {
     throw new Error(
-      'master/approved was not resolved, so no account can be the granter of the seeded assignments. ' +
+      'master was not resolved, so no account can be the granter of the seeded assignments. ' +
         'Nothing was measured.'
     );
   }
@@ -982,11 +830,11 @@ async function assertThirdAxis(admin, { nights }) {
  * `door_scan_events_select_admin` as re-written by
  * `20260809004000_door_scan_events_by_assignment.sql`.
  *
- * WHY IT IS HERE AND NOT IN THE READ MATRIX. B2 measures the twelve role ×
- * status personas, and `resolvePersonas` resolves each cell to the LOWEST id in
- * it — deliberately, so no matrix row moves when accounts are appended
- * (`rls-baseline.mjs:722-747`). Every account of the third axis therefore sorts
- * behind the grid's `staff/approved` and **no capture ever impersonates one**.
+ * WHY IT IS HERE AND NOT IN THE READ MATRIX. B2 measures the grid personas, and
+ * `resolvePersonas` resolves each cell to the LOWEST id in it — deliberately, so
+ * no matrix row moves when accounts are appended (`rls-baseline.mjs:722-747`).
+ * Every account of the third axis therefore sorts behind the grid's `staff` and
+ * **no capture ever impersonates one**.
  * B2 can say that nobody who could read this table before reads less of it now;
  * it cannot say anything at all about the two arms this phase added. This
  * function is the only place in the repository that can.
@@ -1015,7 +863,7 @@ async function assertThirdAxis(admin, { nights }) {
  *
  * WHAT EACH EXPECTATION IS FOR:
  *
- *   1. `master/approved` sees EVERY row. This is the one that would catch a
+ *   1. `master` sees EVERY row. This is the one that would catch a
  *      narrowing done by role: whoever read the whole register yesterday reads
  *      the whole register today, and the number says so rather than a paragraph.
  *   2. `assigned night1` sees night 1's rows and ZERO of night 2's — ASSIGN-01
@@ -1102,7 +950,7 @@ async function assertDoorRegisterByAssignment(admin, { nights, granter }) {
   const [assignedToOne, assignedToTwo, unassigned, managesOne] = THIRD_AXIS_PERSONAS;
   const cases = [
     {
-      who: 'master/approved',
+      who: 'master',
       subject: granter.id,
       // The whole register. Not "at least as much as before" — ALL of it, which
       // is what the old role-only predicate gave and what arm 1 reproduces.
@@ -1171,265 +1019,25 @@ async function assertDoorRegisterByAssignment(admin, { nights, granter }) {
 }
 
 /**
- * ── Assertion 1: the container enforces the same object production does ───
+ * ── THE THREE ASSERTIONS THAT WENT WITH THE RULE ─────────────────────────
  *
- * The restore above is `NOT VALID`, and that leaves the container holding a
- * constraint that is not byte-for-byte production's: `convalidated` is `false`
- * here and `true` there (measured on production, `43-MEASUREMENTS.md`
- * measurement 2, where all four live CHECKs are validated).
+ * Assertion 1 (`assertConstraintObject` — the container holds the same CHECK
+ * production does, `NOT VALID` aside), assertion 2 (`assertForbiddenWritesRefused`
+ * — the rule actually refuses its six forbidden writes) and the fourteen-cell
+ * guard (`assertProbeRowSatisfiesTheRule` — `min(pk)` on `public.profiles` must
+ * be a row the `NOT VALID` CHECK does not already reject) stood here until
+ * phase 50.
  *
- * **No capture would notice.** B1 dumps policies, B2 and B3 fingerprint persona
- * visibility, and not one of the three reads `pg_constraint`. A container
- * enforcing a subtly different object than production, with every comparator
- * green, is exactly the failure `seed.mjs`'s own header calls a green screen
- * rather than evidence. So the difference is asserted here, deliberately, and
- * printed on every run.
+ * All three were assertions ABOUT phase 43's role-implies-approved CHECK,
+ * dropped by the same migration that drops `profiles.status` (D-50-01). None of the three
+ * has a subject left: there is no constraint to compare, no forbidden pair to
+ * push, and no `NOT VALID` CHECK that could refuse an update to an
+ * already-violating row — because no row violates anything.
  *
- * The comparison is against `renderedDef` — a rendering MEASURED once and pinned
- * — never against the migration's source text, because Postgres re-prints a
- * predicate in its own normal form (`role not in (…)` comes back as
- * `role <> ALL (ARRAY[…])`). And the tolerance is exactly one enumerated
- * alternative, `NOT_VALID_SUFFIX`, never a wildcard: `rls-baseline-compare.mjs`
- * enumerates its alternatives for the same reason, since a comparison with a
- * wildcard in it has stopped being able to fail.
+ * The three assertions below — the third axis, the door register, the
+ * discriminating floor — are untouched, and they are the ones that were never
+ * about status.
  */
-async function assertConstraintObject(admin) {
-  const { name, present, renderedDef } = ROLE_IMPLIES_APPROVED;
-
-  if (!present) {
-    say(
-      `      skipped: ${name} is declared absent, so the constraint read-back measured nothing ` +
-        '(plan 43-06 flips `present`)'
-    );
-    return;
-  }
-
-  const observed = await readRoleImpliesApproved(admin);
-  if (!observed) {
-    throw new Error(
-      `"${name}" is not on public.profiles after the restore. The \`finally\` that re-adds it did not ` +
-        'run, or it ran and did not take. Every assertion about ROLE-02 below this line would pass by ' +
-        'having nothing to test. Nothing was measured.'
-    );
-  }
-
-  if (!renderedDef) {
-    throw new Error(
-      `ROLE_IMPLIES_APPROVED.renderedDef is null while \`present\` is true. Postgres renders the ` +
-        'constraint as:\n' +
-        `        ${observed.def}\n` +
-        'Pin that string (minus the trailing marker) in the declaration — measured, never composed. ' +
-        'Until it is pinned, nothing compares the container\'s constraint with production\'s.'
-    );
-  }
-
-  const expected = `${renderedDef}${NOT_VALID_SUFFIX}`;
-  if (observed.def !== expected) {
-    throw new Error(
-      `"${name}" is not the object this file declares.\n` +
-        `        expected: ${expected}\n` +
-        `        observed: ${observed.def}\n` +
-        'One of the two is wrong: either the migration changed the predicate without the declaration ' +
-        'following it, or the restore in this file drifted from the migration. Editing `renderedDef` ' +
-        'to match is only correct if the migration genuinely changed — otherwise it silences the one ' +
-        'check that can tell the container from production. Nothing about ROLE-02 was measured.'
-    );
-  }
-
-  if (observed.convalidated !== false) {
-    throw new Error(
-      `"${name}" came back convalidated=${observed.convalidated} in the container, and the restore is ` +
-        'written NOT VALID. Either the restore lost its NOT VALID — in which case it should have ' +
-        'failed outright on the four seeded rows — or something validated it afterwards. Nothing ' +
-        'about ROLE-02 was measured.'
-    );
-  }
-
-  say(`      ${name} restored: ${observed.def}`);
-  say(
-    '      convalidated=false here, true in production — the price of the NOT VALID restore, and no ' +
-      'capture reads pg_constraint, which is why it is asserted rather than compared'
-  );
-}
-
-/**
- * ── Assertion 2: the rule actually refuses ────────────────────────────────
- *
- * **This is ROLE-02's ONLY automated detector in this repository**
- * (`43-VALIDATION.md`). There is no test runner for this product (CLAUDE.md
- * Guardrail 1), B1/B2/B3 do not read `pg_constraint`, and no comparator watches
- * a write get refused. Whoever is about to delete this function is deleting the
- * only mechanical evidence that D-04 is enforced at all; after that, the rule is
- * a line in a migration that somebody believes.
- *
- * The six writes are the six states D-05 keeps seedable — the same six,
- * deliberately, so that the seed both demonstrates they can be created with the
- * rule relaxed and demonstrates they cannot be created with it in force. Two of
- * them, `staff/pending` and `staff/rejected`, exist only because plan 43-08 made
- * `staff` a persona; they are the states of the role this phase invented, and
- * before 43-08 nothing in this repository had ever watched the rule refuse them.
- *
- * WHAT IS ASSERTED, AND WHY NOT THE MESSAGE. The branch is SQLSTATE `23514`
- * (`43-MEASUREMENTS.md` measurement 5), plus the constraint's own name from the
- * error's CONSTRAINT NAME field: a `23514` raised by `profiles_status_check` or
- * `profiles_approved_via_check` would otherwise be a green for the wrong reason.
- * The predicate is checked before the foreign key to `auth.users` fires, so the
- * refusal is the CHECK's and not the FK's — `[VERIFIED: postgres:17.6,
- * ExecConstraints runs before the AFTER-row referential trigger]`, and the
- * constraint-name assertion is what keeps that measured rather than assumed.
- *
- * WHAT IS DELIBERATELY NOT PRINTED. `error.detail` on this table carries
- * `Failing row contains (…)` — every column of the offending row, membership
- * code included (`43-MEASUREMENTS.md` measurement 5). Here the row is synthetic,
- * but the habit of printing that field is the one that publishes a door
- * credential the day the same shape appears in product code. Code and
- * constraint name only.
- */
-async function assertForbiddenWritesRefused(admin) {
-  const { name, present } = ROLE_IMPLIES_APPROVED;
-
-  if (!present) {
-    say(
-      `      skipped: ${name} is declared absent, so the ${FORBIDDEN_WRITES.length} forbidden writes ` +
-        'were not attempted and ' +
-        'ROLE-02 has no automated evidence in this run'
-    );
-    return;
-  }
-
-  const { rows: before } = await admin.query('select count(*)::int as n from public.profiles');
-
-  const wrong = [];
-  for (const row of FORBIDDEN_WRITES) {
-    let error = null;
-    try {
-      await admin.query(
-        `insert into public.profiles (id, email, full_name, membership_code, role, status)
-         values ($1::uuid, $2, $3, $4, $5, $6)`,
-        [row.id, row.email, row.fullName, row.membershipCode, row.role, row.status]
-      );
-    } catch (caught) {
-      error = caught;
-    }
-
-    if (!error) {
-      wrong.push(`${row.label}: the insert SUCCEEDED`);
-      continue;
-    }
-    if (error.code !== '23514') {
-      wrong.push(`${row.label}: SQLSTATE ${error.code ?? 'none'} (expected 23514)`);
-      continue;
-    }
-    if (error.constraint !== name) {
-      wrong.push(`${row.label}: 23514 from "${error.constraint ?? 'unnamed'}" (expected "${name}")`);
-      continue;
-    }
-    say(`      refused ${row.label.padEnd(19)} 23514 ${error.constraint}`);
-  }
-
-  if (wrong.length) {
-    throw new Error(
-      `the rule "${name}" did not refuse every write it forbids: ${wrong.join('; ')}. This is ` +
-        "ROLE-02's only automated detector, so a failure here means the phase's central rule is not " +
-        'enforced — or is enforced by a different constraint than the one declared. Do not relax the ' +
-        'expectation to get past it. Nothing about ROLE-02 was measured.'
-    );
-  }
-
-  const { rows: after } = await admin.query('select count(*)::int as n from public.profiles');
-  if (after[0].n !== before[0].n) {
-    throw new Error(
-      `public.profiles held ${before[0].n} rows before the ${FORBIDDEN_WRITES.length} forbidden ` +
-        `writes and ${after[0].n} ` +
-        'after. A refused insert must write nothing, so at least one of them was refused after ' +
-        'landing — which would mean the grid, the fingerprints and the write matrix are all measuring ' +
-        'a database with a row nobody intended. Nothing was measured.'
-    );
-  }
-
-  // The count is derived, never typed: a hard-coded `4/4` would have kept
-  // printing a full score while two of the six went unwatched.
-  say(
-    `      ${FORBIDDEN_WRITES.length}/${FORBIDDEN_WRITES.length} forbidden writes refused, ` +
-      `profiles still ${after[0].n} rows`
-  );
-}
-
-/**
- * ── The two lines that prevent a silent fourteen-cell regression ──────────
- *
- * (Eleven cells before plan 43-08, fourteen after: one `profiles × update` cell
- * per persona, and the grid grew from nine personas to twelve.)
- *
- * The write matrix's `update` probe touches exactly ONE row per table:
- * `buildProbeStatement` (`rls-baseline.mjs:1270-1271`) writes
- * `where (pk) = '<key>'`, and `key` comes from `resolveProbeKeys` (`:1221-1231`)
- * as `min(pk)` — the LOWEST primary key.
- *
- * A `NOT VALID` CHECK refuses **any** update to an already-violating row,
- * including an update to a column the predicate does not mention
- * `[VERIFIED: 43-RESEARCH.md § B.1b]`. So if the row `min(pk)` picks is one of
- * the six forbidden personas, all fourteen `profiles × update` cells stop being
- * an RLS verdict and become a `23514` — and `rls-baseline-compare.mjs` would
- * report fourteen `b3_cell_changed` defects with no visible cause.
- *
- * Today that row is `master/approved`, and it is so **only** because of the
- * order of two arrays: persona ids are `…-<index padded>` assigned by
- * `for role of PERSONA_ROLES { for status of PERSONA_STATUSES }`, with
- * `PERSONA_ROLES = ['master','organizer','member','staff']` and
- * `PERSONA_STATUSES = ['approved','pending','rejected']`, so index 1 is
- * `master/approved`. Move `pending` to the front of `PERSONA_STATUSES` and
- * index 1 becomes `master/pending`.
- *
- * Plan 43-08 appended `'staff'` after `'member'` for exactly this reason, which
- * leaves index 1 untouched; inserting it before `'master'` would also have been
- * safe, since `staff/approved` complies. **Reordering `PERSONA_STATUSES` would
- * not be**, and no comment prevents that — this assertion does.
- *
- * That is luck, not design, so it is asserted. The assertion runs whether or not
- * the constraint is present: the hazard is dormant until plan 43-06, and a guard
- * that only starts running on the day it is needed is a guard nobody has seen
- * run.
- *
- * The key expression is built with the matrix's own `pkExpression`, not a
- * hand-written `min(id)`, so the two cannot drift into naming different rows —
- * the same "one declaration, two readers" rule this file applies to
- * `PROBE_PAYLOADS`.
- */
-async function assertProbeRowSatisfiesTheRule(admin) {
-  const keys = await primaryKeyColumns(admin, 'profiles');
-  const expression = pkExpression(keys);
-  const { rows } = await admin.query(
-    `select role, status
-       from public.profiles
-      where (${expression}) = (select min(${expression}) from public.profiles)`
-  );
-
-  const row = rows[0];
-  if (!row) {
-    throw new Error(
-      'no profiles row was returned for the key the write matrix probes with `update`. The seed ' +
-        `wrote ${PERSONA_ROLES.length * PERSONA_STATUSES.length} personas and the matrix targets ` +
-        'min(pk) among them, so an empty answer means the personas are not there. Nothing was measured.'
-    );
-  }
-
-  const staffRole = ['master', 'organizer', 'staff'].includes(row.role);
-  if (staffRole && row.status !== 'approved') {
-    throw new Error(
-      `the row the write matrix probes with \`update\` is ${row.role}/${row.status}, which violates ` +
-        `"${ROLE_IMPLIES_APPROVED.name}". Once that constraint exists it is restored NOT VALID, and a ` +
-        'NOT VALID CHECK refuses every update to an already-violating row — even on a column the rule ' +
-        'does not mention. All fourteen `profiles × update` cells would stop reporting an RLS verdict ' +
-        'and start reporting 23514, and the comparator would call them fourteen changed cells with no ' +
-        'visible cause. The likely edit is a reordering of PERSONA_STATUSES or PERSONA_ROLES in ' +
-        'rls-baseline.mjs: index 1 must stay a compliant pair. Fix the ordering, do not weaken this ' +
-        'check. Nothing was measured about writes on profiles.'
-    );
-  }
-
-  say(`      profiles × update probes ${row.role}/${row.status} — satisfies ${ROLE_IMPLIES_APPROVED.name}`);
-}
 
 async function primaryKeyColumns(admin, table) {
   const { rows } = await admin.query(
@@ -1486,15 +1094,21 @@ async function assertDiscriminating(admin, allTables, owners, personas) {
     );
   }
 
+  // ONE AXIS SINCE PHASE 50. This read used to be `group by role, status` and
+  // expected `PERSONA_ROLES.length × PERSONA_STATUSES.length` cells; the status
+  // axis no longer exists in the database, and an assertion that counts cells no
+  // row can occupy is a red gate left behind (D-50-28). What it still refuses is
+  // the same failure: a grid with a hole, where a role nobody holds cannot be
+  // told from a role whose policy refuses everybody.
   const { rows: grid } = await admin.query(
-    `select role, status, count(*)::int as n from public.profiles group by role, status order by role, status`
+    `select role, count(*)::int as n from public.profiles group by role order by role`
   );
-  const expectedCells = PERSONA_ROLES.length * PERSONA_STATUSES.length;
+  const expectedCells = PERSONA_ROLES.length;
   if (grid.length !== expectedCells) {
     throw new Error(
-      `the profiles table holds ${grid.length} of the ${expectedCells} role × status pairs. ` +
-        '`organizer/pending` is the one cell where the two definitions of "organizer" disagree, and a ' +
-        'grid with a hole cannot show it. Nothing was measured.'
+      `the profiles table holds ${grid.length} of the ${expectedCells} roles. A role with no rows ` +
+        'behaves exactly like a role every policy refuses, and no capture can tell the two apart. ' +
+        'Nothing was measured.'
     );
   }
 
@@ -1503,10 +1117,10 @@ async function assertDiscriminating(admin, allTables, owners, personas) {
       const column = owners.get(t);
       return `${t.padEnd(24)} ${String(counts[t]).padStart(3)} rows${column ? `  owner: ${column}` : ''}`;
     }),
-    `profiles role × status: ${grid.map((g) => `${g.role}/${g.status}=${g.n}`).join(' ')}`,
+    `profiles role: ${grid.map((g) => `${g.role}=${g.n}`).join(' ')}`,
   ];
 
-  say(`      seeded ${allTables.length} tables, ${personas.length} profiles, ${expectedCells}/${expectedCells} role × status cells`);
+  say(`      seeded ${allTables.length} tables, ${personas.length} profiles, ${expectedCells}/${expectedCells} roles`);
 
   return { tables: allTables.length, profiles: personas.length, counts, lines };
 }
