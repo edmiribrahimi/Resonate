@@ -545,3 +545,92 @@ migration su `private.role_capabilities`, cioe' su un **catalogo di permessi**.
 Istantanea prima e dopo: tabelle **41 → 41**, righe **2394 → 2395** (`+1`, la
 riga di `ticket_tiers`, **dichiarata prima** di applicare), concessioni **36 →
 32** (`−4`, misurate prima di toccarle). **Non c'e' una sola riga non spiegata.**
+
+---
+
+## Verifica indipendente (gsd-verifier, 2026-09-21)
+
+**Metodo.** Verifica goal-backward, senza fidarsi delle affermazioni del
+SUMMARY: ogni claim sotto e' stata ripercorsa sul codice sorgente attuale con
+`grep`/`ls`/`cat`, e quattro gate sono stati **rieseguiti dal vivo** in questa
+sessione (non riletti dai log della fase). **Non letto**: database di
+laboratorio e di produzione — vietato dalle istruzioni del compito. Le tre
+query di catalogo citate sopra sono state controllate **per presenza della
+citazione** nei SUMMARY (50-09, 50-11), non per verita' del loro contenuto,
+come richiesto.
+
+**Cosa e' stato ripercorso, ed esito:**
+
+1. **`src/app/(auth)/register/`** — directory assente (`ls` → *No such file or
+   directory*). Conferma REG-01.
+2. **`src/app/page.tsx`** — letto per intero: e' un `Home()` che chiama
+   `redirect("/events")` e nient'altro, con il docblock che spiega la
+   sostituzione della landing. Conferma.
+3. **`/usr/bin/grep -rn "auth\.signUp" src`** → **0 occorrenze**, misurato ora.
+   Conferma.
+4. **`/usr/bin/grep -rn "/register" src`** → tutte le 12 occorrenze residue sono
+   o `/admin/members/register` (percorso interno, conservato di proposito) o
+   prosa in docblock/commento. Nessuna rotta pubblica. Conferma.
+5. **Migrazioni:** `ls supabase/migrations/20260921*` → i due file dichiarati
+   esistono (`20260921120000_drop_status_and_referral.sql`,
+   `20260921120100_free_order.sql`). Letta la prima: contiene
+   `ALTER TABLE public.profiles DROP COLUMN IF EXISTS status` (:1010),
+   `DROP COLUMN IF EXISTS referred_by` (:1011), `DROP COLUMN IF EXISTS
+   approved_via` (:1012), `DROP FUNCTION IF EXISTS public.get_user_status()`
+   (:939), `ALTER TABLE private.role_capabilities DROP COLUMN IF EXISTS
+   requires_approved` (:996), e la ridefinizione di `handle_new_user()` (:804)
+   nella stessa transazione. Conferma REG-02, REG-03.
+6. **Mail cancellate** — verificata l'assenza su disco, oggi, di tutti e sei i
+   file dichiarati (`member-approved.tsx`, `member-rejected.tsx`,
+   `member-reactivated.tsx`, `registration-confirmation.tsx` + `.html`,
+   `rsvp-confirmation.tsx`). Conferma.
+7. **`referred_by` / `approved_via` nei sorgenti** — `grep -rn` conferma **0**
+   occorrenze di `referred_by` e **2** di `approved_via`, entrambe dentro
+   commenti (`sumup/route.ts:480`, `guest-list/process-entry.ts:176`), nessun
+   ramo vivo. Conferma REG-03.
+8. **Superfici del referral** — `src/components/membership/CopyReferralLink.tsx`
+   e `src/app/(admin)/admin/(work)/members/growth/` assenti dal disco. Conferma.
+9. **`supabase/migrations/20260921120100_free_order.sql`** — letta: la colonna
+   `sumup_checkout_id` perde `NOT NULL` (:114), il vincolo `UNIQUE` cade
+   (:117) e viene sostituito da un indice unico **parziale** con **lo stesso
+   nome** `ticket_orders_sumup_checkout_id_key`, condizionato a
+   `WHERE sumup_checkout_id IS NOT NULL` (:119-120); `buyer_name` viene
+   aggiunta (:165). Conferma REG-06 lato schema.
+10. **`reserve_ticket_order`** — la RPC esiste in
+    `supabase/migrations/20260905120100_reserve_ticket_order.sql:26` ed e'
+    chiamata dal percorso gratuito in
+    `src/app/(public)/events/[slug]/free-order-actions.ts:468`. Conferma che il
+    percorso RSVP passa dalla stessa funzione del percorso a pagamento, non da
+    un ramo parallelo.
+11. **Gate rieseguiti dal vivo in questa sessione** (non dai log del piano):
+    - `node scripts/verify-capabilities.mjs` → **5/5 verde**, misurato contro
+      **produzione** via Management API in sola lettura (`measured against:
+      production`), 17 chiavi, 32 concessioni lette. Conferma REG-02/REG-05.
+    - `node scripts/verify-routes.mjs` → **PASS — tutti e tre i controlli
+      verdi**, exit 0. Conferma.
+    - `node scripts/verify-persona.mjs` → **7/7 verdi**, incluso il controllo
+      **F** (materiale di produzione fuori dal repo pubblico). Conferma.
+    - `node scripts/verify-conversion.mjs` → **CONVERSION_OK**, 35 superfici
+      dichiarate, 204 file scansionati. Conferma.
+12. **Anti-pattern** — `grep -rnE "TODO|FIXME|XXX|HACK"` sui file chiave della
+    fase (`page.tsx`, `free-order-actions.ts`, `FreeOrderForm.tsx`, le due
+    migration del 2026-09-21) → **0 occorrenze**. Coerente con la tabella
+    "Anti-pattern cercati" sopra.
+
+**Cosa NON e' stato riverificato in proprio** (per constraint del compito o
+costo/beneficio, e per cui questo verificatore si affida alla citazione, non
+alla riesecuzione): le otto procedure di `50-ESITI.md` che richiedono accesso
+al laboratorio o alla porta fisica (`P-50-1` … `P-50-8`), le letture dirette
+del catalogo di produzione riportate nei SUMMARY 50-09/50-11 (controllate solo
+per presenza della citazione, come richiesto), lo stato `B.2` del template di
+conferma su Supabase Auth, e l'installazione PWA (gia' dichiarata non
+esercitata dall'esecutore stesso).
+
+**Verdetto.** Nessuna discrepanza trovata fra le affermazioni di
+`50-VERIFICATION.md` e lo stato attuale del codice, delle migration e dei
+quattro gate automatici rieseguiti dal vivo. I due gate rossi
+(`verify:venue-surfaces`, `verify:touch-targets`) sono confermati preesistenti
+e non toccati da questa fase — non sono stati allargati per farli passare. La
+decisione contraddetta `D-50-18b` e il passo manuale `B.2` restano aperti,
+correttamente dichiarati e non nascosti. **Il verdetto originale `passed` e'
+confermato.**
