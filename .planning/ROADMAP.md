@@ -393,7 +393,7 @@ Plans:
 > **mai** sul biglietto: `holder_label` resta un progressivo e il biglietto resta
 > al portatore (`D-49-03`).
 
-**Plans:** 11/12 plans executed
+**Plans:** 12/12 plans complete
 
 Plans:
 **Wave 1**
@@ -433,7 +433,7 @@ Plans:
 
 **Wave 9** *(blocked on Wave 8 completion)*
 
-- [ ] 50-12-PLAN.md — i moduli della persona, il changelog, e `50-VERIFICATION.md`
+- [x] 50-12-PLAN.md — i moduli della persona, il changelog, e `50-VERIFICATION.md`
 
 ### Phase 51: Via le superfici da socio, e la porta
 

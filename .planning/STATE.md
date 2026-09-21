@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: Completato 50-11-PLAN.md — le due migration in produzione, il signup spento e provato con 422, l'autorizzazione ESAURITA
-last_updated: "2026-09-21T16:39:04.786Z"
+stopped_at: "Completato 50-12-PLAN.md — i moduli della persona corretti dopo la cancellazione, verify:persona 7/7, e 50-VERIFICATION.md con evidenza eseguita"
+last_updated: "2026-09-21T16:55:55.454Z"
 last_activity: 2026-09-21
 progress:
   total_phases: 51
   completed_phases: 48
-  total_plans: 371
-  completed_plans: 371
+  total_plans: 372
+  completed_plans: 372
   percent: 100
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 50 (Via le iscrizioni) — EXECUTING
-Plan: 9 of 12
+Plan: 12 of 12
 undici, contati dai SUMMARY su disco.
 
 **Cosa e' in produzione — DEPLOYATO il 2026-09-07.** Le sei migration erano
@@ -466,6 +466,9 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase ?]: 50-11: B.2 resta manuale — il Management API non azzera l'override di un modello di posta, e mandare stringa vuota installa un modello VUOTO lasciando il flag true
 - [Phase ?]: 50-11: il flag MAILER_TEMPLATES_*_CONTENT dice «campo valorizzato», non «modello personalizzato» — tutti e tredici i template di produzione portano il testo di serie di Supabase, quindi riportare al default non cambia cio' che un destinatario legge
 - [Phase ?]: 50-11: GoTrue in produzione e' v2.197.0, misurato da /auth/v1/health; quella del laboratorio resta non nota, e chiude il residuo di A1 con una lettura sola
+- [Phase ?]: 50-12: i moduli della persona si correggono DOPO la cancellazione, e verify:persona si lancia dopo la scrittura in produzione — un modulo aggiornato prima descrive un futuro (D-50-25)
+- [Phase ?]: 50-12: 50-VERIFICATION.md chiude passed perche' il criterio e' per REQUISITO e i sei sono chiusi da prove eseguite; la decisione contraddetta — D-50-18b, il nome dell'acquirente sullo schermo della porta — sta in frontmatter come decisions_contradicted: 1 e in una sezione sua, non in fondo
+- [Phase ?]: 50-12: CLAUDE.md entra nel perimetro benche' non sia nei files_modified del piano — i principi 1 e 8 dicevano che il referral entra subito e che member non e' approved, e si caricano su ogni risposta
 
 ## Accumulated Context
 
@@ -585,8 +588,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-09-21T16:38:52.474Z
-**Stopped at:** Completato 50-09-PLAN.md — la sottrazione chiusa, REG-05 a zero dal catalogo, e le otto procedure scritte prima di percorrerle
+**Last session:** 2026-09-21T16:55:00.799Z
+**Stopped at:** Completato 50-12-PLAN.md — i moduli della persona corretti dopo la cancellazione, verify:persona 7/7, e 50-VERIFICATION.md con evidenza eseguita
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
