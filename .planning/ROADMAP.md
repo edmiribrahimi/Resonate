@@ -393,7 +393,7 @@ Plans:
 > **mai** sul biglietto: `holder_label` resta un progressivo e il biglietto resta
 > al portatore (`D-49-03`).
 
-**Plans:** 8/12 plans executed
+**Plans:** 9/12 plans executed
 
 Plans:
 **Wave 1**
@@ -421,7 +421,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 50-09-PLAN.md — la barra perde lo stato, i tipi cadono per ultimi, REG-05 a zero, e il runbook
+- [x] 50-09-PLAN.md — la barra perde lo stato, i tipi cadono per ultimi, REG-05 a zero, e il runbook
 
 **Wave 7** *(blocked on Wave 6 completion)*
 

@@ -382,7 +382,7 @@ nascosto il perimetro di una scrittura irreversibile e' la cosa che
 un'autorizzazione datata esiste per impedire.**
 
 **Perche' e' inerte, misurato e non dedotto.** La voce di
-`capability-routes.ts` e' `scope: "table"`: la chiave **non gate' nessun
+`capability-routes.ts:484-485` e' `scope: "table"`: la chiave **non gate' nessun
 indirizzo**. Le quattro concessioni sono state cancellate dal 50-02, quindi
 `has_capability('membership.active')` risponde `false` a chiunque. Il suo unico
 lettore nel codice e' uscito col 50-08. `npm run verify:capabilities` contro il
@@ -390,7 +390,7 @@ lettore nel codice e' uscito col 50-08. `npm run verify:capabilities` contro il
 2026-09-21 dal piano 50-09).
 
 **Difetto da correggere insieme a lei, e nominato adesso perche' non si
-riscopra:** `capability-routes.ts:487` dichiara ancora che *«the guard is
+riscopra:** `capability-routes.ts:486-487` dichiara ancora che *«the guard is
 `src/lib/media/may-upload.ts`»*. Quel lettore non esiste piu'. La chiave oggi
 **non ha guardia**, ed e' la descrizione piu' onesta del suo stato.
 
@@ -458,7 +458,7 @@ a ciascuna la data in cui e' diventata storia — non che la cancelli. Cancellar
 toglierebbe l'argomento senza sostituirlo, e al primo caso uguale qualcuno
 rifarebbe la scelta da capo.
 
-### Classe 2 — **quattro stringhe di descrizione**, `keys.ts:422-428`
+### Classe 2 — **quattro stringhe di descrizione**, `keys.ts:421-428`
 
 Queste **non sono commenti**: sono `CAP_DESCRIPTIONS`, cioe' **dati**, e il loro
 gemello vive nella colonna `description` di `private.capabilities`. Ognuna delle

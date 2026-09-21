@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: Completato 50-08-PLAN.md — il percorso dell'incasso non nomina piu' lo stato, e le due voci differite sono assorbite
-last_updated: "2026-09-21T14:44:03.489Z"
+stopped_at: Completato 50-09-PLAN.md — la sottrazione chiusa, REG-05 a zero dal catalogo, e le otto procedure scritte prima di percorrerle
+last_updated: "2026-09-21T15:07:55.608Z"
 last_activity: 2026-09-21
 progress:
   total_phases: 51
   completed_phases: 48
   total_plans: 371
-  completed_plans: 368
+  completed_plans: 369
   percent: 99
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 50 (Via le iscrizioni) — EXECUTING
-Plan: 6 of 12
+Plan: 7 of 12
 undici, contati dai SUMMARY su disco.
 
 **Cosa e' in produzione — DEPLOYATO il 2026-09-07.** Le sei migration erano
@@ -371,7 +371,7 @@ checkpoints is now closed (the migration is applied); three remain, plus the RLS
 half of the fourth. `31-VALIDATION.md` keeps `nyquist_compliant: false`
 deliberately.
 
-Progress: [█████████░] 85%
+Progress: [██████████] 100%
           phase 32 — 11 plans, 0 executed
 
 ## Decisions
@@ -579,8 +579,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-09-21T14:44:03.485Z
-**Stopped at:** Completato 50-08-PLAN.md — il percorso dell'incasso non nomina piu' lo stato, e le due voci differite sono assorbite
+**Last session:** 2026-09-21T15:07:55.604Z
+**Stopped at:** Completato 50-09-PLAN.md — la sottrazione chiusa, REG-05 a zero dal catalogo, e le otto procedure scritte prima di percorrerle
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
