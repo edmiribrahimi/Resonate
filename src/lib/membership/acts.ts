@@ -40,9 +40,26 @@
  * What was done to an account's role or status, or to what it may do on one
  * night.
  *
- * Nine values, mirrored by the `act` CHECK on `public.membership_acts`
+ * **Dieci valori**, mirrored by the `act` CHECK on `public.membership_acts`
  * (widened from seven by
- * `supabase/migrations/20260809002000_assignment_acts.sql`, section 1).
+ * `supabase/migrations/20260809002000_assignment_acts.sql`, section 1, and da
+ * nove a dieci da `20260921120000_drop_status_and_referral.sql`).
+ *
+ * ── `deleted`, e i quattro che restano nel vocabolario senza avere un autore ─
+ *
+ * `deleted` e' l'atto della fase 50 (D-50-16): togliere l'accesso a qualcuno
+ * significa cancellare il suo account, e una cancellazione lascia la sua riga.
+ * E' l'unico atto il cui soggetto **non esiste piu'** quando lo si legge:
+ * `membership_acts.subject_id` va a `NULL` per costruzione
+ * (`ON DELETE SET NULL`), e cio' che resta a nominarlo e' `subject_label`, il
+ * codice di membership — mai un indirizzo e mai un nome.
+ *
+ * `approved`, `rejected`, `deactivated` e `reactivated` **restano nell'unione e
+ * nessuno li scrive piu'**: l'asse dello stato che muovevano e' uscito dallo
+ * schema con la stessa migration (D-50-01). Non si tolgono perche' le righe
+ * storiche li portano, e il registro e' append-only: un'unione che non sapesse
+ * nominare una riga esistente renderebbe illeggibile la storia che il registro
+ * esiste per conservare. Sono valori da LEGGERE, non piu' da scrivere.
  *
  * `rejected` and `deactivated` are two values and not one although they are the
  * SAME write today — `{status: 'rejected', role: 'member'}` — because they are
@@ -85,7 +102,8 @@ export type MembershipAct =
   | "deactivated"
   | "reactivated"
   | "assigned"
-  | "unassigned";
+  | "unassigned"
+  | "deleted";
 
 /**
  * Who performed the act — D-22.

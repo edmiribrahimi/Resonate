@@ -105,7 +105,20 @@ const MEMBERSHIP_ACT_COLUMNS =
  */
 const PAGE_SIZE = 200;
 
-/** The seven acts, in words a person reads rather than in the stored value. */
+/**
+ * Gli atti, in parole che una persona legge invece che nel valore memorizzato.
+ *
+ * `deleted` e' entrato con la fase 50 (D-50-16), ed e' **l'unico atto la cui
+ * riga e' la sola cosa che resta**: il soggetto non esiste piu', `subject_id`
+ * e' andato a `NULL` per costruzione, e senza un'etichetta qui la superficie
+ * mostrerebbe il valore grezzo proprio sull'atto che nessun'altra pagina puo'
+ * raccontare.
+ *
+ * `approved`, `rejected`, `deactivated` e `reactivated` restano perche' le
+ * righe storiche li portano: nessuno li scrive piu' (l'asse dello stato e'
+ * uscito dallo schema), ma un registro append-only si legge, e un'etichetta
+ * mancante renderebbe illeggibile cio' che e' gia' successo.
+ */
 const ACT_LABELS: Record<string, string> = {
   created: "Account created",
   approved: "Approved",
@@ -114,6 +127,7 @@ const ACT_LABELS: Record<string, string> = {
   demoted: "Demoted",
   deactivated: "Deactivated",
   reactivated: "Reactivated",
+  deleted: "Account deleted",
 };
 
 /**
