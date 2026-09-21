@@ -38,11 +38,17 @@
  *      cancellato: qui si cancella via SQL e si riconta via PostgREST. Una
  *      misura presa con lo strumento che ha causato l'effetto e' un'eco.
  *
- * COSA SEMINA. Un locale, una serata futura pubblicata con il suo format e la
- * sua serie, un livello di biglietto, quattro account e un biglietto con il suo
- * codice firmato. Nomi e indirizzi sono palesemente finti (`@lab.invalid`) e la
- * data e' calcolata a partire da oggi: questo file e' su un repository PUBBLICO
- * e non deve portare una sede, una data o una line-up vere.
+ * COSA SEMINA. Un locale, TRE serate future pubblicate con il loro format e la
+ * loro serie — una a pagamento, una con il venue segreto e rivelazione non
+ * avvenuta, una `free_rsvp` con il suo tier a prezzo 0 — un livello di biglietto
+ * per ciascuna, quattro account e un biglietto con il suo codice firmato. Nomi e
+ * indirizzi sono palesemente finti (`@lab.invalid`) e le date sono calcolate a
+ * partire da oggi: questo file e' su un repository PUBBLICO e non deve portare
+ * una sede, una data o una line-up vere.
+ *
+ * NESSUN ACCOUNT PORTA UNO STATO. La fase 50 toglie `profiles.status`: gli
+ * `insert` qui non nominano quella colonna, e per questo lo script semina il suo
+ * mondo sia prima sia dopo la migration che la cancella.
  *
  * USO
  *   node scripts/seed-lab-door.mjs --seed      semina e scrive gli id
@@ -154,30 +160,26 @@ async function seed() {
   const SRK = process.env.LAB_SUPABASE_SERVICE_ROLE_KEY;
   const PASSWORD = process.env.LAB_ACCOUNT_PASSWORD || "lab-door-pass-2026";
 
-  // ── Un account che due procedure chiedono e che il database non ammette ──────
+  // ── Quattro account, e nessuno stato ────────────────────────────────────────
   //
-  // `39-DOOR-PASS.md` §1.5 e il test M-3 di `34-VERIFICATION.md` chiedono
-  // entrambi un account **`organizer` in stato `pending`**, «seminato a mano»
-  // perche' il prodotto non sa produrlo (43-CONTEXT D-15).
+  // Lo stato non compare piu': la fase 50 toglie `profiles.status` dal database
+  // (D-50-01), e un banco di prova che semina una colonna che non esiste si
+  // ferma su un `42703` che nessuno collegherebbe alla fase che l'ha causato.
   //
-  // **Non e' seminabile nemmeno a mano.** Misurato il 2026-08-18 su LABORATORIO
-  // e PRODUZIONE, identico su entrambi:
+  // I due account `member` NON sono un duplicato. Sono i due soggetti opposti di
+  // `P-50-3`, e vanno seminati prima della prova invece di essere inventati
+  // durante:
   //
-  //   profiles_role_implies_approved
-  //   CHECK (role <> ALL (ARRAY['master','organizer','staff']) OR status = 'approved')
-  //
-  // Un `organizer` `pending` viola il vincolo: la riga non puo' esistere. Le due
-  // procedure descrivono uno stato che lo schema rende impossibile, e nessuna
-  // delle due poteva accorgersene senza un ambiente in cui provarci.
-  // Registrato in `deferred-items.md`. Qui NON si aggira: aggirarlo
-  // significherebbe togliere un vincolo di produzione per far girare una prova,
-  // che e' il verso sbagliato in cui piegare le cose.
+  //   `memberSpare` — nessun biglietto, nessuna traccia di lavoro: e' l'account
+  //   su cui la cancellazione RIESCE;
+  //   `member`      — porta il biglietto seminato piu' in basso in questo stesso
+  //   file: e' l'account su cui la cancellazione RIFIUTA, e deve dire la causa
+  //   invece di un errore generico (D-50-16).
   const ACCOUNTS = [
-    { key: "master", email: "master@lab.invalid", role: "master", status: "approved" },
-    { key: "door", email: "door@lab.invalid", role: "staff", status: "approved" },
-    // Il solo stato `pending` che lo schema ammette: il ruolo `member`.
-    { key: "memberPending", email: "member-pending@lab.invalid", role: "member", status: "pending" },
-    { key: "member", email: "member@lab.invalid", role: "member", status: "approved" },
+    { key: "master", email: "master@lab.invalid", role: "master" },
+    { key: "door", email: "door@lab.invalid", role: "staff" },
+    { key: "memberSpare", email: "member-spare@lab.invalid", role: "member" },
+    { key: "member", email: "member@lab.invalid", role: "member" },
   ];
 
   // La cancellazione di un utente in GoTrue non e' immediatamente visibile: una
@@ -205,17 +207,25 @@ async function seed() {
       if (!res.ok) throw new Error(`auth ${a.email}: ${res.status} ${(await res.text()).slice(0, 300)}`);
       id = (await res.json()).id;
     }
-    ids.accounts[a.key] = { id, email: a.email, role: a.role, status: a.status, riusato };
+    ids.accounts[a.key] = { id, email: a.email, role: a.role, riusato };
     write(); // regola 1: la chiave e' su disco prima del passo successivo
   }
 
-  // Il trigger di registrazione crea il profilo; qui si porta solo a ruolo e stato.
+  // Il trigger di registrazione crea il profilo; qui si porta solo al ruolo.
+  //
+  // L'`insert` non nomina `status`, e per questo vale PRIMA e DOPO la migration
+  // dell'onda 1. Oggi la colonna esiste ed e' `NOT NULL DEFAULT 'approved'`:
+  // un inserimento che non la nomina se la soddisfa da solo, e i quattro
+  // account nascono tutti approvati — che e' il solo stato compatibile con il
+  // vincolo `profiles_role_implies_approved` ancora in vigore. Domani la colonna
+  // non esiste e questa stessa riga continua a girare. In nessuno dei due stati
+  // del database lo script va riscritto.
   for (const a of ACCOUNTS) {
     const { id } = ids.accounts[a.key];
     await sql(`
-      insert into public.profiles (id, email, full_name, membership_code, role, status)
-      values (${q(id)}, ${q(a.email)}, ${q("Lab " + a.key)}, ${q("LAB" + a.key.toUpperCase().slice(0, 6))}, ${q(a.role)}, ${q(a.status)})
-      on conflict (id) do update set role = excluded.role, status = excluded.status`);
+      insert into public.profiles (id, email, full_name, membership_code, role)
+      values (${q(id)}, ${q(a.email)}, ${q("Lab " + a.key)}, ${q("LAB" + a.key.toUpperCase().slice(0, 6))}, ${q(a.role)})
+      on conflict (id) do update set role = excluded.role`);
   }
 
   // Il locale. Nome e indirizzo palesemente finti: questo file e' pubblico.
@@ -303,6 +313,43 @@ async function seed() {
   ids.secretTier = stier[0].id;
   write();
 
+  // La serata GRATUITA — `access_type = 'free_rsvp'`, con il suo tier a prezzo 0.
+  // Senza di lei `P-50-7` non e' eseguibile: l'ordine a totale zero di REG-06
+  // nasce da una serata `free_rsvp` e da un livello di biglietto a zero, e
+  // nessuna delle due esiste oggi sul laboratorio.
+  //
+  // `capacity` PORTA UN VALORE, e piccolo di proposito. `P-50-7` deve poter
+  // vedere la capienza RIFIUTARE, e una capienza nulla e' una capienza infinita:
+  // il rifiuto non arriverebbe mai e la prova direbbe di aver misurato un limite
+  // che non esiste. Quattro e' sotto il tetto per ordine (6, D-50-26), cosi' che
+  // il rifiuto sia della capienza e non del tetto.
+  const FREE_CAPACITY = 4;
+
+  const fev = await sql(`
+    insert into public.events (slug, title, description, date, is_published, created_by, venue_secret)
+    values ('lab-free-night', 'Lab Free Night', 'Serata gratuita di laboratorio — non e'' un evento reale',
+            (current_date + interval '21 days'), true, ${q(ids.accounts.master.id)}, false)
+    returning id`);
+  ids.freeEvent = fev[0].id;
+  write();
+
+  const fparty = await sql(`
+    insert into public.event_parties
+      (event_id, title, time, end_time, date, access_type, capacity, sort_order, lineup,
+       venue_id, venue_secret, format_id, series_id, number)
+    values (${q(ids.freeEvent)}, 'Lab Free Night', '22:00', '06:00', (current_date + interval '21 days'),
+            'free_rsvp', ${FREE_CAPACITY}, 1, '{}', ${q(ids.venue)}, false, ${q(fmt[0].id)}, ${q(ser[0].id)}, null)
+    returning id`);
+  ids.freeParty = fparty[0].id;
+  write();
+
+  const ftier = await sql(`
+    insert into public.ticket_tiers (event_id, party_id, name, price, quantity)
+    values (${q(ids.freeEvent)}, ${q(ids.freeParty)}, 'RSVP', 0, ${FREE_CAPACITY})
+    returning id`);
+  ids.freeTier = ftier[0].id;
+  write();
+
   const tk = await sql(`
     insert into public.tickets (event_id, party_id, tier_id, user_id, amount_paid, ticket_type)
     values (${q(ids.event)}, ${q(ids.party)}, ${q(ids.tier)}, ${q(ids.accounts.member.id)}, 0, 'purchased')
@@ -319,9 +366,10 @@ async function seed() {
   console.log(`Seminato su ${REF}. Chiavi in ${SEED_FILE}.`);
   console.log(`  serata   ${ids.party}`);
   console.log(`  segreta  ${ids.secretParty} (venue_secret, rivelazione non avvenuta, tier 1.00)`);
+  console.log(`  gratuita ${ids.freeParty} (free_rsvp, capienza ${FREE_CAPACITY}, tier 'RSVP' a 0)`);
   console.log(`  biglietto ${ids.ticket}`);
   console.log(`  codice   ${ids.ticketToken.slice(0, 12)}… (per intero nel file)`);
-  console.log(`  account  ${Object.values(ids.accounts).map((a) => `${a.email} (${a.role}/${a.status})`).join(", ")}`);
+  console.log(`  account  ${Object.values(ids.accounts).map((a) => `${a.email} (${a.role})`).join(", ")}`);
   console.log(`  password ${PASSWORD}`);
   console.log("\nIl token va nel QR come stringa nuda: e' cio' che lo scanner legge.");
 }
@@ -342,6 +390,9 @@ async function verify() {
     ["ticket_tiers", ids.secretTier],
     ["event_parties", ids.secretParty],
     ["events", ids.secretEvent],
+    ["ticket_tiers", ids.freeTier],
+    ["event_parties", ids.freeParty],
+    ["events", ids.freeEvent],
     ["venues", ids.venue],
   ];
   let present = 0;
@@ -377,6 +428,9 @@ async function teardown() {
     ["ticket_tiers", ids.secretTier],
     ["event_parties", ids.secretParty],
     ["events", ids.secretEvent],
+    ["ticket_tiers", ids.freeTier],
+    ["event_parties", ids.freeParty],
+    ["events", ids.freeEvent],
     ["venues", ids.venue],
   ];
   for (const [table, id] of steps) {
