@@ -94,6 +94,12 @@ persona (57), qualunque cancellazione self-service dell'account.
   passo, radio spenta davvero (non solo wi-fi), stessa serata di prova, esito
   registrato con la data nel VERIFICATION.
 
+
+### Le tre domande aperte dalla ricerca, chiuse il 2026-09-21
+- **D-51-13 — `door_scan_events.subject_type` conserva `'membership'` come valore storico**, sia nel `CHECK` SQL sia nell'union `DoorSubjectType` (`outcome.ts`), con un commento che lo dichiara storico e non piu' scrivibile. E' il registro delle convalide alla porta: **non si riscrive**, e D-51-04 non lo autorizza. Decisione tecnica dell'assistente sulla raccomandazione della ricerca (§ Open Question 1).
+- **D-51-14 — `public.attendances` si svuota per intero e la tabella si toglie**, con le sue policy e ogni oggetto che la nomina: decisione del proprietario. Dopo la fase nessuno la scrive ne' la legge (ricerca §3). Vale D-51-04 per intero: conteggio per tabella prima, cascata enumerata dal catalogo (misurata vuota, da rimisurare), istantanea, cancellazione per chiave, autorizzazione datata che si consuma una volta; lab prima, produzione dopo.
+- **D-51-15 — `subject_label` nel registro degli account, senza piu' il codice socio, porta le prime 8 cifre di `subject_id`**, e `record_membership_act` si ridefinisce **nella stessa migration** che toglie la colonna e rinomina la tabella in `account_acts` (ricerca §4: un `DROP COLUMN` da solo rompe la funzione in silenzio e con essa la creazione degli account). Decisione tecnica dell'assistente.
+
 ### Claude's Discretion
 - Nome e testo del pulsante di download della guest list, e la forma della
   categoria di log per le voci scartate (D-51-11).
