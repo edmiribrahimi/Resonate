@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: Completato 50-02-PLAN.md — migration applicata al LABORATORIO, produzione intatta
-last_updated: "2026-09-21T12:59:49.837Z"
+stopped_at: Completato 50-04-PLAN.md — l'ordine a totale zero esiste; la superficie che lo chiama e' del piano 50-05
+last_updated: "2026-09-21T13:59:44.693Z"
 last_activity: 2026-09-21
 progress:
   total_phases: 51
   completed_phases: 48
   total_plans: 371
-  completed_plans: 365
-  percent: 98
+  completed_plans: 366
+  percent: 99
 ---
 
 # State: Resonate
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 50 (Via le iscrizioni) — EXECUTING
-Plan: 3 of 12
+Plan: 4 of 12
 undici, contati dai SUMMARY su disco.
 
 **Cosa e' in produzione — DEPLOYATO il 2026-09-07.** Le sei migration erano
@@ -577,8 +577,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-09-21T12:59:49.833Z
-**Stopped at:** Completato 50-02-PLAN.md — migration applicata al LABORATORIO, produzione intatta
+**Last session:** 2026-09-21T13:59:41.572Z
+**Stopped at:** Completato 50-04-PLAN.md — l'ordine a totale zero esiste; la superficie che lo chiama e' del piano 50-05
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 

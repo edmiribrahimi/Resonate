@@ -393,7 +393,7 @@ Plans:
 > **mai** sul biglietto: `holder_label` resta un progressivo e il biglietto resta
 > al portatore (`D-49-03`).
 
-**Plans:** 5/12 plans executed
+**Plans:** 6/12 plans executed
 
 Plans:
 **Wave 1**
@@ -409,7 +409,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 50-04-PLAN.md — il nome nell'account su entrambi i percorsi, e l'azione dell'ordine gratuito
+- [x] 50-04-PLAN.md — il nome nell'account su entrambi i percorsi, e l'azione dell'ordine gratuito
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
