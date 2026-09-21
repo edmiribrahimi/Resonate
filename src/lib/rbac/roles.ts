@@ -117,16 +117,46 @@ export interface NavItem {
    * tapped it.
    */
   href: Route;
+  /**
+   * L'indirizzo che questa voce prende **quando non c'e' sessione**, o `null`
+   * quando e' lo stesso di `href`.
+   *
+   * ── Perche' esiste, e perche' non sono due voci (fase 50, D-50-13) ─────────
+   *
+   * `Account` ha due destinazioni: `/dashboard` per chi ha una sessione,
+   * `/login` per chi non ce l'ha. Fino alla fase 50 la voce era `requireAuth`
+   * e un anonimo **non vedeva alcun Account**; ora lo vede, e lo porta alla
+   * pagina d'accesso.
+   *
+   * La differenza si risolve **qui e nel filtro**, non con due voci che si
+   * escludono a vicenda: due voci con la stessa etichetta sono il modo in cui
+   * una barra comincia a mentire — una delle due si aggiorna e l'altra no, e
+   * nessuno se ne accorge finche' non ci clicca sopra la persona sbagliata.
+   *
+   * **Richiesto e non opzionale**, per la stessa ragione di `capability` piu'
+   * sotto: le quattro voci che rispondono `null` stanno rispondendo, non
+   * astenendosi.
+   */
+  hrefWhenAnonymous: Route | null;
   label: string;
   icon: string;
   /** Minimum roles required (null = visible to everyone including unauthenticated) */
   roles: UserRole[] | null;
-  /** Required status (null = any status, including unauthenticated) */
+  /**
+   * Required status (null = any status, including unauthenticated).
+   *
+   * **Nessuna voce lo mette a `true` dalla fase 50** — `/gallery` era l'ultima
+   * e l'ha perso con D-50-04, che pretende che non sopravviva alcun cancello su
+   * `status`. Il campo e il suo ramo nel filtro **restano**, perche' la colonna
+   * `profiles.status` esiste ancora nel database per la durata della finestra
+   * di deploy (D-50-24: il codice va in produzione **prima** della migration) e
+   * perche' toglierli tocca la firma che il piano 50-09 smonta con i suoi
+   * tredici punti d'innesto. Qui cambia **cosa** contiene `NAV_ITEMS`, non
+   * **come** viene filtrato.
+   */
   requireApproved: boolean;
   /** Requires authentication */
   requireAuth: boolean;
-  /** Hide this item when user is authenticated (e.g. Home tab for guests only) */
-  hideWhenAuth: boolean;
   /**
    * The capability that governs this entry, or `null` when no capability does.
    *
@@ -140,35 +170,64 @@ export interface NavItem {
 }
 
 // Full navigation items list with role/status requirements
+//
+// ── La voce `Home` e' uscita con la fase 50 (D-50-12) ────────────────────────
+//
+// Era la prima di questa lista: indirizzo la radice, etichetta `Home`,
+// `hideWhenAuth: true` — visibile al solo anonimo. **`/` non e' piu' una
+// pagina**: e' un
+// rimando a `/events` (`src/app/page.tsx`), quindi quella voce porterebbe
+// **altrove che da se'** — la si tocca, si finisce su Events, e la scheda
+// evidenziata non e' quella che si e' premuta.
+//
+// **Se `/` torni a essere una pagina, e con quale significato, lo decide la
+// fase 52 (`NAV-01`).** Questa fase non puo' lasciarla com'era e non e' la
+// fase che decide se torna: la toglie, e lo dice.
+//
+// **Con lei esce `hideWhenAuth`, campo e ramo del filtro.** Era il suo unico
+// consumatore — verificato: nessun altro file del repo nomina quel campo — e un
+// campo booleano che nessuna voce mette a `true` e' una domanda che ogni voce
+// nuova deve continuare a rispondere per niente. **Scelto di toglierlo invece
+// di lasciarlo a meta'**, come il piano chiedeva di dichiarare.
 const NAV_ITEMS: NavItem[] = [
   {
-    href: "/",
-    label: "Home",
-    icon: "home",
-    roles: null,
-    requireApproved: false,
-    requireAuth: false,
-    hideWhenAuth: true,
-    capability: null,
-  },
-  {
     href: "/events",
+    hrefWhenAnonymous: null,
     label: "Events",
     icon: "calendar",
     roles: null,
     requireApproved: false,
     requireAuth: false,
-    hideWhenAuth: false,
     capability: null,
   },
   {
+    // ── `requireApproved` era `true`, ed e' `false` dalla fase 50 ───────────
+    //
+    // Era **un cancello su `status`**, e D-50-04 pretende che non ne
+    // sopravviva nessuno: la colonna sparisce dal database in questa stessa
+    // fase.
+    //
+    // **Non e' un allargamento d'accesso, ed e' la parte da leggere prima di
+    // "riparare" questa riga.** La pagina non ha alcuna guardia propria: filtra
+    // `event_media.status = 'approved'` e basta
+    // (`src/app/(public)/gallery/page.tsx:51`), non e' in
+    // `capability-routes.ts`, e **chi ne conosce l'indirizzo ci arriva gia'
+    // oggi** — anche da anonimo, anche prima di questa modifica. Cio' che
+    // cambia e' solo che la scheda viene **disegnata** a chi prima non la
+    // vedeva. *Hiding a nav item is not protecting a route*
+    // (`access-gating.md`, gate coerenza navigazione/permessi): questa riga
+    // non ha mai protetto niente, quindi toglierla non apre niente.
+    //
+    // **Il cancello vero lo costruisce `NAV-02`, fase 52**, legando la voce a
+    // una capability. Anticiparlo qui sarebbe fare la 52 dentro la 50. Debito
+    // dichiarato con il nome della fase che lo chiude.
     href: "/gallery",
+    hrefWhenAnonymous: null,
     label: "Gallery",
     icon: "image",
     roles: null,
-    requireApproved: true,
+    requireApproved: false,
     requireAuth: false,
-    hideWhenAuth: false,
     capability: null,
   },
   {
@@ -228,22 +287,34 @@ const NAV_ITEMS: NavItem[] = [
     // is touched by this phase.** Drawing this entry more honestly grants
     // nobody anything.
     href: DOOR_HREF,
+    hrefWhenAnonymous: null,
     label: "Check-in",
     icon: "qrcode",
     roles: null,
     requireApproved: false,
     requireAuth: true,
-    hideWhenAuth: false,
     capability: CAP.DOOR_OPERATE,
   },
   {
+    // ── Account si vede anche senza sessione, dalla fase 50 (D-50-13) ───────
+    //
+    // `requireAuth` era `true`: **un anonimo non vedeva alcuna voce Account.**
+    // Con `Home` uscita nello stesso commit, un anonimo vedrebbe altrimenti
+    // solo Events e Gallery, e non avrebbe **nessuna strada dentro la barra**
+    // verso la pagina d'accesso — che e' l'unica porta rimasta, visto che la
+    // pagina d'iscrizione non esiste piu'.
+    //
+    // E' una **voce nuova per chi non ha sessione**, non un ritocco: stessa
+    // etichetta, stessa icona, stessa posizione, e un indirizzo che dipende da
+    // chi guarda — `/login` da anonimo, `/dashboard` con una sessione. La
+    // differenza la risolve il filtro qui sotto, non una seconda voce.
     href: "/dashboard",
+    hrefWhenAnonymous: "/login",
     label: "Account",
     icon: "user",
     roles: null,
     requireApproved: false,
-    requireAuth: true,
-    hideWhenAuth: false,
+    requireAuth: false,
     capability: null,
   },
 ];
@@ -252,37 +323,42 @@ const NAV_ITEMS: NavItem[] = [
  * Filter navigation items on what the subject is, and on what the subject may
  * do.
  *
- * Outcomes, rewritten against the filter as it stands after plan 39-03:
- * - Unauthenticated: Home, Events, Gallery (3 tabs) — the capability set is
- *   empty, so Check-in is filtered out exactly as it always was
- * - Pending / rejected member: Events, Account (2 tabs — Gallery hidden)
- * - Approved member: Events, Gallery, Account (3 tabs)
- * - Organizer or master, **approved**: Events, Gallery, Check-in, Account
- * - Organizer or master, **pending**: Events, Check-in, Account — Gallery is
- *   hidden and Check-in is **not**, because the door is filtered on
- *   `door.operate` and that key is granted with `requires_approved = false`
- *   (D-06 of Phase 43). This row is the one D-39-06 changed.
- * - Organizer or master, **rejected**: same as the row above — Events,
- *   Check-in, Account. Written down because its absence read as an oversight:
- *   `has_capability` is `and (not rc.requires_approved or p.status =
- *   'approved')` (`20260807000000_capability_model.sql:215`), so with
- *   `requires_approved = false` the status is **not consulted at all** and the
- *   subject genuinely holds the key. The nav therefore agrees with the server
- *   here, which is the whole point of D-39-06 — this is not a drawn entry the
- *   server refuses. It is also **unrepresentable in production**: the CHECK at
- *   `20260808001000_role_implies_approved.sql:117` forbids a non-approved
- *   organizer, master or staff row. Both facts are stated because either one
- *   alone invites the wrong repair — a status check added here would lock a
- *   pending organizer out of the door, in front of a queue, which is the
- *   failure `requires_approved = false` exists to prevent.
- * - Staff: Events, Gallery, Account — **plus Check-in when rostered to a
- *   night**, since `staff` does not hold `door.operate` by role and holds it
- *   only through a live assignment
+ * ── Gli esiti, RIMISURATI sul filtro dopo la fase 50 ────────────────────────
  *
- * The staff row no longer *"needs no code"*. That sentence was true while the
- * entry was role-filtered and it is not the reason any more: staff now sees or
- * does not see the tab according to the same live-assignment set the middleware
- * reads, which is code and is below.
+ * **Questo elenco e' stato riscritto, non ritoccato.** Diceva *«Non
+ * autenticato: Home, Events, Gallery — 3 schede»* e distingueva quattro righe
+ * per stato di approvazione. **Nessuna di quelle righe si verifica piu':**
+ * `Home` non e' piu' una voce (D-50-12) e nessuna voce guarda piu'
+ * l'approvazione (D-50-04). Un docblock che descrive un esito che non si
+ * verifica piu' e' **peggio di un docblock assente**, perche' chi lo legge ci
+ * costruisce sopra invece di andare a guardare.
+ *
+ * - **Non autenticato**: Events, Gallery, **Account → `/login`** (3 schede).
+ *   L'insieme delle capability e' vuoto, quindi Check-in resta fuori
+ *   esattamente come sempre. Account e' **nuovo** per questo soggetto
+ *   (D-50-13): prima non vedeva alcuna voce Account.
+ * - **Un account qualunque con ruolo `member`**: Events, Gallery, **Account →
+ *   `/dashboard`** (3 schede). **Una riga sola dove ce n'erano tre**, ed e' il
+ *   punto: `pending`, `approved` e `rejected` producevano tre barre diverse, e
+ *   l'asse che le separava sta sparendo dal prodotto.
+ * - **Organizer o master**: Events, Gallery, Check-in, Account (4 schede).
+ *   Check-in e' filtrato su `door.operate`, che il ruolo tiene.
+ * - **Staff**: Events, Gallery, Account — **piu' Check-in quando e' assegnato
+ *   a una serata in corso**, perche' `staff` non tiene `door.operate` per
+ *   ruolo e lo tiene solo per assegnazione viva.
+ *
+ * **Cosa NON e' cambiato, e va tenuto contro la riparazione sbagliata.** Il
+ * ramo delle capability e' intatto: la porta continua a essere filtrata su
+ * `door.operate`, chiave concessa con `requires_approved = false` (D-06 della
+ * fase 43) **proprio perche'** un organizer non approvato non doveva essere
+ * respinto davanti a una fila. Con `status` che sparisce, quella concessione
+ * smette di avere un caso da prevenire — ma il filtro resta il filtro giusto,
+ * ed e' lo **stesso predicato del middleware**. Aggiungere qui un controllo di
+ * qualunque tipo sulla porta e' la riparazione che chiude la porta.
+ *
+ * La riga staff non *«non ha bisogno di codice»*: staff vede o non vede la
+ * scheda secondo lo stesso insieme di assegnazioni vive che legge il
+ * middleware, che e' codice ed e' qui sotto.
  *
  * ── The mount count, corrected because the stale one was load-bearing
  *
@@ -319,20 +395,20 @@ export function getVisibleNavItems(
   const isAuthenticated = role !== null;
   const isApproved = status === "approved";
 
-  return NAV_ITEMS.filter((item) => {
-    // Hide guest-only items from authenticated users
-    if (item.hideWhenAuth && isAuthenticated) {
-      return false;
-    }
-
+  const visible = NAV_ITEMS.filter((item) => {
     // Check authentication requirement
     if (item.requireAuth && !isAuthenticated) {
       return false;
     }
 
-    // Check approval requirement
-    // Gallery: visible to unauthenticated users AND approved members, but NOT
-    // pending/rejected. Check-in no longer answers this clause — see below.
+    // Check approval requirement.
+    //
+    // **Nessuna voce risponde piu' a questa clausola dalla fase 50**: `/gallery`
+    // era l'ultima e ha perso il campo con D-50-04. La clausola resta perche'
+    // la firma la smonta il piano 50-09 coi suoi tredici punti d'innesto, non
+    // questo — e perche' toglierla e rimetterla e' come una barra comincia ad
+    // avere due autori. Non e' codice morto per sbaglio: e' codice che aspetta
+    // di essere tolto dal piano che lo dichiara.
     if (item.requireApproved) {
       if (isAuthenticated && !isApproved) {
         return false;
@@ -373,4 +449,29 @@ export function getVisibleNavItems(
 
     return true;
   });
+
+  // ── L'indirizzo per chi non ha sessione (fase 50, D-50-13) ────────────────
+  //
+  // Una voce con `hrefWhenAnonymous` prende quell'indirizzo quando non c'e'
+  // sessione, il proprio altrimenti. Oggi ne esiste **una**, Account: `/login`
+  // da anonimo, `/dashboard` con una sessione.
+  //
+  // **Perche' qui e non con due voci in `NAV_ITEMS`.** Due voci con la stessa
+  // etichetta e condizioni che si escludono a vicenda sono il modo in cui una
+  // barra comincia a mentire: si aggiorna l'icona dell'una, l'etichetta
+  // dell'altra, e nessuno se ne accorge finche' non ci clicca sopra la persona
+  // che vede solo la seconda.
+  //
+  // **Questo non e' un controllo d'accesso e non deve diventarlo.** Decide un
+  // indirizzo da disegnare, non chi puo' raggiungerlo: `/dashboard` resta
+  // protetto da `capability-routes.ts` e dal middleware, e un anonimo che lo
+  // scrive a mano viene rimbalzato esattamente come prima di questa riga.
+  // `AppNav` disegna cio' che riceve e non risolve niente per conto suo (e'
+  // `"use client"`: una decisione presa li' e' una decisione che il lettore
+  // puo' modificare).
+  return visible.map((item) =>
+    !isAuthenticated && item.hrefWhenAnonymous !== null
+      ? { ...item, href: item.hrefWhenAnonymous }
+      : item
+  );
 }

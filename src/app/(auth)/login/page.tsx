@@ -2,11 +2,15 @@
 
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { claimGuestOrders } from "@/app/(public)/events/[slug]/menu/actions";
 import { resolveNext } from "@/lib/routes/next-redirect";
-import { Button, FOCUS_RING } from "@/components/ui/Button";
+// `Link` e `FOCUS_RING` sono usciti da questi import con la fase 50: erano
+// consumati dal solo `Sign Up` sotto il modulo, ed erano i **soli** due
+// consumatori in questo file. L'espressione del focus resta importata ovunque
+// serva un elemento interattivo; qui non ce n'e' piu' uno oltre al modulo, che
+// porta la propria dal primitivo.
+import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle } from "@/components/ui/Typography";
@@ -184,42 +188,39 @@ function LoginForm() {
         </Button>
       </form>
 
+      {/*
+        ── La riga sotto il modulo, riscritta dalla fase 50 (D-50-13) ─────────
+
+        Diceva **«Don't have an account? Sign Up»**, e il `Sign Up` era un link
+        alla pagina d'iscrizione, con il `?next=` inoltrato. Quella pagina non
+        esiste piu': nessuno si iscrive da solo, **l'account arriva con il
+        biglietto** — il percorso d'acquisto della fase 49 lo crea e manda il
+        link firmato per mail.
+
+        La frase nuova e' quella decisa dal proprietario, **alla lettera e in
+        inglese** — si legge qui sotto, e non e' trascritta anche in questo
+        commento: due copie di una stringa decisa da qualcun altro sono due
+        copie che divergono. Risponde alla stessa domanda di prima — *e se non
+        ho un account?* — con la risposta che oggi e' vera.
+
+        **Senza alcun link, e non per pigrizia.** Non c'e' piu' una pagina dove
+        mandare chi legge, e un link che porta a un 404 e' peggio di nessun
+        link: promette una strada e la interrompe dopo il clic, cioe' nel punto
+        in cui la persona ha gia' smesso di cercare altrove. La mail e' il
+        percorso, e la mail non e' un indirizzo che questa pagina possa aprire.
+
+        **Cosa se ne va con l'ancora**, come il piano chiede: il commento del
+        piano 34-01 sulla forma del `Route` tipizzato, quello del piano 37-12
+        sul valore rifiutato che non viaggia, e il commento sul pavimento dei
+        44px — tre note che descrivevano un elemento che non c'e' piu'. **La
+        difesa che spiegavano resta intatta e non e' toccata qui**:
+        `resolveNext` sopra continua a filtrare `?next=` contro l'allow-list di
+        `src/lib/routes/next-redirect.ts` e a decidere dove atterra chi accede.
+        Quello che sparisce e' un **secondo salto** che inoltrava il valore gia'
+        validato a una pagina che non esiste — non un controllo.
+      */}
       <p className="mt-6 text-center text-sm text-muted">
-        Don&apos;t have an account?{" "}
-        {/* Form 2 of plan 34-01: passed straight to `<Link>`, unannotated, so
-            `RouteType` is inferred per branch. The ternary replaces a single
-            template whose type widened to `/register${string}` — a shape
-            `RouteImpl` cannot accept, because it would also admit
-            `/registerXYZ`. Same two strings as before.
-
-            What plan 37-12 changed is WHICH value goes in. It was `nextUrl`,
-            the raw parameter, so `/login?next=https://example.org` produced
-            `/register?next=https%3A%2F%2Fexample.org` — observed in the
-            rendered page — and carried the same unvalidated string one hop
-            further, into a form that mails it back as the callback's
-            `redirectTo`. The callback allow-lists it on arrival, so this hop
-            was never the last line of defence; forwarding a value this page
-            has already refused would still be handing on something it just
-            declined to follow itself.
-
-            A refused value therefore does not travel: the link falls back to
-            a plain `/register`. Only a value that was BOTH supplied and
-            accepted is forwarded — an absent one is not turned into an
-            explicit `?next=/dashboard`, which would invent a destination
-            nobody asked for. */}
-        {/* A finger target, not a line of text. §6.1's floor applies to every
-            interactive element with a label, and this one is the only route
-            from the front door to registration — the target a first-time
-            visitor reaches for, on a phone, before the product has any other
-            way of keeping them. It was a bare inline link with no height of
-            its own; it gains the minimum and the alignment that keeps it
-            inside the sentence instead of dropping the sentence around it.
-
-            The destination is untouched: the ternary above is plan 37-12's
-            refusal, and a class string does not get to reason about it. */}
-        <Link href={rawNext !== null && !nextRefused ? `/register?next=${encodeURIComponent(nextPath)}` : "/register"} className={`inline-flex min-h-11 items-center align-middle text-accent hover:text-accent-hover ${FOCUS_RING}`}>
-          Sign Up
-        </Link>
+        Bought a ticket? Use the link in your email
       </p>
     </PageShell>
   );
