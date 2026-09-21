@@ -594,17 +594,45 @@ export interface TicketOrder {
   user_id: string | null;
   buyer_email: string;
   /**
+   * Il nome raccolto dal modulo (D-50-18b), e sta **sull'ordine** per la stessa
+   * ragione per cui {@link TicketOrder.user_id} e' nullabile: sul percorso
+   * pagato l'account nasce al webhook, ore dopo il modulo. Senza una casa qui
+   * il nome non arriverebbe mai a `profiles.full_name`, e il campo sul modulo
+   * sarebbe teatro.
+   *
+   * **Il nome va all'account, MAI sul biglietto.** `holder_label` resta un
+   * progressivo dentro l'ordine, il biglietto resta al portatore (D-49-03) e lo
+   * schermo dello staff alla porta non mostra nomi.
+   *
+   * `null` significa «raccolto prima che questa colonna esistesse», mai
+   * «anonimo»: nessun default, nessun riempimento.
+   */
+  buyer_name: string | null;
+  /**
    * Quanti biglietti emette questo ordine. Il tetto e'
    * {@link EventParty.max_tickets_per_order}, applicato in modo autoritativo
    * dentro `public.reserve_ticket_order` — non da chi chiama.
    */
   quantity: number;
   /**
-   * `UNIQUE NOT NULL` nello schema, e la differenza fra i due modificatori e' il
-   * punto: e' il DATABASE a garantire che due consegne dello stesso webhook non
-   * diventino due ordini. Non spostare questa garanzia nel codice.
+   * **`NULL` significa ordine a totale zero** — l'RSVP di una serata
+   * `free_rsvp`, che nessuno paga (REG-06, D-50-19). Mai «checkout perso»:
+   * l'ordine pagato scrive questo campo prima di ogni altra cosa, all'apertura
+   * del checkout.
+   *
+   * **E l'idempotenza del pagamento non si e' indebolita di un grado.**
+   * `20260921120100_free_order.sql` ha sostituito il vincolo `UNIQUE NOT NULL`
+   * con un indice unico **parziale** — `ticket_orders_sumup_checkout_id_key`,
+   * `WHERE sumup_checkout_id IS NOT NULL` — che sulle righe che un checkout ce
+   * l'hanno e' **esattamente lo stesso vincolo**: due consegne dello stesso
+   * webhook continuano a scontrarsi nel database, non nel codice.
+   *
+   * **Non metterci un valore sintetico.** Un `free-<uuid>` supererebbe il
+   * `continue` di `src/app/api/cron/reconcile-refunds/route.ts:105` e
+   * manderebbe una richiesta a SumUp ogni giorno, per ogni biglietto gratuito
+   * mai emesso, per un checkout che non esiste.
    */
-  sumup_checkout_id: string;
+  sumup_checkout_id: string | null;
   sumup_transaction_code: string | null;
   total_amount: number;
   discount_code_id: string | null;
