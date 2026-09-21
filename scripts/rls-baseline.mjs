@@ -619,91 +619,87 @@ export async function captureB1(target, { phasePoint }) {
 // ── personas ───────────────────────────────────────────────────────────────
 
 /**
- * ── The fourteen personas (phase decision D-11, widened by plan 43-08) ─────
+ * ── The six personas (D-11, widened by 43-08, NARROWED by plan 50-02) ──────
  *
- * The full 4×3 role × status grid, plus `authenticated/no-profile`, plus
- * `anon`. The grid is the MINIMUM that can distinguish P1 from P3: they
- * disagree on exactly one pair, `organizer/pending`, who may insert a ticket
- * tier but not a venue. Drop a row of the grid and that asymmetry — the one
- * CAP-03 must reproduce rather than resolve — becomes invisible.
+ * The four roles, plus `authenticated/no-profile`, plus `anon`.
  *
- * `authenticated/no-profile` is not padding either. The middleware's
- * `?? "member"` default and the NULL-versus-false behaviour of
- * `is_admin_or_organizer()` for a missing profile row are both BEHAVIOUR, and
- * neither is observable with any other persona.
+ * ── IT WAS A 4×3 GRID UNTIL 2026-09-21, AND THE SECOND AXIS IS GONE ───────
+ *
+ * Fourteen personas until migration `20260921120000_drop_status_and_referral.sql`
+ * dropped `public.profiles.status` (fase 50, D-50-01). The status axis is not
+ * *unused* now — it is **unrepresentable**: `PERSONA_SQL` selected the column,
+ * so leaving the grid in place would not have produced a thinner matrix, it
+ * would have produced `42703` and no matrix at all.
+ *
+ * What is lost with it, said plainly instead of discovered later: the pair
+ * `organizer/pending` was the MINIMUM that could distinguish P1 from P3 — an
+ * account that could insert a ticket tier but not a venue. That asymmetry
+ * cannot be measured any more because it cannot exist any more: without the
+ * column, `has_capability` has one arm on the role alone
+ * (`20260921120000`, sezione 3a). A distinction that no database can hold is
+ * not a row this matrix is failing to cover.
+ *
+ * `authenticated/no-profile` is not padding. The middleware's `?? "member"`
+ * default and the NULL-versus-false behaviour of a missing profile row are both
+ * BEHAVIOUR, and neither is observable with any other persona.
  *
  * A persona that does not exist on a target is recorded `absent`, never
  * omitted — an omitted row is indistinguishable from a row that agreed.
  *
- * ── WHY `'staff'` IS APPENDED AFTER `'member'`, AND NOT ANYWHERE ELSE ──────
+ * ── THE ORDER OF `PERSONA_ROLES` IS STILL LOAD-BEARING ────────────────────
  *
- * THE ORDER OF THESE TWO ARRAYS IS LOAD-BEARING. It is not a style choice and
- * it is not alphabetical by accident of taste.
- *
- * `scripts/container/seed.mjs:208-230` assigns each seeded persona an id of the
- * form `32000004-0000-4000-8000-<index padded>`, where `index` runs through the
- * NESTED LOOP `for role of PERSONA_ROLES { for status of PERSONA_STATUSES }`.
- * So index 1 — and therefore the LOWEST persona id in `public.profiles` — is
- * `PERSONA_ROLES[0]/PERSONA_STATUSES[0]`.
+ * `scripts/container/seed.mjs:349-367` assigns each seeded persona an id of the
+ * form `32000004-0000-4000-8000-<index padded>`, where `index` now runs through
+ * ONE loop over `PERSONA_ROLES`. So index 1 — and therefore the LOWEST persona
+ * id in `public.profiles` — is `PERSONA_ROLES[0]`, today `master`.
  *
  * The write matrix's `update` probe targets exactly that row: `resolveProbeKeys`
- * (`:1221-1231`) takes `min(pk)` and `buildProbeStatement` (`:1270-1271`) writes
- * `where (pk) = '<key>'`. Since plan 43-06 the container restores
- * `profiles_role_implies_approved` **NOT VALID**, and a NOT VALID CHECK refuses
- * every update to an already-violating row — even on a column the predicate does
- * not mention. If `min(id)` ever landed on a forbidden pair, every
- * `profiles × update` cell would stop being an RLS verdict and start being a
- * `23514`, and `rls-baseline-compare.mjs` would report them as changed cells
- * with no visible cause. That was **eleven** cells before this plan and is
- * **fourteen** after it.
+ * takes `min(pk)` and `buildProbeStatement` writes `where (pk) = '<key>'`. The
+ * hazard this paragraph used to describe — a `NOT VALID` CHECK refusing every
+ * update to an already-violating row, turning every `profiles × update` cell
+ * into a `23514` instead of an RLS verdict — **is gone with the constraint**:
+ * phase 43's role-implies-approved CHECK was dropped by the same migration, and
+ * the container no longer restores it. Reordering this array is therefore safe
+ * today; it is left in declaration order anyway, because the persona ids are
+ * read by people and renumbering them makes every past artefact harder to read.
  *
- * Which edits are safe, stated so the next person does not have to derive it:
- *
- *   - appending `'staff'` AFTER `'member'` — safe, index 1 stays
- *     `master/approved`, a compliant pair. This is what was done.
- *   - inserting `'staff'` BEFORE `'master'` — also safe, because
- *     `staff/approved` complies with the rule too.
- *   - reordering `PERSONA_STATUSES` — **NOT SAFE**. Move `'pending'` to the
- *     front and index 1 becomes `master/pending`, which the rule forbids, and
- *     the fourteen `profiles × update` cells flip.
- *
- * `seed.mjs:723-756` asserts this on every run rather than trusting the comment,
+ * `seed.mjs` asserts the count on every run rather than trusting this comment,
  * because a comment is not a guard.
  */
 export const PERSONA_ROLES = ['master', 'organizer', 'member', 'staff'];
-export const PERSONA_STATUSES = ['approved', 'pending', 'rejected'];
 const PERSONA_ANON = 'anon';
 const PERSONA_NO_PROFILE = 'authenticated/no-profile';
-export const PERSONA_LABELS = [
-  PERSONA_ANON,
-  PERSONA_NO_PROFILE,
-  ...PERSONA_ROLES.flatMap((role) => PERSONA_STATUSES.map((status) => `${role}/${status}`)),
-].sort(compareStrings);
+export const PERSONA_LABELS = [PERSONA_ANON, PERSONA_NO_PROFILE, ...PERSONA_ROLES].sort(
+  compareStrings
+);
 
 /**
  * Which personas a target is REQUIRED to offer. An absent persona that was
  * expected is exit 1, because a matrix quietly missing its most interesting
  * rows is the failure mode `verify-persona.mjs:225-233` refuses.
  *
- * Production holds 4 profiles — 1 master/approved and 3 member/approved. There
- * is no organizer and no non-approved row, which is precisely why plan 32-04
- * exists: only a seeded container can carry the other seven.
+ * Production holds 4 profiles — measured 2026-09-21: 1 `master`, 1 `organizer`
+ * and 2 `member`, and no `staff`. The floor below names only `master` and
+ * `member` because those are the two that have been there since phase 32; an
+ * `organizer` that resolves as well is a persona GAINED, and a gained persona
+ * is never an error.
  *
- * The container is required to offer **all fourteen**. That is the reason it
- * exists: `organizer/pending` — the one pair where P1 and P3 disagree — cannot
- * be measured anywhere else, and a container that quietly failed to seed it
- * would produce a matrix indistinguishable from production's.
+ * The container is required to offer **all four roles**. That is the reason it
+ * exists: `staff` and `organizer` cannot be measured anywhere else, and a
+ * container that quietly failed to seed one would produce a matrix
+ * indistinguishable from production's.
  *
- * **`production` is deliberately UNCHANGED by plan 43-08.** The `staff` role
- * exists in a committed migration that has not been applied, so production holds
- * no `staff` row and none of the three `staff/*` personas can resolve there.
- * Adding one here would make every production capture exit 1 for a reason that
- * is TRUE and is NOT a defect — the loudest possible way to teach the next
+ * **`production` holds no `staff` row**, so `staff` is deliberately absent from
+ * its floor. Adding it would make every production capture exit 1 for a reason
+ * that is TRUE and is NOT a defect — the loudest possible way to teach the next
  * reader that this list is noise. It gains a `staff` entry on the day a `staff`
  * row genuinely exists in production, and not before.
+ *
+ * The labels lost their `/approved` suffix on 2026-09-21 with the column that
+ * produced it (plan 50-02). The floor is the same two roles it has always been.
  */
 const EXPECTED_PERSONAS = {
-  production: [PERSONA_ANON, PERSONA_NO_PROFILE, 'master/approved', 'member/approved'],
+  production: [PERSONA_ANON, PERSONA_NO_PROFILE, 'master', 'member'],
   container: [...PERSONA_LABELS],
 };
 
@@ -720,8 +716,9 @@ export function assertUuid(value, what) {
 }
 
 /**
- * The twelve role × status personas, resolved to the LOWEST id in each cell so
- * the choice is deterministic across runs.
+ * The four role personas, resolved to the LOWEST id in each cell so the choice
+ * is deterministic across runs. (Twelve until 2026-09-21, when the status axis
+ * was dropped from the schema — see the note on `PERSONA_ROLES` above.)
  *
  * **The uuid is used and discarded: only the label reaches the artefact.**
  * `.planning/` is tracked and this repository is PUBLIC (CLAUDE.md Guardrail
@@ -739,11 +736,10 @@ export function assertUuid(value, what) {
  * rule is that nothing reaches a statement without having been written down.
  */
 const PERSONA_SQL = `
-select role, status, (array_agg(id order by id))[1]::text as subject
+select role, (array_agg(id order by id))[1]::text as subject
   from public.profiles
  where role in ('master','organizer','member','staff')
-   and status in ('approved','pending','rejected')
- group by role, status
+ group by role
 `;
 
 async function resolvePersonas(target) {
@@ -770,7 +766,7 @@ async function resolvePersonas(target) {
   resolved.set(PERSONA_NO_PROFILE, { subject: orphan, dbRole: 'authenticated' });
 
   for (const row of await target.query(PERSONA_SQL, { readOnly: true })) {
-    const label = `${row.role}/${row.status}`;
+    const label = String(row.role);
     if (!PERSONA_LABELS.includes(label)) continue;
     registerSecret(row.subject);
     resolved.set(label, { subject: assertUuid(row.subject, label), dbRole: 'authenticated' });
@@ -1165,8 +1161,10 @@ export const PROBE_PAYLOADS = {
     },
     update: 'drink_name',
   },
-  // `type` is CHECK-constrained to photo|video; `uploaded_by` is the subject —
-  // this is the P5 (`status = approved`) surface, so the owner column matters.
+  // `type` is CHECK-constrained to photo|video; `uploaded_by` is the subject,
+  // and the owner column matters: since 2026-09-21 the insert policy is
+  // `event_media_insert_staff` (`20260921120000`, D-50-03), which still demands
+  // `auth.uid() = uploaded_by` — and now a work capability instead of a status.
   //
   // ── WHY `event_id` IS NOT `{{events}}` ANY MORE (plan 35-18) ──────────────
   //
@@ -1556,9 +1554,12 @@ export const PROBE_PAYLOADS = {
     },
     update: 'full_name',
   },
-  // The P5 surface: `rsvps_insert_approved` needs `auth.uid() = user_id` AND
-  // status approved, so the subject column must be `auth.uid()` or the cell
-  // would refuse for the wrong reason.
+  // The subject column stays `auth.uid()` or the cell would refuse for the
+  // wrong reason. NOTE, 2026-09-21: `rsvps_insert_approved` was dropped by
+  // `20260921120000` (D-50-20 — nothing writes to `rsvps` any more), so every
+  // `rsvps × insert` cell is now a refusal for EVERY persona. That is the
+  // measurement, not a defect: the table is read-only by design, and the read
+  // and delete policies are untouched.
   rsvps: {
     insert: {
       columns: ['event_id', 'user_id', 'party_id'],

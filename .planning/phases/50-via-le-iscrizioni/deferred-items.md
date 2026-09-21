@@ -6,7 +6,17 @@ decida dove vanno.
 
 ---
 
-## D-50-01 lascia scoperto `scripts/rls-baseline.mjs`
+## ~~D-50-01 lascia scoperto `scripts/rls-baseline.mjs`~~ — ASSORBITA
+
+> **CHIUSA dal piano 50-02, 2026-09-21**, nello stesso commit della migration che
+> la rendeva vera — che e' esattamente cio' che D-50-28 chiede. `PERSONA_STATUSES`
+> e' stata rimossa, `PERSONA_LABELS` porta i quattro ruoli piu' `anon` e
+> `authenticated/no-profile`, `PERSONA_SQL` non seleziona piu' la colonna e
+> `resolvePersonas` etichetta per ruolo. Le personas passano da quattordici a sei,
+> e cio' che si perde con la seconda asse — la coppia `organizer/pending`, l'unica
+> che distingueva P1 da P3 — e' dichiarato nel docblock invece di sparire in
+> silenzio: non e' una riga che la matrice smette di coprire, e' una riga che
+> nessun database puo' piu' contenere.
 
 **Trovata:** piano 50-01, task 2 (2026-09-21).
 **Fuori perimetro perche':** il task dichiara `scripts/container/seed.mjs` e nient'altro.
@@ -33,3 +43,37 @@ della cosa che cambia.
 sonde, non un banco di semina; toccarla dentro un task che dichiara un altro
 file avrebbe significato modificare un gate senza che nessun criterio di
 accettazione lo guardasse.
+
+---
+
+## La CHIAVE `membership.active` resta nel catalogo, e va tolta con la costante TypeScript
+
+**Trovata:** piano 50-02, task 1 (2026-09-21).
+**Fuori perimetro perche':** chiuderla qui avrebbe richiesto di toccare `src/`, che
+il piano 50-02 esclude per intero (`git diff --stat` senza modifiche sotto `src/`).
+
+Il piano 50-02 dichiara che `membership.active` *«si CANCELLA dal catalogo, non si
+allarga»*. Cancellata e' stata **meta'**: le **quattro concessioni** in
+`private.role_capabilities` (nessun ruolo la tiene piu'), non la **chiave** in
+`private.capabilities`.
+
+La ragione e' meccanica e verificata leggendo il gate:
+`scripts/verify-capabilities.mjs` confronta `private.capabilities` con l'oggetto
+`CAP` di `src/lib/capabilities/keys.ts` **in entrambe le direzioni** — controllo 0
+(`EXPECTED_KEY_COUNT`, asserito su TS **e** su DB con una costante sola),
+controllo 1 (TS↔DB) e controllo 3 (SRC↔DB). Togliere la riga di catalogo mentre
+`CAP.MEMBERSHIP_ACTIVE` vive ancora in TypeScript renderebbe quel gate **rosso**
+fino al piano che tocca il codice — ed e' precisamente cio' che D-50-28 vieta.
+
+| Dove | Cosa | Chi la toglie |
+|---|---|---|
+| `private.capabilities` | la riga `membership.active` | il piano che smonta le superfici |
+| `src/lib/capabilities/keys.ts:300,395` | `CAP.MEMBERSHIP_ACTIVE` e la sua descrizione | idem |
+| `src/lib/routes/capability-routes.ts:471` | la voce `scope: "table"` (il `Record` e' totale: senza di lei `npm run build` fallisce) | idem |
+| `src/lib/media/may-upload.ts:291` | `if (!ctx.capabilities.has(CAP.MEMBERSHIP_ACTIVE)) return false` | idem |
+| `scripts/verify-capabilities.mjs` | le quattro righe `'membership.active': 'REFUSED'` e `EXPECTED_KEY_COUNT` 17 → 16 | idem, **stesso commit** |
+
+**Nessun comportamento cambia quando arrivera'.** L'arm 2 di `mayUploadToParty`
+e' gia' morto dal 2026-08-08 (interroga una tabella `attendance` che non esiste,
+`may-upload.ts:265-281`), e con le concessioni cancellate `has_capability`
+risponde comunque `false` a chiunque.

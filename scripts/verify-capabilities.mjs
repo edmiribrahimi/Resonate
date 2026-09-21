@@ -91,12 +91,14 @@
  *
  * THE FIFTH SIDE (phase decision D-02, added by plan 43-02):
  *
- *   GRANT   `select role, capability, requires_approved from
- *           private.role_capabilities` — the rows themselves, compared against a
- *           declaration pre-registered in this file: every (role × capability)
- *           pair of the cross product is either a grant carrying its
- *           `requires_approved`, or a refusal, which is expressed in the database
- *           as the ABSENCE of a row. This side exists because a wrong grant row
+ *   GRANT   `select role, capability from private.role_capabilities` — the rows
+ *           themselves, compared against a declaration pre-registered in this
+ *           file: every (role × capability) pair of the cross product is either
+ *           a grant, or a refusal, which is expressed in the database as the
+ *           ABSENCE of a row. (The third column this read used to take, the
+ *           per-grant approval flag, was dropped from the schema on 2026-09-21
+ *           by `20260921120000_drop_status_and_referral.sql`: a key is now held
+ *           or not held, without a second axis.) This side exists because a wrong grant row
  *           had no automated detector anywhere in this repository, and because
  *           the most dangerous shape of mistake — a refusal written as a
  *           `granted = false` row — would GRANT the capability, the resolver's
@@ -105,7 +107,7 @@
  *
  * WHAT A GREEN MEANS, AND WHAT IT DOES NOT. It means the four declarations name
  * the same strings, AND that every role holds exactly the set of capabilities
- * that was declared for it, with the `requires_approved` that was declared. It
+ * that was declared for it. It
  * still does not mean a policy is correct: which subjects a predicate admits is
  * measured by `npm run baseline:rls`, not here, and nothing in this file reads a
  * profile. Same distinction `verify-persona.mjs` draws between coherence and
@@ -235,11 +237,18 @@ const EXPECTED_KEY_COUNT = 17;
  * Every (role × capability) pair of the cross product, declared as one of two
  * things and never as silence:
  *
- *   a GRANT — the `requires_approved` value the row must carry, `true` or `false`
+ *   a GRANT — the string `GRANTED`, which means **a row exists**
  *   a REFUSAL — the string `REFUSED`, which means **no row at all**
+
+ * Until 2026-09-21 a grant carried a boolean instead — the per-grant approval
+ * flag — and the declaration recorded its value. The column went with
+ * `profiles.status` (fase 50, D-50-01,
+ * `20260921120000_drop_status_and_referral.sql`), so there is one thing left to
+ * declare per pair: held, or not held.
  *
  * MEASURED on 2026-08-07 against
- * `supabase/migrations/20260807000000_capability_model.sql:390-423`. Written
+ * `supabase/migrations/20260807000000_capability_model.sql:390-423`, and
+ * re-measured on 2026-09-21 after the flag column was dropped. Written
  * here, not derived from `private.role_capabilities`, for the reason
  * `EXPECTED_KEY_COUNT` states above and `rls-baseline.mjs:113-130` states about
  * its floors: a check that reads its expectation off the thing it is checking
@@ -260,8 +269,12 @@ const EXPECTED_KEY_COUNT = 17;
  *       join private.role_capabilities rc on rc.role = p.role
  *       where p.id = (select auth.uid())
  *         and rc.capability = p_capability
- *         and (not rc.requires_approved or p.status = 'approved')
  *     );
+ *
+ * (Quoted from the definition in force since 2026-09-21,
+ * `20260921120000_drop_status_and_referral.sql` sezione 3a. The congiunto on
+ * the account's approval state that used to close this `EXISTS` went with the
+ * column it read.)
  *
  * There is no `granted` in that `EXISTS`. A `granted = false` row therefore
  * **GRANTS** the capability — the refusal would read as an explicit denial to a
@@ -276,60 +289,81 @@ const EXPECTED_KEY_COUNT = 17;
  */
 const ROLE_GRANTS = {
   master: {
-    'staff.manage': false,
-    'master.manage': false,
-    'catalogue.manage': true,
-    'membership.active': true,
-    'admin.access': false,
-    'organizer.access': false,
+    'staff.manage': 'GRANTED',
+    'master.manage': 'GRANTED',
+    'catalogue.manage': 'GRANTED',
+    // ── CANCELLATA DAL MODELLO IL 2026-09-21, e questa e' una REFUSAL vera ──
+    //
+    // Senza il flag per concessione `membership.active` avrebbe voluto dire
+    // *«ha un profilo»* — cioe' qualunque account, compreso quello leggero di chi
+    // ha solo comprato un biglietto. I suoi due soli lettori di policy sono
+    // spariti nella stessa migration (`event_media_insert_member` riscritta per
+    // capability di lavoro, `rsvps_insert_approved` droppata), quindi
+    // `20260921120000_drop_status_and_referral.sql` ne ha cancellato le QUATTRO
+    // concessioni: nessun ruolo la tiene piu'.
+    //
+    // **La CHIAVE resta nel catalogo**, e con lei queste quattro righe, perche'
+    // `CAP.MEMBERSHIP_ACTIVE` vive ancora in `src/lib/capabilities/keys.ts` e i
+    // controlli 0, 1 e 3 di questo script confrontano le due direzioni.
+    // Cancellare la riga di catalogo senza la costante lascerebbe questo gate
+    // rosso fino al piano che tocca il codice, e D-50-28 dice che un gate rosso
+    // lasciato indietro e' un gate che nessuno rilancia. Le due se ne vanno
+    // insieme, nel piano che smonta le superfici.
+    'membership.active': 'REFUSED',
+    'admin.access': 'GRANTED',
+    'organizer.access': 'GRANTED',
     // ── D-06, and this paragraph is the point of the two lines below ──────
     //
-    // `door.operate`'s `requires_approved` is `false` on BOTH grants, and it
-    // must stay false. Once ROLE-02's `role ⇒ approved` constraint exists this
-    // flag will LOOK redundant and somebody will propose flipping it as
-    // tidying. That is the ROADMAP's declared **"trap to refuse"**
-    // (`.planning/ROADMAP.md:235-241`), and the migration says the same thing at
+    // `door.operate` carried a per-grant approval flag set to `false` on BOTH
+    // rows, and the ROADMAP called flipping it the declared **"trap to refuse"**
+    // (`.planning/ROADMAP.md:235-241`); the migration said the same thing at
     // `20260807000000_capability_model.sql:415`: *"These two rows must not
     // become true."*
     //
-    // The two guard DIFFERENT things. The constraint protects the database; this
-    // row protects the night from the day the constraint is relaxed for one
-    // special case. And the asymmetry that decides it is unchanged: refusing a
-    // valid staff member at the door, in front of a queue, is worse than the
-    // alternative — the first error happens in front of people, the second does
-    // not.
+    // **THE TRAP CLOSED ON 2026-09-21, AND NOT BY BEING TIDIED AWAY.** The flag
+    // column was dropped with `profiles.status` (fase 50, D-50-01), so there is
+    // no longer a value here for anybody to flip. What the flag protected is now
+    // protected by the absence of the second axis itself: there is no state a
+    // valid member of staff can fail on the way to the door.
+    //
+    // The asymmetry that decided it is unchanged, and is why this pair is still
+    // a grant: refusing a valid staff member at the door, in front of a queue,
+    // is worse than the alternative — the first error happens in front of
+    // people, the second does not.
     //
     // A reader who arrived here to remove the flag has now met the reason before
     // the value. Assertion 2 of side 5 fails on a flipped flag and names this.
-    'door.operate': false,
-    'membership.card.view': true,
+    'door.operate': 'GRANTED',
+    'membership.card.view': 'GRANTED',
     // D-19, plan 43-07. `master.manage`'s own description names *"changing
     // another member's role or status"*, so reading the record of those changes
-    // needs no further justification. `requires_approved = true` on BOTH grants
-    // of this key: the register contains rejections.
-    'register.read': true,
+    // needs no further justification. Granted on the two roles that hold the
+    // back office and refused on the other two: the register contains
+    // rejections.
+    'register.read': 'GRANTED',
     // ── ASSIGN-05, plan 35-03, and this is the SECOND pair of `false` rows ───
     //
-    // `door.supervise` takes `requires_approved = false` on BOTH grants, and it
-    // takes it for the reason written beside `door.operate` above, not by
-    // imitation. Undoing a check-in is the action that CORRECTS a wrong refusal,
-    // so it is the action least able to afford a second way of failing at the
-    // door. Beside phase 43's `role ⇒ approved` constraint this flag will look
-    // redundant; the constraint protects the database, this flag protects the
-    // night from the day the constraint is relaxed for one special case.
-    // Assertion 2 fails on a flipped flag and names the pair.
-    'door.supervise': false,
-    // `true`, and the difference from the two rows above is not an
-    // inconsistency: neither of these happens in front of a queue, so the door's
-    // reason does not reach them and an account whose own access was never
-    // approved has no business on either.
-    'media.upload': true,
-    'party.manage': true,
+    // `door.supervise` is granted on BOTH the roles that hold the back office,
+    // and it carried the same `false` flag as `door.operate` for the same
+    // reason rather than by imitation: undoing a check-in is the action that
+    // CORRECTS a wrong refusal, so it is the action least able to afford a
+    // second way of failing at the door. The flag went with the column on
+    // 2026-09-21; the reason survives it, and is why this pair is not a
+    // refusal.
+    'door.supervise': 'GRANTED',
+    // Granted. Until 2026-09-21 these two carried the approval flag and the two
+    // rows above did not, and the difference was not an inconsistency: neither
+    // of these happens in front of a queue, so the door's reason did not reach
+    // them. With the flag gone the distinction is no longer expressible here, so
+    // it is recorded in this paragraph — a reader must not conclude that the
+    // four rows were always the same decision.
+    'media.upload': 'GRANTED',
+    'party.manage': 'GRANTED',
     // D-37-14, plan 37-01. `true`, and for this key the flag is not a copy of
     // `catalogue.manage`'s: publishing an address is irreversible, and there is
     // no queue anywhere near it, so the one reason this project accepts for
     // ignoring status does not apply.
-    'venue.reveal': true,
+    'venue.reveal': 'GRANTED',
     // D-44-27 (the owner, 2026-08-15), plan 44-04. `false`, and this is the
     // FIRST grant in this declaration whose flag is `false` for a reason that is
     // not the door's. Organizer accounts are created inside the app by an admin
@@ -358,28 +392,29 @@ const ROLE_GRANTS = {
     // from D-44-27 for the calendar and D-45-20 for the other three, and from
     // nothing else. Four rows agreeing on a value for the same reason must still
     // not be made to move with the door's two, which agree on it for another.
-    'production.calendar.manage': false,
-    'production.manifesto.manage': false,
-    'production.visual.manage': false,
-    'production.location.manage': false,
+    'production.calendar.manage': 'GRANTED',
+    'production.manifesto.manage': 'GRANTED',
+    'production.visual.manage': 'GRANTED',
+    'production.location.manage': 'GRANTED',
   },
   organizer: {
-    'staff.manage': false,
+    'staff.manage': 'GRANTED',
     // Refused: P2/P4 is master alone, and `master.manage` is what "reserved to
     // the master role" means. A row here would hand an organizer the deletion
     // of events, artists and venues.
     'master.manage': 'REFUSED',
-    'catalogue.manage': true,
-    'membership.active': true,
+    'catalogue.manage': 'GRANTED',
+    // Cancellata dal modello il 2026-09-21 — vedi la nota sulla riga di `master`.
+    'membership.active': 'REFUSED',
     // Refused: the middleware rule for `/admin/*` other than the scanner is
     // `role = master`. An organizer reaches `/organizer/*`, not `/admin/*`.
     'admin.access': 'REFUSED',
-    'organizer.access': false,
+    'organizer.access': 'GRANTED',
     // D-06 — see the paragraph on `master.door.operate` above. This is the row
     // that matters at the door: an organizer whose status is still `pending`
     // must be able to scan.
-    'door.operate': false,
-    'membership.card.view': true,
+    'door.operate': 'GRANTED',
+    'membership.card.view': 'GRANTED',
     // D-19, plan 43-07. D-07 lets an organizer create and promote, and an actor
     // who cannot see the register cannot check their own work
     // (`community-membership.md`, gate *chi decide è tracciato*).
@@ -390,22 +425,22 @@ const ROLE_GRANTS = {
     // "tidy" repair of flipping that flag is refused: it is the same `false`
     // that keeps `door.operate` open in front of a queue. A ninth key was minted
     // instead.
-    'register.read': true,
+    'register.read': 'GRANTED',
     // ASSIGN-05, plan 35-03. `false` for the reason written beside
     // `master.door.supervise`, and it is the row that matters at the door: an
     // organizer whose status is still `pending` must be able to reverse a
     // check-in they just made by mistake.
-    'door.supervise': false,
+    'door.supervise': 'GRANTED',
     // `true` on both, plan 35-03. Neither is at the door.
-    'media.upload': true,
-    'party.manage': true,
+    'media.upload': 'GRANTED',
+    'party.manage': 'GRANTED',
     // D-37-13, plan 37-01, AND THIS IS THE ROW THE KEY EXISTS FOR. Every
     // APPROVED organizer, not only the one who created the night: that person
     // can be unreachable on exactly the evening the button exists for, and a
     // reveal that waits for one person is a reveal that happens through a
     // channel leaving no trace. `true` and not `false`: unlike the door, nothing
     // here is refused in front of a queue, and the act cannot be undone.
-    'venue.reveal': true,
+    'venue.reveal': 'GRANTED',
     // D-44-27 (calendar) and D-45-20 (the other three), AND THESE ARE THE ROWS
     // THE OWNER DECIDED. `false`: an organizer created by the owner is trusted
     // by construction, and a section opens the moment the account exists rather
@@ -416,10 +451,10 @@ const ROLE_GRANTS = {
     // Plan 45-05, D-45-04: `production.read` is removed and four section keys
     // take its place. The organizer held the calendar before the split and holds
     // it after — the reach does not move in either direction.
-    'production.calendar.manage': false,
-    'production.manifesto.manage': false,
-    'production.visual.manage': false,
-    'production.location.manage': false,
+    'production.calendar.manage': 'GRANTED',
+    'production.manifesto.manage': 'GRANTED',
+    'production.visual.manage': 'GRANTED',
+    'production.location.manage': 'GRANTED',
   },
   // ── The fourth role, added by plan 43-05 with its migration ───────────────
   //
@@ -455,7 +490,8 @@ const ROLE_GRANTS = {
     // make `staff` the only role that cannot RSVP to a night. It does NOT weaken
     // D-03: `member` already holds this exact grant with this exact flag, so
     // `staff` is levelled up TO member, not up FROM it.
-    'membership.active': true,
+    // Cancellata dal modello il 2026-09-21 — vedi la nota sulla riga di `master`.
+    'membership.active': 'REFUSED',
     // Refused (D-03). `/admin/*` other than the scanner is `role = master`.
     'admin.access': 'REFUSED',
     // Refused (D-03). `/organizer/*` is the organizer area; `staff` has no
@@ -466,17 +502,17 @@ const ROLE_GRANTS = {
     // it — not a property of having once been staff. A row here would let the
     // door of one night open every later night.
     //
-    // If a later phase DOES grant it, it inherits the treatment of the two rows
-    // above: `requires_approved = false`, for the reason written beside
-    // `master.door.operate`. Refusing a valid staff member in front of a queue
-    // is worse than the alternative.
+    // If a later phase DOES grant it, it inherits the reason written beside
+    // `master.door.operate`: refusing a valid staff member in front of a queue
+    // is worse than the alternative. (The per-grant flag that used to carry
+    // that reason is gone since 2026-09-21; the reason is not.)
     'door.operate': 'REFUSED',
     // D-01 — THE ONE THING THE ROLE GRANTS. Entry through the membership card,
-    // permanently, including for someone who worked a single date.
-    // `requires_approved = true` like every other role's card grant; plan
-    // 43-06's `role ⇒ approved` rule then makes that flag always satisfied for
-    // a staff account rather than a gate it can fail.
-    'membership.card.view': true,
+    // permanently, including for someone who worked a single date. It carried
+    // the approval flag like every other role's card grant until 2026-09-21,
+    // when the column went; D-50-23 records what that widens — the key now
+    // means *any account* — and names the phase that closes it, the 51.
+    'membership.card.view': 'GRANTED',
     // Refused (D-03, D-19). THE REGISTER HOLDS REJECTIONS, and reading a season
     // of them is not a night's work. Whatever a staff account may do on the
     // night it was assigned to comes from Phase 35 and expires with that night;
@@ -547,13 +583,14 @@ const ROLE_GRANTS = {
     'staff.manage': 'REFUSED',
     'master.manage': 'REFUSED',
     'catalogue.manage': 'REFUSED',
-    'membership.active': true,
+    // Cancellata dal modello il 2026-09-21 — vedi la nota sulla riga di `master`.
+    'membership.active': 'REFUSED',
     'admin.access': 'REFUSED',
     'organizer.access': 'REFUSED',
     // Refused, and this is the pair mutation A injects: a `member` with a
     // `door.operate` row works the door. Nothing else in the model would say no.
     'door.operate': 'REFUSED',
-    'membership.card.view': true,
+    'membership.card.view': 'GRANTED',
     // Refused (D-19), and this is the refusal that decides what `rejected` MEANS.
     // A member holding this key would read the register — including their own
     // rejection row — which turns `rejected` from a state into a communication.
@@ -594,7 +631,7 @@ const ROLE_GRANTS = {
 /**
  * The arithmetic, pre-registered beside the declaration it counts.
  *
- * 68 pairs = 4 roles × 17 capabilities. 36 grants: the sixteen the capability
+ * 68 pairs = 4 roles × 17 capabilities. 32 grants: the sixteen the capability
  * model seeded (`20260807000000_capability_model.sql:386`, *"Sixteen grant
  * rows"*), plus the two `20260808000500_staff_role.sql` adds, plus the two
  * `20260808002000_membership_register.sql` adds for `register.read`, plus the
@@ -602,21 +639,24 @@ const ROLE_GRANTS = {
  * keys, plus the two `20260810160000_manual_venue_reveal.sql` adds for
  * `venue.reveal`, **minus** the two `production.read` held and **plus** the
  * eight `20260817120000_production_section_keys.sql` adds for the four section
- * keys. 32 refusals — the eight that were already every pair the first migration
+ * keys, **minus** the four `20260921120000_drop_status_and_referral.sql` revokes
+ * for `membership.active`. 36 refusals — the eight that were already every pair
+ * the first migration
  * does NOT insert, plus the six `staff` refusals of D-02, plus the two
  * `register.read` refusals of D-19 (`staff` and `member`), plus the six the
  * three per-night keys owe to `staff` and `member`, plus the two `venue.reveal`
- * owes to the same two roles, **minus** the two `production.read` owed them and
- * **plus** the eight the four section keys owe them.
+ * owes to the same two roles, **minus** the two `production.read` owed them,
+ * **plus** the eight the four section keys owe them, and **plus** the four that
+ * `membership.active` owes every role once its grants are revoked.
  *
  * ⚠ **RECOMPUTED FROM `ROLE_GRANTS`, NOT FROM THE SENTENCE ABOVE.** The three
- * values below were derived by walking the table — 4 roles × 17 keys, 36 values
- * that are not `REFUSED` and 32 that are — and the prose was written to match
+ * values below were derived by walking the table — 4 roles × 17 keys, 32 values
+ * that are not `REFUSED` and 36 that are — and the prose was written to match
  * the walk. If the two ever disagree, **the table is the fact and this paragraph
  * is the error**: a paragraph is where an off-by-one hides, and the arithmetic
  * side of this check exists to catch exactly that.
  *
- * The three numbers have now moved six times, each because the MODEL changed,
+ * The three numbers have now moved seven times, each because the MODEL changed,
  * which is the one legitimate reason to touch them:
  *
  *   24/16/8  → 32/18/14   plan 43-05, a fourth ROLE
@@ -625,6 +665,7 @@ const ROLE_GRANTS = {
  *   48/26/22 → 52/28/24   plan 37-01, a thirteenth CAPABILITY (2026-08-10)
  *   52/28/24 → 56/30/26   plan 44-04, a fourteenth CAPABILITY (2026-08-15)
  *   56/30/26 → 68/36/32   plan 45-05, ONE capability SPLIT INTO FOUR (2026-08-17)
+ *   68/36/32 → 68/32/36   plan 50-02, FOUR GRANTS REVOKED (2026-09-21)
  *
  * The sixth move is the first that is not an addition, and the shape is worth
  * naming: the grant total goes UP by six while the number of subjects entitled
@@ -642,11 +683,39 @@ const ROLE_GRANTS = {
  * without a decision for each of its counterparts fails here first, before any
  * database is read.
  */
+// RICALCOLATI CAMMINANDO `ROLE_GRANTS`, non indovinati né dedotti dalla prosa.
+//
+// 68 = 4 ruoli × 17 chiavi, e **il totale non si muove**: la migration
+// `20260921120000_drop_status_and_referral.sql` cancella le QUATTRO CONCESSIONI
+// di `membership.active`, non la chiave — che resta nel catalogo finché
+// `CAP.MEMBERSHIP_ACTIVE` vive in `src/lib/capabilities/keys.ts`, perché i
+// controlli 0, 1 e 3 confrontano le due direzioni e toglierne una sola
+// lascerebbe questo gate rosso (D-50-28). Quindi 17 chiavi, ancora.
+//
+// Ciò che si muove sono gli altri due, e si muovono di quattro nei due versi
+// opposti: quattro concessioni diventano quattro rifiuti. 36 − 4 = 32 concessioni,
+// 32 + 4 = 36 rifiuti. È la settima mossa dell'elenco qui sopra, ed è la seconda
+// che non è un'aggiunta: il totale resta fermo mentre nessuno guadagna niente e
+// quattro ruoli perdono una chiave.
 const EXPECTED_PAIR_COUNT = 68;
-const EXPECTED_GRANT_COUNT = 36;
-const EXPECTED_REFUSAL_COUNT = 32;
+const EXPECTED_GRANT_COUNT = 32;
+const EXPECTED_REFUSAL_COUNT = 36;
 
-/** The marker a refusal carries in `ROLE_GRANTS`. It means: no row at all. */
+/**
+ * The two markers a pair carries in `ROLE_GRANTS`.
+ *
+ * They are compared as strings and written as string literals inside the
+ * declaration on purpose: `ROLE_GRANTS` is an object literal evaluated at module
+ * scope, ABOVE these two `const`s, so naming them there would read a binding in
+ * its temporal dead zone and throw before a single check ran.
+ *
+ * `GRANTED` replaced a boolean on 2026-09-21. The boolean was the per-grant
+ * approval flag, and it was dropped from the schema with `public.profiles.status`
+ * (fase 50, `20260921120000_drop_status_and_referral.sql`): a pair now says one
+ * thing, held or not held, and a marker that can only be one of two strings is
+ * how a third value becomes a failure instead of a silent truthy.
+ */
+const GRANTED = 'GRANTED';
 const REFUSED = 'REFUSED';
 
 /** The roles `ROLE_GRANTS` decides for, in declaration order. */
@@ -688,7 +757,7 @@ function pairKey(role, capability) {
  * weaker expectation — it is a different one than the one that was reviewed.
  */
 function flattenDeclaration() {
-  const grants = new Map(); // pairKey -> { role, capability, requiresApproved }
+  const grants = new Map(); // pairKey -> { role, capability }
   const refusals = new Map(); // pairKey -> { role, capability }
   const malformed = [];
 
@@ -696,12 +765,11 @@ function flattenDeclaration() {
     for (const [capability, value] of Object.entries(byCapability)) {
       const pair = pairKey(role, capability);
       if (value === REFUSED) refusals.set(pair, { role, capability });
-      else if (typeof value === 'boolean')
-        grants.set(pair, { role, capability, requiresApproved: value });
+      else if (value === GRANTED) grants.set(pair, { role, capability });
       else
         malformed.push(
           `ROLE_GRANTS.${role}["${capability}"] is ${JSON.stringify(value)} — a pair is either ` +
-            `a boolean requires_approved (a grant) or the string "${REFUSED}" (no row at all).`
+            `the string "${GRANTED}" (a row exists) or the string "${REFUSED}" (no row at all).`
         );
     }
   }
@@ -1027,7 +1095,7 @@ async function readCatalogue(target) {
  *
  * This is the read the header of this file said for two phases did not happen.
  * It is three columns and no member row: `role` is one of three design labels,
- * `capability` is a catalogue key, `requires_approved` is a flag. Nothing here
+ * `capability` is a catalogue key. Nothing here
  * identifies a person, which is what keeps this script printable in a public
  * repository (CLAUDE.md Guardrail 5).
  *
@@ -1035,18 +1103,18 @@ async function readCatalogue(target) {
  */
 async function readGrants(target) {
   const rows = await target.query(
-    `select role, capability, requires_approved
+    `select role, capability
        from private.role_capabilities
       order by role, capability`,
     { readOnly: true }
   );
+  // TWO COLUMNS SINCE 2026-09-21, and the third is not omitted — it does not
+  // exist. `20260921120000_drop_status_and_referral.sql` dropped the per-grant
+  // approval flag together with `public.profiles.status`, so a grant row is now
+  // the whole of what it says: this role holds this key.
   return rows.map((r) => ({
     role: String(r.role),
     capability: String(r.capability),
-    // The Management API renders booleans as JSON booleans and the container
-    // target through `pg` as JS booleans; both are compared as booleans here so
-    // a string "false" can never read as truthy.
-    requiresApproved: r.requires_approved === true || r.requires_approved === 'true',
   }));
 }
 
@@ -1328,12 +1396,14 @@ async function run(target, targetLabel) {
 
     // Built with `pairKey`, the same function the declaration used — see its
     // comment for why that matters more than it looks.
-    const foundByPair = new Map(); // pairKey -> requires_approved, as read
-    for (const row of grantRows)
-      foundByPair.set(pairKey(row.role, row.capability), row.requiresApproved);
+    const foundByPair = new Set(); // pairKey, as read
+    for (const row of grantRows) foundByPair.add(pairKey(row.role, row.capability));
 
-    // ── assertion 2 · every declared grant has its row, with its flag ──────
-    for (const [pair, { role, capability, requiresApproved: declared }] of grants) {
+    // ── assertion 2 · every declared grant has its row ─────────────────────
+    //
+    // It used to also compare the per-grant approval flag. There is no flag
+    // since 2026-09-21: presence IS the whole comparison now.
+    for (const [pair, { role, capability }] of grants) {
       if (!foundByPair.has(pair)) {
         problems.push(
           `${role} × ${capability} is a DECLARED GRANT with NO ROW in ` +
@@ -1345,23 +1415,7 @@ async function run(target, targetLabel) {
             'Whether any OTHER source would still grant it was not measured — ' +
             'private.has_capability has exactly one source today, so there is none.'
         );
-        continue;
       }
-      const found = foundByPair.get(pair);
-      if (found !== declared)
-        problems.push(
-          `${role} × ${capability} has requires_approved = ${found}, declared ${declared} — ` +
-            'THE PREDICATE CHANGED. ' +
-            (capability === 'door.operate'
-              ? 'This is the ROADMAP\'s "trap to refuse" (.planning/ROADMAP.md:235-241) and the ' +
-                'migration\'s own "These two rows must not become true" ' +
-                '(20260807000000_capability_model.sql:415). The role constraint protects the ' +
-                'database; this flag protects the night from the day the constraint is relaxed ' +
-                'for one special case. '
-              : '') +
-            'Which subjects this now admits or refuses was not measured — this side reads the ' +
-            'rows, never a profile.'
-        );
     }
 
     // ── assertion 3 · every declared refusal has NO row ────────────────────
@@ -1369,8 +1423,7 @@ async function run(target, targetLabel) {
       if (!foundByPair.has(pair)) continue;
       problems.push(
         `${role} × ${capability} is a DECLARED REFUSAL but HAS A ROW in ` +
-          `private.role_capabilities (requires_approved = ${foundByPair.get(pair)}) — ` +
-          'THIS IS A WIDENING. private.has_capability matches on (role, capability) alone ' +
+          'private.role_capabilities — THIS IS A WIDENING. private.has_capability matches on (role, capability) alone ' +
           '(20260807000000_capability_model.sql:209-216): there is no `granted` column in that ' +
           'EXISTS, so the row GRANTS the capability whatever it was meant to express. Every ' +
           `${role} now holds "${capability}" in every policy and every caller that asks for it, ` +
@@ -1468,8 +1521,8 @@ if (invokedDirectly) {
 
   say(
     '\n  Note: this asserts that the four declarations name the same keys, AND that every role' +
-      '\n  holds exactly the capabilities declared for it in ROLE_GRANTS, with the declared' +
-      '\n  requires_approved — private.role_capabilities IS read here, since plan 43-02. It does' +
+      '\n  holds exactly the capabilities declared for it in ROLE_GRANTS —' +
+      '\n  private.role_capabilities IS read here, since plan 43-02. It does' +
       '\n  NOT assert that any policy is correct: which subjects a predicate admits is measured' +
       '\n  by npm run baseline:rls, and no profile row is read by this script.\n'
   );

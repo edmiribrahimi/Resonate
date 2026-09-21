@@ -212,7 +212,33 @@ const T2_LEFT_HAND_SIDES = [
   },
   {
     id: 'P5',
-    what: "get_user_status() = 'approved' — status only, role irrelevant",
+    // ── QUESTA RIGA E' STORIA, E RESTA SCRITTA COM'ERA — 2026-09-21 ────────
+    //
+    // Il 2026-09-21 la migration `20260921120000_drop_status_and_referral.sql`
+    // (fase 50, D-50-01) ha **droppato `public.get_user_status()`** e le due
+    // sole policy che portavano la destinazione di questa trasformazione,
+    // `has_capability('membership.active')`. Entrambi i capi di P5 — il
+    // predicato di partenza e quello d'arrivo — oggi **non esistono piu' in
+    // nessun database**.
+    //
+    // La riga non viene percio' «aggiornata al predicato nuovo», e la ragione
+    // e' che questo script **non interroga un database**: apre due artefatti su
+    // disco (`--before` / `--after`) e giudica un movimento fra loro. La
+    // stringa qui sotto e' la forma **esatta** con cui `pg_policies` stampava
+    // quel predicato nella linea di base B1 della fase 32, catturata prima di
+    // quella fase. Riscriverla per assomigliare al database di oggi non
+    // renderebbe il comparatore piu' vero: lo renderebbe **incapace di spiegare
+    // le righe che esiste per spiegare**, e ogni policy che portava P5
+    // tornerebbe `predicate_unexplained`.
+    //
+    // Vale la stessa regola delle migration passate: sono il verbale di cio'
+    // che e' successo, e un verbale non si corregge a posteriori. Cio' che
+    // cambia e' che una **nuova** cattura non potra' piu' contenere P5, in
+    // nessuno dei due capi — e se la contenesse, sarebbe quella la notizia.
+    what:
+      'status-only predicate — role irrelevant. STORICO: il suo lato sinistro e il suo lato ' +
+      'destro sono stati entrambi cancellati dalla fase 50 il 2026-09-21 ' +
+      '(20260921120000_drop_status_and_referral.sql). Nessuna cattura nuova lo contiene.',
     text: "((SELECT get_user_status() AS get_user_status) = 'approved'::text)",
   },
 ];
