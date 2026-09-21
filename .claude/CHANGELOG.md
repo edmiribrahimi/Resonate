@@ -3,6 +3,35 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.21.1] - 2026-09-09
+
+### Fixed — `production-calendar.md`: la `003` non e' piu' in due atti
+
+La sezione *La notte puo' essere in due atti* diceva che *«la prima in
+calendario»* apriva alle 16:00 su due sedi. Rimisurato sullo specchio di
+produzione importato il 2026-09-09 dal feed corrente: **`003` (10 ottobre) e'
+un blocco unico 22:00 → 06:00**, modificata nel feed il 27 agosto — dopo la
+conferma del 20 agosto che il modulo registrava. La forma in due atti e'
+passata a `007` (16:00 → 02:00) e `008` (16:00 → 06:00). Corretti la riga
+`RSNT` della tabella dei format, l'esempio delle fasce `PT` (portava le ore
+del primo atto della `003`) e il capoverso *non e' la forma di default*.
+
+Segnalato dal proprietario mentre si pianificava un noleggio per il 10
+ottobre: un assistente aveva ragionato su due sedi che non esistono. E' la
+terza correzione di fatto a questo modulo dal 2026-08-15, sempre per la stessa
+causa — una misura vera al momento della scrittura e mai rifatta.
+
+**Situazione che fa scattare il gate:** chiunque legga «due atti» e pianifichi
+sulla `003` una spola fra sedi, una rivelazione doppia o una timetable a due
+blocchi.
+
+**Scenario di carico:** modulo senza `paths:`, consultazione manuale. Domanda
+«a che ora e' re:sonate 003?» → si legge la tabella dei format, si rilegge il
+calendario (gate *il calendario e' la fonte*), si risponde 22:00 → 06:00.
+
+**Context budget:** invariato nel caso peggiore — il modulo non si carica da
+solo.
+
 ## [1.21.0] - 2026-09-07
 
 ### Added — `meta-gates.md`: esiste un laboratorio permanente, e le procedure manuali si percorrono li'

@@ -34,7 +34,7 @@ podcast e after movie, e ognuno di questi ha un'ancora temporale precisa.
 
 | Sigla | Format | Orario | Giorno | Cadenza |
 |---|---|---|---|---|
-| `RSNT` | Resonate — la notte | **22:00 → 06:00**, o **16:00 → 06:00 in due atti** | venerdi' o sabato | irregolare, **6 edizioni** in calendario ott26→mag27, distanza 27–92 giorni |
+| `RSNT` | Resonate — la notte | **22:00 → 06:00** su quattro delle sei edizioni; **16:00 → 02:00** e **16:00 → 06:00** sulle ultime due (apr e mag 2027) — rimisurato il 2026-09-09 | venerdi' o sabato | irregolare, **6 edizioni** in calendario ott26→mag27, distanza 27–92 giorni |
 | `RMDB-BZ` / `RMDB-MR` | RamaDub — il satellite | 18:00 → 22:00 | **giovedi'** su tutte le date **pianificate** | **2 date in calendario, a 14 giorni** |
 | `MTNLB-<sede>` | MotionLab — il luogo | 18:00 → 22:00 | **non deciso** | **nessuna data in calendario** — vedi sotto |
 | `RSNT-PRLN` | **serie** di Resonate — al Perlone Club di Nizza | come RSNT | sabato | 2 date, a 28 giorni, numerazione propria — **nessun pezzo di pipeline** |
@@ -147,7 +147,9 @@ divergono di un giorno su nessun pezzo.
 >   suonano insieme: la notte in calendario ha **sei nomi e cinque puntate**,
 >   perche' l'ultimo slot e' un b2b. **Il numero di puntate si conta sulla
 >   timetable, non sulla line-up**, e ogni puntata porta la fascia oraria del
->   suo slot (`PT1 16:00-19:30`, `PT2 19:30-22:00`, …).
+>   suo slot (`PT1 hh:mm-hh:mm`, `PT2 …`). *(Qui c'erano le fasce di un
+>   primo atto dalle 16:00: erano della `003` in due atti, che dal 27 agosto
+>   non esiste piu'. Le ore si rileggono dalla timetable, non da questo file.)*
 >
 > - **`Podcast` — mix INVIATI da dj che forse chiameremo a suonare.** Non
 >   discende da una serata, non ha progressivo di serie e **non e' ancora in
@@ -273,14 +275,29 @@ sua pipeline non e' scritta, e finche' non lo e' non si descrive.
 ## La notte puo' essere in due atti, su due sedi
 
 **Deciso dal proprietario, confermato il 2026-08-20.** Una notte non e'
-necessariamente un blocco unico 22:00 → 06:00: la prima in calendario si apre
-alle **16:00 in uno spazio** e prosegue **dalle 22:00 in un altro**, fino alle
-06:00. Sono **due sedi diverse nella stessa serata**, con un unico progressivo.
+necessariamente un blocco unico 22:00 → 06:00: puo' aprirsi alle **16:00 in
+uno spazio** e proseguire **dalle 22:00 in un altro**, fino alle 06:00. Sono
+**due sedi diverse nella stessa serata**, con un unico progressivo.
 
-> **Le due sedi non si nominano qui**, e non perche' siano segrete fra noi: al
-> 2026-08-20 **nessuna delle due e' acquisita** — la loro deadline e' il 27
-> agosto — e questo repo e' pubblico. Vale `venue-acquisition.md`, gate *uno
-> spazio non acquisito non si nomina*.
+> **Rimisurato il 2026-09-09, sullo specchio importato quel mattino dal feed
+> corrente.** Questa sezione diceva che *«la prima in calendario»* — la `003`
+> del 10 ottobre — era in due atti. **Non lo e' piu': `003` e' un blocco unico
+> 22:00 → 06:00 in una sede sola**, modificata nel feed il **27 agosto**, sette
+> giorni dopo la conferma che questa riga registrava. La forma in due atti **e'
+> passata in coda**: `007` (aprile 2027) apre alle 16:00 e chiude alle 02:00,
+> `008` (maggio 2027) apre alle 16:00 e chiude alle 06:00. Le altre quattro
+> edizioni sono 22:00 → 06:00.
+>
+> E' il gate *il calendario batte il tracker* applicato a questo file, per la
+> terza volta: la sezione era vera quando e' stata scritta ed e' diventata falsa
+> quando il calendario si e' mosso. **L'orario di una notte si rilegge dal
+> calendario ogni volta che lo si cita**, e un'affermazione su *quale* notte
+> ha una certa forma porta la data in cui e' stata misurata.
+>
+> **La sede della `003` non si nomina qui**: il calendario non la porta nella
+> nota, e questo repo e' pubblico. Vale `venue-acquisition.md`, gate *uno
+> spazio non acquisito non si nomina*, finche' l'acquisizione non e' per
+> iscritto — e vale `venue-secrecy.md` dopo.
 
 **Cosa trascina, e per questo sta qui invece che nel tracker:**
 
@@ -296,9 +313,12 @@ alle **16:00 in uno spazio** e prosegue **dalle 22:00 in un altro**, fino alle
   monotona: se copre un solo indirizzo, il secondo non ha guardia. Va deciso
   prima, non la sera.
 
-**Non e' la forma di default.** La seconda notte in calendario e' un blocco
-unico 22:00 → 06:00 in una sede sola. Due atti e' una **scelta per serata**, e
-come tale va dichiarata su ogni data che la adotta.
+**Non e' la forma di default.** Al 2026-09-09 quattro notti su sei sono un
+blocco unico 22:00 → 06:00 in una sede sola, e le due in due atti sono le
+ultime della stagione. Due atti e' una **scelta per serata**, e come tale va
+dichiarata su ogni data che la adotta — e **si puo' revocare**, come e' successo
+alla `003`: chi ha gia' pianificato su due sedi (van, rivelazione doppia,
+timetable a due blocchi) rilegge il calendario prima di prenotare.
 
 ## Quality Gates
 
