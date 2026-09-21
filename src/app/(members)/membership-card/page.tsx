@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/capabilities/server";
 import MembershipCardView from "@/components/membership/MembershipCardView";
-import CopyReferralLink from "@/components/membership/CopyReferralLink";
 import AppNav from "@/components/layout/AppNav";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -29,8 +28,9 @@ import type { UserRole, UserStatus } from "@/types/database";
  *    line, passed to the same component under the same prop name;
  *  - **it renders under the same conditions.** The card is drawn
  *    unconditionally, exactly as before — no branch was added, removed, merged
- *    or reordered around it, and the one conditional on this page (the referral
- *    control's, below) is byte-identical to the one that was here;
+ *    or reordered around it. *(L'unico ramo condizionale che questa pagina
+ *    aveva, quello del referral, e' uscito con la fase 50: era accanto alla
+ *    carta, mai intorno.)*
  *  - **the code is not smaller and not fainter.** Its box, its quiet zone and
  *    its two colours are fixed inside `MembershipCardView` and `src/utils/qr.ts`
  *    and neither was reduced. A code that fails to scan at the door is the
@@ -51,11 +51,15 @@ import type { UserRole, UserStatus } from "@/types/database";
  * is load-bearing rather than ceremonial, because what a person can see here
  * *is* the product.
  *
- * The `profile?.status` read below that gates the referral control comes from
- * this page's own `profiles` select and not from a header. It is deliberately
- * left alone: a referral changes the **path** into the community, never the
- * standard (`community-membership.md`), and widening either is a product
- * decision rather than a conversion.
+ * ── Cosa e' uscito con la fase 50, e cosa deliberatamente non e' uscito ──────
+ *
+ * Il controllo del referral e il suo gate: il primo perche' il referral esce
+ * dal prodotto (D-50-08), il secondo perche' l'asse che interrogava non esiste
+ * piu' (D-50-01). Il `select` di questa pagina chiede un campo solo.
+ *
+ * **La carta resta.** La toglie la fase 51 (`MEM-01`), con la rete spenta e la
+ * procedura scritta: e' la credenziale che si presenta a una porta, e la porta
+ * non e' mai in pacchetto con altro.
  */
 export default async function MembershipCardPage() {
   const supabase = await createClient();
@@ -67,17 +71,24 @@ export default async function MembershipCardPage() {
 
   // A pure nav-prop read: `role` and `status` are PRESENTATION here — nothing
   // on this page branches on them, and no capability key belongs in this file.
-  // Only their source changed. The `profile?.status` read below that gates the
-  // referral link comes from this page's own `profiles` select, not from a
-  // header, and is deliberately left alone.
+  //
+  // `status` qui viene dal risolutore, non da `profiles`: la colonna non esiste
+  // piu' e questa e' una prop che la barra riceve ancora. **La toglie il piano
+  // 50-09**, che possiede `AppNav` e ogni pagina che lo monta; toglierla da una
+  // sola delle sue chiamate lascerebbe il componente con una prop che meta'
+  // dell'albero passa e meta' no.
   const { role, status, capabilities, liveAssignmentCapabilities } =
     await getAccessContext();
 
   const fullName = user.user_metadata?.full_name || "Member";
 
+  // Un campo solo: il codice. Questa lettura ne chiedeva due, e il secondo
+  // serviva unicamente a decidere se disegnare il controllo del referral.
+  // Entrambi sono usciti con la fase 50 — la colonna dallo schema (D-50-01), il
+  // controllo dal prodotto (D-50-08) — e la carta resta esattamente com'era.
   const { data: profile } = await supabase
     .from("profiles")
-    .select("membership_code, status")
+    .select("membership_code")
     .eq("id", user.id)
     .single();
 
@@ -117,11 +128,10 @@ export default async function MembershipCardPage() {
             memberSince={user.created_at}
           />
 
-          {profile?.status === "approved" && membershipCode !== "RSN-UNKNOWN" && (
-            <div className="mt-6">
-              <CopyReferralLink membershipCode={membershipCode} />
-            </div>
-          )}
+          {/* Qui stava il controllo del referral, dietro un gate di stato.
+              Sono usciti insieme: il referral dal prodotto (D-50-08) e lo stato
+              dallo schema (D-50-01). La carta — che e' cio' per cui questa
+              pagina esiste — non e' stata toccata. */}
 
           <Card className="mt-6">
             <h2 className="mb-2 font-semibold">How to use your card</h2>

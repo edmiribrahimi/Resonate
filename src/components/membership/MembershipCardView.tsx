@@ -46,8 +46,9 @@ import { generateMembershipQR } from "@/utils/qr";
  * the surface's whole visual identity. Adopting the primitive would delete the
  * edge, flatten the gradient and reflow both zones — a redesign of the object a
  * person presents at an entrance, performed under a mandate that says width may
- * change layout, never what the thing is. The primitive is adopted next door in
- * `CopyReferralLink.tsx`, where the shell genuinely is the plain card shell.
+ * change layout, never what the thing is. *(Il vicino che adottava la
+ * primitiva — il controllo del referral, dove il guscio era davvero il guscio
+ * semplice di una card — e' uscito con la fase 50, D-50-08.)*
  *
  * The same accent-gradient shape recurs on `/dashboard`, on the drink token card
  * and on the ticket surface, all in later waves; this file is the first of them

@@ -10,7 +10,7 @@ import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle } from "@/components/ui/Typography";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
-import type { UserRole, UserStatus } from "@/types/database";
+import type { UserRole } from "@/types/database";
 
 /**
  * The one members surface — the collapse of `/admin/members` and
@@ -67,16 +67,16 @@ import type { UserRole, UserStatus } from "@/types/database";
  * criterion is a criterion nobody can run — plan 34-03's recorded lesson.)
  */
 
-// Extract referrer name from Supabase join result
-// The join may return a single object or an array depending on FK detection
-function extractReferrerName(referrer: unknown): string | null {
-  if (!referrer) return null;
-  if (Array.isArray(referrer)) {
-    const first = referrer[0] as { full_name?: string } | undefined;
-    return first?.full_name || null;
-  }
-  return (referrer as { full_name?: string }).full_name || null;
-}
+/*
+ * ── Cio' che questa pagina ha smesso di leggere, con la fase 50 ─────────────
+ *
+ * `extractReferrerName` stava qui: appiattiva il self-join su `profiles` che
+ * portava alla tabella il nome di chi aveva invitato. Il referral e' uscito dal
+ * prodotto (D-50-08/REG-03) e la sua colonna dallo schema, quindi la funzione,
+ * il join e il punto che lo consumava sono usciti insieme — non uno alla volta,
+ * perche' una lettura senza consumatore e' un giro di rete che nessuno nota
+ * piu'.
+ */
 
 export default async function MembersPage() {
   // Identity and reachability come from the session, not from three request
@@ -98,14 +98,11 @@ export default async function MembersPage() {
     redirect("/dashboard");
   }
 
-  // Fetch all profiles with referral data via self-referencing join
+  // Gli account, con il solo asse rimasto: il ruolo.
   const supabase = await createClient();
   const { data: rawMembers, error } = await supabase
     .from("profiles")
-    .select(
-      `id, email, full_name, role, status, membership_code, created_at, referred_by,
-       referrer:profiles!referred_by(full_name)`
-    )
+    .select("id, email, full_name, role, membership_code, created_at")
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -137,17 +134,13 @@ export default async function MembersPage() {
     );
   }
 
-  // Flatten the referrer join data
   const members = (rawMembers || []).map((m) => ({
     id: m.id,
     email: m.email,
     full_name: m.full_name,
     role: m.role as UserRole,
-    status: m.status as UserStatus,
     membership_code: m.membership_code,
     created_at: m.created_at,
-    referred_by: m.referred_by,
-    referrer_name: extractReferrerName(m.referrer),
   }));
 
   // `wide` — `/admin/members` is on §4's CLOSED wide list, and it is the reason
@@ -175,7 +168,10 @@ export default async function MembersPage() {
             nobody opens. `community-membership.md`, gate *chi decide è
             tracciato*: the simplest path to let somebody in is the one that
             must be made VISIBLE — and it is this page that holds both of them,
-            the create form and the approve buttons.
+            the create form and, dalla fase 50, il controllo che CANCELLA un
+            account. La cancellazione è irreversibile, e la sua riga di
+            registro è l'unica cosa che le sopravvive: la via per leggerla parte
+            da qui.
 
             The link is drawn unconditionally, and the reasoning is the same as
             the one written above the create form: this page already refused
@@ -184,15 +180,14 @@ export default async function MembersPage() {
             by `membership_acts_select_register_read`. A hidden link protects
             nothing; a shown link that leads to a refusal costs a redirect.
 
-            One edge is handled here rather than tidied away. `register.read`
-            carries `requires_approved = true` (D-19 of Phase 43, and that
-            requirement is not negotiable), so a **pending** organizer reaching
-            this page sees a link that leads to a refusal. That was already
-            true on the master side, and it stays true: making the link
-            conditional would be a navigation change with no matching server
-            change — the inverse of STAFF-03, and worse, because a link that
-            vanishes tells the holder of a granted capability that they do not
-            hold it.
+            Un bordo che stava qui NON è più un bordo. Il commento diceva che
+            `register.read` porta `requires_approved = true`, quindi un
+            organizer non ancora approvato avrebbe trovato un link che porta a
+            un rifiuto. Quella colonna non esiste più (D-50-01) e non esiste più
+            l'asse che rendeva un organizer «non ancora approvato»: chi tiene la
+            capability la tiene, e il link fa quello che promette. Riscritto
+            invece che lasciato — un commento che descrive un cancello scomparso
+            è un cancello falso a ogni lettura.
           */}
           {/* A finger target, not a line of text. It was a bare inline link
               with no height of its own; §6.1's floor applies to every
@@ -233,13 +228,13 @@ export default async function MembersPage() {
           this replaces was read as `headersList.get(...) || ""`. `?? ""` is
           the null handling here, chosen by reading the consumer, not guessed:
 
-          `currentUserId` is used at ONE place — `MemberTable.tsx:173`,
+          `currentUserId` is used at ONE place in `MemberTable.tsx` —
           `if (member.id === currentUserId)` — to draw "--" instead of the
           actions cell on the viewer's OWN row. Its false branch grants a UI
-          affordance, not a permission: the authoritative self-protection is
-          server-side and independent of this prop
-          (`admin/members/actions.ts:109` throws "Cannot change own role" on
-          `memberId === user.id`, with `user` from `supabase.auth.getUser()`).
+          affordance, not a permission: la protezione che conta è lato server e
+          non dipende da questa prop — `assertSubjectActionable` rifiuta ogni
+          atto mirato al proprio autore, e dalla fase 50 quella regola copre
+          anche la cancellazione, dove costa di più.
 
           So the `null == null` regression `ownsOrIsMaster` exists to prevent
           cannot arise here: `member.id` is a non-null `profiles` primary key,
@@ -252,15 +247,12 @@ export default async function MembersPage() {
           plan does not own.
         */}
         {/*
-          `callerRole` is gone from this component since 2026-08-08. It was
-          passed here as the LITERAL "master" — never a fact read from the
-          session — and it decided one thing: whether the Deactivate and
-          Reactivate controls were drawn. The owner decision that widened those
-          two acts onto the same gate as the other four removed the question,
-          and `MemberTable.tsx` says why the prop was deleted rather than left
-          unused. The organizer twin recorded the same deletion from its side,
-          which is why the two pages could merge without a behavioural choice
-          being made here.
+          `callerRole` è uscito da questo componente il 2026-08-08: era passato
+          qui come LETTERALE "master" — mai un fatto letto dalla sessione — e
+          decideva quali controlli disegnare. Quei controlli non esistono più
+          affatto (D-50-16), quindi la domanda è sparita due volte. La sola
+          domanda che conta la pone `getAccessContext()` su questa pagina, e
+          ogni atto se la ripone da solo.
         */}
         <MemberTable
           members={members}

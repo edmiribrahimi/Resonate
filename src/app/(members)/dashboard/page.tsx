@@ -9,7 +9,6 @@ import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle, SectionHeading } from "@/components/ui/Typography";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Chip";
-import CopyReferralLink from "@/components/membership/CopyReferralLink";
 import MyMediaSection from "@/components/media/MyMediaSection";
 import LogoutButton from "@/components/auth/LogoutButton";
 import ResetPasswordButton from "@/components/auth/ResetPasswordButton";
@@ -731,9 +730,12 @@ export default async function DashboardPage({
                 <div>
                   <SectionHeading>Settings</SectionHeading>
                   <div className="flex flex-col gap-2">
-                    {profile?.membership_code && (
-                      <CopyReferralLink membershipCode={profile.membership_code} />
-                    )}
+                    {/* Il secondo dei due controlli del referral stava qui —
+                        senza gate, a differenza di quello della membership
+                        card. Il referral e' uscito dal prodotto (D-50-08), e
+                        i due mount sono usciti insieme: il piano 50-07 possiede
+                        il componente, e cancellarlo lasciando in piedi un
+                        import e' un build rosso. */}
                     <ChangeEmailButton />
                     <ResetPasswordButton />
                     <LogoutButton />

@@ -59,13 +59,18 @@
  *
  * ── What `_everyStaffRouteIsBound` covers, and what it does not ──────────────
  *
- * It covers the **STATIC** staff routes only — **14** of them, measured on
- * 2026-08-09 against the generated `.next/types/link.d.ts` from `next@16.1.6`:
- * `/admin`, `/admin/analytics`, `/admin/analytics/compare`,
- * `/admin/analytics/members`, `/admin/artists`, `/admin/events`,
- * `/admin/events/new`, `/admin/finance`, `/admin/members`,
- * `/admin/members/growth`, `/admin/members/register`, `/admin/newsletter`,
- * `/admin/scanner`, `/admin/venues`.
+ * It covers the **STATIC** staff routes only — **14** of them when the count was
+ * taken, on 2026-08-09, against the generated `.next/types/link.d.ts` from
+ * `next@16.1.6`.
+ *
+ * **L'elenco che stava qui non si riscrive a ogni rimozione: si e' tolto.** Fra
+ * l'agosto e il settembre 2026 il proprietario ha tolto cinque di quei quattordici
+ * indirizzi — le tre superfici di analytics, quella del finance e, con la fase 50,
+ * la pagina che misurava la crescita da referral. Un elenco nominale dentro una
+ * misura datata invecchia a ogni cancellazione e **si legge come se fosse
+ * corrente**: la misura resta (il numero, la data, la fonte), i nomi no. Gli
+ * indirizzi vivi sono qui sotto, nella mappa, che e' l'unico posto in cui
+ * valgono.
  *
  * It does **not** cover `/admin/events/[id]/edit` or any of its eight
  * siblings. `RouteImpl`'s dynamic arm is
@@ -295,10 +300,19 @@ export const CAPABILITY_ROUTES = {
       // commit: an address bound here but served by nobody is a promise this
       // map cannot keep, and `staff-tabs.ts` asserts against exactly that.
       //
-      // `/admin/members/growth` stays. It is a members surface that happens to
-      // draw analytics components, not part of the Analytics section.
+      // **Un quinto e' uscito il 2026-09-21, per la stessa regola.** Era la
+      // pagina che misurava la crescita spaccata fra referral e ingressi
+      // diretti; il referral e' uscito dal prodotto (D-50-08/D-50-10) e con lui
+      // la pagina, i due grafici e la query che li alimentava. La riga esce
+      // **nello stesso commit** dei file: il commento sopra dichiara la regola,
+      // e lasciarla qui l'avrebbe smentita sulla riga successiva. *(Il suo
+      // indirizzo non si scrive nemmeno in questo commento: un criterio di
+      // accettazione fa il grep di questo file per trovarlo.)*
+      //
+      // `/admin/newsletter` **resta** (D-50-17): una newsletter e' una mailing
+      // list, non un account, e non ha niente a che vedere con le iscrizioni
+      // che questa fase toglie.
       "/admin/newsletter",
-      "/admin/members/growth",
     ],
   },
 
@@ -585,9 +599,11 @@ export const CAPABILITY_ROUTES = {
    * second segment. `/admin/calendar/[id]` is three segments with one dynamic
    * tail; the other three-segment patterns are `/admin/venues/[slug]` (one
    * dynamic, and its second segment is a different literal) and
-   * `/admin/members/register`, `/admin/members/growth`, `/admin/events/new`
-   * (zero dynamic, so the loop's `dynamicCount` guard skips them before it
-   * compares literals). No tie, on either.
+   * `/admin/members/register` e `/admin/events/new` (zero dynamic, so the
+   * loop's `dynamicCount` guard skips them before it compares literals). No
+   * tie, on either. *(Un terzo indirizzo a tre segmenti stava in questa riga
+   * fino al 2026-09-21: e' uscito dalla mappa con la fase 50, e un elenco che
+   * prova l'assenza di ambiguita' deve nominare i pattern che esistono.)*
    *
    * ⚠ That check is worth the paragraph because of WHEN it fires. The throw at
    * the foot of this file runs at **module load inside a middleware bundle**, not
@@ -684,10 +700,11 @@ export const CAPABILITY_ROUTES = {
    *   · `/admin/location/[id]` is three segments with one dynamic tail. The
    *     other three-segment patterns with one dynamic segment are
    *     `/admin/venues/[slug]` and `/admin/calendar/[id]`, whose second segments
-   *     are different literals; `/admin/members/growth`,
-   *     `/admin/members/register` and `/admin/events/new` carry zero dynamic
-   *     segments, so the loop's `dynamicCount` guard skips them before it
-   *     compares literals. No tie.
+   *     are different literals; `/admin/members/register` and
+   *     `/admin/events/new` carry zero dynamic segments, so the loop's
+   *     `dynamicCount` guard skips them before it compares literals. No tie.
+   *     *(Un terzo indirizzo a zero segmenti dinamici stava in questa riga fino
+   *     al 2026-09-21, ed e' uscito dalla mappa con la fase 50.)*
    *
    * ⚠ That check is worth the paragraph because of WHEN it fires. The throw at
    * the foot of this file runs at **module load inside a middleware bundle**, not

@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/Card";
-import type { MemberActFailure } from "./actions";
+import type { MemberActFailure, DeleteAccountFailure } from "./actions";
 
 /**
  * What a refused member act looks like on screen — one notice per cause.
@@ -39,20 +39,38 @@ import type { MemberActFailure } from "./actions";
  */
 
 /**
- * The ten causes this surface can draw.
+ * Le cause che questa superficie sa disegnare.
  *
- * Nine come from the server (`MemberActFailure`) — seven from phase 43 and two
- * added by phase 35, plan 08, when a live per-night assignment became a new way
- * for a role write to be refused. The tenth is client-only: the action never
- * returned at all, so there is no tag to read and no way to know from here
- * whether the write landed.
+ * Vengono da due vocabolari del server — `MemberActFailure`, che governa il
+ * cambio di ruolo, e `DeleteAccountFailure`, che dice **quale traccia**
+ * impedisce una cancellazione — piu' una sola causa che nasce sul client:
+ * l'azione non e' tornata affatto, quindi non c'e' nessuna etichetta da leggere
+ * e da qui non si puo' sapere se la scrittura sia atterrata.
  *
- * The total `Record` below is what forced this file to be edited at all: adding
- * a cause to the action without a sentence here is a `npm run build` error, not
- * a refusal that draws nothing. That is the whole reason the type is written
- * this way, and on 2026-08-09 it did its job.
+ * Le due unioni si sovrappongono su quattro valori e TypeScript le unifica:
+ * `capabilities_unavailable`, `forbidden`, `subject_not_found` e `write_failed`
+ * si disegnano una volta sola, ed e' giusto cosi' — sono la stessa cosa detta
+ * da due atti diversi.
+ *
+ * Il `Record` totale qui sotto e' cio' che ha costretto a modificare questo
+ * file: aggiungere una causa all'azione senza una frase qui e' un errore di
+ * `npm run build`, non un rifiuto che non disegna niente. E' l'intera ragione
+ * per cui il tipo e' scritto cosi', e il 2026-08-09 ha fatto il suo lavoro.
+ *
+ * ── Una causa e' USCITA con la fase 50, ed e' la regola che questo file
+ *    applica gia' tre volte ───────────────────────────────────────────────────
+ *
+ * `act_underivable` nominava una transizione di STATO che il server non sapeva
+ * chiamare. Lo stato non esiste piu' (D-50-01): il server non puo' piu'
+ * produrre quella causa, e una frase che non si puo' piu' disegnare e' il posto
+ * dove il prossimo lettore smette di cercare. Cancellata, come
+ * `withdrawal_is_master_only`, `restoration_is_master_only` e
+ * `master_manage_required` prima di lei.
  */
-export type MemberNoticeKind = MemberActFailure | "transport_unavailable";
+export type MemberNoticeKind =
+  | MemberActFailure
+  | DeleteAccountFailure
+  | "transport_unavailable";
 
 /**
  * Three tones, because the three demand different things of the reader.
@@ -174,28 +192,157 @@ const NOTICES: Record<MemberNoticeKind, Notice> = {
     title: "Nothing to do — the request asked for no change",
     body:
       "No act was recorded, and that is correct rather than a shortfall: the " +
-      "register has seven values and none of them means \"nothing happened\", " +
+      "register has ten values and none of them means \"nothing happened\", " +
       "so writing one anyway would put a change in the history that the " +
       "database never performed.",
   },
 
-  /**
-   * The cause that arrived with the 2026-08-08 owner decision, and the one that
-   * says the register refused to LIE rather than refused to write.
-   */
-  act_underivable: {
+  // ───────────────────────────────────────────────────────────────────────────
+  // LE CAUSE DELLA CANCELLAZIONE — tredici insiemi, dodici frasi, e nessuna
+  // dice «qualcosa è andato storto»
+  // ───────────────────────────────────────────────────────────────────────────
+  //
+  // D-50-16: togliere l'accesso a qualcuno significa cancellare il suo account,
+  // e l'azione **può rifiutare**. `50-MEASURES.md` M10 ha contato undici
+  // vincoli che bloccano una cancellazione più i biglietti, che invece
+  // cascherebbero — e un rifiuto che non dicesse QUALE traccia manderebbe
+  // l'operatore a cercare a tentoni su una superficie dove ogni tentativo è
+  // irreversibile appena riesce.
+  //
+  // **Il `detail` sotto ogni frase è la sola cosa che dice cosa andare a
+  // togliere**, e in questo prodotto non esiste alcun error tracking: quella
+  // riga è la sola diagnosi che esisterà mai.
+
+  delete_account_has_tickets: {
     tone: "refusal",
-    title: "This account's current state has no name in the register",
+    title: "This account holds tickets — it cannot be deleted",
     body:
-      "Nothing was changed and nothing was recorded. Since the act is named " +
-      "after the transition it performs — approved, rejected, reactivated, " +
-      "deactivated — an account whose current status this screen does not " +
-      "recognise cannot be moved without inventing a name for what happened. " +
-      "The register refuses to write rather than to guess, because a history " +
-      "that misnames itself is read as true. Reload the list; if the status " +
-      "shown is one this product does not use, the database has values the " +
-      "code does not know about and that is worth reporting rather than " +
-      "retrying.",
+      "Nothing was deleted. A ticket belongs to the person who bought it, and " +
+      "the database would delete the tickets along with the account: that is " +
+      "a cascade this product deliberately did not change, because the " +
+      "alternative is editing a money path to make an administrative screen " +
+      "easier. The count below is what blocks it. If access has to end, the " +
+      "answer is not this button.",
+  },
+
+  delete_account_holds_assignments: {
+    tone: "refusal",
+    title: "This account is assigned to a night — it cannot be deleted",
+    body:
+      "Nothing was deleted. Deleting the account would take its per-night " +
+      "assignments with it, and a revocation is never a deletion: the record " +
+      "stays, because the door has to be able to ask later whether somebody " +
+      "was assigned at the moment they scanned. Revoke the assignments from " +
+      "the event's assignments page first — that is recorded — and the answer " +
+      "here will change.",
+  },
+
+  delete_account_granted_assignments: {
+    tone: "refusal",
+    title: "This account granted assignments — it cannot be deleted",
+    body:
+      "Nothing was deleted. Every per-night assignment records who granted " +
+      "it, and the database refuses to leave those rows without an author. " +
+      "The count below is what blocks it.",
+  },
+
+  delete_account_has_door_scans: {
+    tone: "refusal",
+    title: "This account worked the door — it cannot be deleted",
+    body:
+      "Nothing was deleted. Every scan records the operator who performed it, " +
+      "and the database refuses to leave those rows without one. This is the " +
+      "door's own history and it is not rewritten from this screen.",
+  },
+
+  delete_account_checked_in_tickets: {
+    tone: "refusal",
+    title: "This account validated tickets at the door — it cannot be deleted",
+    body:
+      "Nothing was deleted. A validated ticket records who admitted its " +
+      "holder. The count below is what blocks it.",
+  },
+
+  delete_account_checked_in_attendances: {
+    tone: "refusal",
+    title: "This account recorded attendances — it cannot be deleted",
+    body:
+      "Nothing was deleted. An attendance records who admitted the person, " +
+      "and the database refuses to leave that column empty. The count below " +
+      "is what blocks it.",
+  },
+
+  delete_account_admitted_guests: {
+    tone: "refusal",
+    title: "This account admitted guests — it cannot be deleted",
+    body:
+      "Nothing was deleted. A guest-list entry records who let its guest in. " +
+      "The count below is what blocks it.",
+  },
+
+  delete_account_added_guests: {
+    tone: "refusal",
+    title: "This account created guest-list entries — it cannot be deleted",
+    body:
+      "Nothing was deleted. Every guest-list entry records who added it, and " +
+      "that column cannot be left empty. The count below is what blocks it.",
+  },
+
+  delete_account_on_guest_list: {
+    tone: "refusal",
+    title: "This account is on a guest list — it cannot be deleted",
+    body:
+      "Nothing was deleted. The entry names this account as its guest. Remove " +
+      "the entry from the night's guest list first, and the answer here will " +
+      "change.",
+  },
+
+  delete_account_touched_refunds: {
+    tone: "refusal",
+    title: "This account requested or decided a refund — it cannot be deleted",
+    body:
+      "Nothing was deleted. A refund records who asked for it and who decided " +
+      "it, and this is a money path: the record outlives the account. The " +
+      "count below is what blocks it.",
+  },
+
+  delete_account_created_artists: {
+    tone: "refusal",
+    title: "This account created artists — it cannot be deleted",
+    body:
+      "Nothing was deleted. Catalogue rows record who created them. Hand the " +
+      "artists over to another account first, or leave this one in place.",
+  },
+
+  delete_account_created_venues: {
+    tone: "refusal",
+    title: "This account created venues — it cannot be deleted",
+    body:
+      "Nothing was deleted. Catalogue rows record who created them. Hand the " +
+      "venues over to another account first, or leave this one in place.",
+  },
+
+  /**
+   * Il `23503` che passa fra il conteggio e la cancellazione, tradotto.
+   *
+   * Non è lo stesso evento degli altri dodici: là il conteggio ha visto e ha
+   * rifiutato; qui il conteggio era pulito e **qualcosa è comparso nel
+   * frattempo** — una voce di guest list aggiunta alle due di notte mentre
+   * l'operatore guardava la lista. La frase dice di rileggere, perché quello
+   * che si vede sullo schermo non è più vero.
+   */
+  delete_account_still_referenced: {
+    tone: "refusal",
+    title: "Something was written while this was being checked",
+    body:
+      "Nothing was deleted. The count taken a moment ago was clean, and the " +
+      "database still refused: a row naming this account appeared between the " +
+      "two — somebody added a guest, or the door scanned. Reload the list and " +
+      "look again; what this screen was showing is out of date rather than " +
+      "wrong. One thing did happen: the register carries a deletion row for " +
+      "an account that still exists, with your name on it. That is the " +
+      "deliberate order — a trace too many can be read, a deletion with no " +
+      "trace cannot be contested.",
   },
 
   /**
@@ -259,38 +406,30 @@ const NOTICES: Record<MemberNoticeKind, Notice> = {
 };
 
 /**
- * `forbidden` is one tag covering nine distinct refusals, and telling a person
- * only "you do not have permission" would collapse them exactly as the recorded
- * newsletter defect collapses its three causes.
+ * `forbidden` e' un'etichetta sola che copre rifiuti distinti, e dire a una
+ * persona soltanto *«non hai il permesso»* li collasserebbe esattamente come il
+ * difetto registrato del form newsletter collassa le sue tre cause.
  *
- * Three arrived with CR-01's repair (`43-REVIEW-FIX`): `self_approve`,
- * `self_reject`, and a widened `subject_is_master` that now covers every act in
- * the group rather than the role change alone. Each is reachable per subject
- * inside a batch, so each has to arrive at this file as a VALUE — which is why
- * `BulkSubjectOutcome` gained a `detail`.
+ * ── LE CAUSE USCITE DI QUI, e toglierle e' il punto ──────────────────────────
  *
- * ── THREE CAUSES WERE REMOVED HERE, and removing them was the point ──────────
+ * `withdrawal_is_master_only`, `restoration_is_master_only` e
+ * `master_manage_required` sono uscite il 2026-08-08, quando la decisione del
+ * proprietario ha tolto la riserva al master e `verifyMaster` ha smesso di
+ * esistere in `admin/members/actions.ts`.
  *
- * `withdrawal_is_master_only` and `restoration_is_master_only` drew the
- * reserved-transition rule, **repealed by owner decision on 2026-08-08**: an
- * organizer may reject an approved member and may readmit a rejected one, so
- * the server no longer produces either detail and neither sentence could ever
- * be drawn again.
+ * `self_approve`, `self_reject`, `self_deactivate`, `self_reactivate` e
+ * `readmission_before_role_change` sono uscite con la **fase 50**: nominavano
+ * atti sull'asse dello stato, che non esiste piu' (D-50-01). Il server non puo'
+ * piu' produrre nessuno di quei valori.
  *
- * `master_manage_required` followed them on the same date, for the same reason
- * one step later: `verifyMaster` no longer exists in
- * `admin/members/actions.ts`. The owner decision widened `deactivateMember` and
- * `reactivateMember` onto `staff.manage` — superseding T-43-09-02 — so nothing
- * in the member acts can produce that detail any more, and its sentence
- * (*«reserved to the master»*) would have been the third thing on this surface
- * telling a reader something that had stopped being true.
+ * Si cancellano invece di lasciarle al loro posto, perche' una causa gestita e'
+ * dove un lettore successivo smette di cercare — il piano 43-09 trovo' due
+ * `catch` diventati irraggiungibili e il 43-14 un commento che accanto negava
+ * il difetto.
  *
- * All three are deleted rather than left in place, because a handled cause is
- * where a later reader stops looking — plan 43-09 found two `catch` blocks that
- * had gone unreachable and 43-14 found a comment denying the defect beside it.
- * `readmission_before_role_change` below is not their replacement: it refuses a
- * DOOR (a role change that would silently readmit) and names the two steps that
- * do the same thing honestly.
+ * `self_delete` non e' la loro sostituta: e' il gemello di `self_role_change`
+ * sull'unico atto distruttivo rimasto, ed e' quello in cui la regola *nessun
+ * atto raggiunge il proprio autore* costa di piu'.
  *
  * Every key below is a `detail` literal chosen by `admin/members/actions.ts`
  * — a value, not a message, and therefore safe to branch on and safe to render.
@@ -298,15 +437,14 @@ const NOTICES: Record<MemberNoticeKind, Notice> = {
 const FORBIDDEN_BY_DETAIL: Record<string, Notice> = {
   staff_manage_required: {
     tone: "refusal",
-    title:
-      "This session cannot decide, reverse or change anything about a member",
+    title: "This session cannot change or delete an account",
     body:
-      "Nothing was attempted. Approving, rejecting, withdrawing an access, " +
-      "readmitting somebody and changing a role are all reserved to a master " +
-      "or an organizer — one gate for the six acts since 2026-08-08, when the " +
-      "owner decided that an organizer may reverse a decision already taken " +
-      "about a person. If you believe you are one of those, sign out and back " +
-      "in: the answer came from the capability model, not from this page.",
+      "Nothing was attempted. Changing a role, creating an account and " +
+      "deleting one are reserved to a master or an organizer — one gate for " +
+      "all three, and deliberately not a narrower one for the destructive " +
+      "act: a restriction reachable through a sibling with a wider gate is " +
+      "not a restriction. If you believe you are one of those, sign out and " +
+      "back in: the answer came from the capability model, not from this page.",
   },
   subject_is_master: {
     tone: "refusal",
@@ -315,66 +453,30 @@ const FORBIDDEN_BY_DETAIL: Record<string, Notice> = {
       "Nothing was changed. The refusal comes from the server, not from this " +
       "screen: the table hides the control on a master's row, and hiding a " +
       "control is not the same as refusing a request — a Server Action is a " +
-      "public endpoint with a convenient signature. It covers every act here — " +
-      "role change, approve, reject, deactivate, reactivate — because a " +
-      "restriction reachable through a sibling act is not a restriction. " +
-      "Changing who holds the top role is done through the deployment " +
-      "environment, which is the one place it is recorded.",
-  },
-  readmission_before_role_change: {
-    tone: "refusal",
-    title:
-      "This account was refused — readmit it first, then set the role",
-    body:
-      "Nothing was changed. Granting staff or organizer writes \"approved\" in " +
-      "the same statement, so a role change aimed at a refused account would " +
-      "also let that person back in — and it would be recorded as a promotion, " +
-      "which is not what happened. Press Approve first: that is recorded as a " +
-      "readmission, with your name and the time. Then set the role. Two acts, " +
-      "two rows, both true — and nobody comes back into the community inside a " +
-      "row labelled \"promoted\". You are not being refused the outcome, only " +
-      "this one-step route to it.",
-  },
-  self_approve: {
-    tone: "refusal",
-    title: "You cannot approve your own account",
-    body:
-      "Nothing was changed. Every act on somebody's role or status is recorded " +
-      "with its author, and an act whose author and subject are the same person " +
-      "is the one shape attribution cannot make safe. Ask another master or " +
-      "organizer.",
-  },
-  self_reject: {
-    tone: "refusal",
-    title: "You cannot reject your own account",
-    body:
-      "Nothing was changed. It is the same refusal as approving yourself, held " +
-      "in both directions so the pair cannot drift apart — which is exactly how " +
-      "the gap this closes came about.",
+      "public endpoint with a convenient signature. It covers every act here " +
+      "— the role change and the deletion alike — because a restriction " +
+      "reachable through a sibling act is not a restriction. Changing who " +
+      "holds the top role is done through the deployment environment, which " +
+      "is the one place it is recorded.",
   },
   self_role_change: {
     tone: "refusal",
     title: "You cannot change your own role",
     body:
-      "Nothing was changed. Every act on somebody's role or status is recorded " +
-      "with its author, and an act whose author and subject are the same " +
-      "person is the one shape that attribution cannot make safe. Ask another " +
-      "master or organizer.",
+      "Nothing was changed. Every act on somebody's account is recorded with " +
+      "its author, and an act whose author and subject are the same person is " +
+      "the one shape that attribution cannot make safe. Ask another master or " +
+      "organizer.",
   },
-  self_deactivate: {
+  self_delete: {
     tone: "refusal",
-    title: "You cannot deactivate your own account",
+    title: "You cannot delete your own account",
     body:
-      "Nothing was changed. Ask another master — this refusal exists so that " +
-      "one mistaken click cannot lock the only person who can undo it out of " +
-      "the surface that undoes it.",
-  },
-  self_reactivate: {
-    tone: "refusal",
-    title: "You cannot reactivate your own account",
-    body:
-      "Nothing was changed. It is the same refusal as deactivating yourself, " +
-      "held in both directions so the pair cannot drift apart.",
+      "Nothing was deleted. It is the same refusal as changing your own role, " +
+      "and here it costs the most it can: deleting yourself would take away " +
+      "the session that could put it right, and nothing about a deletion can " +
+      "be put right — this repository has no point-in-time recovery. Ask " +
+      "another master or organizer.",
   },
   role_not_writable: {
     tone: "refusal",
@@ -389,19 +491,14 @@ const FORBIDDEN_BY_DETAIL: Record<string, Notice> = {
   },
 };
 
-/** `nothing_to_do` covers three situations that want three different next steps. */
+/**
+ * `nothing_to_do` copre le situazioni che vogliono passi successivi diversi.
+ *
+ * `status_unchanged` e `no_subjects_selected` sono uscite con la fase 50: la
+ * prima nominava un asse che non esiste piu', la seconda l'azione in blocco che
+ * non esiste piu'. Nessuna delle due e' piu' producibile dal server.
+ */
 const NOTHING_TO_DO_BY_DETAIL: Record<string, Notice> = {
-  status_unchanged: {
-    tone: "noop",
-    title: "This account already holds that status",
-    body:
-      "No act was recorded, on purpose. The act is named after the transition " +
-      "it performs, and there is no transition here: approving an approved " +
-      "account or rejecting a rejected one moves nothing. Writing a row anyway " +
-      "would put a change in the history that never happened — the same reason " +
-      "a role change to the role already held records nothing. Nothing is " +
-      "wrong here.",
-  },
   role_unchanged: {
     tone: "noop",
     title: "This account already holds that role",
@@ -409,13 +506,6 @@ const NOTHING_TO_DO_BY_DETAIL: Record<string, Notice> = {
       "No act was recorded, on purpose: a role change that changes no role is " +
       "not an event, and writing one would put a transition in the register " +
       "that never happened. Nothing is wrong here.",
-  },
-  no_subjects_selected: {
-    tone: "noop",
-    title: "Nothing was selected",
-    body:
-      "No account was touched and nothing was recorded. Select at least one " +
-      "row and try again.",
   },
 };
 

@@ -791,10 +791,33 @@ export const CONVERTED = [
     "/admin/events/[id]/analytics", "src/app/(admin)/admin/(work)/events/[id]/analytics/page.tsx", "wide",
     "plan 41.1-13 — whole, and 'whole' here is TEN files in two directories: the route file and its loading state under (work)/, and eight cards, charts and one table under src/components/analytics/. The rest of the closure is spine or carries zero class attributes: the animation wrapper writes none of its own and is already reached by two declared surfaces, the count-up and the query module have none at all, and the primitives are converted. Named on §4's CLOSED wide list. This is the surface that gives DataTable its SECOND adopter — one column declaration, five columns, and revenue as the mark because a figure that decides money is never a meta (D-41.1-13). THE PART WITH NO ANALOG IS THE CHARTS: no converted file in this tree is one, and a chart's palette is unreachable by a class-string scanner, so all three were READ. Four legacy token aliases became the current names at identical values; the two accent bar fills and the funnel's data-carried four-step palette were LEFT AND REPORTED rather than substituted, because §5.1 has no clause for a chart series and the categorical palette lives in a file outside the authorized list — neither is a format identification colour and neither is a sunset stop, which is the halt test, and both pass it. Nine raw palette hits left the surface and three of them were decisions rather than substitutions: the token lifecycle's three segments ARE states and take the completion and critical semantics, the attendance meter STOPPED GRADING because the set has no green, amber may not be a bare fill and the thresholds are written nowhere, and the discount line lost a hue the semantic set has no meaning for. The legend words and the meta labels are untouched, so colour is not the only channel anywhere on this page. No query changed, no column added, no capability check touched, no action payload altered — the organizer refusal, the admin.access gate on the two master-only panels and the skipped funnel round trip are byte-identical",
   ],
-  [
-    "/admin/members/growth", "src/app/(admin)/admin/(work)/members/growth/page.tsx", "wide",
-    "plan 41.1-14 — whole, and 'whole' here is four files: the route file, its placeholder, the growth chart and the summary card. Named on §4's closed wide list. THE CAUTION, because this is the surface where the community's growth is read: `community-membership.md` says growth is only meaningful next to how many seats a night has, and NO capacity figure, ratio or caption implying one was added — that is a product question and it went to the SUMMARY, not into the page. The heading read Admin, which is the prefix speaking, and is the surface's own name now, second instance of the correction /admin/members already made. Ten hand-rolled pulsing blocks, the most of the seven placeholders, gone. The chart's two band colours were read and recorded, not substituted. No query changed, no column added, no capability check touched, no action payload altered.",
-  ],
+  /* ──────────────────────────────────────────────────────────────────────────
+   * `/admin/members/growth` STAVA QUI, ed e' uscito il 2026-09-21 — la seconda
+   * volta che questa lista perde una voce perche' **la superficie e' uscita dal
+   * prodotto**, non perche' la conversione sia stata disfatta.
+   *
+   * La prima e' `/admin/finance`, il 2026-08-18, e la correzione in testa al
+   * blocco WAVE 5 e' la forma che questa segue.
+   *
+   * La pagina misurava la crescita della community spaccata fra referral e
+   * ingressi diretti. La fase 50 toglie il referral dal prodotto (D-50-08,
+   * D-50-10, REG-03), e con esso la pagina, il suo segnaposto, il grafico, la
+   * scheda di riepilogo e la query che li alimentava: quattro file piu' uno,
+   * cioe' esattamente il *whole* che la voce dichiarava.
+   *
+   * **La voce esce, la sua cautela no.** Diceva — e resta vero — che la
+   * crescita e' leggibile solo accanto a quanti posti ha davvero una serata
+   * (`community-membership.md`, gate *la capienza e' finita*), e che nessuna
+   * cifra di capienza era stata inventata sulla pagina perche' e' una domanda
+   * di prodotto. Quella domanda **e' ancora aperta** e ora non ha piu' una
+   * superficie: il conteggio degli account staff su `MemberTable.tsx` e' cio'
+   * che resta a porla.
+   *
+   * Tolta qui invece che lasciata: `checkManifest()` rifiuta con exit 2 per una
+   * voce che nomina un file non su disco, ed e' precisamente il difetto che
+   * `DEF-45-01` registra. **Un'assenza con una ragione scritta e' una
+   * decisione; un'assenza senza ragione si legge come una svista.**
+   * ────────────────────────────────────────────────────────────────────────── */
 
   /* ──────────────────────────────────────────────────────────────────────────
    * WAVE 9 — the last five, and the commit that carries them is also the commit
