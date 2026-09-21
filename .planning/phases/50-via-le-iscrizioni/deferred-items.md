@@ -168,7 +168,15 @@ Quando arrivera' il rosso vero, sara' letto come «il solito».
 allentare un'asserzione per far passare un rosso e' l'unica modifica del repo che
 non si annulla.
 
-## `process-entry.ts` scrive ancora sull'asse dello stato — e nessun piano lo possiede
+## ~~`process-entry.ts` scrive ancora sull'asse dello stato~~ — ASSORBITA
+
+> **CHIUSA dal piano 50-08, 2026-09-21**, commit `175170a`, dentro la fase come
+> la voce stessa chiedeva. Il ramo dell'auto-approvazione e' uscito intero — non
+> c'e' piu' niente da auto-approvare perche' non esiste piu' un `pending` — e la
+> `select` e' scesa a `("id, email")`. Nessun comportamento cambia: chi e' in
+> guest list ottiene il suo biglietto gratuito come prima, e la porta legge il
+> biglietto, mai uno stato del profilo. Il commento a
+> `src/lib/guest-list/process-entry.ts:172-190` registra cosa c'era.
 
 **Trovata:** piano 50-07, task 3 (2026-09-21).
 **Fuori perimetro perche':** il file non e' nell'elenco `files_modified` di
@@ -247,7 +255,33 @@ faccia alla capienza di una serata gratuita.
 
 ---
 
-## Con la colonna `status` via, chi ha una sessione non vede piu' ne' il modulo della prenotazione ne' il controllo d'acquisto
+## ~~Con la colonna `status` via, chi ha una sessione non vede piu' ne' il modulo della prenotazione ne' il controllo d'acquisto~~ — ASSORBITA
+
+> **CHIUSA dal piano 50-08, 2026-09-21**, commit `175170a`, prima che la
+> migration raggiunga la produzione — che e' precisamente la condizione che
+> questa voce poneva.
+>
+> **I cancelli erano QUATTRO, non due.** Riletti dal file invece che dal
+> documento: oltre ai due nominati qui sotto (`:1738` acquisto, `:1826`
+> prenotazione), il **pass di evento** portava la stessa condizione, e il
+> **dialogo del venue segreto** aveva un ramo `!isApproved` che diceva *«il tuo
+> account dev'essere approvato»*. Lasciandone due, `isApproved` sarebbe
+> sopravvissuto come unica lettura viva di una colonna cancellata.
+>
+> La regola applicata e' quella della fase: **chi ha una sessione compra e
+> prenota esattamente come un anonimo**, nessuno stato. `const isApproved` non
+> esiste piu' (`events/[slug]/page.tsx:431-446`).
+>
+> **La visibilita' del luogo non cambia**, e vale la pena scriverlo: quel ramo
+> del dialogo non ha mai mostrato un indirizzo, ne' prima ne' dopo. Il predicato
+> che decide se il luogo si vede vive in `venue-disclosure.ts` e non e' toccato;
+> `verify:venue-surfaces` non ha cambiato esito.
+>
+> **Una seconda occorrenza dello stesso difetto e' emersa nello stesso piano e
+> non era censita da nessuna parte:** `canUpload` (`page.tsx:1109`, prima)
+> portava `(isApproved && hasAttended)` — l'arm dei membri del caricamento
+> media, sulla superficie. Uscito con D-50-03, insieme a `hasAttended`, che
+> interrogava la stessa tabella `attendance` inesistente di `may-upload.ts`.
 
 **Trovata:** piano 50-05 (2026-09-21), **misurata sul laboratorio**, dove la
 migration della fase e' gia' applicata e `profiles.status` **non esiste piu'**.
@@ -289,3 +323,30 @@ colonna non si nomina, si nomina un valore che da lei discende.
 
 **Chi la chiude:** 50-09 / 50-11, prima che la migration raggiunga la
 produzione.
+
+---
+
+## Il docblock di `SecretVenueDialog.tsx` descrive ancora DUE chip
+
+**Trovata:** piano 50-08, task 2 (2026-09-21), aprendo il file per togliere il
+ramo `!isApproved`.
+**Fuori perimetro perche':** era gia' falsa **prima** di questo piano — il chip
+`Sign up` e' uscito con D-50-11, e il sito di render porta gia' il suo commento
+— e correggerla qui avrebbe messo dentro un commit che dichiara un cancello
+d'accesso una modifica di prosa che non c'entra.
+
+`src/app/(public)/events/[slug]/SecretVenueDialog.tsx:124-137` spiega perche' le
+due vie d'ingresso sono `Chip` e non `Button`, e le nomina: *«`Sign up` and
+`Sign in` navigate inside this application»*, *«the two chips are drawn the
+same»*.
+
+**Ne resta uno.** Il render (`:257-263`) disegna il solo `Sign in`, e accanto ha
+gia' il commento che dice perche' — *«un chip solo, dalla fase 50 (D-50-11)»*.
+E' la **prosa a monte** a essere invecchiata, non il codice.
+
+**Nessun effetto oggi:** e' un docblock. Ma sta su un file di
+`venue-secrecy.md`, dove un lettore che arriva di corsa si fida della prosa
+prima del render.
+
+**Chi la chiude:** chiunque apra quel file per una ragione propria. Sono due
+frasi.

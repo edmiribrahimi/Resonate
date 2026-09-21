@@ -393,7 +393,7 @@ Plans:
 > **mai** sul biglietto: `holder_label` resta un progressivo e il biglietto resta
 > al portatore (`D-49-03`).
 
-**Plans:** 7/12 plans executed
+**Plans:** 8/12 plans executed
 
 Plans:
 **Wave 1**
@@ -417,7 +417,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 50-08-PLAN.md — il percorso del denaro senza stato, il dashboard, i media, le quattro mail
+- [x] 50-08-PLAN.md — il percorso del denaro senza stato, il dashboard, i media, le quattro mail
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
