@@ -78,7 +78,7 @@ per assecondare una decisione presa dopo che e' stata citata.
 - [ ] **47** — Il token che si beve e si fa rimborsare (`DRK`) — **difetto vivo, va per primo** · *pianificata 2026-08-19: 6 piani, 3 onde*
 - [ ] **48** — Il catalogo dei format dice la verita' (`CAT`)
 - [ ] **49** — Comprare senza account (`BUY`)
-- [ ] **50** — Via le iscrizioni (`REG`)
+- [x] **50** — Via le iscrizioni (`REG`) — chiusa il 2026-09-21: 12 piani, VERIFICATION passed, produzione aggiornata
 - [ ] **51** — Via le superfici da socio, e la porta (`MEM`)
 - [ ] **52** — La barra di navigazione e i ritocchi (`NAV`)
 - [ ] **53** — TASK (`TASK`)
