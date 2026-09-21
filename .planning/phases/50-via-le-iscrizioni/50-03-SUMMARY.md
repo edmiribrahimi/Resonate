@@ -423,6 +423,6 @@ migration, non uno stub lasciato indietro.
 | `supabase/migrations/20260921120100_free_order.sql` | **esiste** |
 | `.planning/phases/50-via-le-iscrizioni/50-03-SUMMARY.md` | **esiste** |
 | commit `5c6548a` (migration + tipi) | **presente in `git log`** |
-| commit `c388119` (questo SUMMARY) | **presente in `git log`** |
+| commit `bb1f532` (questo SUMMARY) | **presente in `git log`** |
 | `git diff --diff-filter=D d4033eb..HEAD` | **vuoto** — nessun file cancellato |
 | `STATE.md` / `ROADMAP.md` | **non toccati**: li scrive l'orchestratore a onda chiusa |
