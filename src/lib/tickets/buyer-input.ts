@@ -82,7 +82,6 @@ export function normalizeBuyerEmail(value: unknown): string {
 export function normalizeBuyerName(value: unknown): string {
   if (typeof value !== "string") return "";
   return value
-    // eslint-disable-next-line no-control-regex
     .replace(/[\u0000-\u001f\u007f]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
