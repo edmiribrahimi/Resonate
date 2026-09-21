@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "Phase 50 PLANNED (2026-09-21) — 12 piani in 10 onde, verificati; prossimo: execute-phase 50 (il codice prima della migration di produzione, terza autorizzazione datata)"
-last_updated: "2026-09-21T12:10:16.076Z"
+stopped_at: "Phase 50 context gathered (2026-09-21) — REG-06 aggiunto; prossimo: plan-phase 50"
+last_updated: "2026-09-21T12:11:15.168Z"
 last_activity: 2026-09-21
 progress:
   total_phases: 51
@@ -30,11 +30,12 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 49 — comprare-senza-account — ESEGUITA, DEPLOYATA e VERIFICATA (2026-09-08, `49-VERIFICATION.md`, `gaps_found` su BUY-04). Prossimo: la terza strada (`49-BEARER-WITHOUT-IDENTITY.md`), poi fase 50
+**Current Focus:** Phase 50 — Via le iscrizioni
 
 ## Current Position
 
-Phase: 49 (comprare-senza-account) — **ESEGUITA il 2026-09-06**, undici piani su
+Phase: 50 (Via le iscrizioni) — EXECUTING
+Plan: 1 of 12
 undici, contati dai SUMMARY su disco.
 
 **Cosa e' in produzione — DEPLOYATO il 2026-09-07.** Le sei migration erano
@@ -281,7 +282,7 @@ SUMMARY su quindici: la fase e' eseguita.** Il piano 37-13 ha chiuso l'onda 7 il
 sostituite, e undici voci `human_needed` consolidate nel suo SUMMARY. Le onde 8 e
 9 (piani 37-14 e 37-15) hanno chiuso i reperti del code review: CR-01, WR-01,
 WR-03, WR-05, WR-06, WR-07, WR-08 e la voce 4 di `deferred-items.md`.
-Status: Ready to execute
+Status: Executing Phase 50
 scritto «riportato come avvenuto, non misurato da me» — ed era la cosa giusta da
 scrivere dalla sua posizione. La misura pero' esiste, ed e' dell'orchestratore
 che gliel'aveva riportato:
