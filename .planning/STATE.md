@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: Completato 50-10-PLAN.md — le otto procedure percorse, P-50-8 dal proprietario a radio spenta, A1 confermata sul campo
-last_updated: "2026-09-21T16:11:13.616Z"
+stopped_at: Completato 50-11-PLAN.md — le due migration in produzione, il signup spento e provato con 422, l'autorizzazione ESAURITA
+last_updated: "2026-09-21T16:39:04.786Z"
 last_activity: 2026-09-21
 progress:
   total_phases: 51
   completed_phases: 48
   total_plans: 371
-  completed_plans: 370
+  completed_plans: 371
   percent: 100
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 50 (Via le iscrizioni) — EXECUTING
-Plan: 8 of 12
+Plan: 9 of 12
 undici, contati dai SUMMARY su disco.
 
 **Cosa e' in produzione — DEPLOYATO il 2026-09-07.** Le sei migration erano
@@ -462,6 +462,10 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase ?]: 50-05: la capienza di una serata gratuita si conta su due sorgenti — biglietti della serata e righe storiche di rsvps — finche' lo storico esiste
 - [Phase ?]: 50-10: A1 confermata sul campo — con disable_signup acceso sul laboratorio, cinque creazioni di account su quattro percorsi di servizio sono riuscite; A.2 in produzione non e' bloccato da questa prova
 - [Phase ?]: 50-10: il nome dell'acquirente sullo schermo della porta resta una DECISIONE del proprietario — il percorso critico della porta non si modifica di rimbalzo a una verifica (deferred-items.md §7)
+- [Phase ?]: 50-11: la terza autorizzazione concessa con risposta tutto, spesa in cinque passi e chiusa ESAURITA il 2026-09-21 alle 16:34:42Z
+- [Phase ?]: 50-11: B.2 resta manuale — il Management API non azzera l'override di un modello di posta, e mandare stringa vuota installa un modello VUOTO lasciando il flag true
+- [Phase ?]: 50-11: il flag MAILER_TEMPLATES_*_CONTENT dice «campo valorizzato», non «modello personalizzato» — tutti e tredici i template di produzione portano il testo di serie di Supabase, quindi riportare al default non cambia cio' che un destinatario legge
+- [Phase ?]: 50-11: GoTrue in produzione e' v2.197.0, misurato da /auth/v1/health; quella del laboratorio resta non nota, e chiude il residuo di A1 con una lettura sola
 
 ## Accumulated Context
 
@@ -581,7 +585,7 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-09-21T16:11:01.698Z
+**Last session:** 2026-09-21T16:38:52.474Z
 **Stopped at:** Completato 50-09-PLAN.md — la sottrazione chiusa, REG-05 a zero dal catalogo, e le otto procedure scritte prima di percorrerle
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.

@@ -393,7 +393,7 @@ Plans:
 > **mai** sul biglietto: `holder_label` resta un progressivo e il biglietto resta
 > al portatore (`D-49-03`).
 
-**Plans:** 10/12 plans executed
+**Plans:** 11/12 plans executed
 
 Plans:
 **Wave 1**
@@ -429,7 +429,7 @@ Plans:
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
-- [ ] 50-11-PLAN.md — la terza autorizzazione, il deploy, le migration di produzione e le cancellazioni
+- [x] 50-11-PLAN.md — la terza autorizzazione, il deploy, le migration di produzione e le cancellazioni
 
 **Wave 9** *(blocked on Wave 8 completion)*
 
