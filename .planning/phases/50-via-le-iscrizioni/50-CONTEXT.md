@@ -92,24 +92,51 @@ settembre 2026**: la fase si chiude prima, e la migration va in produzione
   `account-invitation` (account creati in-app) e le mail dell'ordine.
 - **D-50-15 — Il dashboard dell'account leggero** mostra biglietti e token
   drink, nessun avviso di stato. Membership card e presenze restano alla 51.
-- **D-50-16 — Togliere l'accesso = cancellare l'account** (discrezione di
-  Claude, esercitata): utente Auth e profilo via, i biglietti restano legati
-  all'ordine. `deactivateMember`, `reactivateMember`, `approveMember`,
-  `rejectMember` e le bulk spariscono; la pagina membri diventa una lista di
-  account con ruolo, con «crea account» e «cancella account». Nessun nuovo
-  interruttore su un altro asse (niente ban Auth con profilo vivo).
+- **D-50-16 — Togliere l'accesso = cancellare l'account, e l'azione puo'
+  rifiutare** (rivisto il 2026-09-21 dopo la ricerca, decisione del
+  proprietario). `tickets.user_id` e' `ON DELETE CASCADE` (migration
+  `20260225110000:27`) e sette vincoli `NO ACTION`/`RESTRICT` bloccano chi ha
+  lavorato (guest list, assegnazioni, scansioni, artisti, venue, rimborsi,
+  check-in — `50-RESEARCH.md` §4.1). Quindi: **si cancella solo un account
+  senza biglietti e senza tracce di lavoro**; altrimenti l'azione **rifiuta e
+  dice la causa** («ha 3 biglietti», «ha assegnazioni»), mai un errore
+  generico. Nessun cambio alla cascata ne' allo schema del denaro. La
+  cancellazione lascia una riga nel registro (`membership_acts.act = 'deleted'`,
+  `CHECK` allargato nella stessa migration). `deactivateMember`,
+  `reactivateMember`, `approveMember`, `rejectMember` e le bulk spariscono; la
+  pagina membri diventa una lista di account con ruolo, con «crea account» e
+  «cancella account». Nessun nuovo interruttore su un altro asse (niente ban
+  Auth con profilo vivo). **Per i `pending`/`rejected` di D-50-02 vale la
+  stessa regola:** si misurano prima (le sei query di §4.3); chi ha biglietti o
+  tracce **non si cancella** e viene riportato al proprietario, non forzato.
 - **D-50-17 — La newsletter resta**: e' una mailing list, non un account.
 
 ### RSVP come ordine gratuito (REG-06)
 - **D-50-18 — L'RSVP di una serata `free_rsvp` e' un ordine a totale zero.**
   Parole del proprietario: *«dev'essere uguale a comprare un ticket ma senza
-  acquisto»*. L'ospite mette nome, cognome e mail — gli stessi campi del
-  modulo d'acquisto della 49 — riceve la **stessa mail** con QR e link firmato,
-  ottiene lo **stesso account leggero**, e passa dalla **stessa porta**.
-- **D-50-19 — Nessun passaggio da SumUp.** L'ordine nasce `completed` e i
-  biglietti si emettono subito con `reserve_ticket_order`, nello stesso
-  ordine della 49 (identita' → conio → mail). Vale lo stesso tetto per ordine
-  e la stessa capienza.
+  acquisto»*. L'ospite riceve la **stessa mail** con QR e link firmato, ottiene
+  lo **stesso account leggero**, e passa dalla **stessa porta**.
+- **D-50-18b — `Full name` e mail su ENTRAMBI i moduli** (deciso il
+  2026-09-21, dopo che la ricerca ha misurato che il modulo della 49 raccoglie
+  solo la mail — `50-RESEARCH.md` §0/C6, §6.6). Il modulo a pagamento e quello
+  gratuito chiedono gli stessi due campi: `Full name` (un campo solo) e mail.
+  Il nome va **nell'account** (`createUser({ user_metadata: { full_name } })`,
+  come gia' fa il percorso guest list, `process-entry.ts:238-242`, e da li' in
+  `profiles.full_name`) e **mai sul biglietto**: `holder_label` resta un
+  progressivo, il biglietto resta al portatore (`D-49-03`), lo schermo dello
+  staff non mostra un nome. Se l'account esiste gia' e ha un nome, il nome
+  nuovo non lo sovrascrive. La mail dell'ordine puo' salutare per nome.
+- **D-50-19 — Nessun passaggio da SumUp.** L'ordine nasce **`pending`** e la
+  RPC `reserve_ticket_order` lo chiude a `completed` emettendo i biglietti
+  (nascere `completed` cadrebbe nel ramo idempotente e non emetterebbe nulla —
+  `50-RESEARCH.md` §6.4). Stessa sequenza della 49: identita' → conio → mail,
+  ma sincrona, dentro l'azione. `sumup_checkout_id` diventa **nullable** con
+  indice unico parziale (non un valore sintetico: il cron di riconciliazione
+  interrogherebbe SumUp ogni giorno per ogni biglietto gratuito — §6.3).
+  L'ordine gratuito ha un **tier a prezzo 0** sulla serata, rappresentabile
+  senza toccare lo schema (§6.2). La RPC resta concessa al solo `service_role`.
+  Vale lo stesso tetto per ordine (default 6, **dichiarato**, per serata) e la
+  stessa capienza.
 - **D-50-20 — Vale per tutti**, loggati compresi: un solo percorso, con la
   mail precompilata per chi ha sessione. Il pulsante `RsvpButton` e la tabella
   `rsvps` non ricevono piu' scritture nuove; cosa farne dello storico e'
@@ -121,17 +148,62 @@ settembre 2026**: la fase si chiude prima, e la migration va in produzione
   sotto la terza autorizzazione datata, con il conteggio delle righe cancellate
   scritto prima e verificato dopo.
 
+### Decisioni prese dopo la ricerca (2026-09-21, discrezione esercitata)
+- **D-50-22 — Lo storico di `rsvps` resta in sola lettura.** Nessuna scrittura
+  nuova; i quattro lettori (§6.5, fra cui la rivelazione del venue e il cron
+  dei promemoria) continuano a leggerlo; la capienza somma biglietti e rsvp
+  storici finche' lo storico esiste. Non si converte in biglietti: conierebbe
+  QR validi per persone che non li hanno ricevuti. Le righe si contano in
+  `P-50-2`: se sono zero, il debito e' vuoto.
+- **D-50-23 — `membership.card.view` perde `requires_approved` e diventa
+  «qualunque account»** per questa fase: e' debito dichiarato con il nome della
+  fase che lo chiude (51). Anticipare la rimozione toccherebbe la porta, e la
+  porta non e' mai in pacchetto.
+- **D-50-24 — Il verso del deploy e' codice PRIMA, migration DOPO** (§8.3):
+  la migration prima aprirebbe una finestra `42703` sul webhook dei pagamenti.
+  L'inversione va scritta dentro la migration, come `20260809006000`.
+  `handle_new_user` si ridefinisce **nella stessa transazione** del
+  `DROP COLUMN`. Il codice dispiegato deve reggere per la durata della finestra
+  la colonna ancora presente (non la legge, non la scrive).
+- **D-50-25 — I moduli della persona che questa fase rende falsi si
+  correggono in questa fase, nell'ultima onda, dopo la cancellazione** (§8.4):
+  `access-gating.md` (gate dei due assi che ordina un controllo su una colonna
+  che non esiste piu'), `community-membership.md` per la parte meccanica,
+  `meta-gates.md` se nomina `pending`. Un gate che ordina un controllo
+  impossibile e' un gate falso su ogni caricamento, e la 57 riscrive i
+  **documenti** che difendono la community, non un gate meccanico. Versione e
+  changelog nello stesso commit; `verify:persona` **dopo** la cancellazione.
+- **D-50-26 — Tetto per una serata gratuita: 6, come a pagamento**, per
+  serata, modificabile dall'organizer come oggi. Dichiarato, non chiesto.
+- **D-50-27 — Le premesse smentite dalla ricerca (§0) valgono corrette**:
+  gli oggetti di database che leggono `status` sono **undici**, non
+  trentacinque (§1.2); `x-user-status` non esiste (e' una `delete` di igiene
+  pinnata da `verify:no-header-identity`, che va aggiornato o lasciato
+  coerente); il caricamento media dei membri e' **gia' morto** per il difetto
+  di `may-upload.ts:265-281` (tabella `attendance` inesistente) e D-50-03 si
+  esegue **rimuovendo** quel percorso e riscrivendo per ruolo ciò che resta,
+  non riscrivendo policy che non chiedono `status`; il trigger non legge alcun
+  ruolo dai metadati e va riscritto come dice §1; i rimandi a `/register` sono
+  **sei** piu' `next.config.ts:66` (`/registrati`, redirect permanente, quindi
+  in cache: va tolto e la 404 va provata anche da un browser che l'aveva
+  seguito) e `public/manifest.json:5` (`start_url: "/"`).
+- **D-50-28 — I gate meccanici del repo si aggiornano nello stesso commit
+  della cosa che cambiano**: `scripts/verify-capabilities.mjs` (`ROLE_GRANTS`,
+  `EXPECTED_PAIR_COUNT`), `scripts/conversion-manifest.mjs` (riga `/register`),
+  `scripts/container/seed.mjs` e `scripts/seed-lab-door.mjs` (persone con
+  stato non piu' rappresentabile), `scripts/verify-routes.mjs`. Un gate rosso
+  lasciato indietro e' un gate che nessuno rilancia.
+
 ### Claude's Discretion
-- La forma tecnica dell'ordine gratuito: `ticket_orders.sumup_checkout_id` e'
-  `UNIQUE NOT NULL` (migration `20260905120000`) — nullable con vincolo
-  parziale, o un valore sintetico, lo decide il piano. Conta che l'idempotenza
-  del pagamento non si indebolisca per gli ordini pagati.
-- Lo storico della tabella `rsvps`: resta in sola lettura o si converte in
-  biglietti gratuiti. Vincolo: il conteggio della capienza deve includere i
-  biglietti a zero.
 - Testi delle superfici che cambiano, in inglese, dentro il perimetro deciso.
-- L'ordine dei piani e la divisione in onde: la migration del laboratorio
-  viene prima di qualunque superficie, perche' e' la cosa che puo' fallire.
+- L'ordine dei piani e la divisione in onde, con questi vincoli: la migration
+  si prova sul laboratorio prima di qualunque superficie; il codice si spinge
+  prima della migration di produzione (D-50-24); i moduli della persona
+  chiudono (D-50-25).
+- La forma esatta dell'indice unico parziale su `sumup_checkout_id` e del
+  tier a prezzo 0 (creato dall'organizer sulla serata, o automatico alla prima
+  RSVP: lo decide il piano, purche' non sia una seconda strada per emettere
+  biglietti fuori dalla RPC).
 
 </decisions>
 
