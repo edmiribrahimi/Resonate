@@ -258,6 +258,28 @@ export interface OrderQuoteInput {
   tierId: string;
   quantity: number;
   discountCodeId?: string | null;
+  /**
+   * Se questo ordine finira' davvero su un checkout del fornitore.
+   *
+   * **Vero per default**, e il default e' la regola: il minimo di
+   * {@link SUMUP_MINIMUM_EUR} esiste perche' sotto quella cifra una carta non
+   * si puo' passare, e ogni ordine a pagamento ci passa.
+   *
+   * `false` lo dice **solo** l'ordine a totale zero di REG-06, che non apre
+   * nessun checkout e non muove denaro. Senza questa distinzione il preventivo
+   * rifiuterebbe **sempre** un ordine gratuito — totale `0`, minimo `1,00` —
+   * cioe' rifiuterebbe una prenotazione per non aver raggiunto il minimo di un
+   * pagamento che nessuno sta facendo.
+   *
+   * **Cosa NON salta**: tetto per ordine, catena dei tier, capienza, catalogo,
+   * pubblicazione dell'evento. Sono i controlli che decidono se qualcuno puo'
+   * avere quel biglietto, e valgono identici a zero euro. Qui si salta **una**
+   * riga, e quella riga parla di carte. Chi la salta dichiara **anche** che il
+   * totale atteso e' zero, e lo verifica da se' dopo aver ricevuto il
+   * preventivo: questo interruttore non e' il permesso di far passare un
+   * ordine a pagamento sotto il minimo.
+   */
+  goesToPaymentProvider?: boolean;
 }
 
 /**
@@ -553,12 +575,14 @@ export async function buildOrderQuote(
   // 8. Il totale, sommato in centesimi interi, e il minimo del fornitore.
   //
   //    Il minimo si applica al **totale** e non all'unita', perche' e' il totale
-  //    che va al checkout: sei biglietti da 0,90 fanno 5,40 e passano. Il
+  //    che va al checkout: sei biglietti da 0,90 fanno 5,40 e passano. E non
+  //    si applica affatto a un ordine che al checkout non ci va — vedi
+  //    {@link OrderQuoteInput.goesToPaymentProvider}. Il
   //    percorso con sessione controlla l'unita' perche' li' un ordine e' sempre
   //    un biglietto solo — non e' una regola diversa, e' la stessa su una
   //    quantita' fissa a uno.
   const totalAmount = (toCents(unitPrice) * quantity) / 100;
-  if (totalAmount < SUMUP_MINIMUM_EUR) {
+  if (input.goesToPaymentProvider !== false && totalAmount < SUMUP_MINIMUM_EUR) {
     return refuse(QUOTE_BELOW_MINIMUM);
   }
 
