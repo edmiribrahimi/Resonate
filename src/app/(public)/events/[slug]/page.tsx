@@ -14,7 +14,7 @@ import { CAP } from "@/lib/capabilities/keys";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import FormatMarker from "@/components/formats/FormatMarker";
 import TierSelection from "./TierSelection";
-import RsvpButton from "./RsvpButton";
+import FreeOrderForm from "./FreeOrderForm";
 
 import MyDrinks from "./MyDrinks";
 import PendingIntentHandler from "./PendingIntentHandler";
@@ -658,7 +658,17 @@ export default async function EventDetailPage({
       let userRsvp: { id: string } | null = null;
 
       if (isAuthenticated && user) {
-        if (party.access_type === "paid") {
+        // ── «HO GIA' PRENOTATO» E «HO GIA' UN BIGLIETTO» SONO LA STESSA COSA ──
+        //
+        // Dal 2026-09-21 una prenotazione **e' un ordine a totale zero** che
+        // emette biglietti veri (`REG-06`, `D-50-18`), quindi la domanda «questa
+        // persona e' gia' dentro?» si fa su `tickets` **anche** su una serata
+        // gratuita, e si fa come la si fa sul percorso pagato. Fino a ieri qui
+        // si leggeva una riga di `rsvps`, che era l'unico segno esistente.
+        if (
+          party.access_type === "paid" ||
+          party.access_type === "free_rsvp"
+        ) {
           const { data: ticketRows, error: ticketsError } = await supabase
             .from("tickets")
             .select("id, holder_label")
@@ -695,12 +705,30 @@ export default async function EventDetailPage({
         }
 
         if (party.access_type === "free_rsvp") {
-          const { data: rsvp } = await supabase
+          // ── LA PRENOTAZIONE STORICA SI CONTINUA A LEGGERE ──────────────────
+          //
+          // `rsvps` non riceve **nessuna scrittura nuova** (`D-50-20`,
+          // `D-50-22`): questa e' una lettura, e resta perche' chi ha prenotato
+          // prima di oggi non deve vedersi sparire la propria prenotazione
+          // dalla pagina. Quando lo storico sara' vuoto questo ramo potra'
+          // sparire con lui — e in produzione, contato dal piano 50-01, la
+          // tabella e' gia' **vuota**: qui descrive un insieme vuoto, e sta in
+          // piedi per il laboratorio e per le righe che potessero esistere
+          // altrove.
+          //
+          // L'errore non si scarta piu'. Scartato, una lettura caduta diceva
+          // *questa persona non ha prenotato* — cioe' faceva sparire una
+          // prenotazione vera senza che nessuno lo sapesse, che e' il difetto
+          // che il resto di questo file ha gia' corretto due volte.
+          const { data: rsvp, error: rsvpRowError } = await supabase
             .from("rsvps")
             .select("id")
             .eq("party_id", party.id)
             .eq("user_id", user.id)
             .maybeSingle();
+          if (rsvpRowError) {
+            logUnreadableCount("event_detail.party_user_rsvp", rsvpRowError);
+          }
           userRsvp = rsvp;
         }
       }
@@ -727,26 +755,56 @@ export default async function EventDetailPage({
             spotsLeft = party.capacity - totalSold;
           }
         } else if (party.access_type === "free_rsvp") {
+          // ── LA CAPIENZA DI UNA SERATA GRATUITA HA DUE SORGENTI ─────────────
+          //
+          // **I biglietti** emessi dal livello a prezzo zero — da oggi una
+          // prenotazione e' un ordine a totale zero e produce biglietti veri
+          // (`REG-06`) — **e le righe storiche di `rsvps`**, che nessuno scrive
+          // piu' ma che sono persone che hanno detto di venire.
+          //
+          // **La seconda meta' e' storia, e sparira' con lo storico.** Finche'
+          // esiste, toglierla renderebbe la capienza sbagliata **per difetto**:
+          // si mostrerebbero posti liberi che non ci sono, e si prenderebbero
+          // prenotazioni per una stanza gia' piena. E' `D-50-22`, e in
+          // produzione descrive gia' un insieme vuoto — `rsvps` e' stata
+          // contata a zero dal piano 50-01 — ma il codice non lo da' per
+          // scontato: una tabella vuota oggi non e' una tabella che non puo'
+          // avere righe.
+          //
+          // I biglietti si contano **per serata** e non per livello: la
+          // capienza misura chi sta nella stanza, e su una serata gratuita ogni
+          // biglietto nasce dal livello a prezzo zero. Filtrare per livello
+          // farebbe sparire dal conto un biglietto emesso da qualunque altra
+          // strada — cioe' sbaglierebbe nel verso che vende un posto che non
+          // c'e'.
+          const { count: freeTicketCount, error: freeTicketError } =
+            await serviceClient
+              .from("tickets")
+              .select("*", { count: "exact", head: true })
+              .eq("party_id", party.id);
+
           const { count: rsvpCount, error: rsvpError } = await serviceClient
             .from("rsvps")
             .select("*", { count: "exact", head: true })
             .eq("party_id", party.id);
-          // The old coalesce is gone, and its second defect went with it: it
-          // was written with `||`, which also swallowed a genuine zero and
-          // recomputed it to the same value by luck rather than by reading. A
-          // count that did not arrive now suppresses the figure instead of
-          // reporting a night with every place still free.
-          //
-          // (The removed expression is not quoted here. A comment that spells
-          // it would satisfy the grep asserting its absence, which is the same
-          // correction the metadata paragraph at the top of this file already
-          // carries.)
-          if (rsvpError || rsvpCount === null) {
+
+          // Una somma vale quanto il suo termine piu' debole, ed e' la stessa
+          // regola gia' applicata sopra ai livelli a pagamento: se **una** delle
+          // due letture non e' tornata, il totale non e' una misura e il numero
+          // non si stampa.
+          if (freeTicketError || freeTicketCount === null) {
+            logUnreadableCount(
+              "event_detail.party_free_ticket_count",
+              freeTicketError
+            );
+            spotsLeft = null;
+            spotsUnknown = true;
+          } else if (rsvpError || rsvpCount === null) {
             logUnreadableCount("event_detail.party_rsvp_count", rsvpError);
             spotsLeft = null;
             spotsUnknown = true;
           } else {
-            spotsLeft = party.capacity - rsvpCount;
+            spotsLeft = party.capacity - freeTicketCount - rsvpCount;
           }
         }
       }
@@ -1744,16 +1802,38 @@ export default async function EventDetailPage({
                   </>
                 )}
 
-              {/* Free RSVP party: RSVP button (upcoming only) */}
+              {/*
+                ── SERATA GRATUITA: IL MODULO DELL'ORDINE, NON PIU' UN PULSANTE ─
+
+                **Le condizioni sono quelle di prima, parola per parola**:
+                serata futura, `free_rsvp`, e lo stesso pubblico. E' una
+                sostituzione di controllo, non un cambio di chi vede cosa —
+                l'unica cosa che cambia e' che al posto di un si'/no c'e' un
+                modulo che produce **biglietti veri** (`REG-06`, `D-50-18`), e
+                che chi non ha una sessione non viene piu' spedito a una pagina
+                d'iscrizione che non esiste piu'.
+
+                Chi ha una sessione trova i due campi compilati con cio' che
+                l'account gia' sa. Il nome arriva dai metadati della sessione —
+                **nessuna lettura in piu'**, e in particolare nessuna lettura di
+                una colonna che questa fase sta togliendo.
+
+                Il collegamento «ho gia' un biglietto» lo disegna il blocco
+                sopra, che ora vale anche per una serata gratuita.
+              */}
               {isUpcoming &&
                 party.access_type === "free_rsvp" &&
                 (!isAuthenticated || isApproved) &&
                 (
-                  <RsvpButton
+                  <FreeOrderForm
                     partyId={party.id}
-                    eventId={event.id}
-                    hasRsvp={!!party.userRsvp}
-                    isAuthenticated={isAuthenticated}
+                    maxTicketsPerOrder={party.maxTicketsPerOrder}
+                    sessionEmail={user?.email ?? null}
+                    sessionName={
+                      typeof user?.user_metadata?.full_name === "string"
+                        ? user.user_metadata.full_name
+                        : null
+                    }
                     eventSlug={slug}
                   />
                 )}

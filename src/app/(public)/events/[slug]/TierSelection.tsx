@@ -11,28 +11,42 @@ import { SectionHeading } from "@/components/ui/Typography";
 import SumUpCheckoutModal from "./SumUpCheckoutModal";
 
 /**
- * ── NESSUN NOME SI CHIEDE QUI, E NON E' UNA DIMENTICANZA ─────────────────────
+ * ── IL NOME SI CHIEDE, E VA ALL'ACCOUNT — RISCRITTO IL 2026-09-21 ────────────
  *
- * **`D-49-03`, decisione del proprietario: il biglietto e' AL PORTATORE.** Chi
- * compra puo' regalarlo o rivenderlo, e chi entra e' chi lo tiene. Il tetto e'
- * sei perche' *sei e' un gruppo di amici con un solo pagante* — cioe' cinque
- * biglietti su sei finiscono in mano a qualcun altro. E' il caso **progettato**,
- * non un caso limite tollerato.
+ * **Questa sezione diceva l'opposto**, e la si rovescia qui invece di
+ * cancellarla: una regola tolta senza la sua ragione torna folklore e qualcuno
+ * la «ripara». Diceva, in sostanza: *un nome su questa superficie non si
+ * chiede, e non e' una dimenticanza* — perche' `BUY-03` chiedeva una mail e
+ * basta. E' una **parafrasi dichiarata** e non una citazione: il criterio del
+ * piano 50-05 pretende che la frase revocata non sopravviva alla lettera su
+ * questo file, e la ragione per cui la frase esisteva sta due capoversi sotto,
+ * dove serve.
  *
- * Un campo per il nome dell'intestatario, su questa superficie, produce uno di
- * due danni e nessun beneficio:
+ * **`D-50-18b`, decisione del proprietario del 2026-09-21: entrambi i moduli
+ * d'ordine chiedono `Full name` e mail** — questo e quello della prenotazione
+ * gratuita (`FreeOrderForm.tsx`). Due moduli che fanno la stessa cosa con un
+ * prezzo diverso devono chiedere la stessa cosa, o il campo compare e sparisce
+ * a seconda di quanto costa la serata.
  *
- *   1. lo staff alla porta legge un nome, ha davanti un'altra persona e
- *      **rifiuta un ospite valido** — l'errore che `checkin-offline.md` dichiara
- *      il piu' costoso, perche' avviene davanti a una fila;
- *   2. oppure lo staff impara a ignorare il campo, e allora il campo e' teatro.
+ * ── DOVE IL NOME VA, E DOVE NON ARRIVA MAI ──────────────────────────────────
  *
- * Un dato che si chiede e poi si ignora e' peggio di un dato che non si chiede.
- * `BUY-03` dice **una mail basta**, ed e' l'unica cosa chiesta sotto.
+ * Va **nell'account**: `user_metadata.full_name` alla sola creazione, e da li'
+ * in `profiles.full_name` (`guest-identity.ts:283`), piu' `buyer_name` sulla
+ * riga dell'ordine. Se l'account esiste gia', **non si sovrascrive niente**.
  *
- * **Se qualcuno stesse per aggiungere un nome «per gentilezza»: non e' una
- * gentilezza, e' una porta che rifiuta.** Vale anche sotto un'altra etichetta —
- * «intestatario», «a nome di», «per chi e' il biglietto».
+ * **Non arriva sul biglietto e non arriva alla porta.** `holder_label` resta un
+ * progressivo dentro l'ordine, e nessun percorso di questo file lo scrive — il
+ * biglietto resta **al portatore** (`D-49-03`, non smentita): il tetto e' sei
+ * perche' *sei e' un gruppo di amici con un solo pagante*, cioe' cinque
+ * biglietti su sei finiscono in mano a qualcun altro. E' il caso **progettato**.
+ *
+ * **La ragione che reggeva la sezione precedente non e' stata smentita affatto,
+ * ed e' il vincolo che sopravvive:** uno staff che alla porta legge un nome e si
+ * trova davanti un'altra persona **rifiuta un ospite valido** —
+ * `checkin-offline.md` lo dichiara l'errore piu' costoso, perche' avviene
+ * davanti a una fila. Quindi: il nome all'account, **mai** sullo schermo della
+ * porta, e nessuna etichetta che lo faccia sembrare un intestatario — «a nome
+ * di», «per chi e' il biglietto». Chi entra e' chi tiene il codice.
  *
  * ── IL TETTO QUI E' CONSULTIVO ───────────────────────────────────────────────
  *
@@ -309,9 +323,11 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
     : 1;
   const [quantity, setQuantity] = useState(1);
   const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
   const [guestOrderId, setGuestOrderId] = useState<string | null>(null);
   const quantityFieldId = useId();
   const emailFieldId = useId();
+  const nameFieldId = useId();
 
   // Re-render every 60s to recompute statuses (beyond the countdown timer)
   useEffect(() => {
@@ -391,6 +407,7 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
           tierId: selectedTierId,
           quantity,
           email,
+          fullName,
           discountCodeId: discount?.id ?? null,
         });
 
@@ -572,17 +589,26 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
       )}
 
       {/*
-        ── QUANTITA' E INDIRIZZO — la strada senza sessione, 2026-09-06 ─────────
+        ── NOME, QUANTITA' E INDIRIZZO — la strada senza sessione ──────────────
 
-        I due campi si rendono **solo** su quella strada, ed e' una scelta:
+        I tre campi si rendono **solo** su quella strada, ed e' una scelta:
 
         · la QUANTITA' perche' su quella strada arriva davvero fino al database,
           mentre la strada con sessione compra un biglietto e ignorerebbe il
           numero. Un selettore che non cambia cio' che si compra e' teatro, e
-          questo file ha gia' una regola contro i campi teatro (D-49-03, sopra);
+          questo file ha gia' una regola contro i campi teatro;
 
-        · l'INDIRIZZO perche' chi ha una sessione ne ha gia' uno. `BUY-03`: una
-          mail basta — ed e' l'unica cosa chiesta. **Nessun nome.**
+        · l'INDIRIZZO perche' chi ha una sessione ne ha gia' uno;
+
+        · il NOME — **aggiunto il 2026-09-21, `D-50-18b`** — perche' l'account
+          leggero che nasce da questo acquisto nascerebbe senza. Chi ha una
+          sessione un nome ce l'ha gia', e questo campo non lo tocca: il ramo
+          che ritrova un account **non riscrive mai** l'anagrafica di un conto
+          esistente (`guest-identity.ts`), o basterebbe conoscere un indirizzo
+          per cambiare il nome di qualcun altro.
+
+          Il campo sta **sopra** la mail, e nello stesso ordine sul modulo della
+          prenotazione gratuita: i due moduli devono somigliarsi.
 
         Il massimo del selettore e' `cap`, che viene dalla SERATA. Non e' una
         costante di questo file e non deve diventarlo: chi organizza lo cambia
@@ -590,6 +616,18 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
       */}
       {guestRoad && (
         <div className="mb-4 space-y-3">
+          <Input
+            id={nameFieldId}
+            label="Full name"
+            type="text"
+            autoComplete="name"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            disabled={isPending}
+            placeholder="Your name"
+            hint="It goes on the account these tickets belong to, never on the tickets."
+          />
+
           <Select
             id={quantityFieldId}
             label="How many tickets"
