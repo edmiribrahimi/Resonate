@@ -217,3 +217,30 @@ sistemare un difetto vicino ma diverso dentro un commit che ne dichiara un altro
 e' il modo in cui una modifica diventa illeggibile.
 
 **Chi la chiude:** chiunque tocchi quella superficie. Sono due righe.
+
+---
+
+## Il pannello biglietti legge TUTTI i livelli di un evento, e non filtra `access_type`
+
+**Trovata:** piano 50-04, task 3 (2026-09-21), verificando l'assunzione `A5`.
+**Fuori perimetro perche':** oggi non produce nessun effetto, e ripararla dentro
+un commit che ne dichiara un altro l'avrebbe resa illeggibile.
+
+`src/app/(admin)/admin/(work)/events/[id]/tickets/page.tsx:198-202` legge i
+livelli con `.eq("event_id", eventId)` e basta. Il livello `RSVP` a prezzo zero
+di una serata gratuita **rientra in quella lettura**.
+
+Non compare sullo schermo per una ragione che sta **altrove**: il rendering
+cicla sulle serate (`:602`), e quelle sono filtrate a `access_type = 'paid'`
+(`:194`). Cioe' la difesa e' in un posto diverso da quello che la garantisce: il
+giorno in cui quel ciclo mostrasse anche le serate gratuite, il livello di
+prenotazione comparirebbe fra i livelli a pagamento con il suo modulo di
+modifica e il suo pulsante di cancellazione — e cancellarlo chiude le
+prenotazioni di quella serata senza che niente lo dica.
+
+**Cosa serve:** o il filtro sulla lettura dei livelli, o una decisione
+dichiarata su come il livello di prenotazione si mostra all'organizer (che
+**potrebbe** essere utile vederlo: e' li' che si legge quanti posti restano).
+
+**Chi la chiude:** chiunque tocchi quella superficie, o il piano che dara' una
+faccia alla capienza di una serata gratuita.
