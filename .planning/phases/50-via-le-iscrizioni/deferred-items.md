@@ -490,3 +490,145 @@ con chiunque apra ciascuno di quei file per una ragione propria.
 **Cosa NON si fa:** allargare il perimetro del grep finche' diventa verde. Il
 censimento sta qui **per intero** proprio perche' nessuno possa farlo in
 silenzio (T-50-44).
+
+---
+
+# Voci differite dal piano 50-10 (2026-09-21)
+
+Trovate **percorrendo** le procedure sul laboratorio. Nessuna e' in perimetro:
+il piano 50-10 dichiara due soli file (`50-RUNBOOK.md`, `50-ESITI.md`), e
+ripararle significherebbe toccare uno script di banco, una migration o una
+stringa di copy che nessun criterio di accettazione stava guardando.
+
+## 1. `--reset` del banco della porta si ferma su un `23505`, e la fase 50 e' la causa
+
+**File:** `scripts/seed-lab-door.mjs`, la lista `tabelle` della funzione `reset`.
+
+`ticket_orders` e' cancellata **prima** di `tickets`. La chiave
+`tickets.order_id` e' `ON DELETE SET NULL`, quindi quella cancellazione fa
+scattare un `UPDATE … SET order_id = NULL` su tutti i biglietti dell'ordine — e
+li porta dentro il predicato dell'indice parziale:
+
+```sql
+CREATE UNIQUE INDEX tickets_party_user_unique ON public.tickets
+  USING btree (party_id, user_id)
+  WHERE ((party_id IS NOT NULL) AND (order_id IS NULL));
+```
+
+Un ordine gratuito con **due biglietti per la stessa persona sulla stessa
+serata** — la forma normale di `P-50-7` — li porta dentro **in collisione**:
+
+```
+ERROR: 23505: duplicate key value violates unique constraint "tickets_party_user_unique"
+CONTEXT: SQL statement "UPDATE ONLY "public"."tickets" SET "order_id" = NULL …"
+```
+
+**Aggiramento usato**, scritto per intero perche' la prossima persona non debba
+ritrovarlo:
+
+```sql
+delete from public.attendances;
+delete from public.door_scan_events;
+delete from public.tickets;
+```
+
+…poi `--reset` come al solito.
+
+**Seconda avvertenza sullo stesso comando:** `--reset` **non** rimuove
+`.env.lab.seed.json`, e `--seed` rifiuta di girare finche' quel file esiste. Va
+spostato via a mano fra i due.
+
+**Cosa NON si conclude:** che il prodotto sia rotto. Nessuna superficie del
+prodotto cancella un `ticket_orders`. Cio' che si conclude e' che **cancellare
+un ordine non e' piu' un'operazione sicura** da quando esistono gli ordini
+gratuiti, e che chi un giorno scrivesse quello strumento deve saperlo.
+
+**Proprietario naturale:** chiunque tocchi `seed-lab-door.mjs`, oppure il piano
+che dara' all'organizer uno strumento per correggere un ordine (gia' differito
+dalla fase 49).
+
+## 2. `PRE-SEED` non semina il titolo che `P-50-4` passo 4.5 pretende
+
+**File:** `scripts/seed-lab-door.mjs`, l'unica `insert` in `party_assignments`.
+
+Semina `capability = 'door.operate'`. L'arm per serata di
+`src/lib/media/may-upload.ts:270` chiede **`media.upload`**. Con il banco
+prescritto, lo staff assegnato alla serata X riceve **sulla propria serata**
+`403 forbidden.media_upload_required` — e il passo 4.5 sembra un difetto del
+prodotto mentre e' un difetto del banco.
+
+Aggiunta a mano durante la corsa una seconda assegnazione `media.upload` sulla
+serata a pagamento; il passo si comporta allora come scritto. Il runbook porta
+ora la precondizione `PRE-MEDIA`; **lo script no**.
+
+## 3. Tre rifiuti in inglese portano il conteggio in italiano
+
+**File:** `src/app/(admin)/admin/members/actions.ts` (i dettagli delle cause di
+`deleteAccount`) e il conio di `holder_label`.
+
+Osservato: `(1 biglietto)`, `(1 assegnazione ricevuta)`, `(1 scansione operata
+alla porta)` dentro frasi interamente inglesi; `holder_label` vale `1 di 2` e
+`2 di 2` su un biglietto che lo staff legge alla porta. ROADMAP fissa
+l'interfaccia in **inglese**.
+
+Non blocca niente e non e' un difetto d'accesso. E' copy, e si vede in due
+posti che contano: una pagina amministrativa e lo schermo della porta.
+
+## 4. Il dialogo di creazione account nomina una coda che non esiste piu'
+
+**Superficie:** pagina membri, testo sopra il modulo «Create an account».
+
+> *«Creating an account approves it. The person is admitted to the community
+> without going through the pending queue, and the act is recorded with your
+> name against it.»*
+
+Dopo questa fase **non esiste nessuna coda di approvazione**. La frase descrive
+un prodotto che non c'e'.
+
+**Perche' il censimento di 50-09 non la vede:** quel censimento guarda
+dichiarazioni, identificatori e rami — non prosa rivolta a un operatore. E' la
+stessa Classe 1 gia' aperta li', su una superficie invece che in un commento.
+
+## 5. `Your Drinks` resta su «Loading your drinks…» per sempre se un token non si risolve
+
+**Superficie:** `/events/<slug>/menu` da ospite.
+
+Osservato **in condizione sintetica**: iniettato a mano nel `localStorage` un id
+d'ordine che non esiste, la sezione «Your Drinks» resta su *«Loading your
+drinks...»* senza limite e **senza dire niente**. Nessun errore, nessuna frase.
+
+**La condizione era artificiale**, ed e' la ragione per cui questa voce e'
+un'osservazione e non un difetto accertato — ma un ospite il cui ordine sia
+stato cancellato o rimborsato arriverebbe nello stesso stato per una strada
+vera. E' la forma che `meta-gates.md` chiama *fallimento silenzioso*, su una
+superficie da ospite.
+
+**Da accertare prima di ripararlo:** se il percorso sia raggiungibile senza
+iniezione.
+
+## 6. Il catalogo dei format del laboratorio non e' fedele alla produzione
+
+**Tabella:** `public.formats`, sui due database, letta nella stessa corsa.
+
+| | laboratorio | produzione |
+|---|---|---|
+| righe | **cinque** | **quattro** |
+| il format **cancellato il 2026-08-20** | **presente**, `listed: true`, `retired_at: null` | **assente** |
+| colore di RamaDub | `#FF7A2F` | `#6E8BFF` |
+
+La sigla del format cancellato **non si scrive qui**: vale il gate di
+`production-calendar.md`, *una sigla ritirata non si cita, nemmeno per spiegare
+la storia*.
+
+**Le due conseguenze:**
+
+1. **Sulla barra pubblica del laboratorio compare un filtro per un format che
+   non esiste piu'**, e il colore che porta RamaDub e' quello che
+   `brand-visual-system.md` dichiara **senza proprietario** dal 2026-08-20.
+2. Il laboratorio e' dichiarato *«fedele alla produzione»* e su questa tabella
+   **non lo e'**. Nessuna delle otto procedure di questa fase dipende da
+   `formats`; la prossima potrebbe, e la misurerebbe contro un catalogo che la
+   produzione non ha.
+
+**Proprietario naturale:** chi possiede il laboratorio, con un allineamento di
+`formats` — non una migration, perche' la produzione e' gia' corretta.

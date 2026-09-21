@@ -3,10 +3,11 @@ phase: 50-via-le-iscrizioni
 document: runbook delle prove manuali
 written: 2026-09-21
 written_by: piano 50-09
+walked: 2026-09-21, piano 50-10 — esiti in `50-ESITI.md`
 requirements: [REG-01, REG-02, REG-03, REG-04, REG-05, REG-06]
 procedures_gathered: 8
-procedures_executed: 2
-procedures_partially_executed: 1
+procedures_executed: 7
+procedures_partially_executed: 0
 authorisation_to_write_production: NON ANCORA CHIESTA (la chiede il piano 50-11)
 ---
 
@@ -68,7 +69,8 @@ sulla porta e' peggio di nessun documento.
 | Sigla | Cosa | Come si ottiene |
 |---|---|---|
 | **PRE-LAB** | il laboratorio e' sveglio e la migration della fase e' applicata | `20260921120000` applicata il 2026-09-21 alle 12:48:29Z, versione coniata `20260921124829` (50-02) |
-| **PRE-SEED** | il banco e' seminato | `node scripts/seed-lab-door.mjs --reset` poi `--seed` poi `--verify` |
+| **PRE-SEED** | il banco e' seminato | `node scripts/seed-lab-door.mjs --reset` poi `--seed` poi `--verify`. **Due avvertenze misurate il 2026-09-21:** `--reset` si ferma su un `23505` se esiste un ordine gratuito con due biglietti per la stessa persona — si sblocca con una `delete from public.tickets` prima; e `--seed` rifiuta di girare finche' `.env.lab.seed.json` esiste, che `--reset` **non** rimuove. Vedi `deferred-items.md` |
+| **PRE-MEDIA** | lo staff ha titolo a caricare su una serata | il banco semina **solo** `door.operate`, e l'arm dei media chiede **`media.upload`**: senza, `P-50-4` passo 4.5 rifiuta sulla serata stessa a cui lo staff e' assegnato. Va concessa una seconda assegnazione |
 | **PRE-ACCOUNTS** | i quattro account del banco esistono | `master@lab.invalid` (master), `door@lab.invalid` (staff), `member@lab.invalid` (member, **con** un biglietto), `member-spare@lab.invalid` (member, **senza** biglietti e senza tracce) |
 | **PRE-FREE** | una serata `free_rsvp` con il suo livello a prezzo zero | `lab-free-night`, capienza 4, livello `RSVP` a 0 (seminata dal 50-01) |
 | **PRE-SIGNUP-OFF** | il signup pubblico e' spento sul progetto di laboratorio | passo manuale, sotto |
@@ -99,7 +101,7 @@ Authorization: Bearer <SUPABASE_ACCESS_TOKEN>
 
 | # | Progetto | Chi lo esegue | Quando | Esito |
 |---|---|---|---|---|
-| A.1 | **laboratorio** | chi ha il ruolo master sul progetto | _da eseguire — piano 50-10_ | _da scrivere_ |
+| A.1 | **laboratorio** | chi ha il ruolo master sul progetto | **eseguito 2026-09-21 alle 15:16:45Z** — piano 50-10 | **`PATCH` → 200.** Letto prima con una `GET`: `disable_signup = false`. Riletto dopo con una **seconda `GET` indipendente**: `disable_signup = true`. Provato dall'esterno con la chiave anonima: `422 signup_disabled` (`P-50-5`, `50-ESITI.md`) |
 | A.2 | **produzione** | chi ha il ruolo master sul progetto | _da eseguire — piano 50-11, dentro l'autorizzazione datata_ | _da scrivere_ |
 
 > **A.2 non si anticipa.** Spegnere il signup in produzione **prima** che il
@@ -127,8 +129,8 @@ cancellazione del file**: vive sul progetto, non nel repository.
 
 | # | Progetto | Quando | Esito |
 |---|---|---|---|
-| B.1 | **laboratorio** | _da eseguire — piano 50-10_ | _da scrivere_ |
-| B.2 | **produzione** | _da eseguire — piano 50-11_ | _da scrivere_ |
+| B.1 | **laboratorio** | **misurato 2026-09-21 — piano 50-10, nessuna azione necessaria** | `mailer_templates_custom_contents.MAILER_TEMPLATES_CONFIRMATION_CONTENT` = **`false`**, cioe' **modello di default di Supabase**: sul laboratorio il modello personalizzato non e' mai stato incollato. Gia' nello stato di arrivo |
+| B.2 | **produzione** | _da misurare e poi eseguire — piano 50-11_ | **e si misura senza aprire il cruscotto**: leggere lo stesso flag su `GET /v1/projects/{ref}/config/auth`. `false` → niente da togliere; `true` → il modello personalizzato c'e' e va ricondotto al default |
 
 > **Perche' non basta il signup spento.** Con `disable_signup = true` nessuno
 > puo' ricevere quella mail. Ma un modello che resta nel cruscotto e' una mail
@@ -146,7 +148,9 @@ cancellazione del file**: vive sul progetto, non nel repository.
 **Ruolo:** **tre soggetti distinti**, nell'ordine — anonimo (finestra privata),
 poi un account leggero con ruolo `member`, poi chi ha il ruolo organizer.
 **Ambiente:** **laboratorio**. `PRE-LAB`, `PRE-SEED`, `PRE-DEPLOY`.
-**Stato:** _NON PERCORSA_ — piano 50-10.
+**Stato:** **PERCORSA** — piano **50-10**, 2026-09-21, `50-ESITI.md`. Nove passi
+pieni su undici; **1.3 non percorribile come scritta** (vedi sotto), 1.10 in
+parte, 1.11 sul solo manifesto.
 
 | # | Passo | Cosa si deve osservare |
 |---|---|---|
@@ -200,10 +204,10 @@ migration in produzione e' il piano 50-11, e aspetta il deploy del codice
 **Prova:** `D-50-02`, `D-50-16`.
 **Ruolo:** chi ha il ruolo **master**, sulla pagina membri.
 **Ambiente:** **laboratorio**. `PRE-LAB`, `PRE-SEED`, `PRE-ACCOUNTS`.
-**Stato:** _PARZIALE_ — le precondizioni sono state seminate dal piano **50-01**
-(i due soggetti distinti esistono sul banco) e l'azione e' stata scritta dal
-piano **50-07**, che dichiara la procedura **non percorsa**. La percorre il
-piano 50-10.
+**Stato:** **PERCORSA** — piano **50-10**, 2026-09-21, `50-ESITI.md`. Cinque
+passi su sei; il sesto per meta' (l'affordance si osserva, la chiamata diretta
+non ha un indirizzo che si possa chiamare da fuori). **Le cause provate sono
+tre**, non due: biglietti, assegnazione a una serata, scansioni alla porta.
 
 | # | Passo | Cosa si deve osservare |
 |---|---|---|
@@ -233,8 +237,10 @@ piano 50-10.
 **Ruolo:** **tre soggetti**, nell'ordine — un account leggero `member`, poi chi
 ha il ruolo organizer, poi un membro dello staff **con un'assegnazione viva** su
 una serata.
-**Ambiente:** **laboratorio**. `PRE-LAB`, `PRE-SEED`, `PRE-DEPLOY`.
-**Stato:** _NON PERCORSA_ — piano 50-10.
+**Ambiente:** **laboratorio**. `PRE-LAB`, `PRE-SEED`, `PRE-DEPLOY`, **piu'
+un'assegnazione `media.upload`** — vedi il riquadro in fondo alla procedura.
+**Stato:** **PERCORSA** — piano **50-10**, 2026-09-21, `50-ESITI.md`. Sei passi
+su sei, con il banco esteso.
 
 | # | Passo | Cosa si deve osservare |
 |---|---|---|
@@ -258,6 +264,16 @@ una serata.
 > serata — e la ricerca ne censiva una sola. Entrambe le occorrenze sono uscite
 > col piano 50-08.
 
+> **`PRE-SEED` non basta per il passo 4.5, e il 2026-09-21 e' stato misurato.**
+> Il banco semina **una sola** assegnazione, con **`door.operate`**. L'arm per
+> serata di `src/lib/media/may-upload.ts:270` chiede **`media.upload`**: sono
+> due titoli diversi, e stare alla porta non e' avere titolo a caricare. Con il
+> banco prescritto, lo staff assegnato alla serata X riceve **sulla propria
+> serata** lo stesso `403 forbidden.media_upload_required` che riceve sulla
+> serata Y — e il passo 4.5 sembra un difetto del prodotto mentre e' un difetto
+> del banco. **Chi percorre questa procedura conceda prima un'assegnazione
+> `media.upload` sulla serata X** (`PRE-MEDIA`), o il passo non e' eseguibile.
+
 ---
 
 ## Procedura P-50-5 — il signup spento, provato dove il prodotto non puo' provarlo
@@ -266,7 +282,15 @@ una serata.
 **Ruolo:** **anonimo**, con `curl` e **la chiave anonima** del progetto — non
 quella di servizio.
 **Ambiente:** **laboratorio**. `PRE-LAB`, `PRE-SIGNUP-OFF` (passo manuale A.1).
-**Stato:** _NON PERCORSA_ — piano 50-10.
+**Stato:** **PERCORSA** — piano **50-10**, 2026-09-21, `50-ESITI.md`. Tre passi
+su tre, `422 signup_disabled` riportato alla lettera.
+
+> **Il passo 5.1 non e' eseguibile con un indirizzo `@lab.invalid`, e il
+> runbook lo prescriveva.** GoTrue rifiuta quel dominio **prima** di rispondere
+> sul signup: `400 email_address_invalid`. Chi lo percorresse alla lettera
+> otterrebbe un `400` che non dice niente su `disable_signup`. Il laboratorio
+> accetta **`@lab.test`** (TLD riservato, RFC 6761) e rifiuta anche
+> `@example.com`. Misurato il 2026-09-21.
 
 | # | Passo | Cosa si deve osservare |
 |---|---|---|
@@ -293,7 +317,11 @@ quella di servizio.
 **Prova:** `REG-04`, assunzione `A1`.
 **Ruolo:** chi ha il ruolo **master**, dalla pagina di creazione account.
 **Ambiente:** **laboratorio**. `PRE-LAB`, `PRE-SIGNUP-OFF`, `PRE-DEPLOY`.
-**Stato:** _NON PERCORSA_ — piano 50-10.
+**Stato:** **PERCORSA** — piano **50-10**, 2026-09-21, `50-ESITI.md`. Cinque
+passi su cinque, piu' una prova nuda di `auth.admin.createUser`.
+**`A1` e' CONFERMATA sul campo**: cinque account creati su quattro percorsi
+diversi con il signup pubblico spento, nessuno rifiutato. **Il passo manuale
+`A.2` non e' bloccato da questa prova.**
 
 | # | Passo | Cosa si deve osservare |
 |---|---|---|
@@ -361,7 +389,10 @@ ripetuta**). Lo raccoglie il piano 50-10.
 **Ambiente:** **laboratorio**, su un telefono vero in **modalita' aereo**.
 `PRE-LAB`, `PRE-SEED`, `PRE-PHONE`, e un biglietto gratuito coniato da
 `P-50-7`.
-**Stato:** _NON PERCORSA_ — piano 50-10.
+**Stato:** _NON PERCORSA_ — **checkpoint aperto del piano 50-10**. Il banco e'
+pronto: due biglietti gratuiti coniati, due posti liberi su quattro, e
+**un'assegnazione `door.operate` concessa a mano sulla serata gratuita** —
+`PRE-SEED` ne semina una sola, e sulla serata a pagamento.
 
 | # | Passo | Cosa si deve osservare |
 |---|---|---|
@@ -492,24 +523,24 @@ perimetro che si allarga.
 
 ---
 
-## Il registro — otto procedure, due percorse
+## Il registro — otto procedure, sette percorse
 
 | Sigla | Procedura | Stato | Chi l'ha percorsa / la percorre |
 |---|---|---|---|
-| `P-50-1` | le superfici dell'iscrizione | _NON PERCORSA_ | **50-10** |
+| `P-50-1` | le superfici dell'iscrizione | **PERCORSA** 2026-09-21 | **50-10** (`50-ESITI.md`) |
 | `P-50-2` | la migration sul laboratorio | **PERCORSA** 2026-09-21 | **50-02** (`50-02-SUMMARY.md`) |
-| `P-50-3` | cancellazione, e il rifiuto con la causa | _PARZIALE_ — soggetti seminati | semina **50-01**; azione scritta **50-07**; da percorrere **50-10** |
-| `P-50-4` | i media per titolo di lavoro | _NON PERCORSA_ | **50-10** |
-| `P-50-5` | il signup spento | _NON PERCORSA_ | **50-10** (dipende dal passo manuale A.1) |
-| `P-50-6` | i percorsi di servizio con il signup spento | _NON PERCORSA_ | **50-10** (decide se A.2 si puo' fare) |
-| `P-50-7` | l'ordine gratuito | **PERCORSA** 2026-09-21 | **50-05** (`50-05-SUMMARY.md`); un passo residuo al **50-10** |
-| `P-50-8` | la porta con la radio spenta | _NON PERCORSA_ | **50-10** |
+| `P-50-3` | cancellazione, e il rifiuto con la causa | **PERCORSA** 2026-09-21 | semina **50-01**; azione **50-07**; percorsa **50-10** (`50-ESITI.md`) |
+| `P-50-4` | i media per titolo di lavoro | **PERCORSA** 2026-09-21 | **50-10** (`50-ESITI.md`) |
+| `P-50-5` | il signup spento | **PERCORSA** 2026-09-21 | **50-10** (`50-ESITI.md`) |
+| `P-50-6` | i percorsi di servizio con il signup spento | **PERCORSA** 2026-09-21 — **`A1` confermata, `A.2` si puo' fare** | **50-10** (`50-ESITI.md`) |
+| `P-50-7` | l'ordine gratuito | **PERCORSA** 2026-09-21, e **ripercorsa**; passo residuo **chiuso** | **50-05** (`50-05-SUMMARY.md`) + **50-10** (`50-ESITI.md`) |
+| `P-50-8` | la porta con la radio spenta | _NON PERCORSA_ — **checkpoint aperto** | **50-10** |
 
 | Passo manuale | Stato | Chi |
 |---|---|---|
-| A.1 — signup spento, **laboratorio** | _da eseguire_ | **50-10** |
+| A.1 — signup spento, **laboratorio** | **eseguito** 2026-09-21 15:16:45Z | **50-10** |
 | A.2 — signup spento, **produzione** | _da eseguire_ | **50-11**, dentro l'autorizzazione datata |
-| B.1 — modello di conferma via dal cruscotto, **laboratorio** | _da eseguire_ | **50-10** |
+| B.1 — modello di conferma via dal cruscotto, **laboratorio** | **gia' nello stato di arrivo**, misurato 2026-09-21 | **50-10** |
 | B.2 — modello di conferma via dal cruscotto, **produzione** | _da eseguire_ | **50-11** |
 
 ---
