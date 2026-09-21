@@ -393,13 +393,13 @@ Plans:
 > **mai** sul biglietto: `holder_label` resta un progressivo e il biglietto resta
 > al portatore (`D-49-03`).
 
-**Plans:** 1/12 plans executed
+**Plans:** 2/12 plans executed
 
 Plans:
 **Wave 1**
 
 - [x] 50-01-PLAN.md — il banco di prova senza lo stato, la serata gratuita seminata, e le sette misure prese in sola lettura
-- [ ] 50-02-PLAN.md — la migration che smonta `status`, il referral e il trigger, in una transazione sola (laboratorio)
+- [x] 50-02-PLAN.md — la migration che smonta `status`, il referral e il trigger, in una transazione sola (laboratorio)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 

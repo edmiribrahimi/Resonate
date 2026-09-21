@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "Phase 50 context gathered (2026-09-21) — REG-06 aggiunto; prossimo: plan-phase 50"
-last_updated: "2026-09-21T12:26:10.885Z"
+stopped_at: Completato 50-02-PLAN.md — migration applicata al LABORATORIO, produzione intatta
+last_updated: "2026-09-21T12:59:49.837Z"
 last_activity: 2026-09-21
 progress:
-  total_phases: 12
-  completed_phases: 3
-  total_plans: 41
-  completed_plans: 34
-  percent: 25
+  total_phases: 51
+  completed_phases: 48
+  total_plans: 371
+  completed_plans: 362
+  percent: 98
 ---
 
 # State: Resonate
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 50 (Via le iscrizioni) — EXECUTING
-Plan: 2 of 12
+Plan: 3 of 12
 undici, contati dai SUMMARY su disco.
 
 **Cosa e' in produzione — DEPLOYATO il 2026-09-07.** Le sei migration erano
@@ -371,7 +371,7 @@ checkpoints is now closed (the migration is applied); three remain, plus the RLS
 half of the fourth. `31-VALIDATION.md` keeps `nyquist_compliant: false`
 deliberately.
 
-Progress: [████████░░] 83%
+Progress: [█████████░] 85%
           phase 32 — 11 plans, 0 executed
 
 ## Decisions
@@ -452,6 +452,12 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase ?]: In produzione i profili pending/rejected sono ZERO (misurato il 2026-09-21): D-50-02 non ha soggetti, e il 50-11 dichiara zero cancellazioni
 - [Phase ?]: I vincoli che bloccano una cancellazione sono undici, non gli otto di 50-RESEARCH.md §4.1: il catalogo aggiunge attendances.checked_in_by, guest_list_entries.checked_in_by e ticket_refunds.processed_by — due di questi registrano chi ha ammesso qualcuno alla porta
 - [Phase ?]: 50-01: i banchi di semina non nominano piu' profiles.status, quindi girano prima e dopo la migration dell'onda 1 senza finestra
+- [Phase ?]: 50-02: le funzioni che leggevano profiles.status erano SEI, non le quattro dell'elenco — my_access_context(uuid) e record_membership_act le ha date il catalogo, e la seconda e' plpgsql: il DROP COLUMN sarebbe riuscito e lei si sarebbe rotta al primo richiamo, portandosi dietro createAccount e reconcile_master
+- [Phase ?]: 50-02: quattro policy su storage.objects leggevano profiles.status per esteso e hanno fatto FALLIRE il primo tentativo di applicazione: il collasso della fase 32 aveva riscritto 45 policy, tutte nello schema public
+- [Phase ?]: 50-02: il CHECK su membership_acts.act porta dieci valori, non otto: i nove applicati (i sette del registro piu' assigned e unassigned della fase 35) piu' deleted
+- [Phase ?]: 50-02: membership.active perde le quattro concessioni ma NON la chiave: toglierla mentre CAP.MEMBERSHIP_ACTIVE vive in keys.ts lascerebbe verify:capabilities rosso, che e' cio' che D-50-28 vieta
+- [Phase ?]: 50-02: P5 di rls-baseline-compare.mjs non si riscrive: quel file confronta due artefatti su disco, non un database, e la stringa e' la forma con cui pg_policies stampava quel predicato PRIMA della fase 32
+- [Phase ?]: 50-02: la query 1.5(a) sulle funzioni va spogliata dei commenti prima della regex, o restituisce tre falsi positivi; quella sulle policy va cercata su profiles+status, perche' get_user_status|requires_approved era cieca gia' prima
 
 ## Accumulated Context
 
@@ -571,8 +577,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-09-21T12:25:56.050Z
-**Stopped at:** Phase 50 context gathered (2026-09-21) — REG-06 aggiunto; prossimo: plan-phase 50
+**Last session:** 2026-09-21T12:59:49.833Z
+**Stopped at:** Completato 50-02-PLAN.md — migration applicata al LABORATORIO, produzione intatta
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
