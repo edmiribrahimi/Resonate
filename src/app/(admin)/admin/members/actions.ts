@@ -255,11 +255,12 @@ export type MemberActFailure =
  * il fallimento generico — compaiono in entrambe le unioni: TypeScript le
  * unifica, e `MemberActionNotice` le disegna una volta sola.
  *
- * **Nessuna di queste e' «qualcosa e' andato storto».** Il precedente
- * registrato in `.planning/codebase/CONCERNS.md` — il form newsletter che
- * collassa rete, chiave mancante e indirizzo gia' iscritto in una frase sola —
- * e' esattamente cio' che una causa unica per dodici insiemi rifarebbe, su una
- * superficie dove l'operatore deve sapere COSA andare a togliere.
+ * **Nessuna di queste e' la frase generica.** Il precedente registrato in
+ * `.planning/codebase/CONCERNS.md` — il form newsletter che collassa rete,
+ * chiave mancante e indirizzo gia' iscritto in un messaggio solo, citato per
+ * esteso piu' su in questo file — e' esattamente cio' che una causa unica per
+ * dodici insiemi rifarebbe, su una superficie dove l'operatore deve sapere
+ * COSA andare a togliere.
  */
 export type DeleteAccountFailure =
   | "capabilities_unavailable"
