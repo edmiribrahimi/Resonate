@@ -350,3 +350,143 @@ prima del render.
 
 **Chi la chiude:** chiunque apra quel file per una ragione propria. Sono due
 frasi.
+
+---
+
+## La CHIAVE `membership.active` resta nel catalogo — il 50-09 NON la chiude, e dice perche'
+
+**Riconfermata e decisa:** piano 50-09, task 2 (2026-09-21).
+**La voce originale** e' quella del piano 50-02 qui sopra, che elencava **cinque**
+punti da toccare. **Uno e' stato chiuso** dal piano 50-08
+(`src/lib/media/may-upload.ts:291`, l'arm che leggeva la chiave). **I quattro
+restanti non sono stati chiusi qui, ed e' una decisione, non una dimenticanza.**
+
+| Dove | Cosa | Stato |
+|---|---|---|
+| `private.capabilities` | la riga `membership.active` | **resta** |
+| `src/lib/capabilities/keys.ts` | `CAP.MEMBERSHIP_ACTIVE` e la sua descrizione | **resta** |
+| `src/lib/routes/capability-routes.ts` | la voce `scope: "table"` del `Record` totale | **resta** |
+| `src/lib/media/may-upload.ts:291` | l'arm che la leggeva | **CHIUSO dal 50-08** |
+| `scripts/verify-capabilities.mjs` | le quattro righe `'membership.active': 'REFUSED'` e i conteggi | **resta** |
+
+**Perche' il 50-09 non la chiude.** Le due meta' — la chiave in TypeScript e la
+riga nel catalogo — **se ne vanno insieme o rompono il gate**: D-50-28. La
+migration `20260921120000` lo scrive dentro di se', nel `COMMENT` che ha lasciato
+sulla tabella delle concessioni: *«la chiave resta nel catalogo finche'
+`CAP.MEMBERSHIP_ACTIVE` vive in `src/lib/capabilities/keys.ts`, e le due se ne
+vanno insieme»*. Chiuderla qui avrebbe richiesto **una terza migration** applicata
+al laboratorio — e il piano 50-09 non ne dichiara nessuna nei propri
+`files_modified`, mentre il piano **50-11** ha gia' il proprio perimetro di
+scrittura in produzione scritto in un'autorizzazione datata. **Allargare di
+nascosto il perimetro di una scrittura irreversibile e' la cosa che
+un'autorizzazione datata esiste per impedire.**
+
+**Perche' e' inerte, misurato e non dedotto.** La voce di
+`capability-routes.ts` e' `scope: "table"`: la chiave **non gate' nessun
+indirizzo**. Le quattro concessioni sono state cancellate dal 50-02, quindi
+`has_capability('membership.active')` risponde `false` a chiunque. Il suo unico
+lettore nel codice e' uscito col 50-08. `npm run verify:capabilities` contro il
+**laboratorio** e' **5/5 verde** con la chiave al suo posto (misurato il
+2026-09-21 dal piano 50-09).
+
+**Difetto da correggere insieme a lei, e nominato adesso perche' non si
+riscopra:** `capability-routes.ts:487` dichiara ancora che *«the guard is
+`src/lib/media/may-upload.ts`»*. Quel lettore non esiste piu'. La chiave oggi
+**non ha guardia**, ed e' la descrizione piu' onesta del suo stato.
+
+**Da correggere anche nel piano 50-11:** il suo testo di perimetro
+(`50-11-PLAN.md:131`) elenca *«`membership.active` cancellata dal catalogo»* fra
+cio' che `20260921120000` fa. **Non lo fa** — la migration cancella le quattro
+**concessioni** e lo dichiara alla riga 76 del proprio file. Un'autorizzazione
+che descrive male il proprio perimetro e' peggio di un'autorizzazione assente.
+
+**Chi la chiude:** il primo piano che porti una migration su
+`private.capabilities`. Candidata naturale la **fase 51** (`MEM-01`), che smonta
+la superficie della membership card e tocca gia' `membership.card.view`: due
+chiavi, una migration, un commit.
+
+---
+
+## Cinquanta occorrenze di prosa nominano ancora `requires_approved`, e quattro sono DATI
+
+**Trovata:** piano 50-09, task 2, misurando il criterio di accettazione
+(2026-09-21).
+**Fuori perimetro perche':** il task 2 del piano 50-09 dichiara **un solo file**,
+`src/types/database.ts`. Le occorrenze vivono in **24 file**, fra cui quattro
+Critical (`admin/venues/actions.ts`, `admin/members/actions.ts`,
+`api/tickets/checkin/route.ts`, `lib/door/require-operator.ts`).
+
+Il criterio di accettazione del piano chiede
+`grep -rcE "UserStatus|requires_approved|get_user_status|isPendingOrRejected|STATUSES" src/` = 0.
+**Misurato: 54 occorrenze.** Il codice **e' a zero** — zero dichiarazioni, zero
+identificatori, zero rami: provato con il grep **a commenti spogliati**, 311 file
+percorsi. Cio' che resta si divide in due classi diverse, e confonderle sarebbe
+l'errore:
+
+### Classe 1 — **50 commenti**, in 24 file
+
+Sono **il verbale di cio' che e' stato deciso** fra le fasi 32 e 45: perche'
+`catalogue.manage` invece di `staff.manage`, perche' un rifiuto e' stato
+spostato piu' presto, perche' la porta non chiede l'approvazione. Argomenti
+costruiti **sul confronto fra due chiavi**, una delle quali portava il flag.
+
+| File | Occ. |
+|---|---|
+| `src/lib/capabilities/keys.ts` | 14 (di cui 4 sono **Classe 2**) |
+| `src/app/(admin)/admin/venues/actions.ts` | 5 |
+| `src/app/(admin)/admin/artists/actions.ts` | 4 |
+| `src/lib/routes/capability-routes.ts` | 3 |
+| `src/app/(public)/events/[slug]/actions.ts` | 3 |
+| `src/app/(admin)/admin/members/actions.ts` | 3 |
+| `src/lib/routes/staff-tabs.ts`, `src/lib/media/may-upload.ts`, `src/app/(public)/events/[slug]/menu/actions.ts`, `src/app/(admin)/admin/(work)/members/page.tsx` | 2 ciascuno |
+| `src/lib/door/require-operator.ts`, `src/lib/capabilities/guards.ts`, `src/app/api/tickets/checkin/route.ts`, `src/app/(public)/tickets/refund-actions.ts`, `src/app/(public)/artists/[slug]/page.tsx`, `src/app/(admin)/admin/newsletter/actions.ts`, `src/app/(admin)/admin/formats/actions.ts`, `src/app/(admin)/admin/events/[id]/reveal/actions.ts`, `src/app/(admin)/admin/(work)/venues/page.tsx`, `src/app/(admin)/admin/(work)/venues/[slug]/page.tsx`, `src/app/(admin)/admin/(work)/members/register/page.tsx`, `src/app/(admin)/admin/(work)/formats/page.tsx`, `src/app/(admin)/admin/(work)/events/[id]/edit/page.tsx`, `src/app/(admin)/admin/(work)/artists/page.tsx` | 1 ciascuno |
+
+Una sola nomina `get_user_status`: `keys.ts:299`, e' l'etichetta del predicato
+**P5** della fase 32.
+
+**Precedente che governa questa classe, e che questa fase ha gia' applicato due
+volte.** `scripts/rls-baseline-compare.mjs` P5: il piano 50-02 ha deciso di
+**non riscrivere** quella stringa, perche' *«riscriverla per assomigliare al
+database di oggi non la renderebbe piu' vera: renderebbe il comparatore
+incapace di spiegare le righe che esiste per spiegare»* — e le ha messo accanto
+la data che l'ha resa storia. E `admin/(work)/members/page.tsx:182-187`, dove il
+piano 50-06 ha **tenuto** il nome della colonna dentro una frase che dice
+*«quella colonna non esiste piu' (D-50-01)»*: **annotare, non cancellare.**
+
+**Cosa serve davvero, e non e' una riscrittura.** Un passaggio che metta accanto
+a ciascuna la data in cui e' diventata storia — non che la cancelli. Cancellarla
+toglierebbe l'argomento senza sostituirlo, e al primo caso uguale qualcuno
+rifarebbe la scelta da capo.
+
+### Classe 2 — **quattro stringhe di descrizione**, `keys.ts:422-428`
+
+Queste **non sono commenti**: sono `CAP_DESCRIPTIONS`, cioe' **dati**, e il loro
+gemello vive nella colonna `description` di `private.capabilities`. Ognuna delle
+quattro contiene la frase:
+
+> *«That is a BET on the signup path staying closed: reopen a path that can
+> create a pending organizer and this flag is reconsidered in the same commit.»*
+
+**Quella scommessa e' stata vinta da questa fase**, nella direzione prevista: il
+percorso d'iscrizione e' chiuso per sempre e il flag non esiste piu'. La frase
+chiede esplicitamente un commit, e quel commit **non e' questo**, per la stessa
+ragione meccanica di `membership.active`: il docblock di `CAP_DESCRIPTIONS`
+dichiara che l'allineamento di queste stringhe con le righe del catalogo e'
+*«`scripts/verify-capabilities.mjs`'s job, and that check needs a live
+database»*. Toccare le stringhe senza toccare le righe apre una divergenza che
+**nessun gate misura oggi**, e chiuderla richiede una migration.
+
+**Due descrizioni sono gia' false per la stessa ragione, e non sono state
+introdotte da questo piano:** `catalogue.manage` dice *«Requires an approved
+status as well as the role»* e `membership.active` dice *«Status only; every
+role holds it once approved»*. Entrambe sono diventate false con la migration
+del **50-02**.
+
+**Chi chiude entrambe le classi:** la Classe 2 va **con `membership.active`**,
+nella stessa migration e nello stesso commit — sono lo stesso problema, la
+stessa tabella e lo stesso gate. La Classe 1 e' prosa e puo' viaggiare da sola,
+con chiunque apra ciascuno di quei file per una ragione propria.
+
+**Cosa NON si fa:** allargare il perimetro del grep finche' diventa verde. Il
+censimento sta qui **per intero** proprio perche' nessuno possa farlo in
+silenzio (T-50-44).
