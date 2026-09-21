@@ -427,7 +427,22 @@ export default async function EventDetailPage({
   // further change to either value is still a verdict change on a reveal path
   // and still needs its own written authorisation. Converting them to
   // capability keys remains out of scope and is a decision, not an omission.
-  const isApproved = status === "approved";
+  //
+  // ── E IL PRIMO DEI DUE NON ESISTE PIU', DAL 2026-09-21 ─────────────────────
+  //
+  // `const isApproved = status === "approved"` stava qui. La fase 50 toglie
+  // l'asse dello stato dai profili (REG-02), quindi quell'espressione non
+  // avrebbe avuto piu' un valore da leggere: sarebbe valsa `false` **per ogni
+  // account che puo' esistere**, e i suoi quattro lettori — il pass di evento,
+  // il controllo d'acquisto di una serata, il modulo della prenotazione e il
+  // dialogo del venue segreto — avrebbero smesso di disegnarsi **proprio per
+  // chi ha una sessione**. Misurato sul laboratorio dal piano 50-05, non
+  // dedotto: un socio loggato vedeva zero campi dove un anonimo ne vedeva due.
+  //
+  // I quattro siti sono stati riscritti uno per uno, ognuno con la sua ragione
+  // scritta accanto. **Nessuno di loro e' un percorso verso un indirizzo**: il
+  // paragrafo qui sopra vale ancora, e il dialogo del venue non ha mai mostrato
+  // un luogo in nessuno dei suoi rami.
   const isMasterRole = role === "master";
 
   // Fetch event by slug — admin/organizer can see drafts too. This NARROWS THE
@@ -955,18 +970,18 @@ export default async function EventDetailPage({
     );
   }
 
-  // Check if user has attended this event (scanned at entry)
-  let hasAttended = false;
-  if (isAuthenticated && user) {
-    const { data: attendance } = await supabase
-      .from("attendance")
-      .select("id")
-      .eq("event_id", event.id)
-      .eq("user_id", user.id)
-      .limit(1)
-      .maybeSingle();
-    hasAttended = !!attendance;
-  }
+  // ── QUI STAVA `hasAttended`, E SE NE VA CON IL SUO UNICO LETTORE ───────────
+  //
+  // Una lettura di `from("attendance")` — tabella che **non esiste**, la tabella
+  // e' `public.attendances` — il cui valore era quindi sempre `false`. Il suo
+  // unico lettore era l'arm dei membri di `canUpload`, rimosso qui sopra
+  // (D-50-03): senza di lui resta un giro in rete per ogni visita autenticata
+  // alla pagina di una serata, che chiede una tabella inesistente per ottenere
+  // un valore che nessuno guarda.
+  //
+  // **Non e' stata riparata in `attendances`**, per la stessa ragione per cui
+  // l'arm non e' stato riparato: farla funzionare vorrebbe dire ridare il
+  // caricamento a chiunque abbia una presenza registrata.
 
   // Fetch approved media for this event
   const { data: approvedMedia } = await supabase
@@ -1100,18 +1115,33 @@ export default async function EventDetailPage({
     );
   }
 
-  // The two arms of today are unchanged, and the attendance arm is unchanged
-  // WORD FOR WORD — defective table name included (`:319` reads `attendance`,
-  // the table is `public.attendances`). Repairing it WIDENS who may upload,
-  // which is an access decision and belongs to none of this phase's eight
-  // requirements. Plan 35-16 froze it for the same reason; see also
-  // `access-gating.md`.
+  // ── CHI VEDE IL CONTROLLO DI CARICAMENTO — D-50-03, dal 2026-09-21 ──────────
+  //
+  // **L'arm dei membri e' USCITO, non e' stato lasciato morire in silenzio.**
+  // Questa espressione portava `(isApproved && hasAttended)`, e nessuna delle
+  // due meta' ha mai ammesso nessuno: `hasAttended` interroga una tabella
+  // `attendance` che non esiste (la tabella e' `public.attendances`) — lo stesso
+  // difetto misurato il 2026-08-08 dentro `may-upload.ts`, e qui e' la sua
+  // seconda occorrenza — e `isApproved` sparisce con l'asse dello stato.
+  //
+  // Lasciarla morire da sola sarebbe stato il modo peggiore: una condizione che
+  // si legge come un permesso e non ne concede nessuno. D-50-03 dice che i media
+  // li caricano **organizer e staff**, e questa riga adesso lo dice.
+  //
+  // Il commento precedente — *«la riparazione ALLARGA chi puo' caricare, ed e'
+  // una decisione d'accesso»* — resta vero e resta la ragione per cui l'arm e'
+  // stato rimosso invece che corretto: una foto scattata dentro una sede segreta
+  // porta le coordinate nei suoi byte (`media-and-storage.md`,
+  // `venue-secrecy.md`).
+  //
+  // **Questa e' la superficie, non il cancello.** Il verdetto vero e'
+  // `mayUploadToParty`, che ha gli stessi due arm e rifiuta con
+  // `MEDIA_UPLOAD_FORBIDDEN`, nominato. Se i due divergessero, chi vede il
+  // controllo riceverebbe un rifiuto senza capire perche' — ed e' per questo
+  // che qui si tengono allineati.
   const canUpload =
     isAuthenticated &&
-    ((isApproved && hasAttended) ||
-      isOrganizer ||
-      isMasterRole ||
-      uploadableParties.length > 0);
+    (isOrganizer || isMasterRole || uploadableParties.length > 0);
   const partyDates = parties.map((p) => p.date);
   const dateRangeDisplay = formatDateRange(partyDates);
   const isUpcoming = parties.some((p) => p.date >= new Date().toISOString().split("T")[0]);
@@ -1279,7 +1309,19 @@ export default async function EventDetailPage({
                   View Your Event Pass
                 </Link>
               </div>
-            ) : isUpcoming && (!isAuthenticated || isApproved || status === "pending") ? (
+            ) : /*
+                  ── LA CONDIZIONE DI STATO E' USCITA DA QUESTA RIGA ──────────
+                  Leggeva `(!isAuthenticated || isApproved || status ===
+                  "pending")`, cioe' *chiunque tranne un `rejected`*. Con l'asse
+                  dello stato via (fase 50, REG-02) non esiste piu' nessuno da
+                  escludere, e la regola della fase e' che **chi ha una sessione
+                  compra esattamente come chi non ce l'ha**. Lasciarla sarebbe
+                  stato peggio che toglierla: `isApproved` diventa falso per
+                  tutti nell'istante del `DROP COLUMN`, quindi la riga avrebbe
+                  smesso di disegnare il controllo **proprio a chi ha fatto
+                  login** — misurato sul laboratorio dal piano 50-05.
+                */
+              isUpcoming ? (
               <>
                 {/*
                   ── The sentence, and THE CONTROL BELOW IT STAYS LIVE ────────
@@ -1593,7 +1635,6 @@ export default async function EventDetailPage({
                       <SecretVenueDialog
                         hint={venueHint}
                         isAuthenticated={isAuthenticated}
-                        isApproved={isApproved}
                         revealHours={venueRevealHours(party.venue_reveal_hours)}
                       />
                     ) : null}
@@ -1735,7 +1776,12 @@ export default async function EventDetailPage({
                 !hasMasterTicket &&
                 party.access_type === "paid" &&
                 party.tiers.length > 0 &&
-                (!isAuthenticated || isApproved || status === "pending") &&
+                /*
+                  La condizione di stato e' uscita anche da qui, per la ragione
+                  scritta per esteso al sito gemello del pass di evento: nessuno
+                  resta da escludere, e chi ha una sessione compra come un
+                  anonimo. Nessun'altra condizione di questo elenco e' toccata.
+                */
                 (
                   <>
                     {/*
@@ -1805,13 +1851,20 @@ export default async function EventDetailPage({
               {/*
                 ── SERATA GRATUITA: IL MODULO DELL'ORDINE, NON PIU' UN PULSANTE ─
 
-                **Le condizioni sono quelle di prima, parola per parola**:
-                serata futura, `free_rsvp`, e lo stesso pubblico. E' una
-                sostituzione di controllo, non un cambio di chi vede cosa —
-                l'unica cosa che cambia e' che al posto di un si'/no c'e' un
-                modulo che produce **biglietti veri** (`REG-06`, `D-50-18`), e
-                che chi non ha una sessione non viene piu' spedito a una pagina
-                d'iscrizione che non esiste piu'.
+                **Le condizioni erano quelle di prima, parola per parola** —
+                serata futura, `free_rsvp`, e lo stesso pubblico — ed e' la
+                parte che il 2026-09-21 e' stata corretta: `(!isAuthenticated ||
+                isApproved)` non e' uscita per allargare il pubblico, ma perche'
+                con `profiles.status` via `isApproved` vale `false` per
+                chiunque, e la riga avrebbe mostrato il modulo **solo agli
+                anonimi**. Misurato sul laboratorio dal piano 50-05: un socio
+                con la sessione attiva vedeva **zero campi**. Adesso chi ha una
+                sessione prenota esattamente come chi non ce l'ha.
+
+                Il resto e' com'era: al posto di un si'/no c'e' un modulo che
+                produce **biglietti veri** (`REG-06`, `D-50-18`), e chi non ha
+                una sessione non viene piu' spedito a una pagina d'iscrizione
+                che non esiste piu'.
 
                 Chi ha una sessione trova i due campi compilati con cio' che
                 l'account gia' sa. Il nome arriva dai metadati della sessione —
@@ -1823,7 +1876,6 @@ export default async function EventDetailPage({
               */}
               {isUpcoming &&
                 party.access_type === "free_rsvp" &&
-                (!isAuthenticated || isApproved) &&
                 (
                   <FreeOrderForm
                     partyId={party.id}

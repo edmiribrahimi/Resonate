@@ -162,20 +162,31 @@ export async function processGuestEntry(
     // Check if email exists in profiles (case-insensitive)
     const { data: existingProfile } = await serviceClient
       .from("profiles")
-      .select("id, status, email")
+      .select("id, email")
       .ilike("email", emailLower)
       .maybeSingle();
 
     if (existingProfile) {
       // Path 2: Existing user found
 
-      // Auto-approve if pending
-      if (existingProfile.status === "pending") {
-        await serviceClient
-          .from("profiles")
-          .update({ status: "approved", approved_via: "guest_list" })
-          .eq("id", existingProfile.id);
-      }
+      // ── L'AUTO-APPROVAZIONE STAVA QUI, E SE NE VA CON LE SUE DUE COLONNE ───
+      //
+      // Leggeva `status` dal profilo e, se valeva `pending`, scriveva
+      // **entrambe** le colonne che la fase 50 cancella:
+      // `update({ status: "approved", approved_via: "guest_list" })`.
+      //
+      // **Dopo la migration quel ramo era un `42703`, e non su una superficie
+      // amministrativa:** cadeva mentre si processa una voce di guest list,
+      // cioe' mentre si prepara una serata. D-50-24 chiede che il codice
+      // dispiegato prima della migration non legga ne' scriva quelle colonne, e
+      // queste tre righe facevano entrambe le cose. La `select` perde `status`
+      // per la stessa ragione.
+      //
+      // **Nessun comportamento cambia.** Non c'e' piu' niente da
+      // auto-approvare perche' non esiste piu' un `pending`: ogni account e'
+      // gia' cio' che sara'. Chi e' in guest list ottiene il suo biglietto
+      // gratuito esattamente come prima, e la porta legge il biglietto — mai
+      // uno stato del profilo.
 
       // Create free ticket (checks for duplicates)
       const { ticketId, alreadyExisted } = await createFreeTicket(

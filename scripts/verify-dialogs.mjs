@@ -546,6 +546,22 @@ export const FULL_BLEED_VIEWER = 'src/components/media/Lightbox.tsx';
  * is still the tree's only `role="dialog"`, and it is still the worked reason
  * the signature is keyed on the SHELL. A rule whose only specimen has been
  * deleted is a rule the next reader re-derives as a preference.
+ *
+ * ── THE SPECIMEN WAS DELETED ON 2026-09-21, AND THE CONSTANT STAYS ──────────
+ *
+ * Phase 50 (D-50-03) took media uploading away from members, so a member's own
+ * uploads section had nothing left to list and `MyMediaSection.tsx` went with
+ * it. **The path below therefore names a file that is no longer on disk**, and
+ * that is written here rather than left for a reader to discover by opening it.
+ *
+ * Check B never fails on it — it globs the tree and simply finds one file
+ * fewer — so this edit is not clearing a red. It is the paragraph above taken
+ * at its word: *a rule whose only specimen has been deleted is a rule the next
+ * reader re-derives as a preference.* The rule is that **the check is keyed on
+ * the SHELL and not on `role="dialog"`**, because an attribute signature would
+ * have found one file in the whole tree and missed every other copy — and that
+ * reason does not depend on the file still existing. Deleting the constant
+ * would delete the reason with it.
  */
 export const ROLE_DIALOG_OVERLAY = 'src/components/media/MyMediaSection.tsx';
 
@@ -595,7 +611,7 @@ export const DECLARED_EXCEPTIONS = [
   ],
   [
     ROLE_DIALOG_OVERLAY,
-    'NOT exempt, and no longer on REMAINING either — it is the tree\'s ONLY role="dialog" (one hit, measured) and WAS a hand-rolled overlay. A signature keyed on that attribute would find this one file and miss every other copy in the tree, which is why the check is keyed on the shell instead; that reason is why this line survives its list entry. Plan 41.2-14 took it off the debt by DELEGATION rather than by a shell swap — it renders the exemption above — and plan 41.2-19 deleted the entry after the tree agreed at zero',
+    'NOT exempt, and no longer on REMAINING either — it is the tree\'s ONLY role="dialog" (one hit, measured) and WAS a hand-rolled overlay. A signature keyed on that attribute would find this one file and miss every other copy in the tree, which is why the check is keyed on the shell instead; that reason is why this line survives its list entry. Plan 41.2-14 took it off the debt by DELEGATION rather than by a shell swap — it renders the exemption above — and plan 41.2-19 deleted the entry after the tree agreed at zero. **THE FILE ITSELF WAS DELETED ON 2026-09-21** — phase 50, D-50-03, members no longer upload media — so this path is printed on every run and is not on disk; the reason above survives the specimen, which is exactly why the line was not deleted with it',
   ],
   [
     BARTENDER_REDEEM_SCREENS,

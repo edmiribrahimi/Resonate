@@ -1161,13 +1161,28 @@ export const UNREADABLE_BOX_ELEMENTS = [
     'hidden',
     'the file input, which renders NO BOX AT ALL — the same fact exemption 7 reads, reached by a display utility instead of by the type attribute. Its visible target is the drop zone above it, kept a sibling rather than a child because a form control inside a button is not valid content (the file says so). Widening 7 to cover a class was refused: 7 is an attribute test whose abuse route is closed by a contradiction refusal, and making it a shape test would reopen it',
   ],
-  [
-    'src/components/media/MyMediaSection.tsx',
-    'a',
-    'href={`/events/${group.eventSlug}`}',
-    'block',
-    "the event heading of one media group, wrapping two paragraphs — a title and a date. Display block, so its box is its content's two lines and its own bottom margin, and content height is not something a class-string parser can compute. Not exemption 4 either: its children are two paragraphs, so no marker claiming it defers to an interactive child would be true about it",
-  ],
+  /*
+   * ── A SIXTH ENTRY STOOD HERE UNTIL 2026-09-21, AND ITS FILE IS GONE ────────
+   *
+   * `src/components/media/MyMediaSection.tsx`, element `a`, anchor
+   * ``href={`/events/${group.eventSlug}`}``: the event heading of one media
+   * group, wrapping two paragraphs — a title and a date. Display block, so its
+   * box was its content's two lines and its own bottom margin, which is not
+   * something a class-string parser can compute.
+   *
+   * **The entry is deleted because the FILE is deleted, not because the reason
+   * stopped holding.** Phase 50 (D-50-03) took media uploading away from
+   * members, so a member's own uploads page had nothing left to list, and the
+   * component went with the section. The entry is removed **in the same commit**
+   * as the deletion, which is D-50-28's rule — and this gate would not have let
+   * it be forgotten anyway: its own premise check fails FATAL on an exemption
+   * whose file is not on disk, *"the one failure direction that produces a
+   * green"*.
+   *
+   * The reason is quoted above rather than dropped, on this file's standing
+   * discipline: an exemption removed without its argument comes back as a
+   * preference the next time somebody meets the same shape.
+   */
 ];
 
 /**

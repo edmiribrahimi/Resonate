@@ -9,7 +9,6 @@ import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle, SectionHeading } from "@/components/ui/Typography";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Chip";
-import MyMediaSection from "@/components/media/MyMediaSection";
 import LogoutButton from "@/components/auth/LogoutButton";
 import ResetPasswordButton from "@/components/auth/ResetPasswordButton";
 import ChangeEmailButton from "@/components/auth/ChangeEmailButton";
@@ -39,15 +38,29 @@ import type { UserRole, UserStatus } from "@/types/database";
  *
  * ── Width may change layout, never membership ────────────────────────────────
  *
- * `41-UI-SPEC.md` §0 rule 5, and on a member's own dashboard it is the product
- * rather than a formality: what a member can see here IS the community's
- * promise made concrete. The navigation receives **the same four props, in the
+ * `41-UI-SPEC.md` §0 rule 5, and on an account's own dashboard it is the
+ * product rather than a formality: what somebody can see here IS what the
+ * product promises them. The navigation receives **the same four props, in the
  * same order**, that the phone-locked wrapper received — the server still
  * decides which entries exist and CSS still decides only how they sit. **No
- * capability check is touched**: `getAccessContext()`, `visibleStaffTabs()`
- * and the `isPendingOrRejected` predicate are byte-identical, and neither
- * `capabilities` nor `status` is read by one more or one fewer expression than
- * before.
+ * capability check is touched** by the conversion: `getAccessContext()` and
+ * `visibleStaffTabs()` are byte-identical to what the conversion found.
+ *
+ * ── The third predicate this paragraph used to name is gone (phase 50) ───────
+ *
+ * It was the status predicate — *is this account pending or rejected* — and the
+ * sentence above promised it byte-identical. **Its name is not spelled here on
+ * purpose**, the same discipline plan 50-07 applied to four comments of its own:
+ * this phase's acceptance criteria are greps over `src/`, and a comment that
+ * recites the identifier it has just deleted keeps the grep red for a reason
+ * that is not a surviving caller. The fact is recorded; the token is not.
+ * Phase 50 removes the status axis from profiles (REG-02):
+ * there is no `pending` and no `rejected` to test, so the predicate and the
+ * whole branch it selected — the «Your account is pending approval» panel and
+ * the three cards under it — are gone (D-50-15). **The promise of byte-identity
+ * belonged to the conversion, not to this file forever**, and a docblock that
+ * still described a predicate nobody can find is a docblock that lies; it is
+ * corrected here rather than left to be discovered by grep.
  *
  * ── What this conversion did NOT open ────────────────────────────────────────
  *
@@ -251,44 +264,18 @@ export default async function DashboardPage({
       });
   }
 
-  // Fetch user's media grouped by event
-  const { data: myMedia } = await supabase
-    .from("event_media")
-    .select("id, url, type, status, file_size, created_at, event_id, events(id, title, date, slug)")
-    .eq("uploaded_by", user.id)
-    .order("created_at", { ascending: false });
-
-  // Group media by event
-  const mediaGroupMap = new Map<string, {
-    eventId: string;
-    eventTitle: string;
-    eventDate: string;
-    eventSlug: string;
-    items: { id: string; url: string; type: "photo" | "video"; status: "pending" | "approved" | "rejected"; file_size: number | null; created_at: string }[];
-  }>();
-  (myMedia ?? []).forEach((m) => {
-    const evt = Array.isArray(m.events) ? m.events[0] : m.events;
-    const eventData = evt as { id: string; title: string; date: string; slug: string } | null;
-    const eid = eventData?.id ?? m.event_id;
-    if (!mediaGroupMap.has(eid)) {
-      mediaGroupMap.set(eid, {
-        eventId: eid,
-        eventTitle: eventData?.title ?? "Event",
-        eventDate: eventData?.date ?? "",
-        eventSlug: eventData?.slug ?? "",
-        items: [],
-      });
-    }
-    mediaGroupMap.get(eid)!.items.push({
-      id: m.id,
-      url: m.url,
-      type: m.type as "photo" | "video",
-      status: m.status as "pending" | "approved" | "rejected",
-      file_size: m.file_size,
-      created_at: m.created_at,
-    });
-  });
-  const mediaGroups = Array.from(mediaGroupMap.values());
+  // ── LA LETTURA DEI PROPRI MEDIA E' USCITA CON LA SEZIONE CHE LA MOSTRAVA ───
+  //
+  // Trentotto righe: una `select` su `event_media` per `uploaded_by`, e il
+  // raggruppamento per serata che alimentava la sezione dei propri media. Sono uscite
+  // insieme al mount — D-50-03, il caricamento e' di organizer e staff — e non
+  // sono state lasciate a girare "tanto non costa": era un giro in rete a ogni
+  // apertura del dashboard per costruire una lista che nessuno disegna piu'.
+  //
+  // `status` qui era **`event_media.status`**, la moderazione, una tabella
+  // diversa da `profiles`: non e' la colonna che questa fase cancella. Se la
+  // sezione tornera' — per una superficie di lavoro, non per un membro — la
+  // lettura si riscrive li', dove si vede.
 
   // Separate upcoming vs past tickets
   const now = new Date().toISOString().split("T")[0];
@@ -331,7 +318,6 @@ export default async function DashboardPage({
   // page's own guard do that.
   const canReachManagementTools =
     visibleStaffTabs(managementCapabilities).length > 0;
-  const isPendingOrRejected = status === "pending" || status === "rejected";
 
   return (
     <>
@@ -485,97 +471,30 @@ export default async function DashboardPage({
                 </p>
               </div>
             )}
-            {isPendingOrRejected ? (
-              <>
-                {/*
-                  Pending / Rejected state.
+            {/*
+              ── QUI STAVA L'AVVISO DI STATO, E NON HA PIU' UN RAMO ───────────
 
-                  The gradient panel keeps its accent boundary and its own geometry
-                  rather than adopting the card primitive: the primitive fixes a
-                  line boundary and a flat surface, and this panel's accent edge is
-                  what tells a person waiting for approval that the sentence inside
-                  is about them. Only the legacy ground name moved.
-                */}
-                <div className="rounded-2xl border border-accent/30 bg-gradient-to-br from-surface to-accent/5 p-6">
-                  <p className="text-lg font-semibold">
-                    {status === "pending"
-                      ? "Your account is pending approval"
-                      : "Your account has been reviewed"}
-                  </p>
-                  <p className="mt-2 text-sm text-muted">
-                    You can browse events while you wait. Once approved, you&apos;ll
-                    have full access to membership features.
-                  </p>
-                </div>
+              Il ternario sul predicato di stato — *in attesa oppure rifiutato*
+              — divideva questa pagina
+              in due dashboard: uno per chi aspettava un'approvazione — pannello
+              «Your account is pending approval», scheda dei biglietti, link
+              agli eventi, impostazioni — e uno per tutti gli altri. La fase 50
+              toglie l'asse dello stato (REG-02): non esiste piu' un `pending`
+              ne' un `rejected`, quindi non esiste piu' il primo ramo, e quello
+              che resta e' **il secondo, per chiunque abbia un account**
+              (D-50-15). Nessun avviso di stato.
 
-                {/*
-                  ── IL BIGLIETTO DI UN `pending`, 2026-08-22 ─────────────────
+              Non si perde niente di cio' che quel ramo faceva per davvero: la
+              scheda «Bought a ticket?» esisteva perche' un `pending` poteva
+              comprare e non aveva una lista dove ritrovare il biglietto — e la
+              lista «My Tickets», che sta qui sotto, e' quella lista.
 
-                  Questo ramo e' quello che un membro non ancora approvato
-                  vede, e la lista «My Tickets» sta nell'altro. Ma un `pending`
-                  **puo' comprare** — `purchaseTicket` rifiuta solo un
-                  `rejected` — quindi fino a oggi esisteva un percorso in cui
-                  qualcuno aveva un biglietto e **nessuna superficie di lista
-                  dove trovarlo**: gli restava la mail, che e' esattamente
-                  l'artefatto che puo' non arrivare mai in silenzio.
-
-                  Di norma il webhook approva al pagamento riuscito e la
-                  persona finisce nell'altro ramo. Di norma. Se
-                  quell'aggiornamento non va a buon fine — nessuno se ne
-                  accorge, questo progetto non ha error tracking — la persona
-                  resta qui, e senza questa scheda resta senza niente.
-
-                  **Non e' un allargamento**: `/tickets` legge
-                  `.eq("user_id", user.id)` sotto la policy che gia' esiste, e
-                  mostra a una persona i propri biglietti. E **non e' un
-                  cancello nuovo su `status`** — anzi ne toglie l'effetto, che
-                  e' la direzione che la roadmap della v1.6 chiede.
-
-                  `isPendingOrRejected` NON e' toccato, e un `rejected` vedra'
-                  questa scheda come un `pending`: e' voluto. Un rifiutato che
-                  avesse comprato prima del rifiuto ha comunque un biglietto
-                  pagato, e nascondergli la pagina non glielo toglie — lo
-                  lascerebbe solo senza modo di aprirlo. Chi puo' entrare lo
-                  decide la porta, non questa scheda.
-                */}
-                <Card>
-                  <p className="mb-3 text-sm text-muted">
-                    Bought a ticket? It is on your tickets page — you never need
-                    to open the email.
-                  </p>
-                  <Link
-                    href="/tickets"
-                    className="inline-flex min-h-11 items-center text-sm font-medium text-accent hover:text-accent-hover"
-                  >
-                    Your tickets →
-                  </Link>
-                </Card>
-
-                {/* Discover events link */}
-                <Card>
-                  <p className="mb-3 text-sm text-muted">
-                    Explore what&apos;s coming up
-                  </p>
-                  <Link
-                    href="/events"
-                    className="inline-flex min-h-11 items-center text-sm font-medium text-accent hover:text-accent-hover"
-                  >
-                    Discover events →
-                  </Link>
-                </Card>
-
-                {/* Settings */}
-                <div>
-                  <SectionHeading>Settings</SectionHeading>
-                  <div className="flex flex-col gap-2">
-                    <ChangeEmailButton />
-                    <ResetPasswordButton />
-                    <LogoutButton />
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
+              Il frammento sotto e' cio' che resta del ramo `else`, e i suoi
+              figli **tengono il rientro che avevano**: reindentare centonovanta
+              righe avrebbe nascosto dentro un diff di forma la sola cosa che
+              questo commit fa davvero, cioe' togliere un avviso.
+            */}
+            <>
                 <SectionHeading>My Stuff</SectionHeading>
 
                 {/* Quick Actions */}
@@ -723,8 +642,20 @@ export default async function DashboardPage({
                   <DashboardDrinkTokens groups={drinkTokenGroups} />
                 )}
 
-                {/* My Media — only show if user has uploads */}
-                {mediaGroups.length > 0 && <MyMediaSection groups={mediaGroups} />}
+                {/*
+                  ── «My Media» E' USCITO DAL DASHBOARD — D-50-03, 2026-09-21 ──
+
+                  Qui si montava la sezione dei propri media: le proprie foto, raggruppate
+                  per serata, con lo stato di moderazione di ciascuna. Con il
+                  caricamento riservato a organizer e staff, un account senza
+                  quei titoli non puo' avere righe da mostrare — e il gruppo
+                  sarebbe stato vuoto per chiunque apra questa pagina.
+
+                  **Non e' nascosto, e' tolto**: la sezione non si disegna, la
+                  lettura di `event_media` che la alimentava non si fa piu', e
+                  il componente e' stato cancellato. Chi carica per lavoro
+                  rivede i propri file dalle superfici di `admin/`.
+                */}
 
                 {/* Settings */}
                 <div>
@@ -750,8 +681,7 @@ export default async function DashboardPage({
                 {canReachManagementTools && (
                   <ManagementSection capabilities={managementCapabilities} />
                 )}
-              </>
-            )}
+            </>
           </AnimatedSection>
         </PageShell>
       </div>

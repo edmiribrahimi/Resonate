@@ -46,13 +46,19 @@ import { CAP } from "@/lib/capabilities/keys";
  * to a per-event table reached the **whole event**, uncapped (measured in
  * `35-18-SUMMARY.md`).
  *
- * ── Three arms, in an OR, and the two that cost nothing are read first ───────
- * The plan lists them 1 · presence · assignment. They are evaluated 1 ·
- * assignment · presence, and **an OR's order is not its meaning**: arms 1 and 3
- * are two `.has()` calls on a Set already in memory, while the presence arm is
- * the only one that costs a round trip. Reading it second would charge that
- * round trip to the assigned photographer — the exact person this plan exists
- * to admit — on every upload. Same verdict, two fewer queries.
+ * ── TWO arms since 2026-09-21, and the third is gone rather than repaired ────
+ * Plan 35-14 wrote three: `staff.manage`, the per-night `media.upload`
+ * assignment, and a recorded presence. **The third never admitted anybody** —
+ * it queried a table that does not exist, measured on 2026-08-08 — and phase 50
+ * removes it instead of fixing it, because fixing it would widen uploading to
+ * everyone with an attendance row, which is the opposite of D-50-03. The
+ * paragraph at the removal site carries the measurement and the date; it is
+ * what a verification must cite in order not to claim this phase narrowed
+ * something it found already closed.
+ *
+ * The two that remain are two `.has()` calls on a Set already in memory, so the
+ * predicate now costs exactly one round trip — the coherence diagnostic's —
+ * and no permission arm costs any.
  *
  * ── What is NOT here, each for a measured reason ─────────────────────────────
  *
@@ -98,7 +104,11 @@ export const MEDIA_PARTY_NOT_OF_EVENT = "media.party_not_of_event";
 /** The caller did not name a night at all. See `registerMedia` for why this is reachable. */
 export const MEDIA_NIGHT_REQUIRED = "media.night_required";
 
-/** The three arms all answered no. This one IS a permission verdict. */
+/**
+ * Both arms answered no. This one IS a permission verdict, and it is NAMED: a
+ * member who forced the action reads this code and not a generic sentence
+ * (D-50-03, and `meta-gates.md`, zero silent failures).
+ */
 export const MEDIA_UPLOAD_FORBIDDEN = "forbidden.media_upload_required";
 
 /**
@@ -145,7 +155,9 @@ export async function mayUploadToParty(
   // No identity, no upload. Both callers refuse an anonymous session before
   // reaching here with their own category; this is the backstop, and it is a
   // refusal rather than a throw because "nobody is here" has already been
-  // reported by then. The presence arm below also needs an identity to compare.
+  // reported by then. (The sentence that stood here also cited the presence arm,
+  // which needed an identity to compare against; that arm is gone — see its
+  // removal site below — and the backstop stands on its own reason.)
   if (!ctx.userId) {
     return false;
   }
@@ -155,7 +167,7 @@ export async function mayUploadToParty(
   // What it buys: a `partyId` from another event is refused HERE, with its own
   // category, instead of arriving at the database as a bare `42501` that reads
   // like an access decision and is not one. The security is still the policy's
-  // — `event_media_insert_member` compares `private.party_event_id(party_id)`
+  // — `event_media_insert_staff` compares `private.party_event_id(party_id)`
   // with `event_id` (`20260809004500`, section 6) — this is the message.
   //
   // **Why an unreadable night is NOT a refusal, which is the interesting part.**
@@ -191,7 +203,7 @@ export async function mayUploadToParty(
     console.error(
       `[media.party_lookup_failed] could not read the night ${partyId}: ` +
         `${partyError.code ?? "unknown"}. This is NOT a refusal — the pair is ` +
-        `decided by event_media_insert_member.`
+        `decided by event_media_insert_staff.`
     );
   } else if (party && party.event_id !== eventId) {
     throw new Error(MEDIA_PARTY_NOT_OF_EVENT);
@@ -261,45 +273,43 @@ export async function mayUploadToParty(
     return true;
   }
 
-  // ── Arm 2: the recorded presence — UNCHANGED, and that is the requirement ───
+  // ── ARM 2 STOOD HERE — THE RECORDED PRESENCE — AND IT IS REMOVED, NOT FIXED ──
   //
-  // **A MEASURED DEFECT LIVES IN THE NEXT SEVEN LINES. Read this before
-  // "fixing" it.** The query below asks for a table named `attendance`; the
-  // table is `public.attendances` (`supabase/schema.sql:231`) and **no object
-  // named `attendance` exists**. PostgREST answers with an error, the
-  // destructuring takes only `{ data }`, so `attendance` is `null` and **this
-  // arm refuses every time, for everybody**. Consequence, measured on
-  // 2026-08-08: today only `staff.manage` reaches an upload at all.
+  // **The measurement that this paragraph exists to carry, and its date.** The
+  // query that stood here asked for a table named `attendance`; the table is
+  // `public.attendances` (`supabase/schema.sql:231`) and **no object named
+  // `attendance` exists**. PostgREST answered with an error, the destructuring
+  // took only `{ data }`, so the value was `null` and **the arm refused every
+  // time, for everybody**. Measured on **2026-08-08**: from that day only
+  // `staff.manage` — and, once it existed, the per-night `media.upload`
+  // assignment — reached an upload at all.
   //
-  // Correcting the table name would **widen** who may upload. That is a change
-  // to the gating model (`media-and-storage.md`, gate *chi carica ha titolo*;
-  // `access-gating.md`), it is in none of this phase's eight requirements, and
-  // it is recorded as dated debt in plan 35-14. The arm therefore stays word for
-  // word, and this paragraph is what stops it from being "tidied" in a cleanup
-  // commit by somebody who never learns they widened an access rule.
+  // **The date is why this paragraph survives the code it described.** Phase 50
+  // formalises D-50-03 — *media are uploaded by organizers and staff, nobody
+  // else* — and without this measurement a reader would conclude the phase
+  // NARROWED something. It did not: the member arm had been dead for six weeks,
+  // and what changed is that the predicate now says so. A verification that
+  // claims a restriction here is claiming something the tree cannot show.
   //
-  // The status half is asked of the capability model instead of `profiles`, and
-  // the equivalence is exact rather than approximate: `membership.active` is
-  // granted to `master`, `organizer`, `member`
-  // (`20260807000000_capability_model.sql:403-405`) and `staff`
-  // (`20260808000500_staff_role.sql:136`) — every role there is — with
-  // `requires_approved = true` on all four rows. It resolves to
-  // `status = 'approved'` and to nothing else, for every account that can exist.
-  // Asking it here costs no round trip (the set is already resolved) and honours
-  // the rule `server.ts:210-212` states without exception: **no new caller
-  // branches on `role` or `status`; every decision asks `capabilities`.**
-  if (!ctx.capabilities.has(CAP.MEMBERSHIP_ACTIVE)) {
-    return false;
-  }
-
-  const { data: attendance } = await supabase
-    .from("attendance")
-    .select("id")
-    .eq("event_id", eventId)
-    .eq("user_id", ctx.userId)
-    .maybeSingle();
-
-  return Boolean(attendance);
+  // **And it is removed rather than repaired, deliberately.** The obvious tidy
+  // is to correct `attendance` → `attendances` and make the arm work. That
+  // would **widen** uploading to anybody with a recorded presence — the exact
+  // opposite of D-50-03 — on a path `media-and-storage.md` (gate *chi carica ha
+  // titolo*) and `venue-secrecy.md` guard together: a photograph taken inside a
+  // secret venue carries that venue's coordinates in its own bytes.
+  //
+  // The arm's other half asked for the «active membership» capability key, which resolved
+  // to `status = 'approved'` and to nothing else. Phase 50 cancels the status
+  // axis, and the migration `20260921120000` deletes that key's four grants from
+  // `private.role_capabilities`: asking for it here would now be asking for a
+  // key no role holds — a second way of refusing everybody, written as if it
+  // decided something.
+  //
+  // What is left is **two arms, both true**: `staff.manage` above, and the
+  // per-night `media.upload` assignment above it. Whoever holds neither falls
+  // through to the caller's refusal, which is NAMED — `MEDIA_UPLOAD_FORBIDDEN`,
+  // never a generic sentence.
+  return false;
 }
 
 /**

@@ -65,8 +65,12 @@ import { LockClosedIcon } from "@/components/ui/Icons";
  * heading element — the `title` prop **is** the heading, and it is also the
  * dialog's accessible name, which the hand-rolled panel never had.
  *
- * **What stays is what this dialog IS:** the question, its three branches, the
- * two ways in and the way out. Not one conditional line moved.
+ * **What stays is what this dialog IS:** the question, its branches, the way in
+ * and the way out. Not one conditional line moved by the conversion.
+ *
+ * *(Since 2026-09-21 the branches are TWO, not three: the middle one said «your
+ * account needs to be approved first» and phase 50 removed the approval axis it
+ * spoke of. The branch is gone at its own site, with the reason written there.)*
  *
  * The panel takes the primitive's default width. The wider rung is a closed
  * list of **form** dialogs and this is not one: a dialog that answers a question
@@ -139,7 +143,6 @@ import { LockClosedIcon } from "@/components/ui/Icons";
 interface SecretVenueDialogProps {
   hint: string | null;
   isAuthenticated: boolean;
-  isApproved: boolean;
   /** The EFFECTIVE window, already resolved by the server. Never the raw column. */
   revealHours: number;
 }
@@ -147,7 +150,6 @@ interface SecretVenueDialogProps {
 export default function SecretVenueDialog({
   hint,
   isAuthenticated,
-  isApproved,
   revealHours,
 }: SecretVenueDialogProps) {
   const [open, setOpen] = useState(false);
@@ -184,10 +186,28 @@ export default function SecretVenueDialog({
             <div className="space-y-2">
               <p className="font-medium text-ink">How to unlock:</p>
               {!isAuthenticated ? (
-                <p className="mb-2">Sign up or sign in to access secret venues.</p>
-              ) : !isApproved ? (
-                <p>Your account needs to be approved first.</p>
+                <p className="mb-2">Sign in to see how secret venues work.</p>
               ) : (
+                /*
+                  ── IL TERZO RAMO E' USCITO IL 2026-09-21 (fase 50) ─────────
+
+                  Qui c'era `!isApproved ? "Your account needs to be approved
+                  first." : …`. Non esiste piu' un'approvazione da attendere
+                  (REG-02), quindi quella frase sarebbe diventata **vera per
+                  nessuno e mostrata a tutti**: `isApproved` vale `false` per
+                  ogni account nell'istante del `DROP COLUMN`, e ogni persona
+                  con una sessione avrebbe letto di dover aspettare qualcosa
+                  che non arrivera' mai.
+
+                  **Non e' un cambio di visibilita' del luogo**, e vale la pena
+                  dirlo dentro il file che sta su `venue-secrecy.md`: questo
+                  ramo non ha mai mostrato un indirizzo, ne' prima ne' dopo. E'
+                  la spiegazione di COME si sblocca, e le due voci qui sotto
+                  dicono esattamente cio' che dicevano a un socio approvato —
+                  compra un biglietto, oppure prenota. Il predicato che decide
+                  se il luogo si vede vive in
+                  `src/lib/venue-reveal/venue-disclosure.ts` e non e' toccato.
+                */
                 <>
                   <ul className="list-disc list-inside space-y-1">
                     {/*
