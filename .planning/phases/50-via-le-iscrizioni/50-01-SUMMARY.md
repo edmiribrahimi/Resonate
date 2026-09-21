@@ -89,17 +89,18 @@ completed: 2026-09-21
 ## Files Created/Modified
 
 - `scripts/seed-lab-door.mjs` — i quattro account perdono lo stato
-  (`:175-186`), l'`insert` perde la colonna (`:216-228`), e dopo la serata
+  (`:178-183`), l'`insert` perde la colonna (`:226-228`), e dopo la serata
   segreta nasce la terza: `lab-free-night`, `free_rsvp`, capienza 4, tier `RSVP`
-  a 0 (`:310-345`). `--teardown` e `--verify` estesi alle tre chiavi nuove, per
-  chiave primaria (`:391-393`, `:425-427`). Il rifiuto del ref di produzione
+  a 0 (`:318-351`). `--verify` e `--teardown` estesi alle tre chiavi nuove, per
+  chiave primaria (`:393-395`, `:431-433`). Il rifiuto del ref di produzione
   resta a `:85`, prima di qualunque `fetch`.
 - `scripts/container/seed.mjs` — via ogni scrittura di `profiles.status`
-  (`:478`, `:505`), via il drop/ripristino del vincolo, via le tre asserzioni
-  che erano su di esso. La griglia perde l'asse dello stato: `buildPersonas`
-  e' un ciclo solo (`:346-361`) e l'asserzione finale conta i ruoli (`:1091`).
-  Il conto — dodici persone piu' sei scritture rifiutate, restano quattro — e'
-  dichiarato in testa al file (`:28-31`).
+  (i due `insert` a `:491` e `:515` nominano cinque colonne, non sei), via il
+  drop/ripristino del vincolo, via le tre asserzioni che erano su di esso. La
+  griglia perde l'asse dello stato: `buildPersonas` e' un ciclo solo
+  (`:349-365`) e l'asserzione finale conta i ruoli (`:1104`). Il conto — dodici
+  persone piu' sei scritture rifiutate, restano quattro — e' dichiarato in testa
+  al file (`:26-30`).
 - `.planning/phases/50-via-le-iscrizioni/50-MEASURES.md` — **nuovo.** Nove
   famiglie di misura su due database, ora UTC per misura, query alla lettera,
   risultato alla lettera, e le cascate ri-derivate dal catalogo con le
@@ -210,3 +211,10 @@ legittimita' necessario) e non chiede alcuna configurazione esterna.
 ---
 *Phase: 50-via-le-iscrizioni*
 *Completed: 2026-09-21*
+
+## Self-Check: PASSED
+
+Cinque file su cinque presenti, cinque commit su cinque trovati in `git log`,
+e ogni `file:riga` citato qui sopra riletto dal file dopo la scrittura del
+SUMMARY — due riferimenti erano sfalsati e sono stati corretti prima di questo
+blocco.
