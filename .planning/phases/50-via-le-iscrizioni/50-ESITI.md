@@ -4,9 +4,9 @@ document: esiti delle otto procedure del runbook
 walked: 2026-09-21
 walked_by: piano 50-10
 environment: laboratorio permanente (`.planning/v1.6-LAB-DESIGN.md`), MAI la produzione
-procedures_walked: 7
-procedures_open: 1
-status: aperto — `P-50-8` e' un checkpoint, e il piano 50-10 si ferma li'
+procedures_walked: 8
+procedures_open: 0
+status: chiuso — le otto procedure sono percorse, `P-50-8` dal proprietario al checkpoint
 ---
 
 # Fase 50 — Gli esiti, percorrendo
@@ -179,6 +179,16 @@ laboratorio e' dichiarato *«fedele alla produzione»*, e su questa tabella non 
 e'. Ogni osservazione di superficie presa qui sui format e' presa contro un
 catalogo che la produzione non ha. Nessuna delle otto procedure dipende da
 quella tabella — ma **la prossima potrebbe**. Registrato in `deferred-items.md`.
+
+### E una settima, emersa al checkpoint
+
+Le sei qui sopra vengono dalle sette procedure percorse da questo lato. La
+settima viene da `P-50-8`, percorsa dal proprietario su un telefono: **lo
+schermo della porta mostra il nome dell'account acquirente**, dove `D-50-18b`
+dice che il nome va all'account e non allo staff. Non e' un difetto introdotto
+da questa fase — e' il comportamento di sempre dello scanner, che questa fase ha
+reso **visibile per ogni acquirente** raccogliendo il nome. E' una decisione del
+proprietario, ed e' descritta per intero in `P-50-8`.
 
 ---
 
@@ -439,22 +449,130 @@ gratuito.
 
 ## Procedura `P-50-8` — la porta, con la radio spenta
 
-**NON PERCORSA.** E' un **checkpoint**: pretende un telefono vero con la radio
-spenta **davvero**, e la coda offline si comporta diversamente quando la rete e'
-assente rispetto a quando e' simulata assente. Nessun comando la esegue al posto
-di una persona, e questo piano si ferma qui.
+**PERCORSA il 2026-09-21, fra le 16:01:27Z e le 16:02:19Z** — le 18:01 e le
+18:02 a Torino — **dal proprietario, su un telefono vero**, contro
+`lab.resonatemotion.com`, con l'account di staff del banco che ha
+`door.operate` sulla serata gratuita.
 
-**Il banco e' pronto, e cio' che e' stato fatto per prepararlo va dichiarato:**
+E' l'unica delle otto che nessun comando poteva eseguire al posto di una
+persona, ed e' l'unica il cui esito primario e' stato **visto su uno schermo**
+invece che letto da una risposta HTTP: quattro schermate del telefono. Le
+letture dal catalogo riportate sotto sono state fatte **dopo**, con la chiave di
+servizio del laboratorio, e sono la meta' che le schermate non possono dare.
 
-| Cosa | Stato |
-|---|---|
-| serata gratuita | **2 posti liberi su 4** — due biglietti gratuiti gia' coniati da `P-50-7` |
-| biglietti gratuiti scansionabili | **due**, `issued_via = 'free_rsvp'`, `amount_paid = 0`, `sumup_checkout_id` nullo |
-| l'account di staff sulla serata gratuita | **assegnazione `door.operate` concessa a mano**: il banco ne seminava una sola, e **sulla serata a pagamento**. Senza, lo scanner non avrebbe aperto la serata gratuita. Verificato: `/door` da staff elenca **entrambe** le serate, la gratuita a `0 / 2` |
-| dispiegamento | `lab.resonatemotion.com` serve il codice della fase dalle 15:10:11Z |
+> **La modalita' aereo era vera, e la dichiarazione non e' una parola data.**
+> Nella barra di stato delle schermate si vede **l'icona dell'aeroplano**, e non
+> si vede **nessun indicatore di rete dati ne' di wi-fi**. Non era il solo wi-fi
+> spento — che e' la scorciatoia che avrebbe reso la prova inutile, perche' con
+> la rete dati accesa la coda offline non si esercita affatto e lo scanner
+> risponde dal server come sempre. Il prodotto stesso lo conferma dall'interno:
+> la pagina mostrava il banner *«The member list on this device was NOT
+> refreshed. With the radio off…»*, che compare solo quando il dispositivo non
+> raggiunge la rete.
 
-I sei passi, i loro esiti e la dichiarazione della modalita' aereo si scrivono
-**qui**, in una sezione che chi riprende il piano aggiunge dopo il checkpoint.
+### I sei passi, con cio' che si e' visto
+
+| # | Passo | Cosa si e' **visto** |
+|---|---|---|
+| 1 | prenotare un posto e ricevere il QR | un **ordine gratuito nuovo**, quantita' 1, fatto dal proprietario con il proprio indirizzo: il biglietto appare come *«Biglietto 1 di 1»* con il suo QR, aperto su un secondo schermo. Non e' uno dei due biglietti seminati da `P-50-7`: e' un terzo, coniato al momento |
+| 2 | aprire lo scanner con la rete accesa e lasciarlo precaricare | la pagina della porta aperta sulla serata gratuita, lista **scaricata**, contatori a **0 / 3**, linguette *All (3)* · *Not Arrived (3)*. Tre, non due: il biglietto del passo 1 e' entrato nella capienza e nella lista |
+| 3 | **modalita' aereo** | icona dell'aeroplano nella barra di stato, nessun indicatore di rete. Il prodotto se ne accorge e lo dice: banner *«The member list on this device was NOT refreshed. With the radio off…»* |
+| 4 | scansionare il QR del biglietto **gratuito**, radio spenta | **accettato.** Schermo **verde** con il segno di spunta, l'etichetta dell'intestatario, sottotitolo **«RSVP · Offline»**, *«Scanner paused»*, e in testata **«Pending (1)»**. **Lo stesso esito visivo di un biglietto pagato** — il che e' la proprieta' da verificare, e non era deducibile: lo scanner, la coda e il service worker non conoscono la differenza fra un biglietto a zero e uno pagato, e questa e' la prova che non la conoscono |
+| 5 | scansionare **una seconda volta** lo stesso codice, sempre in aereo | **non rifiutato e non contato due volte.** Schermo **viola** con l'icona dell'orologio, la stessa etichetta, il testo **«Recorded at 18:01 by this device»** e *«Tap to dismiss»*. Il telefono sa di averlo gia' preso **lui**, e lo dice nominando se stesso invece di dare una risposta generica |
+| 6 | riaccendere la rete | testata **«Online»**, *«Checked in · updated 0s ago»*, contatore **1 / 3 (33%)**, linguette *Not Arrived (2)* · *Checked In (1)*, e la pastiglia **«Pending» sparita**: la coda si e' sincronizzata |
+
+**Nessuno dei sei passi ha dato un esito diverso da quello atteso.** Il verso
+grave dell'errore — *un ospite valido respinto davanti a una fila*,
+`checkin-offline.md` — **non si e' verificato**: al passo 4 il biglietto
+gratuito e' entrato.
+
+### La rilettura dal catalogo, che e' la meta' che lo schermo non da'
+
+Fatta dopo la sincronizzazione, con la chiave di servizio, su PostgREST del
+laboratorio. **Il biglietto:**
+
+```
+GET /rest/v1/tickets?select=…&issued_via=eq.free_rsvp
+→ 3 righe, tutte sulla stessa serata e sullo stesso party
+  e8da1006-4c40-45b4-8c83-742dab3fb3dd  (ordine b95c5af4-a925-452f-8e23-c8fe1034be39)
+    issued_via        = "free_rsvp"
+    amount_paid       = 0.00
+    sumup_checkout_id = null
+    checked_in_at     = "2026-09-21T16:02:19.018Z"
+    checked_in_by     = <l'account di staff del banco>
+  28a165b0-…, 8ebc88c8-…  (i due di P-50-7)  checked_in_at = null
+```
+
+L'ordine del passo 1, riletto: `total_amount = 0.00`,
+`sumup_checkout_id = null`, `quantity = 1`. **Un ordine gratuito nuovo, non un
+riuso**: l'idempotenza provata in `P-50-7` non ha impedito una prenotazione
+successiva e distinta, che e' il comportamento giusto.
+
+**Le convalide — la domanda vera di questa procedura:**
+
+```
+GET /rest/v1/door_scan_events?ticket_id=eq.e8da1006-…&order=scanned_at.asc
+→ UNA riga, e una sola
+  96b82ac4-cc08-4b61-b229-0848a2c0a2a3
+    subject_type = "ticket"
+    outcome      = "recorded"
+    cause        = null
+    source       = "offline_sync"
+    is_undo      = false
+    scanned_at   = "2026-09-21T16:01:27.331Z"   ← quando il telefono ha letto
+    recorded_at  = "2026-09-21T16:02:19.341Z"   ← quando il server ha tenuto
+```
+
+**Una convalida, non due.** E c'e' di piu' di quanto il criterio chiedesse: la
+seconda lettura **non ha prodotto nessuna riga**, nemmeno una `already_recorded`.
+Il telefono l'ha riconosciuta come gia' propria e **non l'ha messa in coda
+affatto** — coerente con lo schermo viola che diceva *«by this device»*.
+
+I **52 secondi** fra `scanned_at` e `recorded_at` sono la finestra offline
+misurata: e' esattamente l'intervallo che
+`supabase/migrations/20260805120000_door_scan_events.sql:101-103` dichiara di
+voler conservare — *«sul percorso offline questi due valori distano minuti o
+ore»* — e qui si vede riempito da una radio spenta vera.
+
+**`attendances`: nessuna riga sulla serata gratuita, ed e' corretto.** Il
+percorso del biglietto scrive `tickets.checked_in_at` / `checked_in_by` e una
+riga in `door_scan_events`
+(`src/app/api/tickets/checkin/route.ts:1175-1220`, `:822`), **mai** una
+presenza: `attendances` e' il registro del percorso **tessera**, scritto da
+`src/app/api/membership/verify/route.ts:528-562`. Un lettore che cercasse li' la
+prova dell'ingresso di un biglietto la troverebbe assente e ne dedurrebbe un
+difetto: e' scritto qui perche' non succeda.
+
+### La non conformita' che questa procedura ha fatto emergere
+
+**Lo schermo della porta mostra il `full_name` dell'account acquirente.** Si
+vede in tutte e due le schermate del passo 4 e del passo 5, sotto il segno di
+spunta e sotto l'orologio.
+
+`D-50-18b` dice che il nome raccolto dal modulo gratuito va **all'account** e
+**non** allo schermo dello staff; `D-49-03` dice che il biglietto e' **al
+portatore**, quindi il nome sullo schermo non e' nemmeno un'informazione su chi
+sta passando la porta. `holder_label` sui biglietti e' stato verificato **privo
+di nome** in `P-50-7`, e lo e' ancora: **il nome non arriva da li'**.
+
+**Da dove arriva, e perche' non e' un difetto introdotto da questa fase.** Lo
+scanner ha **sempre** etichettato i biglietti dei membri con il nome del
+profilo: la lista scaricata sul telefono lo porta
+(`src/app/api/tickets/attendance/route.ts:814-864`, che legge
+`profiles.full_name` e lo mette nel campo `name`), la coda offline lo conserva
+(`src/lib/offline/checkin-store.ts:786-789`) e lo schermo lo rende
+(`src/app/(admin)/admin/scanner/ScannerClient.tsx:2186`). Il percorso online fa
+la stessa cosa dal server (`src/app/api/tickets/checkin/route.ts:1077-1095`).
+**La fase 50 non ha aggiunto quel comportamento: ha reso il nome presente per
+ogni acquirente**, perche' ora il modulo gratuito lo raccoglie e
+`handle_new_user` lo scrive nel profilo. Prima, chi comprava da ospite senza
+nome finiva sullo schermo come *«Ticket holder»*; ora finisce con il suo nome.
+
+**Non si tocca in questo piano**, e la ragione e' di dominio, non di comodo: e'
+una modifica al percorso della porta, e la porta si modifica sapendo cosa si
+rompe, non di rimbalzo a una verifica. E' una **decisione del proprietario** —
+nascondere il nome sullo schermo della porta, o accettarlo — ed e' registrata
+in `deferred-items.md`.
 
 ---
 
@@ -505,7 +623,7 @@ lavoro del piano 50-11.
 | `P-50-5` | **PERCORSA** — 3 passi su 3 | questo documento |
 | `P-50-6` | **PERCORSA** — 5 passi su 5, piu' una prova nuda. **`A1` confermata** | questo documento |
 | `P-50-7` | **PERCORSA** 2026-09-21 e **ripercorsa**; passo residuo **chiuso** | piano 50-05 + questo documento |
-| `P-50-8` | **NON PERCORSA — checkpoint** | in attesa |
+| `P-50-8` | **PERCORSA** 2026-09-21 dal proprietario, 6 passi su 6 — **una convalida, non due** | questo documento |
 
 | Passo manuale | Stato |
 |---|---|
@@ -525,8 +643,11 @@ lavoro del piano 50-11.
 - **Che una mail sia arrivata.** Tre righe di `email_deliveries` dicono
   `outcome: unverified`, che e' la parola giusta: il fornitore ha accettato la
   consegna, nessuno ha visto la casella.
-- **Che la porta funzioni.** `P-50-8` non e' stata percorsa, e nessuna riga di
-  questo documento la anticipa.
+- **Che la porta regga una fila.** `P-50-8` ha provato **un** biglietto, con
+  **un** telefono, con **una** doppia lettura. Cio' che resta non provato e' il
+  concorso: due telefoni che leggono lo stesso codice a radio spenta, e che si
+  incontrano solo alla sincronizzazione. Il prodotto ha una classificazione
+  apposta (`two_devices`, `door_scan_events.cause`) e nessuno l'ha esercitata.
 
 ---
 
