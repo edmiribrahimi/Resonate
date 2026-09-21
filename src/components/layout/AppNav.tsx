@@ -106,6 +106,11 @@ export interface AppNavProps {
 }
 
 const icons: Record<string, React.ReactNode> = {
+  // `home` **non ha piu' una voce che lo chieda** dalla fase 50: `NAV_ITEMS` ha
+  // perso l'entry `/` insieme alla home (D-50-12). Resta qui, e non e' una
+  // dimenticanza: la fase 52 (`NAV-01`) decide se quella voce torna, e questo
+  // e' un dizionario di disegni, non un elenco di voci — toglierlo e
+  // ridisegnarlo fra una fase sarebbe due autori per lo stesso glifo.
   home: (
     <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
@@ -231,12 +236,18 @@ export default function AppNav({
     <nav className={isPhone ? NAV_PHONE : NAV_RESPONSIVE}>
       <div className={isPhone ? ROW_PHONE : ROW_RESPONSIVE}>
         {visibleItems.map((item) => {
+          // Il ramo `item.href === "/"` e' uscito con la voce `Home` (fase 50,
+          // D-50-12): nessuna voce ha piu' quell'indirizzo, quindi era un ramo
+          // che non si raggiungeva — e un ramo su un indirizzo cancellato
+          // suggerisce al prossimo lettore che la voce esista ancora.
+          //
+          // La voce Account porta `/login` quando non c'e' sessione (D-50-13):
+          // e' un indirizzo come un altro e cade nel ramo generale, che
+          // evidenzia la scheda mentre si e' sulla pagina d'accesso.
           const isActive =
-            item.href === "/"
-              ? pathname === "/"
-              : item.href === "/dashboard"
-                ? pathname === "/dashboard" || pathname.startsWith("/dashboard")
-                : pathname.startsWith(item.href);
+            item.href === "/dashboard"
+              ? pathname === "/dashboard" || pathname.startsWith("/dashboard")
+              : pathname.startsWith(item.href);
 
           return (
             <Link

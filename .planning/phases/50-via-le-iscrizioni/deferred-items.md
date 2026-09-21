@@ -96,3 +96,74 @@ Il secondo e' su un percorso di rivelazione, quindi **non e' debito estetico**:
 l'elenco positivo esiste perche' una colonna che non si legge non si puo'
 stampare. Va guardato da chi possiede quella superficie, e il modo di chiuderlo
 e' correggere la `select`, mai allargare l'asserzione.
+
+---
+
+## `src/lib/routes/next-redirect.ts:72-73` nomina righe che non esistono piu'
+
+**Trovata:** piano 50-06, task 3 (2026-09-21).
+**Fuori perimetro perche':** quel file non e' nei `files_modified` di 50-06, e il
+file stesso dichiara che **aggiungere una voce a quella allow-list e' una
+decisione d'accesso**: non e' un file su cui passare per sistemare un commento
+mentre altri piani della stessa onda lavorano vicino.
+
+Il docblock dell'allow-list dei `?next=` spiega due voci nominando per riga i
+file che le producono, e 50-06 ha cancellato due di quei riferimenti:
+
+| Voce dell'allow-list | Prosa che la spiega | Cosa e' cambiato |
+|---|---|---|
+| `/events/<slug>` | *«prodotta da `RsvpButton.tsx:35` e `TierSelection.tsx:224`, inoltrata da `register/page.tsx:45`»* | `register/page.tsx` **e' stato cancellato** |
+| `/events/<slug>/menu` | *«prodotta da `GuestLoginBanner.tsx:42` e `:138`»* | delle due **ne resta una**, il link d'accesso; l'altra era il link d'iscrizione |
+
+**Le due voci dell'allow-list restano giuste** — entrambi gli indirizzi sono
+ancora prodotti da qualcuno, e nessun pattern va aggiunto ne' tolto. E' la
+**prosa che li attribuisce** a essere invecchiata.
+
+**Chi la chiude:** un piano che apra quel file per una ragione propria. Candidato
+naturale **50-05**, che riscrive `RsvpButton` — uno dei due produttori nominati.
+
+---
+
+## `GuestDrinkMenu.tsx:366` passa una prop che non esiste piu'
+
+**Trovata:** piano 50-06, task 3 (2026-09-21).
+**Fuori perimetro perche':** `GuestDrinkMenu.tsx` non e' nei `files_modified` di
+50-06.
+
+`GuestWarningModal` ha perso la prop `onSignUp` insieme al ramo *iscriviti*. Il
+**solo** sito di render e' **commentato** da prima di questa fase
+(`src/app/(public)/events/[slug]/menu/GuestDrinkMenu.tsx:360-369`, *«Pre-checkout
+warning modal temporarily disabled»*) e dentro il commento passa ancora
+`onSignUp={handleWarningSignUp}`.
+
+**Nessun effetto oggi:** il codice e' commentato, il typecheck non lo vede, il
+build resta verde. **Ma chi riabilitera' il pannello non compila** finche' non
+toglie quella riga — e riabilitarlo e' una decisione di prodotto, non di questo
+piano.
+
+Il fatto e' scritto anche **dentro** `GuestLoginBanner.tsx`, nel docblock di
+`GuestWarningModal`, cosi' che chi riabilita lo trovi leggendo invece che dal
+typecheck.
+
+---
+
+## Conferma: `verify:venue-surfaces` G2 e' ANCORA rosso
+
+**Riconfermato:** piano 50-06, task 3 (2026-09-21), su `d4033eb` prima di
+qualunque modifica del piano.
+
+E' la seconda riga della voce «Due gate rossi PRE-ESISTENTI» qui sopra, e non si
+e' chiusa da sola. Misurato ora: `src/app/(public)/payment/callback/actions.ts`
+e' stato toccato l'ultima volta dal commit `45be363` (fase 49), che ha aggiunto
+la lettura di `sumup_checkout_id` **senza** aggiungerla alla lista positiva del
+controllo G2.
+
+`sumup_checkout_id` non porta un luogo, quindi **oggi non c'e' un indirizzo
+esposto**. Il danno e' un altro, e cresce: la lista e' positiva **di proposito**
+— il suo valore sta nel fatto che una colonna che nessuno ha pensato di vietare
+diventa rossa lo stesso — e un rosso lasciato acceso la trasforma in rumore.
+Quando arrivera' il rosso vero, sara' letto come «il solito».
+
+**Non riparato da 50-06 di proposito:** quel gate sta su `venue-secrecy.md`, dove
+allentare un'asserzione per far passare un rosso e' l'unica modifica del repo che
+non si annulla.

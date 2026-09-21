@@ -41,14 +41,20 @@ import { Dialog } from "@/components/ui/Dialog";
  * the primitive already makes, and two authors is how two implementations
  * disagree.
  *
- * ── The two sign-in destinations are byte-identical ──────────────────────────
+ * ── Le due destinazioni d'iscrizione sono uscite (fase 50, D-50-11) ──────────
  *
- * `src/lib/routes/next-redirect.ts:73` names this file's register call sites by
- * line as the producers of one entry on its allow-list. The destination string,
- * its encoding and its parameter name are unchanged here — only the elements
- * around them moved, so the allow-list still admits exactly what it admitted.
- * The line numbers themselves have moved, which is a documentation drift
- * reported rather than silently repaired: that file is outside this plan.
+ * Questo paragrafo diceva che le due destinazioni verso la pagina d'iscrizione
+ * erano byte-identiche a prima della conversione. **Non ci sono piu':** quella
+ * pagina e' stata cancellata — nessuno si iscrive da solo, entra chi compra un
+ * biglietto o chi e' invitato da guest list — e qui restano l'accesso e il
+ * proseguimento da ospite.
+ *
+ * `src/lib/routes/next-redirect.ts:73` **nomina ancora per riga le due chiamate
+ * cancellate** come produttrici di una voce della sua allow-list. La voce
+ * `/events/<slug>/menu` **resta giusta** — la produce ora il solo link di
+ * accesso qui sotto — ma la riga che la spiega e' invecchiata. Quel file sta
+ * fuori dal perimetro di questo piano: la deriva e' **riportata, non riparata
+ * in silenzio**, ed e' scritta nel SUMMARY di 50-06.
  *
  * ── Focus, and why no marker is declared ─────────────────────────────────────
  *
@@ -65,8 +71,11 @@ interface GuestLoginBannerProps {
 }
 
 export default function GuestLoginBanner({ slug }: GuestLoginBannerProps) {
-  const menuUrl = encodeURIComponent(`/events/${slug}/menu`);
-
+  // `menuUrl` — la versione percent-encoded dell'indirizzo del menu — e' uscita
+  // insieme al link d'iscrizione che era la sua unica consumatrice (fase 50,
+  // D-50-11). Il link che resta scrive il proprio `?next=` come ha sempre
+  // fatto, non codificato, perche' e' la forma che l'allow-list di
+  // `src/lib/routes/next-redirect.ts` ammette.
   return (
     <div className="rounded-xl border border-sem-info/30 bg-sem-info/10 p-3">
       <div className="flex items-center gap-3">
@@ -91,11 +100,21 @@ export default function GuestLoginBanner({ slug }: GuestLoginBannerProps) {
           <p className="text-sm text-ink-2">
             Keep your drink tokens safe across devices.{" "}
             {/*
-              An inline link inside a sentence, so it stays a link and stays in
-              the sentence: the target is raised to the floor with the shape
-              `(auth)/login/page.tsx:220` already uses, rather than being pulled
-              out of the prose into a pill — which would have deleted the word
-              joining the two answers, and the copy does not change.
+              ── Una risposta sola, dalla fase 50 (D-50-11) ──────────────────
+
+              Qui c'erano due link — `Log in` **o** `Sign up` — uniti da un
+              " or ". La pagina d'iscrizione non esiste piu', quindi resta
+              *accedi*, e con la seconda risposta se ne va anche la parola che
+              le univa: una congiunzione senza secondo termine e' una frase
+              rotta.
+
+              **La frase che precede e' cambiata con loro**, e non e' un
+              ritocco di stile: diceva di tenere i token al sicuro e poi offriva
+              di *crearsi un account*. Un account non si crea piu' da qui — ce
+              l'ha gia' chi ha comprato — quindi la promessa si riscrive invece
+              di restare a mezz'aria.
+
+              L'inline link resta inline, con il pavimento dei 44px che aveva.
             */}
             <Link
               href={`/login?next=/events/${slug}/menu`}
@@ -103,13 +122,7 @@ export default function GuestLoginBanner({ slug }: GuestLoginBannerProps) {
             >
               Log in
             </Link>
-            {" or "}
-            <Link
-              href={`/register?next=${menuUrl}`}
-              className={`inline-flex min-h-11 items-center align-middle font-medium text-accent underline transition-colors hover:text-accent-hover ${FOCUS_RING}`}
-            >
-              Sign up
-            </Link>
+            {" with the account that came with your ticket."}
           </p>
         </div>
       </div>
@@ -117,32 +130,44 @@ export default function GuestLoginBanner({ slug }: GuestLoginBannerProps) {
   );
 }
 
+/**
+ * ── `onSignUp` e' uscito da questa firma con la fase 50 (D-50-11) ───────────
+ *
+ * Il pannello offriva tre risposte; ora ne offre due, perche' la seconda —
+ * *iscriviti* — mandava alla pagina d'iscrizione, che non esiste piu'. Con il
+ * ramo se ne va la prop che lo pilotava.
+ *
+ * **Il sito di render e' commentato** (`GuestDrinkMenu.tsx:360-369`, disabilitato
+ * da prima di questa fase) e **passa ancora `onSignUp`**: quel file appartiene a
+ * un altro perimetro e non si tocca qui. Chi riabilitera' il pannello deve
+ * togliere quella riga, o il ripristino non compila — ed e' scritto qui perche'
+ * lo scopra leggendo, invece che dal typecheck.
+ */
 export function GuestWarningModal({
   onContinue,
   onClose,
   onLogin,
-  onSignUp,
   slug,
 }: {
   onContinue: () => void;
   onClose: () => void;
   onLogin?: () => void;
-  onSignUp?: () => void;
   slug: string;
 }) {
-  const menuUrl = encodeURIComponent(`/events/${slug}/menu`);
-
   return (
     <Dialog
       open
       onClose={onClose}
       title="Guest Checkout"
       /*
-        Three answers on three rungs of one ladder, in the order they were in:
-        the accent fill for signing in, the outlined rung for signing up, and
-        the quietest rung for proceeding without either. The hierarchy is the
-        one the hand-rolled version drew with three different borders, and no
-        label changed.
+        **Due risposte, dalla fase 50** — erano tre: il pieno d'accento per
+        accedere, il rung con il bordo per iscriversi, e il piu' silenzioso per
+        proseguire senza ne' l'uno ne' l'altro. Quello di mezzo e' uscito con
+        la pagina d'iscrizione (D-50-11). I due che restano **non cambiano
+        rung**: chi
+        accede tiene il pieno, chi prosegue da ospite tiene il piu' silenzioso,
+        quindi la gerarchia e' quella di prima con un gradino in meno e non una
+        gerarchia nuova.
 
         They sit in the actions region rather than in the body because the body
         is the only scroller: an answer inside it can be below the fold at the
@@ -161,20 +186,6 @@ export function GuestWarningModal({
           ) : (
             <Button className="w-full" href={`/login?next=/events/${slug}/menu`}>
               Log in
-            </Button>
-          )}
-
-          {onSignUp ? (
-            <Button variant="secondary" className="w-full" onClick={onSignUp}>
-              Sign up
-            </Button>
-          ) : (
-            <Button
-              variant="secondary"
-              className="w-full"
-              href={`/register?next=${menuUrl}`}
-            >
-              Sign up
             </Button>
           )}
 
