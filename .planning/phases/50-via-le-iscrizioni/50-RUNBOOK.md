@@ -6,7 +6,7 @@ written_by: piano 50-09
 walked: 2026-09-21, piano 50-10 — esiti in `50-ESITI.md`
 requirements: [REG-01, REG-02, REG-03, REG-04, REG-05, REG-06]
 procedures_gathered: 8
-procedures_executed: 7
+procedures_executed: 8
 procedures_partially_executed: 0
 authorisation_to_write_production: NON ANCORA CHIESTA (la chiede il piano 50-11)
 ---
@@ -389,8 +389,24 @@ ripetuta**). Lo raccoglie il piano 50-10.
 **Ambiente:** **laboratorio**, su un telefono vero in **modalita' aereo**.
 `PRE-LAB`, `PRE-SEED`, `PRE-PHONE`, e un biglietto gratuito coniato da
 `P-50-7`.
-**Stato:** _NON PERCORSA_ — **checkpoint aperto del piano 50-10**. Il banco e'
-pronto: due biglietti gratuiti coniati, due posti liberi su quattro, e
+**Stato:** **PERCORSA** — **dal proprietario**, 2026-09-21 fra le 16:01:27Z e le
+16:02:19Z, su un telefono vero contro `lab.resonatemotion.com`. Sei passi su
+sei, tutti con l'esito atteso. Esiti in `50-ESITI.md`, sezione *Procedura
+`P-50-8`*, con la rilettura dal catalogo: **una** riga in `door_scan_events`
+(`recorded`, `offline_sync`), la seconda lettura fermata sul telefono senza
+arrivare in coda, 52 secondi fra `scanned_at` e `recorded_at`.
+
+**La modalita' aereo era vera** — icona dell'aeroplano nella barra di stato,
+nessun indicatore di rete, e il banner del prodotto che dichiara la lista non
+aggiornata.
+
+**Una non conformita' emersa qui:** lo schermo della porta mostra il nome
+dell'account acquirente, contro `D-50-18b`. Comportamento preesistente dello
+scanner, reso visibile per ogni acquirente da questa fase; **decisione del
+proprietario**, in `deferred-items.md`.
+
+Il banco su cui e' stata percorsa: due biglietti gratuiti gia' coniati da
+`P-50-7` piu' **un terzo, prenotato dal proprietario al passo 8.0**, e
 **un'assegnazione `door.operate` concessa a mano sulla serata gratuita** —
 `PRE-SEED` ne semina una sola, e sulla serata a pagamento.
 
@@ -523,7 +539,7 @@ perimetro che si allarga.
 
 ---
 
-## Il registro — otto procedure, sette percorse
+## Il registro — otto procedure, otto percorse
 
 | Sigla | Procedura | Stato | Chi l'ha percorsa / la percorre |
 |---|---|---|---|
@@ -534,7 +550,7 @@ perimetro che si allarga.
 | `P-50-5` | il signup spento | **PERCORSA** 2026-09-21 | **50-10** (`50-ESITI.md`) |
 | `P-50-6` | i percorsi di servizio con il signup spento | **PERCORSA** 2026-09-21 — **`A1` confermata, `A.2` si puo' fare** | **50-10** (`50-ESITI.md`) |
 | `P-50-7` | l'ordine gratuito | **PERCORSA** 2026-09-21, e **ripercorsa**; passo residuo **chiuso** | **50-05** (`50-05-SUMMARY.md`) + **50-10** (`50-ESITI.md`) |
-| `P-50-8` | la porta con la radio spenta | _NON PERCORSA_ — **checkpoint aperto** | **50-10** |
+| `P-50-8` | la porta con la radio spenta | **PERCORSA** 2026-09-21 — **dal proprietario, su un telefono in aereo**; una convalida, non due | **50-10** (`50-ESITI.md`) |
 
 | Passo manuale | Stato | Chi |
 |---|---|---|

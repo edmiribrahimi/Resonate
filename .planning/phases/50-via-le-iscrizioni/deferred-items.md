@@ -632,3 +632,54 @@ la storia*.
 
 **Proprietario naturale:** chi possiede il laboratorio, con un allineamento di
 `formats` — non una migration, perche' la produzione e' gia' corretta.
+
+---
+
+## 7. DECISIONE DEL PROPRIETARIO — lo schermo della porta mostra il nome dell'acquirente
+
+**Trovata percorrendo `P-50-8`** (checkpoint del piano 50-10, 2026-09-21, sul
+laboratorio, su un telefono in modalita' aereo). Visibile in due schermate su
+quattro: sotto il segno di spunta verde della prima lettura e sotto l'orologio
+viola della seconda.
+
+**Cosa dicono le decisioni gia' prese.** `D-50-18b`: il nome raccolto dal modulo
+gratuito va **all'account**, non allo schermo dello staff. `D-49-03`: il
+biglietto e' **al portatore** — quindi il nome sullo schermo non e' nemmeno
+un'informazione su chi sta effettivamente passando la porta, ma su chi ha
+comprato.
+
+**Non arriva da `holder_label`,** che `P-50-7` ha verificato privo di nome e che
+lo e' ancora. Arriva dal profilo, lungo un percorso che esiste da prima di
+questa fase:
+
+| Dove | Cosa fa |
+|---|---|
+| `src/app/api/tickets/attendance/route.ts:814-864` | la lista scaricata sul telefono legge `profiles.full_name` e lo mette nel campo `name` |
+| `src/lib/offline/checkin-store.ts:786-789` | la coda offline lo conserva, con la regola monotona che non lo cancella mai |
+| `src/app/(admin)/admin/scanner/ScannerClient.tsx:2186` | lo schermo lo rende, offline |
+| `src/app/api/tickets/checkin/route.ts:1077-1095` | il percorso online fa la stessa lettura dal server |
+
+**Cosa ha cambiato la fase 50.** Non il comportamento: la **copertura**. Prima,
+chi comprava da ospite senza lasciare un nome finiva sullo schermo come *«Ticket
+holder»*; ora il modulo gratuito raccoglie il nome, `handle_new_user` lo scrive
+nel profilo, e **ogni acquirente** arriva alla porta con il proprio nome
+stampato sullo schermo dello staff. Un comportamento che riguardava i soli
+membri ora riguarda tutti.
+
+**Le due strade, e cosa costa ciascuna.**
+
+1. **Nasconderlo** — lo schermo della porta mostra il livello, l'ora e l'esito,
+   non il nome. Coerente con `D-50-18b` e con il biglietto al portatore. Costa
+   una modifica al **percorso della porta**, che e' codice critico: tocca la
+   lista scaricata, la coda offline e due schermate, e va provata di nuovo con
+   la radio spenta. E toglie allo staff l'unico appiglio che oggi ha per
+   distinguere due letture ravvicinate davanti a una fila.
+2. **Accettarlo** — e allora `D-50-18b` va **riscritta**, perche' oggi dice una
+   cosa che il prodotto non fa. Costo zero di codice, costo pieno di coerenza:
+   una decisione che descrive male il prodotto e' peggio di una decisione
+   assente, perche' chi la legge ci costruisce sopra.
+
+**Non si tocca in questo piano, e non per prudenza generica:** la porta si
+modifica sapendo cosa si rompe, non di rimbalzo a una verifica che stava
+provando un'altra cosa. **Proprietario naturale:** chi possiede il prodotto,
+nella fase che segue.
