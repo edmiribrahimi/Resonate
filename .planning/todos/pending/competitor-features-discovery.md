@@ -35,9 +35,22 @@ peak-festival.it. Cio' che hanno e noi non abbiamo:
 | 13 | **Biglietto nominale** alla mail, rivendita vietata | SOY | noi al portatore (`D-49-03`): differenza da dichiarare nei termini |
 | 14 | Pagine **Partner**, **Moments** (gallery), **About/Experience**, line-up con slot | Peak | gallery esiste ma chiusa (NAV-02); il resto assente |
 
-## Le domande da fare, in quell'ordine
+## Le risposte — sessione del 2026-09-21 sera, decisioni del proprietario
 
-Sono le domande che la sessione deve porre — non risposte:
+| # | Decisione |
+|---|---|
+| prima del 28 | **barra fissa**, **termini + regola rimborsi**, **selettore quantita'** — tutti e tre sulla pagina della 003 prima del listing |
+| barra | prezzo **minimo fra i tier in vendita ora**; «from» solo con piu' di un tier; esauriti e futuri non contano; «Free» a zero; sparisce senza tier in vendita |
+| quantita' | meno/piu' **da 1 a sei o ai posti rimasti**; **nessun minimo per tier** finche' non esiste un tier di gruppo |
+| legali | bozze scritte dall'assistente con i fatti del prodotto, **pubblicate subito**, con data; **nessuna finzione di validazione**; la validazione di un professionista resta **debito aperto**. Contatto: solo `info@resonatemotion.com`, **nessuna ragione sociale** — e' la prima cosa che un professionista chiedera' di aggiungere |
+| rimborsi | **nessun rimborso**, salvo annullamento o spostamento della data da parte nostra: allora rimborso intero |
+| newsletter | **resta a consenso singolo**, iscrizione immediata |
+| FAQ | **non si fa** |
+| Get directions | **si'**, solo sulla pagina del biglietto e solo dopo la rivelazione; mai sulla pagina serata |
+| drink nel checkout | **no**, restano due momenti: biglietto prima, token la sera |
+| cookie banner, lingue, commissione, partner/moments | non discussi: restano fuori |
+
+## Le domande che sono state fatte, in quell'ordine
 
 1. Quali di questi contano **prima del listing della 003** e quali dopo?
 2. Barra fissa: prezzo minimo «from», o il prezzo del tier in vendita adesso?

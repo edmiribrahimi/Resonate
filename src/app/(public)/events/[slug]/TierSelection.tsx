@@ -6,7 +6,10 @@ import { validateDiscountCode } from "@/app/(admin)/admin/events/[id]/tickets/ac
 import { purchaseTicketsGuest } from "./guest-purchase-actions";
 import { Button, FOCUS_RING } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Chip";
-import { Input, Select } from "@/components/ui/Input";
+import Link from "next/link";
+import { Input } from "@/components/ui/Input";
+import { QuantityStepper } from "@/components/ui/QuantityStepper";
+import { computeTierStatuses, type PublicTier, type TierStatus } from "@/lib/tickets/tier-status";
 import { SectionHeading } from "@/components/ui/Typography";
 import SumUpCheckoutModal from "./SumUpCheckoutModal";
 
@@ -121,19 +124,13 @@ import SumUpCheckoutModal from "./SumUpCheckoutModal";
  * payload and no condition moves with it.
  */
 
-interface Tier {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number | null;
-  sold: number;
-  available: number | null;
-  show_remaining?: boolean;
-  starts_at?: string | null;
-  expires_at?: string | null;
-}
-
-type TierStatus = "coming_soon" | "available" | "sold_out" | "expired";
+/**
+ * La forma del tier e il calcolo del suo stato vivono in
+ * `src/lib/tickets/tier-status.ts` dal 2026-09-21: la barra fissa in fondo alla
+ * pagina deve dire «from €N» con la stessa risposta di questo controllo, e due
+ * copie dello stesso calcolo divergono al primo che qualcuno tocca.
+ */
+type Tier = PublicTier;
 
 interface TierSelectionProps {
   partyId: string | null;
@@ -169,54 +166,6 @@ function formatPrice(price: number) {
   }).format(price);
 }
 
-/**
- * Compute chain-based status for each tier.
- * Tiers are sorted by price ascending. Each tier activates only
- * when all cheaper tiers are sold_out or expired.
- */
-function computeTierStatuses(tiers: Tier[]): TierStatus[] {
-  const sorted = [...tiers].sort((a, b) => a.price - b.price);
-  const now = new Date();
-  const statusMap = new Map<string, TierStatus>();
-
-  for (let i = 0; i < sorted.length; i++) {
-    const tier = sorted[i];
-
-    // 1. Explicit starts_at not yet reached
-    if (tier.starts_at && now < new Date(tier.starts_at)) {
-      statusMap.set(tier.id, "coming_soon");
-      continue;
-    }
-
-    // 2. Sold out (only if quantity is set)
-    if (tier.available !== null && tier.available <= 0) {
-      statusMap.set(tier.id, "sold_out");
-      continue;
-    }
-
-    // 3. Expired
-    if (tier.expires_at && now >= new Date(tier.expires_at)) {
-      statusMap.set(tier.id, "expired");
-      continue;
-    }
-
-    // 4. Previous tier (by price) still active → this one waits
-    const prevTier = i > 0 ? sorted[i - 1] : null;
-    if (prevTier) {
-      const prevStatus = statusMap.get(prevTier.id)!;
-      if (prevStatus !== "sold_out" && prevStatus !== "expired") {
-        statusMap.set(tier.id, "coming_soon");
-        continue;
-      }
-    }
-
-    // 5. Available
-    statusMap.set(tier.id, "available");
-  }
-
-  // Return statuses in the original tier order
-  return tiers.map((t) => statusMap.get(t.id)!);
-}
 
 function statusLabel(status: TierStatus): string {
   switch (status) {
@@ -322,6 +271,14 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
     ? maxTicketsPerOrder
     : 1;
   const [quantity, setQuantity] = useState(1);
+  const selectedTier = tiers.find((t) => t.id === selectedTierId) ?? null;
+  const quantityMax =
+    selectedTier && selectedTier.available !== null && selectedTier.available > 0
+      ? Math.min(cap, selectedTier.available)
+      : cap;
+  useEffect(() => {
+    if (quantity > quantityMax) setQuantity(quantityMax);
+  }, [quantity, quantityMax]);
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [guestOrderId, setGuestOrderId] = useState<string | null>(null);
@@ -628,24 +585,26 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
             hint="It goes on the account these tickets belong to, never on the tickets."
           />
 
-          <Select
+          {/*
+            Meno/piu' al posto della tendina (decisione del proprietario,
+            2026-09-21). Il massimo e' il tetto della serata, ristretto ai posti
+            rimasti del tier scelto quando sono noti: offrire «6» su un tier con
+            tre posti e' una promessa che `reserve_ticket_order` rifiuta un
+            passaggio dopo. Nessun minimo per tier — vedi `QuantityStepper`.
+          */}
+          <QuantityStepper
             id={quantityFieldId}
             label="How many tickets"
-            value={String(quantity)}
-            onChange={(e) => setQuantity(Number(e.target.value))}
+            value={quantity}
+            max={quantityMax}
+            onChange={setQuantity}
             disabled={isPending}
             hint={
               cap > 1
                 ? `Up to ${cap} per order — not per person.`
                 : "One ticket per order on this night."
             }
-          >
-            {Array.from({ length: cap }, (_, i) => i + 1).map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </Select>
+          />
 
           {/*
             `inputMode` e `autoComplete` perche' questo campo si compila su un
@@ -681,6 +640,17 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
       >
         {isPending ? "Processing..." : label ? `Buy ${label}` : "Buy Ticket"}
       </Button>
+
+      {/*
+        La riga che fa esistere i termini: senza un rimando accanto al pulsante
+        che prende il denaro, le pagine legali sono testo che nessuno ha
+        accettato. Pubblicate il 2026-09-21, vedi `LegalPage.tsx`.
+      */}
+      <p className="mt-3 text-center text-xs text-muted">
+        By buying you accept the{" "}
+        <Link href="/terms" className="inline-flex min-h-11 items-center text-accent">Terms</Link> and the{" "}
+        <Link href="/refunds" className="inline-flex min-h-11 items-center text-accent">Refund policy</Link>.
+      </p>
 
       {/*
         ── IL BIGLIETTO SMETTE DI DIPENDERE DALLA POSTA, 2026-08-22 ────────────

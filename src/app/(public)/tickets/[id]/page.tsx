@@ -344,9 +344,24 @@ export default async function TicketPage({
               */}
               {/* Venue -- the holder sees it once the night's reveal has fired */}
               {venueVisibleToHolder && displayVenue && (
-                <div className="mb-4 flex items-center gap-2 text-sm text-muted">
+                <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted">
                   <span>&#128205;</span>
                   <span>{displayVenue}</span>
+                  {/*
+                    «Get directions» — decisione del proprietario, 2026-09-21.
+                    Vive DENTRO lo stesso blocco che il gate conta (una sola
+                    occorrenza di `TICKET_RENDER`), e usa lo stesso valore gia'
+                    reso una riga sopra: il link non e' una seconda via verso
+                    l'indirizzo, e' l'indirizzo che c'e' gia', aperto in Maps.
+                  */}
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayVenue)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-11 items-center text-accent"
+                  >
+                    Get directions
+                  </a>
                 </div>
               )}
 

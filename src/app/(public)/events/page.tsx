@@ -1,6 +1,7 @@
 import AppNav from "@/components/layout/AppNav";
 import AnimatedSection from "@/components/motion/AnimatedSection";
 import { PageShell } from "@/components/ui/PageShell";
+import { SiteFooter } from "@/components/legal/SiteFooter";
 import { PageTitle } from "@/components/ui/Typography";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/capabilities/server";
@@ -683,6 +684,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
               }
             />
           </AnimatedSection>
+          <SiteFooter />
         </PageShell>
       </div>
 

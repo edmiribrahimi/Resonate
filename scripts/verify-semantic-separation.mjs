@@ -121,6 +121,8 @@
  *
  *   - the six brand hexes in `ColorSwatchPicker.tsx` — exemption 1;
  *   - `#0A0712` in `layout.tsx` — exemption 2;
+ *   - the six token values transcribed into `email-layout.tsx` — exemption 3,
+ *     because a mail client loads no stylesheet (see the constant below);
  *   - every two-stop accent fade (`bg-gradient-to-br from-accent/30
  *     to-accent/5`, 15 files under `src/` use a `bg-gradient*` utility). Those
  *     follow `--accent` wherever it is retargeted and are correct. Nothing here
@@ -199,8 +201,23 @@ export const CATALOGUE_FILE = 'src/app/(admin)/admin/formats/ColorSwatchPicker.t
 /** Exemption 2 — the browser paints themeColor before any stylesheet loads. */
 export const THEME_COLOR_FILE = 'src/app/layout.tsx';
 
-/** The two exemptions, as a set, so the report can count what it applied. */
-export const EXEMPT_PATHS = [CATALOGUE_FILE, THEME_COLOR_FILE];
+/**
+ * Exemption 3 — an email cannot read a CSS custom property.
+ *
+ * `src/emails/components/email-layout.tsx` is rendered to a string by
+ * `@react-email/render` and sent to a mail client that never loads
+ * `globals.css`: there is no stylesheet for a `var()` to resolve against. The
+ * six brand values are therefore literals BY NECESSITY, transcribed from the
+ * token file, and the file's own docblock says they move with the token in the
+ * same commit. Added 2026-09-21, when the mail palette was aligned to the app's
+ * tokens; before that the file carried non-brand hexes and this check could not
+ * see the drift it now names. Exact path, refused if it moves — same rule as
+ * the other two.
+ */
+export const EMAIL_LAYOUT_FILE = 'src/emails/components/email-layout.tsx';
+
+/** The three exemptions, as a set, so the report can count what it applied. */
+export const EXEMPT_PATHS = [CATALOGUE_FILE, THEME_COLOR_FILE, EMAIL_LAYOUT_FILE];
 
 /**
  * The twelve Tailwind utility prefixes through which a COLOUR token reaches a

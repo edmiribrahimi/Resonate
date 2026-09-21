@@ -2,7 +2,9 @@
 
 import { useId, useState, useTransition } from "react";
 import { Button, FOCUS_RING } from "@/components/ui/Button";
-import { Input, Select } from "@/components/ui/Input";
+import Link from "next/link";
+import { Input } from "@/components/ui/Input";
+import { QuantityStepper } from "@/components/ui/QuantityStepper";
 import { reserveFreeTickets } from "./free-order-actions";
 
 /**
@@ -245,28 +247,27 @@ export default function FreeOrderForm({
         hint="Your tickets and, later, the address arrive here. No account needed."
       />
 
-      <Select
+      <QuantityStepper
         id={quantityFieldId}
         label="How many"
-        value={String(quantity)}
-        onChange={(e) => setQuantity(Number(e.target.value))}
+        value={quantity}
+        max={cap}
+        onChange={setQuantity}
         disabled={isPending}
         hint={
           cap > 1
             ? `Up to ${cap} per order — not per person.`
             : "One ticket per order on this night."
         }
-      >
-        {Array.from({ length: cap }, (_, i) => i + 1).map((n) => (
-          <option key={n} value={n}>
-            {n}
-          </option>
-        ))}
-      </Select>
+      />
 
       <Button className="w-full" disabled={isPending} onClick={handleReserve}>
         {isPending ? "Reserving..." : quantity === 1 ? "Reserve" : `Reserve ${quantity}`}
       </Button>
+      <p className="mt-3 text-center text-xs text-muted">
+        By reserving you accept the{" "}
+        <Link href="/terms" className="inline-flex min-h-11 items-center text-accent">Terms</Link>.
+      </p>
     </div>
   );
 }
