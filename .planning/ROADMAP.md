@@ -383,6 +383,28 @@ Plans:
 | **REG-05** | Nessun cancello nuovo su `status`. Quelli esistenti che sopravvivono a questa fase sono **elencati** come debito che 51 o 57 chiudono. |
 | **REG-06** | L'RSVP di una serata gratuita e' **un ordine a totale zero**: nome, cognome e mail come nell'acquisto, stessa mail con QR e link firmato, stesso account leggero, stessa porta — senza SumUp. *(Aggiunto il 2026-09-21, decisione del proprietario: «uguale a comprare un ticket ma senza acquisto».)* |
 
+> **REG-06, precisazione del 2026-09-21 (`D-50-18b`).** I due moduli — a pagamento
+> e gratuito — chiedono **`Full name` e mail**, un campo solo per il nome e non
+> «nome e cognome» separati. Il nome va **nell'account** (`profiles.full_name`) e
+> **mai** sul biglietto: `holder_label` resta un progressivo e il biglietto resta
+> al portatore (`D-49-03`).
+
+**Plans:** 12 plans in 10 waves
+
+Plans:
+- [ ] 50-01-PLAN.md — il banco di prova senza lo stato, la serata gratuita seminata, e le sette misure prese in sola lettura
+- [ ] 50-02-PLAN.md — la migration che smonta `status`, il referral e il trigger, in una transazione sola (laboratorio)
+- [ ] 50-03-PLAN.md — la migration additiva dell'ordine a totale zero: checkout nullabile, `buyer_name`, il livello a prezzo 0
+- [ ] 50-04-PLAN.md — il nome nell'account su entrambi i percorsi, e l'azione dell'ordine gratuito
+- [ ] 50-05-PLAN.md — le superfici della prenotazione gratuita, e via il pulsante RSVP
+- [ ] 50-06-PLAN.md — via `/register`, via la home, la barra e la frase del login
+- [ ] 50-07-PLAN.md — «cancella account» con i suoi rifiuti, via le sei azioni di stato e via il referral
+- [ ] 50-08-PLAN.md — il percorso del denaro senza stato, il dashboard, i media, le quattro mail
+- [ ] 50-09-PLAN.md — la barra perde lo stato, i tipi cadono per ultimi, REG-05 a zero, e il runbook
+- [ ] 50-10-PLAN.md — le otto procedure percorse sul laboratorio, signup spento compreso
+- [ ] 50-11-PLAN.md — la terza autorizzazione, il deploy, le migration di produzione e le cancellazioni
+- [ ] 50-12-PLAN.md — i moduli della persona, il changelog, e `50-VERIFICATION.md`
+
 ### Phase 51: Via le superfici da socio, e la porta
 
 | ID | Requisito |
