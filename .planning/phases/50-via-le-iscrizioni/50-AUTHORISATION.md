@@ -506,12 +506,12 @@ perimetro di questo documento.
 | # | Passo | Eseguito (UTC) | Versione coniata / valore letto | Riletto da | Esito |
 |---|---|---|---|---|---|
 | (a) | `git push origin main` + deploy Vercel | **2026-09-21 16:22:59Z** (push) → **16:24:58Z** (`READY`) | `ce3abd1..feec65c`, **67 commit**; deploy `dpl_GY6kGtAdfru2qZdPbmMs8DT2nm7W`, `githubCommitSha = feec65c` | API Vercel (`readyState`) + cinque controlli da anonimo su `www.resonatemotion.com` | **dispiegato** |
-| (b) | `20260921120000_drop_status_and_referral` | _da scrivere_ | _da scrivere — NON il nome del file_ | _`information_schema`, `pg_policies`, `pg_proc` (`proacl` prima/dopo), `pg_constraint`, `schema_migrations`_ | _da scrivere_ |
-| (b+) | `verify:capabilities` contro la produzione | _da scrivere_ | — | _uscita del comando_ | _da scrivere_ |
-| (c) | `20260921120100_free_order` | _da scrivere_ | _da scrivere — NON il nome del file_ | _`information_schema`, `pg_indexes`, `pg_constraint`, conteggio del riempimento_ | _da scrivere_ |
+| (b) | `20260921120000_drop_status_and_referral` | **2026-09-21 16:28:27Z**, HTTP **200** | **`20260921162827`** / `drop_status_and_referral` — **NON** `20260921120000` | `information_schema`, `pg_policies`, `pg_proc` (`proacl` prima/dopo), `pg_constraint`, `schema_migrations` | **applicata** |
+| (b+) | `verify:capabilities` contro la produzione | **2026-09-21 16:31:15Z** | — | uscita del comando, exit **0** | **5/5 verde, 0 warning** |
+| (c) | `20260921120100_free_order` | **2026-09-21 16:31:21Z**, HTTP **200** | **`20260921163121`** / `free_order` — **NON** `20260921120100` | `information_schema`, `pg_indexes`, `pg_constraint`, conteggio del riempimento | **applicata** |
 | (d) | `PATCH config/auth` `disable_signup: true` | _da scrivere_ | _da scrivere_ | _seconda `GET` + `422 signup_disabled` da anonimo_ | _da scrivere_ |
 | (e) | B.2 — modello di conferma al default | _da scrivere_ | _da scrivere_ | _`GET config/auth` → flag `false`_ | _da scrivere_ |
-| — | **istantanea, ripresa** | _da scrivere_ | _atteso: 41 tabelle / **2395** righe in `public`; `private.role_capabilities` **32**_ | _stessa query di §3.10_ | _da scrivere_ |
+| — | **istantanea, ripresa** | **2026-09-21 16:31:5xZ** | atteso: 41 tabelle / **2395** righe; `role_capabilities` **32** → letto: **41 / 2395** e **32** | stessa query di §3.10 | **coincide, esattamente** |
 
 ### Note d'uso — passo (a), 2026-09-21
 
@@ -577,6 +577,112 @@ produzione, alle 16:25Z, ha ancora le tre colonne, le quattro concessioni, il
 `NOT NULL` su `sumup_checkout_id` e `disable_signup: false`. La finestra che il
 verso invertito produce apposta e' **aperta**, e da qui in poi niente si rompe:
 il codice dispiegato non guarda piu' lo stato.
+
+### Note d'uso — passi (b) e (c), 2026-09-21
+
+**Endpoint usato: `POST /v1/projects/{ref}/database/migrations`, due volte, e
+nient'altro.** `/database/query` e' stato usato **solo** con `read_only: true`,
+dallo script che **scarta qualunque query che non cominci per `select`** prima di
+spedirla. **Nessuna migration e' stata applicata da `/database/query`**, e la
+storia delle migration resta veritiera.
+
+**La deriva della versione si e' ripetuta, nona e decima volta su dieci.**
+
+| File | Versione coniata |
+|---|---|
+| `20260921120000_drop_status_and_referral.sql` | **`20260921162827`** |
+| `20260921120100_free_order.sql` | **`20260921163121`** |
+
+Chi cerchera' domani una di queste due in `supabase_migrations.schema_migrations`
+**per il numero del file non la trovera'**. Non manca: e' registrata con l'istante
+dell'applicazione. Il nome, quello si', e' il nome del file senza timestamp.
+
+#### La rilettura di (b), dal catalogo
+
+| Oggetto | Atteso | Letto |
+|---|---|---|
+| `profiles.status`, `.referred_by`, `.approved_via` | assenti | **0 su 3 presenti** |
+| `private.role_capabilities.requires_approved` | assente | **assente** |
+| `public.get_user_status()` | droppata | **assente** da `pg_proc` |
+| `private.role_capabilities` | 36 → 32 | **32** |
+| concessioni di `membership.active` | 4 → 0 | **0** |
+| **la chiave** `membership.active` in `private.capabilities` | **resta** | **resta — 1 riga** |
+| `CHECK` su `public.profiles` | solo `profiles_role_check` | **solo `profiles_role_check`** |
+| `membership_acts_act_check` | dieci valori, con `deleted` | **dieci**, `deleted` incluso, nessuno tolto |
+| `event_media_insert_member`, `rsvps_insert_approved`, `event_media_quarantine_insert_approved` | via | **via tutte e tre** |
+| `event_media_insert_staff`, `…_quarantine_insert_staff`, le quattro di `storage.objects` | presenti | **presenti tutte e sei** |
+
+> **§1.0-bis aveva ragione contro il piano.** La chiave `membership.active`
+> **e' ancora li'**, inerte, senza un ruolo che la tenga — ed e' la ragione per
+> cui `verify:capabilities` e' tornato verde invece che rosso al contrario.
+> Un'autorizzazione che avesse descritto la migration come il piano la ricordava
+> avrebbe autorizzato una cosa diversa da quella che e' successa.
+
+**Le tre query di `50-RESEARCH.md` §1.5(a), sulla produzione:**
+
+```
+q1 · colonna public.profiles.status                    → 0
+q2 · funzioni che nominano profiles E status           → 3
+q3 · policy con get_user_status|requires_approved      → 0
+q3bis · policy con profiles E status                   → 0   (nessuna)
+```
+
+> **Il `3` di q2 e' tre falsi positivi, e si dichiara invece di arrotondarlo a
+> zero.** Sono `venue_for_parties(uuid[])`, `my_access_context()` e
+> `my_access_context(uuid)`, e in tutte e tre il riscontro cade **dentro un
+> commento SQL** — *«La chiave 'status' STAVA QUI. Fase 50»*, *«p.status …
+> letto come appr»*. Contati i riferimenti veri (`profiles.status` oppure
+> `status = 'approved'`): **0 su 0 su 0**. E' lo **stesso** esito misurato sul
+> laboratorio dal piano 50-02, riga per riga. La query come scritta in §1.5(a)
+> inoltre **non gira** su questo database — `oid::regprocedure` solleva `42809`
+> sulle funzioni di aggregazione — ed e' stata eseguita con `prokind='f'` e
+> `pg_get_function_identity_arguments`. **Un verde dichiarato correggendo la
+> query senza dirlo sarebbe un verde inventato.**
+
+**`proacl` prima e dopo — `CREATE OR REPLACE` su firma identica conserva l'ACL,
+misurato una settima volta, su sei funzioni.**
+
+| Funzione | ACL prima → dopo | Corpo (md5) |
+|---|---|---|
+| `private.has_capability(text,uuid)` | **identico** | cambiato |
+| `public.my_access_context()` | **identico** | cambiato |
+| `public.my_access_context(uuid)` | **identico** | cambiato |
+| `public.record_membership_act(…)` | **identico** | cambiato |
+| `public.reconcile_master(text)` | **identico** | cambiato |
+| `public.handle_new_user()` | **identico** | cambiato |
+| `public.reserve_ticket_order(uuid,text)` | **identico** | **identico** — non toccata, come atteso |
+| `public.get_user_status()` | — | **sparita**, com'era scritto |
+
+`prosecdef = true` su tutte, prima e dopo. La revoca della fase 49 su
+`reserve_ticket_order` — `postgres` e `service_role` soltanto — **e' intatta**.
+
+#### La rilettura di (c), dal catalogo
+
+| Oggetto | Atteso | Letto |
+|---|---|---|
+| `ticket_orders.sumup_checkout_id` | nullabile | **`is_nullable = YES`** |
+| `ticket_orders.buyer_name` | presente | **presente** |
+| vincoli `UNIQUE` (`contype='u'`) su `ticket_orders` | 0 | **0** |
+| indice `ticket_orders_sumup_checkout_id_key` | unico **parziale**, stesso nome | `CREATE UNIQUE INDEX … USING btree (sumup_checkout_id) **WHERE (sumup_checkout_id IS NOT NULL)**` |
+| serate `free_rsvp` senza livello a zero | 1 → **0** | **0** |
+| `ticket_tiers` | 1 → **2** | **2** |
+
+**L'unicita' non si e' indebolita e il nome non e' cambiato:** un checkout doppio
+riceve ancora `23505` e il messaggio nomina ancora
+`ticket_orders_sumup_checkout_id_key`.
+
+#### L'istantanea, ripresa — e la differenza, spiegata riga per riga
+
+| Misura | Prima (16:15:10Z) | Dopo (16:31:5xZ) | Differenza |
+|---|---|---|---|
+| tabelle in `public` | 41 | **41** | **0** |
+| righe in `public` | 2394 | **2395** | **+1**, ed e' **la riga di `ticket_tiers`** creata dall'`INSERT` di (c), dichiarata prima come *«ne creera' esattamente 1»* |
+| `private.role_capabilities` | 36 | **32** | **−4**, e sono **le quattro concessioni** di `membership.active`, misurate in §3.6 prima di toccarle |
+
+**Non c'e' una sola riga non spiegata.** Nessuna riga di dati e' stata
+cancellata, nessuna cascata e' stata modificata, nessuna pulizia preparatoria e'
+stata fatta. La condizione 4 — *«se una fallisce, ci si ferma»* — **non e' stata
+esercitata**: due su due applicate, zero fallite.
 
 **Esaurita il: _da scrivere_.**
 
