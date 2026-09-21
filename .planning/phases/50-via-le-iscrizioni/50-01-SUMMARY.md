@@ -187,6 +187,22 @@ aveva gia' chiesto.
   (C1), perche' un `group by` su una tabella vuota e un `group by` non eseguito
   restituiscono la stessa cosa — `[]`.
 
+- **`gsd-sdk query state.update-progress` ha sovrascritto i contatori di
+  progetto con quelli della sola milestone**, e con due numeri fra loro
+  incoerenti: ha risposto `percent 83` (34 piani su 41) e ha scritto
+  `percent: 25` (3 fasi su 12), al posto dei 361 piani su 371 che questo
+  progetto registra da sempre. I contatori sono stati **riportati alla scala di
+  progetto** e incrementati di uno per il piano appena chiuso. E' una
+  correzione a mano su un numero, non sul contenuto dello stato.
+- **`REQUIREMENTS.md` non esiste** in questo progetto: i requisiti stanno in
+  `ROADMAP.md`. `requirements.mark-complete REG-02 REG-06` risponde
+  `REQUIREMENTS.md not found`, ed e' corretto che non spunti nulla — REG-06 e'
+  servito da questo piano solo nella sua precondizione (la serata seminata), non
+  nella sua sostanza.
+- **Nessuna sezione `Performance Metrics` in `STATE.md`**, quindi
+  `state.record-metric` non ha registrato la metrica. Nessun dato perso: le
+  durate sono nella sezione *Performance* di questo SUMMARY.
+
 ## User Setup Required
 
 Nessuna. Il piano non installa pacchetti (T-50-SC: nessun checkpoint di

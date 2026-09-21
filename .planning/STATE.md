@@ -4,14 +4,14 @@ milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
 stopped_at: "Phase 50 context gathered (2026-09-21) — REG-06 aggiunto; prossimo: plan-phase 50"
-last_updated: "2026-09-21T12:11:15.168Z"
+last_updated: "2026-09-21T12:26:10.885Z"
 last_activity: 2026-09-21
 progress:
-  total_phases: 51
-  completed_phases: 48
-  total_plans: 371
-  completed_plans: 360
-  percent: 97
+  total_phases: 12
+  completed_phases: 3
+  total_plans: 41
+  completed_plans: 34
+  percent: 25
 ---
 
 # State: Resonate
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 50 (Via le iscrizioni) — EXECUTING
-Plan: 1 of 12
+Plan: 2 of 12
 undici, contati dai SUMMARY su disco.
 
 **Cosa e' in produzione — DEPLOYATO il 2026-09-07.** Le sei migration erano
@@ -282,7 +282,7 @@ SUMMARY su quindici: la fase e' eseguita.** Il piano 37-13 ha chiuso l'onda 7 il
 sostituite, e undici voci `human_needed` consolidate nel suo SUMMARY. Le onde 8 e
 9 (piani 37-14 e 37-15) hanno chiuso i reperti del code review: CR-01, WR-01,
 WR-03, WR-05, WR-06, WR-07, WR-08 e la voce 4 di `deferred-items.md`.
-Status: Executing Phase 50
+Status: Ready to execute
 scritto «riportato come avvenuto, non misurato da me» — ed era la cosa giusta da
 scrivere dalla sua posizione. La misura pero' esiste, ed e' dell'orchestratore
 che gliel'aveva riportato:
@@ -371,7 +371,7 @@ checkpoints is now closed (the migration is applied); three remain, plus the RLS
 half of the fourth. `31-VALIDATION.md` keeps `nyquist_compliant: false`
 deliberately.
 
-Progress: [██████████] 100%
+Progress: [████████░░] 83%
           phase 32 — 11 plans, 0 executed
 
 ## Decisions
@@ -449,6 +449,9 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase 49]: Il percorso ospite **non e' piu' permissivo** di quello con sessione: catena dei tier e finestra temporale sono controllate anche li', perche' `reserve_ticket_order` guarda la capienza e **non** la finestra — senza, chiamando l'azione direttamente si comprava l'early bird che la pagina mostra chiuso
 - [Phase 49]: Su una lettura fallita nel preventivo il limite **si apre** (direzione D-46-05, ereditata e non rovesciata): la barriera che regge e' la RPC dentro la transazione, e il residuo D-46-07 — denaro incassato per un posto che non c'e' — resta quello di prima
 - [Phase 49]: I rifiuti dell'acquisto ospite viaggiano come **valore** e mai come `throw`: Next redige il messaggio di un errore sollevato da una Server Action in produzione, quindi venti cause distinte arriverebbero identiche proprio dove contano
+- [Phase ?]: In produzione i profili pending/rejected sono ZERO (misurato il 2026-09-21): D-50-02 non ha soggetti, e il 50-11 dichiara zero cancellazioni
+- [Phase ?]: I vincoli che bloccano una cancellazione sono undici, non gli otto di 50-RESEARCH.md §4.1: il catalogo aggiunge attendances.checked_in_by, guest_list_entries.checked_in_by e ticket_refunds.processed_by — due di questi registrano chi ha ammesso qualcuno alla porta
+- [Phase ?]: 50-01: i banchi di semina non nominano piu' profiles.status, quindi girano prima e dopo la migration dell'onda 1 senza finestra
 
 ## Accumulated Context
 
@@ -568,7 +571,7 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-09-21T11:05:44.331Z
+**Last session:** 2026-09-21T12:25:56.050Z
 **Stopped at:** Phase 50 context gathered (2026-09-21) — REG-06 aggiunto; prossimo: plan-phase 50
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
