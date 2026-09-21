@@ -263,6 +263,17 @@ if (night.accessType !== "free_rsvp") {
 }
 ```
 
+**Stato: fixed — `86aa5f0`** (2026-09-21). Tre guardie, non una: la chiusura
+del livello alla scrittura della serata (`ensureFreeRsvpTier`, via `expires_at`
+e **non** `quantity = 0` — il `CHECK (quantity > 0)` inline di
+`20260225110000_phase6_ticketing.sql:14` e' ancora in vigore e avrebbe fatto
+rifiutare quella scrittura dal database), il rifiuto nominato su entrambi i
+percorsi d'acquisto (`tier_free_on_paid_night` con sessione,
+`quote_tier_free_on_paid_night` da ospite, piu' il minimo del fornitore
+applicato al prezzo nudo con `quote_below_minimum`), e il filtro dei livelli a
+prezzo zero dove la pagina pubblica li legge. Il percorso gratuito resta
+intatto: `goesToPaymentProvider: false` salta la sola riga del minimo.
+
 ## Info
 
 ### IN-01: L'atto «deleted» mostra una pseudo-transizione di ruolo nel registro
