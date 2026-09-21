@@ -452,6 +452,44 @@ Plans:
 > resta quella di sempre: rifiutare un ospite valido e' peggio che ammetterne uno
 > doppio.
 
+**Plans:** 14 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 51-01-PLAN.md — `P-51-1` scritta, e la corsa «prima» a radio spenta sul codice attuale (checkpoint del proprietario)
+- [ ] 51-02-PLAN.md — via il ramo socio dalla coda offline, dallo scanner e dall'annullamento; IndexedDB a v6
+- [ ] 51-03-PLAN.md — via `/api/membership/verify` e `/list`, le due regole del service worker, e il glob morto della persona
+- [ ] 51-04-PLAN.md — via la membership card e lo storico presenze: superfici, mappe di rotta, manifest, alias italiano
+- [ ] 51-05-PLAN.md — il catalogo del laboratorio e i conteggi, prima che esista una riga di migration
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 51-06-PLAN.md — `/account` nasce da `/dashboard`, con il 308 permanente e le liste d'accesso
+- [ ] 51-07-PLAN.md — lo schermo della porta: opaco, senza nome, con la testata ferma e l'avviso derivato
+- [ ] 51-08-PLAN.md — migration 1: ruolo `attendee` e le due chiavi di capability, applicata al laboratorio
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 51-09-PLAN.md — le superfici di lavoro: niente piu' `member`, niente piu' codice socio
+- [ ] 51-10-PLAN.md — il tipo, il middleware, la pagina dell'account e il lessico verso le persone
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 51-11-PLAN.md — il registro diventa `account_acts` nel codice, e i banchi smettono di seminare il codice socio
+
+**Wave 5** *(blocked on Wave 4)*
+
+- [ ] 51-12-PLAN.md — migration 2: via il codice socio, registro rinominato, `attendances` svuotata per chiave e tolta (laboratorio)
+
+**Wave 6** *(blocked on Wave 5)*
+
+- [ ] 51-13-PLAN.md — la produzione, sotto autorizzazione datata: deploy, due migration, cancellazione per chiave (checkpoint del proprietario)
+
+**Wave 7** *(blocked on Wave 6)*
+
+- [ ] 51-14-PLAN.md — `P-51-1` corsa «dopo» e `51-VERIFICATION.md` (checkpoint del proprietario)
+
 ### Phase 52: La barra di navigazione e i ritocchi
 
 | ID | Requisito |
