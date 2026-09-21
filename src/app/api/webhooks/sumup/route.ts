@@ -358,7 +358,11 @@ export async function POST(request: Request) {
         // e senza questa colonna il ramo tardivo non saprebbe quale stato
         // temporale interrogare. Nullabile nello schema — un ordine di evento —
         // e il passo 7 dichiara cosa fa in quel caso invece di presumerlo.
-        "id, status, buyer_email, user_id, total_amount, quantity, event_id, party_id, error_message"
+        // `buyer_name` e' aggiunto da REG-06: sul percorso pagato l'account
+        // nasce QUI, ore dopo il modulo, quindi il nome raccolto allora vive
+        // sulla riga d'ordine e questo e' il solo momento in cui puo'
+        // raggiungerlo. Non tocca il biglietto (`D-49-03`).
+        "id, status, buyer_email, buyer_name, user_id, total_amount, quantity, event_id, party_id, error_message"
       )
       .eq("sumup_checkout_id", checkout.id)
       .single();
@@ -448,7 +452,11 @@ export async function POST(request: Request) {
       if (!buyerId) {
         const identity = await resolveGuestIdentity(
           supabase,
-          ticketOrder.buyer_email
+          ticketOrder.buyer_email,
+          // Il nome entra nei metadati **solo se il conto nasce adesso**: su
+          // un'identita' ritrovata `resolveGuestIdentity` non scrive nulla, e
+          // la ragione sta accanto alla sua `createUser`.
+          ticketOrder.buyer_name
         );
 
         if (!identity.ok) {

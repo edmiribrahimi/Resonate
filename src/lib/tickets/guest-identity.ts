@@ -1,6 +1,7 @@
 import "server-only";
 
 import { redactDbError } from "@/lib/errors/redact";
+import { FULL_NAME_MAX_LENGTH, normalizeBuyerName } from "@/lib/tickets/buyer-input";
 import type { getServiceClient } from "@/lib/supabase/service";
 
 /**
@@ -84,6 +85,12 @@ import type { getServiceClient } from "@/lib/supabase/service";
  * nessun aggiornamento di quella tabella: la legge e basta. Chi porta un profilo
  * ad `approved` e' il webhook, ed e' scritto li' da prima di questa fase
  * (`src/app/api/webhooks/sumup/route.ts`) — *il pagamento decide l'ammissione*.
+ *
+ * **E dal 2026-09-21 quel «non scrive niente» comprende il nome.** Il terzo
+ * parametro entra nei metadati **solo quando l'identita' si conia**; su
+ * un'identita' ritrovata non si scrive, ne' con un aggiornamento ne' «solo se il
+ * campo e' vuoto». La ragione sta accanto alla chiamata, ed e' la piu'
+ * importante di questo file dopo la biforcazione.
  *
  * Tenere separate le due cose e' il **gate dei due assi** (`CLAUDE.md`, principio
  * 8) applicato al codice invece che allo schermo: il ruolo e lo stato sono
@@ -201,10 +208,16 @@ function escapeLikePattern(value: string): string {
  * l'esito e' lo stesso di una consegna sola. L'idempotenza dell'ordine sta nello
  * schema (`ticket_orders.sumup_checkout_id` unico) e dentro la RPC; questa e' la
  * stessa proprieta' sull'identita'.
+ *
+ * @param fullName Il nome raccolto dal modulo (`D-50-18b`), **facoltativo e in
+ * coda** perche' i chiamanti che esistevano prima restino validi cosi' come
+ * sono. Viaggia fino a `createUser`, da cui il trigger lo porta in
+ * `profiles.full_name`, e si ferma li': vedi il passo 3.
  */
 export async function resolveGuestIdentity(
   serviceClient: ReturnType<typeof getServiceClient>,
-  email: string
+  email: string,
+  fullName?: string | null
 ): Promise<GuestIdentityResult> {
   const fail = (
     reason: GuestIdentityFailure,
@@ -244,10 +257,30 @@ export async function resolveGuestIdentity(
   // indirizzo da confermare con una seconda mail — **il pagamento e' gia' la
   // prova che quell'indirizzo appartiene a chi lo ha usato**, ed e' verificato
   // dal fornitore prima che questa funzione venga chiamata.
+  //
+  // ── IL NOME SI SCRIVE QUI, E SOLO QUI ──────────────────────────────────────
+  //
+  // Nei metadati del conto, che il trigger `handle_new_user` porta poi in
+  // `profiles`: la stessa strada del percorso guest list
+  // (`process-entry.ts:238-242`), non una seconda inventata per l'occasione.
+  // Tagliato agli estremi, ridotto ai caratteri stampabili e troncato al tetto
+  // dichiarato; se dopo tutto questo non resta niente, la chiave **non entra
+  // affatto** — un nome vuoto scritto sopra un campo assente e' comunque una
+  // scrittura.
+  //
+  // **E sul ramo del RITROVAMENTO non si scrive niente.** Nessun aggiornamento,
+  // e nemmeno «solo se il campo e' vuoto»: questa funzione e' raggiunta da un
+  // percorso **pubblico e senza sessione**, quindi un ramo che tocca
+  // l'anagrafica di un conto esistente sarebbe la primitiva *chiunque conosca
+  // un indirizzo puo' riscrivere il nome di quell'account* — che nessuno ha
+  // chiesto e che non si toglie piu' una volta esistita (`D-50-18b`, T-50-18).
+  const name = normalizeBuyerName(fullName).slice(0, FULL_NAME_MAX_LENGTH);
+
   const { data: authUser, error: createError } =
     await serviceClient.auth.admin.createUser({
       email: emailLower,
       email_confirm: true,
+      ...(name ? { user_metadata: { full_name: name } } : {}),
     });
 
   if (createError || !authUser?.user?.id) {

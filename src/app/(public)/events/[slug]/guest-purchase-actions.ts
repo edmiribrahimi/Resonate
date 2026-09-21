@@ -9,6 +9,13 @@ import {
   type OrderQuoteRefusal,
 } from "@/lib/tickets/order-quote";
 import {
+  EMAIL_MAX_LENGTH,
+  EMAIL_SHAPE,
+  FULL_NAME_MAX_LENGTH,
+  normalizeBuyerEmail,
+  normalizeBuyerName,
+} from "@/lib/tickets/buyer-input";
+import {
   sendOrderConfirmation,
   ORDER_CONFIRMATION_CATEGORY,
 } from "@/lib/tickets/order-confirmation";
@@ -81,15 +88,32 @@ import {
  * degli account fantasma, uno per ogni carrello abbandonato. `ticket_orders.
  * user_id` e' nullabile esattamente per questo.
  *
- * ── Nessun nome viene chiesto ───────────────────────────────────────────────
+ * ── Il nome si chiede, e NON e' sul biglietto ───────────────────────────────
  *
- * `D-49-03`: il biglietto e' **al portatore**. Chi compra puo' regalarlo o
- * rivenderlo, e chi entra e' chi lo tiene — «sei e' un gruppo di amici con un
- * solo pagante» significa che cinque biglietti su sei stanno in mano a qualcun
- * altro. `BUY-03` resta *una mail basta*. Un nome chiesto qui produce uno di due
- * danni: lo staff vede un nome, ha davanti un'altra persona e **rifiuta un
- * ospite valido** davanti a una fila, oppure impara a ignorare il campo e allora
- * il campo e' teatro. **Non aggiungerlo per gentilezza.**
+ * **Questa sezione diceva «nessun nome viene chiesto» fino al 2026-09-21, e la
+ * decisione che l'ha cambiata non ha cambiato la ragione che la reggeva.**
+ * `D-50-18b` aggiunge `Full name` a questo modulo e a quello gratuito perche'
+ * i due chiedano gli stessi campi; il nome va **nell'account**, mai sul
+ * biglietto.
+ *
+ * `D-49-03` resta intero: il biglietto e' **al portatore**. Chi compra puo'
+ * regalarlo o rivenderlo, e chi entra e' chi lo tiene — «sei e' un gruppo di
+ * amici con un solo pagante» significa che cinque biglietti su sei stanno in
+ * mano a qualcun altro. Per questo il nome raccolto qui **non tocca
+ * `tickets`**: l'etichetta del portatore resta un progressivo, e lo schermo
+ * dello staff non mostra nomi. Un nome alla porta produce uno di due danni: lo
+ * staff vede un nome, ha davanti un'altra persona e **rifiuta un ospite
+ * valido** davanti a una fila, oppure impara a ignorare il campo e allora il
+ * campo e' teatro.
+ *
+ * Dove va invece: su `ticket_orders.buyer_name`, che e' **una casa di
+ * passaggio**. Su questo percorso l'account nasce al webhook, minuti od ore
+ * dopo il modulo; senza una riga che se lo ricordi, il nome non arriverebbe mai
+ * a `profiles.full_name` e il campo sarebbe teatro dall'altra parte.
+ *
+ * **E non entra nella descrizione del checkout.** Quella stringa va a una
+ * superficie di terzi che non si ritira, si compone in un posto solo dentro il
+ * preventivo, e cosa puo' contenere e' gia' deciso li'.
  *
  * ── Perche' i rifiuti sono VALORI e non eccezioni ───────────────────────────
  *
@@ -109,18 +133,17 @@ import {
  * permetterebbe di trovare la riga di log corrispondente.
  */
 
-/** Il tetto di RFC 5321 su un indirizzo di posta, applicato prima dell'insert. */
-const EMAIL_MAX_LENGTH = 254;
-
 /**
- * Forma minima e non negoziabile: qualcosa, una chiocciola, qualcosa, un punto,
- * qualcosa — senza spazi. **Non e' una validazione RFC** e non pretende di
- * esserlo: nessuna espressione regolare lo e', e l'unica prova che un indirizzo
- * esiste e' una mail che arriva. Serve a fermare i due casi che si vedono
- * davvero — il campo vuoto e il dominio dimenticato — prima che diventino un
- * biglietto pagato che non raggiunge nessuno.
+ * Il tetto dell'indirizzo, la sua forma e il tetto del nome vivono in
+ * `@/lib/tickets/buyer-input`, non qui.
+ *
+ * Erano tre costanti di questo file finche' il modulo era uno solo. Da
+ * `D-50-18b` i moduli sono **due** e chiedono gli stessi due campi: due copie
+ * degli stessi numeri sarebbero due verita' che divergono al primo che ne
+ * corregge una. Sono uscite da qui perche' un file di Server Action **non puo'
+ * esportare una costante** — ammette solo funzioni asincrone, e ognuna e' un
+ * endpoint.
  */
-const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const GUEST_EMAIL_MISSING = "guest_email_missing";
 const GUEST_EMAIL_MALFORMED = "guest_email_malformed";
@@ -128,7 +151,19 @@ const GUEST_CHECKOUT_FAILED = "guest_checkout_failed";
 const GUEST_ORDER_NOT_SAVED = "guest_order_not_saved";
 
 /**
- * I quattro rifiuti che appartengono a **questa** superficie, piu' quelli del
+ * Le due cause del nome, e sono **due** perche' chiedono due gesti diversi.
+ *
+ * `guest_name_missing` dice *scrivi il tuo nome*; `guest_name_too_long` dice
+ * *accorcialo*. Una sola categoria per entrambe direbbe a chi ha lasciato il
+ * campo vuoto la stessa frase che legge chi ha incollato un paragrafo — ed e'
+ * esattamente il difetto del form della newsletter che questo progetto ha gia'
+ * registrato (`.planning/codebase/CONCERNS.md`, `meta-gates.md`).
+ */
+const GUEST_NAME_MISSING = "guest_name_missing";
+const GUEST_NAME_TOO_LONG = "guest_name_too_long";
+
+/**
+ * I sei rifiuti che appartengono a **questa** superficie, piu' quelli del
  * preventivo, che viaggiano cosi' come sono.
  *
  * Ogni superficie dichiara la propria unione nel proprio file
@@ -141,6 +176,8 @@ const GUEST_ORDER_NOT_SAVED = "guest_order_not_saved";
 type GuestPurchaseRefusal =
   | typeof GUEST_EMAIL_MISSING
   | typeof GUEST_EMAIL_MALFORMED
+  | typeof GUEST_NAME_MISSING
+  | typeof GUEST_NAME_TOO_LONG
   | typeof GUEST_CHECKOUT_FAILED
   | typeof GUEST_ORDER_NOT_SAVED
   | OrderQuoteRefusal;
@@ -155,6 +192,8 @@ type GuestPurchaseRefusal =
 const GUEST_PURCHASE_ERROR: Record<
   | typeof GUEST_EMAIL_MISSING
   | typeof GUEST_EMAIL_MALFORMED
+  | typeof GUEST_NAME_MISSING
+  | typeof GUEST_NAME_TOO_LONG
   | typeof GUEST_CHECKOUT_FAILED
   | typeof GUEST_ORDER_NOT_SAVED,
   string
@@ -163,6 +202,10 @@ const GUEST_PURCHASE_ERROR: Record<
     "Enter the email where your tickets should go. Nothing was charged.",
   [GUEST_EMAIL_MALFORMED]:
     "That email does not look like an email, so your tickets would have nowhere to go. Check it and try again — nothing was charged.",
+  [GUEST_NAME_MISSING]:
+    "Enter your name — it goes on the account these tickets belong to, never on the tickets themselves. Nothing was charged.",
+  [GUEST_NAME_TOO_LONG]:
+    `Names here stop at ${FULL_NAME_MAX_LENGTH} characters. Shorten it and try again — nothing was charged.`,
   [GUEST_CHECKOUT_FAILED]:
     "The payment page could not be opened, so nothing was charged and no order was placed. Please try again in a moment.",
   [GUEST_ORDER_NOT_SAVED]:
@@ -193,16 +236,25 @@ export async function purchaseTicketsGuest(input: {
   tierId: string;
   quantity: number;
   email: string;
+  /**
+   * `Full name` (`D-50-18b`). **Facoltativo nel tipo, obbligatorio nel
+   * comportamento**, e la differenza non e' un allentamento: questa funzione e'
+   * un endpoint raggiungibile dal browser, quindi un campo dichiarato
+   * obbligatorio nel tipo arriva comunque assente da una chiamata costruita a
+   * mano. La garanzia e' il rifiuto `guest_name_missing` qui sotto, non la
+   * firma. Il tipo resta facoltativo anche perche' la superficie che lo
+   * compila — il modulo dei tier — la converte il piano 50-05: un tipo che
+   * rompe il build nel frattempo sarebbe un errore di compilazione, non una
+   * difesa.
+   */
+  fullName?: string;
   discountCodeId?: string | null;
 }): Promise<GuestPurchaseResult> {
-  // 1. L'indirizzo, normalizzato PRIMA di toccare qualunque cosa.
-  //
-  //    Minuscolo come fa gia' `src/lib/guest-list/process-entry.ts:160`: la
-  //    parte locale di un indirizzo e' formalmente sensibile alle maiuscole, ma
-  //    nessun percorso di questo prodotto la tratta cosi' — il registro dei
-  //    profili si cerca con `ilike` — e due convenzioni diverse sullo stesso
-  //    indirizzo sono due persone diverse per il webhook che deve riconoscerlo.
-  const email = typeof input.email === "string" ? input.email.trim().toLowerCase() : "";
+  // 1. L'indirizzo e il nome, normalizzati PRIMA di toccare qualunque cosa,
+  //    con le regole che vivono in un posto solo (`@/lib/tickets/buyer-input`)
+  //    perche' l'altro modulo d'ordine usa le stesse.
+  const email = normalizeBuyerEmail(input.email);
+  const fullName = normalizeBuyerName(input.fullName);
 
   if (!email) {
     return {
@@ -218,6 +270,25 @@ export async function purchaseTicketsGuest(input: {
       success: false,
       refusal: GUEST_EMAIL_MALFORMED,
       error: GUEST_PURCHASE_ERROR[GUEST_EMAIL_MALFORMED],
+    };
+  }
+
+  // Il nome, simmetrico all'indirizzo e con **due** cause proprie: manca, o e'
+  // troppo lungo. Il tetto si applica al valore gia' normalizzato — senza, un
+  // campo fatto di soli spazi supererebbe la misura e fallirebbe la successiva
+  // con la causa sbagliata addosso.
+  if (!fullName) {
+    return {
+      success: false,
+      refusal: GUEST_NAME_MISSING,
+      error: GUEST_PURCHASE_ERROR[GUEST_NAME_MISSING],
+    };
+  }
+  if (fullName.length > FULL_NAME_MAX_LENGTH) {
+    return {
+      success: false,
+      refusal: GUEST_NAME_TOO_LONG,
+      error: GUEST_PURCHASE_ERROR[GUEST_NAME_TOO_LONG],
     };
   }
 
@@ -301,6 +372,10 @@ export async function purchaseTicketsGuest(input: {
   }
 
   // 6. La riga d'ordine. `user_id: null` — **nessun account nasce qui**.
+  //
+  //    `buyer_name` e' la casa di passaggio del nome: l'account nasce al
+  //    webhook, e senza questa colonna il nome raccolto sopra non arriverebbe
+  //    mai a `profiles.full_name`. Non tocca `tickets` (`D-49-03`).
   const { error: insertError } = await serviceClient.from("ticket_orders").insert({
     id: orderId,
     event_id: quote.eventId,
@@ -308,6 +383,7 @@ export async function purchaseTicketsGuest(input: {
     tier_id: quote.tierId,
     user_id: null,
     buyer_email: email,
+    buyer_name: fullName,
     quantity: quote.quantity,
     sumup_checkout_id: checkoutId,
     total_amount: quote.totalAmount,
