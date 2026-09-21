@@ -1167,7 +1167,7 @@ passano».**
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED — tutte risolte in 50-CONTEXT.md: Q1→D-50-18b, Q2→D-50-16 atto `deleted`, Q3→D-50-22, Q4→D-50-26, Q5→D-50-23, Q6→D-50-25)
 
 1. **Nome e cognome sul modulo dell'ordine gratuito.**
    Cosa sappiamo: il modulo d'acquisto raccoglie **solo** la mail (§0/C6), e

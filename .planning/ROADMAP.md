@@ -55,6 +55,7 @@ evitare:
 
 1. **L'acquisto da ospite va costruito PRIMA di togliere le iscrizioni**, o
    esiste una finestra in cui l'app non vende piu' niente.
+
 2. **Un ordine con piu' biglietti e' una cosa che i biglietti non hanno mai
    fatto.** I drink si': hanno ordini con piu' voci, il token in `localStorage`
    e `claimGuestOrders`. Quello e' il precedente da seguire, e sta gia' in
@@ -134,6 +135,7 @@ e una lettura dei titoli che capisce cosa sta specchiando.
 **Plans:** 12 plans in 9 waves
 
 Plans:
+
 - [x] 58-01-PLAN.md — i due gate sintetici (grammatica dei titoli · guardie dello specchio), rossi e non registrati *(onda 0)*
 - [x] 58-02-PLAN.md — le tre procedure `P-58-A`/`P-58-B`/`P-58-C` e le misure d'apertura, prese prima che lo specchio le cancelli *(onda 0)*
 - [x] 58-03-PLAN.md — `ICS-04` + `ICS-05`: un nome dove va la sigla, e il numero che si trova *(onda 1)*
@@ -147,6 +149,7 @@ Plans:
 - [x] 58-11-PLAN.md — il primo specchio, a mano, con autorizzazione datata *(onda 7, checkpoint bloccante)*
   > **CHIUSO il 2026-08-22**, dopo essere stato chiuso parzialmente il 2026-08-20. *(Il 20:)* lo specchio ha girato presidiato su due chiavi (`rsnt` con il passaggio una tantum, poi `rmdb`), i conteggi sono stati riconfermati **dal catalogo**, e la chiave di calendario e' `NOT NULL` sulle tre tabelle specchiate — versione `20260820205137`, riverificata dal catalogo il 22. *(Il 22:)* **`P-58-A` e `P-58-B` sono ESEGUITE** — diciassette `Result` con un'osservazione, e i sette pendenti sono **tutti e soli** quelli di `P-58-C`, che e' un rientro. **`ICS-03` e `ICS-03b` sono chiusi dall'evidenza di una procedura**; `ICS-01`, `ICS-01b`, `ICS-02` e `ICS-07` erano gia' chiusi.
   > ⚠ **Due cose restano aperte e sono nominate invece che arrotondate.** *(a)* La **superficie** resta irraggiungibile da chi esegue — i passi 14, 19 e 24 dichiarano una seconda lettura **non presa** (voce 11-bis). *(b)* Lo specchio **riaggancia le spunte e non gli annullamenti**, e la guardia della corsa non presidiata legge la stessa lista: **e' un prerequisito del 58-12, non un lavoro futuro** (voce 21).
+
 - [x] 58-12-PLAN.md — `ICS-10`/`ICS-10b`: il cron e i tre stati per chiave sulla superficie *(onda 8)*
 
 > **L'ordine delle onde non e' libero.** La lettura dei titoli va **prima** dello
@@ -360,6 +363,7 @@ alla porta — anche con la radio spenta.
 **Plans:** 2/11 plans executed
 
 Plans:
+
 - [x] 49-01-PLAN.md — lo schema dell'ordine: righe, tetto, attribuzione, etichetta
 - [x] 49-02-PLAN.md — la credenziale della porta coniata con `crypto`
 - [x] 49-03-PLAN.md — il perimetro che l'account leggero allarga (misura + decisione)
@@ -392,17 +396,43 @@ Plans:
 **Plans:** 12 plans in 10 waves
 
 Plans:
+**Wave 1**
+
 - [ ] 50-01-PLAN.md — il banco di prova senza lo stato, la serata gratuita seminata, e le sette misure prese in sola lettura
 - [ ] 50-02-PLAN.md — la migration che smonta `status`, il referral e il trigger, in una transazione sola (laboratorio)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 50-03-PLAN.md — la migration additiva dell'ordine a totale zero: checkout nullabile, `buyer_name`, il livello a prezzo 0
-- [ ] 50-04-PLAN.md — il nome nell'account su entrambi i percorsi, e l'azione dell'ordine gratuito
-- [ ] 50-05-PLAN.md — le superfici della prenotazione gratuita, e via il pulsante RSVP
 - [ ] 50-06-PLAN.md — via `/register`, via la home, la barra e la frase del login
 - [ ] 50-07-PLAN.md — «cancella account» con i suoi rifiuti, via le sei azioni di stato e via il referral
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 50-04-PLAN.md — il nome nell'account su entrambi i percorsi, e l'azione dell'ordine gratuito
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 50-05-PLAN.md — le superfici della prenotazione gratuita, e via il pulsante RSVP
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 50-08-PLAN.md — il percorso del denaro senza stato, il dashboard, i media, le quattro mail
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
 - [ ] 50-09-PLAN.md — la barra perde lo stato, i tipi cadono per ultimi, REG-05 a zero, e il runbook
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
 - [ ] 50-10-PLAN.md — le otto procedure percorse sul laboratorio, signup spento compreso
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
 - [ ] 50-11-PLAN.md — la terza autorizzazione, il deploy, le migration di produzione e le cancellazioni
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
 - [ ] 50-12-PLAN.md — i moduli della persona, il changelog, e `50-VERIFICATION.md`
 
 ### Phase 51: Via le superfici da socio, e la porta
@@ -662,26 +692,33 @@ Non preferenze: ognuno ha un modo di fallire dietro.
   da questa milestone, e **49 lo amplifica**: aprire l'acquisto agli ospiti
   moltiplica i drink venduti. La v1.5 si e' data la stessa regola e l'ha
   rispettata — i difetti vivi vanno per primi.
+
 - **Il catalogo prima delle superfici.** Il catalogo dei format lo leggono la
   barra della pagina eventi, le viste della Location, le pagine visual e i chip
   di TASK. Cancellare un format e cambiarne il colore **dopo** aver costruito
   quattro superfici significa riaprirle tutte e quattro.
+
 - **L'acquisto da ospite prima della rimozione delle iscrizioni.** Invertirli
   apre una finestra in cui l'app **non vende piu' niente**. Non e' un rischio
   teorico: e' l'unico ordine possibile.
+
 - **Il perno prima dell'impianto.** L'impianto costruisce cancelli; il perno
   smonta i ruoli e gli stati su cui si appoggerebbero. Invertirli significa
   costruire la barra di navigazione due volte.
+
 - **La porta non e' mai in pacchetto.** MEM-03 toglie un percorso che il service
   worker precachea e che la coda offline conosce. Si verifica **su un dispositivo
   con la rete spenta**, in una fase che non contiene nient'altro.
+
 - **TASK dopo la barra.** Il pulsante e la sezione arrivano insieme: una barra
   con un pulsante che non porta da nessuna parte e' peggio di una barra senza.
+
 - **La navetta ultima, e trattata come lavoro sulla porta.** E' il secondo
   percorso del denaro, e dal 2026-08-19 e' anche una modifica allo scanner, alla
   coda offline e al service worker (SHTL-10..12). Nessuna delle due cose si
   costruisce nello stesso respiro di un lavoro di impianto, e la seconda si
   verifica **con la rete spenta, su due dispositivi**.
+
 - **I documenti in fondo.** Un modulo della persona aggiornato prima della
   cancellazione descrive un futuro; aggiornato molto dopo, difende un morto.
 
@@ -706,11 +743,14 @@ l'unica prova che esistera'.
 
 - **I campi di scouting esclusi dal seed della fase 45** — regime giuridico,
   prontezza, vino naturale, le tre frasi di evidenza. Decisione del proprietario.
+
 - **La palette di MotionLab.** Non e' decisa, e non si inventa qui.
 - **Il manifesto sonoro di Resonate, RamaDub e MotionLab.** Non e' scritto.
   *«Non e' ancora deciso»* e' la risposta corretta.
+
 - **Il tracciamento degli errori.** Resta assente, e 56 lo dichiara invece di
   lasciar credere che qualcuno se ne accorgera'.
+
 - **La riapertura della gallery al pubblico.** Il cancello di NAV-02 e' costruito
   per essere tolto, non per restare.
 

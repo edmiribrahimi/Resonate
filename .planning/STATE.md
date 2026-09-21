@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "Phase 50 context gathered (2026-09-21) — REG-06 aggiunto; prossimo: plan-phase 50"
-last_updated: "2026-09-21T11:05:44.335Z"
+stopped_at: "Phase 50 PLANNED (2026-09-21) — 12 piani in 10 onde, verificati; prossimo: execute-phase 50 (il codice prima della migration di produzione, terza autorizzazione datata)"
+last_updated: "2026-09-21T12:10:16.076Z"
 last_activity: 2026-09-21
 progress:
   total_phases: 51
   completed_phases: 48
-  total_plans: 359
+  total_plans: 371
   completed_plans: 360
-  percent: 92
+  percent: 97
 ---
 
 # State: Resonate
@@ -281,7 +281,7 @@ SUMMARY su quindici: la fase e' eseguita.** Il piano 37-13 ha chiuso l'onda 7 il
 sostituite, e undici voci `human_needed` consolidate nel suo SUMMARY. Le onde 8 e
 9 (piani 37-14 e 37-15) hanno chiuso i reperti del code review: CR-01, WR-01,
 WR-03, WR-05, WR-06, WR-07, WR-08 e la voce 4 di `deferred-items.md`.
-Status: Executing Phase 58
+Status: Ready to execute
 scritto «riportato come avvenuto, non misurato da me» — ed era la cosa giusta da
 scrivere dalla sua posizione. La misura pero' esiste, ed e' dell'orchestratore
 che gliel'aveva riportato:
@@ -362,7 +362,7 @@ Note:
         organizer/approved, organizer/pending seminato a mano, staff, member —
         ne chiude la maggior parte. La fase 36 costruisce superfici pubbliche
         sopra quel modello: il debito non e' suo, ma le sta sotto.
-Last activity: 2026-08-25
+Last activity: 2026-09-21
 
 **Phase 31: EXECUTED, NOT VERIFIED.** 13 of 13 plans, 61 commits on
 `gsd/phase-31-live-defects-at-the-door-and-the-bar`. One of its four blocking
