@@ -40,10 +40,10 @@ import { FOCUS_RING } from "@/components/ui/Button";
  *
  * ── The navs are not mounted here ────────────────────────────────────────────
  *
- * `(work)/layout.tsx` mounts both and performs the `UserRole` / `UserStatus`
- * casts once (D-34-07), so `role` and `status` are no longer read by this
- * consumer at all. The payload's own keys are untouched — removing those is a
- * migration, and this phase writes none.
+ * `(work)/layout.tsx` mounts both and performs the `UserRole` cast once
+ * (D-34-07), so this consumer reads no identity at all. There used to be a
+ * second cast beside it, for the approval axis; Phase 50 removed the axis, the
+ * type and the payload key together, so there is nothing left to cast.
  *
  * **And that is also why this file declares no navigation clearance** (plan
  * 41.1-05, D-41.1-01). Check E asserts that the set of files declaring the

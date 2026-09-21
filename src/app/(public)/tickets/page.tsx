@@ -9,7 +9,7 @@ import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle, SectionHeading } from "@/components/ui/Typography";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { createClient } from "@/lib/supabase/server";
-import type { UserRole, UserStatus } from "@/types/database";
+import type { UserRole } from "@/types/database";
 
 /**
  * `/tickets` — dove stanno i biglietti, e la ragione per cui questa pagina
@@ -126,7 +126,7 @@ export default async function TicketsPage() {
     redirect("/login?next=/tickets");
   }
 
-  const { role, status, capabilities, liveAssignmentCapabilities } =
+  const { role, capabilities, liveAssignmentCapabilities } =
     await getAccessContext();
 
   // La stessa proiezione che la dashboard legge, sulla stessa policy. Copiata
@@ -399,7 +399,6 @@ export default async function TicketsPage() {
 
       <AppNav
         role={role as UserRole | null}
-        status={status as UserStatus | null}
         capabilities={[...capabilities]}
         liveAssignmentCapabilities={
           liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null

@@ -2,7 +2,7 @@ import AppNav from "@/components/layout/AppNav";
 import NewsletterForm from "@/components/newsletter/NewsletterForm";
 import { PageShell } from "@/components/ui/PageShell";
 import { getAccessContext } from "@/lib/capabilities/server";
-import type { UserRole, UserStatus } from "@/types/database";
+import type { UserRole } from "@/types/database";
 
 /**
  * The newsletter surface — converted by plan 41.2-03.
@@ -31,10 +31,11 @@ import type { UserRole, UserStatus } from "@/types/database";
  * layout, never membership (`41-UI-SPEC.md` §0 rule 5).
  */
 export default async function NewsletterPage() {
-  // Role and status come from the session, not from a request header.
-  // Nothing on this page gates on either: both are handed to the navigation, a
-  // "use client" component that cannot import the resolver.
-  const { role, status, capabilities, liveAssignmentCapabilities } =
+  // Role comes from the session, not from a request header. Nothing on this
+  // page gates on it: it is handed to the navigation, a "use client" component
+  // that cannot import the resolver. An approval status used to travel the same
+  // way; Phase 50 removed the axis.
+  const { role, capabilities, liveAssignmentCapabilities } =
     await getAccessContext();
 
   return (
@@ -60,7 +61,6 @@ export default async function NewsletterPage() {
 
       <AppNav
         role={role as UserRole | null}
-        status={status as UserStatus | null}
         capabilities={[...capabilities]}
         liveAssignmentCapabilities={
           liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null

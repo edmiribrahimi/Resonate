@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import type { UserRole, UserStatus } from "@/types/database";
+import type { UserRole } from "@/types/database";
 import { getVisibleNavItems } from "@/lib/rbac/roles";
 import type { CapabilityKey } from "@/lib/capabilities/keys";
 import { FOCUS_RING } from "@/components/ui/Button";
@@ -70,7 +70,14 @@ import { SectionHeading } from "@/components/ui/Typography";
  */
 export interface AppNavProps {
   role: UserRole | null;
-  status: UserStatus | null;
+  // ── La prop dello stato e' uscita (fase 50, 50-09, D-50-01) ───────────────
+  //
+  // Stava qui sotto `role`, e i tredici punti d'innesto la passavano con un
+  // cast. Il filtro che la leggeva non esiste piu' (`getVisibleNavItems`), la
+  // funzione di database non la mette piu' nel payload, e la colonna che la
+  // produceva esce dal database nella stessa fase. Toglierla dalla firma ha
+  // reso i tredici un errore di compilazione ciascuno: **e' cosi' che l'elenco
+  // dei file da toccare e' stato costruito**, invece che a memoria.
   /**
    * Held by role. Empty for an anonymous visitor — `ANONYMOUS_CONTEXT`.
    *
@@ -216,7 +223,6 @@ const INDICATOR_RESPONSIVE =
 
 export default function AppNav({
   role,
-  status,
   capabilities,
   liveAssignmentCapabilities,
   form = "responsive",
@@ -225,7 +231,6 @@ export default function AppNav({
   const pathname = usePathname();
   const visibleItems = getVisibleNavItems(
     role,
-    status,
     capabilities,
     liveAssignmentCapabilities
   );

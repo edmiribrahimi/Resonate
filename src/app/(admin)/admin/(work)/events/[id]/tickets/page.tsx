@@ -90,7 +90,8 @@ import {
  *
  * `admin/(work)/layout.tsx` resolves the access context once for the whole tree
  * and mounts `StaffNav` and `AppNav` (D-34-07), so the `AppNav` mount and
- * the `as UserRole` / `as UserStatus` casts both twins carried are deleted here.
+ * the `as UserRole` cast both twins carried is deleted here. A second cast
+ * stood beside it, on the approval axis, until Phase 50 removed the axis.
  * `getAccessContext` is `cache()`-scoped per request, so the guard below costs
  * no second round trip. It **throws** `capabilities.resolve_failed` and is
  * deliberately not wrapped: an infrastructure fault dressed as a permission

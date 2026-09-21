@@ -16,7 +16,7 @@ import DashboardDrinkTokens from "./DashboardDrinkTokens";
 import ManagementSection from "@/components/account/ManagementSection";
 import { visibleStaffTabs } from "@/lib/routes/staff-tabs";
 import PostHogIdentify from "@/components/analytics/PostHogIdentify";
-import type { UserRole, UserStatus } from "@/types/database";
+import type { UserRole } from "@/types/database";
 
 /**
  * The member dashboard — converted by plan 41.2-13.
@@ -289,11 +289,12 @@ export default async function DashboardPage({
   });
   const sortedTickets = [...upcomingTickets, ...pastTickets];
 
-  // Role, status and the resolved capability set, from the SESSION. Only the
-  // source changed. `capabilities` is read for one thing only — deciding which
+  // Role and the resolved capability set, from the SESSION. Only the
+  // source changed; l'approvazione che stava fra i due e' uscita con l'asse
+  // (fase 50), e il suo ultimo lettore era la barra. `capabilities` is read for one thing only — deciding which
   // management links this page may draw — and it crosses to the client as an
   // array, because a `Set` is not serialisable across the boundary.
-  const { capabilities, role, status, liveAssignmentCapabilities } =
+  const { capabilities, role, liveAssignmentCapabilities } =
     await getAccessContext();
   const managementCapabilities = [...capabilities];
 
@@ -695,7 +696,6 @@ export default async function DashboardPage({
       */}
       <AppNav
         role={role as UserRole | null}
-        status={status as UserStatus | null}
         capabilities={[...capabilities]}
         liveAssignmentCapabilities={
           liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null

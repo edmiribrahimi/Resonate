@@ -336,17 +336,22 @@ export async function updateSession(request: NextRequest) {
   // anonymous request must not call it at all rather than call it and be
   // refused.
   //
-  // The middleware no longer keeps `role` and `status` as values at all. It
-  // used to, for one reason only: the header-injection block that stood below
-  // needed them. Phase 33 deleted that block, and with it the last consumer.
-  // No decision in this file has ever read them.
+  // The middleware no longer keeps `role` as a value at all. It used to, for one
+  // reason only: the header-injection block that stood below needed it. Phase 33
+  // deleted that block, and with it the last consumer. No decision in this file
+  // has ever read it.
   //
-  // They DO still travel in the access-context payload, and that is not
-  // an oversight. `AppNav` and `StaffNav` are `"use client"` components that
-  // take `role` and `status` as props and cannot import the DAL, so a parent
-  // Server Component resolves them and passes them down. Removing the two
-  // fields from the payload is STAFF-03 in phase 34, not this phase — doing it
-  // here would turn a transport swap into a nav redesign.
+  // It DOES still travel in the access-context payload, and that is not an
+  // oversight. `AppNav` and `StaffNav` are `"use client"` components that take
+  // `role` as a prop and cannot import the DAL, so a parent Server Component
+  // resolves it and passes it down.
+  //
+  // **An approval status used to travel beside it, and no longer does** (fase
+  // 50, D-50-01): la funzione di database non mette piu' quella chiave nel
+  // payload e `getVisibleNavItems` non la chiede piu'. Nessun predicato di
+  // questo file cambia — non ne leggeva nessuno dei due — ma la prosa qui sopra
+  // descriveva un payload che non esiste piu', e questo file si carica su ogni
+  // richiesta.
   let capabilities = new Set<string>();
   let capabilitiesResolveFailed = false;
 

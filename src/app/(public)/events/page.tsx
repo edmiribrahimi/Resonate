@@ -5,7 +5,7 @@ import { PageTitle } from "@/components/ui/Typography";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
-import type { UserRole, UserStatus } from "@/types/database";
+import type { UserRole } from "@/types/database";
 import EventTabs from "./EventTabs";
 import FormatFilterRow from "./FormatFilterRow";
 
@@ -145,14 +145,16 @@ interface EventsPageProps {
 }
 
 export default async function EventsPage({ searchParams }: EventsPageProps) {
-  // Role, status and capabilities from the SESSION. Resolved here, OUTSIDE the
+  // Role and capabilities from the SESSION. Resolved here, OUTSIDE the
   // try/catch below, on purpose: a resolver failure must reach Next's error
   // boundary rather than be turned into an empty event list by that catch.
-  // `role` and `status` are presentation — they choose the navigation's
-  // entries. The navigation component changed in phase 41.2 and the four values
-  // it is given did not: width may change layout, never membership
+  // `role` is presentation — it chooses the navigation's entries. An approval
+  // status used to be read beside it for the same purpose; Phase 50 removed the
+  // axis, so the navigation now takes THREE values where it took four.
+  // The navigation component changed in phase 41.2 and the values
+  // it is given did not change with it: width may change layout, never membership
   // (`41-UI-SPEC.md` §0 rule 5). The server still decides which entries exist.
-  const { capabilities, role, status, liveAssignmentCapabilities } =
+  const { capabilities, role, liveAssignmentCapabilities } =
     await getAccessContext();
 
   // ===========================================================================
@@ -696,7 +698,6 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
           unchanged from the wrapper this replaces: NO CAPABILITY CHECK TOUCHED. */}
       <AppNav
         role={role as UserRole | null}
-        status={status as UserStatus | null}
         capabilities={[...capabilities]}
         liveAssignmentCapabilities={
           liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null

@@ -5,7 +5,7 @@ import AppNav from "@/components/layout/AppNav";
 import { Card } from "@/components/ui/Card";
 import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle } from "@/components/ui/Typography";
-import type { UserRole, UserStatus } from "@/types/database";
+import type { UserRole } from "@/types/database";
 
 /**
  * The member's own attendance list — converted by plan 41.2-07.
@@ -56,11 +56,12 @@ export default async function AttendancePage() {
 
   if (!user) redirect("/login");
 
-  // A pure nav-prop read: `role` and `status` are PRESENTATION here — nothing
-  // on this page branches on them, and no capability key belongs in this file.
-  // Only their source changed, from an inbound header to the session. The
+  // A pure nav-prop read: `role` is PRESENTATION here — nothing on this page
+  // branches on it, and no capability key belongs in this file. Only its source
+  // changed, from an inbound header to the session. An approval status was read
+  // beside it for the same purpose until Phase 50 removed the axis. The
   // route itself stays gated by the middleware on `membership.card.view`.
-  const { role, status, capabilities, liveAssignmentCapabilities } =
+  const { role, capabilities, liveAssignmentCapabilities } =
     await getAccessContext();
 
   // TODO: fetch attendance records from Supabase
@@ -140,7 +141,6 @@ export default async function AttendancePage() {
 
       <AppNav
         role={role as UserRole | null}
-        status={status as UserStatus | null}
         capabilities={[...capabilities]}
         liveAssignmentCapabilities={
           liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null

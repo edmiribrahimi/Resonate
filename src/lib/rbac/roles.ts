@@ -1,7 +1,7 @@
 import type { Route } from "next";
 import { CAP, type CapabilityKey } from "@/lib/capabilities/keys";
 import { CAPABILITY_ROUTES } from "@/lib/routes/capability-routes";
-import type { UserRole, UserStatus } from "@/types/database";
+import type { UserRole } from "@/types/database";
 
 /**
  * The address the Check-in entry draws, declared here and **verified against the
@@ -86,7 +86,12 @@ type DoorAddress =
 const DOOR_HREF: Extract<DoorAddress, Route> = "/door";
 
 // Re-export types for convenience
-export type { UserRole, UserStatus };
+//
+// **Ne usciva anche il tipo dello stato, fino alla fase 50** (D-50-01): non e'
+// stato tolto dall'elenco perche' nessuno lo importava da qui, ma perche' il
+// tipo non esiste piu' in `@/types/database` — non esiste piu' la colonna che
+// descriveva.
+export type { UserRole };
 
 // Role constants
 export const ROLES = {
@@ -100,12 +105,17 @@ export const ROLES = {
   MEMBER: "member",
 } as const;
 
-// Status constants
-export const STATUSES = {
-  PENDING: "pending",
-  APPROVED: "approved",
-  REJECTED: "rejected",
-} as const;
+// ── Le costanti dello stato sono uscite con la fase 50 (D-50-01) ────────────
+//
+// Sotto `ROLES` stava il loro gemello: l'elenco dei tre valori dell'asse dello
+// stato — `pending`, `approved`, `rejected` — messo li' come se i due assi
+// fossero pari. Non lo sono piu': ne resta uno solo, il ruolo.
+//
+// **Non aveva consumatori fuori da questo file** (`50-RESEARCH.md` §1.4,
+// rimisurato prima di toglierlo), quindi la rimozione non nomina nessuno.
+// Resta scritto **che c'era**, perche' un elenco sparito senza una riga si
+// riscrive al primo che ne sente la mancanza — e il suo nome non si ricopia,
+// o il grep che prova la cancellazione resta rosso per una prosa.
 
 // Navigation item shape
 export interface NavItem {
@@ -142,19 +152,32 @@ export interface NavItem {
   icon: string;
   /** Minimum roles required (null = visible to everyone including unauthenticated) */
   roles: UserRole[] | null;
-  /**
-   * Required status (null = any status, including unauthenticated).
-   *
-   * **Nessuna voce lo mette a `true` dalla fase 50** — `/gallery` era l'ultima
-   * e l'ha perso con D-50-04, che pretende che non sopravviva alcun cancello su
-   * `status`. Il campo e il suo ramo nel filtro **restano**, perche' la colonna
-   * `profiles.status` esiste ancora nel database per la durata della finestra
-   * di deploy (D-50-24: il codice va in produzione **prima** della migration) e
-   * perche' toglierli tocca la firma che il piano 50-09 smonta con i suoi
-   * tredici punti d'innesto. Qui cambia **cosa** contiene `NAV_ITEMS`, non
-   * **come** viene filtrato.
-   */
-  requireApproved: boolean;
+  // ── Il campo dell'approvazione non esiste piu' (fase 50, 50-09, D-50-01) ──
+  //
+  // Era un booleano **obbligatorio e non opzionale**, e la ragione scritta
+  // accanto era buona: un campo opzionale lascia a una voce aggiunta fra due
+  // anni la liberta' di dimenticare la domanda, uno obbligatorio rende il
+  // dimenticarla un errore di compilazione che nomina questo file. E' la stessa
+  // disciplina che `capability` piu' sotto applica ancora.
+  //
+  // **Va tolto lo stesso, e la ragione non e' che nessuna voce lo usava.** Il
+  // piano 50-06 lo aveva gia' portato a falso su tutte e quattro le voci
+  // (D-50-04) e lo aveva lasciato in piedi dichiarandolo: la colonna
+  // `profiles.status` esiste ancora nel database per la durata della finestra
+  // di deploy (D-50-24), e la firma di questa funzione non era ancora stata
+  // smontata. Ora lo e'. **La domanda che quel campo poneva — "chi
+  // guarda e' approvato?" — non ha piu' un modo di essere posta**, perche' non
+  // esiste piu' l'asse su cui rispondeva: un account e' il suo ruolo, e basta.
+  //
+  // Un campo obbligatorio che ogni voce deve mettere a falso non e' una domanda
+  // a cui si risponde: e' una domanda senza soggetto, e continuare a porla
+  // insegna al prossimo lettore che l'asse esiste ancora.
+  //
+  // **Il nome del campo non e' ricopiato qui di proposito**: un commento che
+  // recita l'identificatore appena cancellato tiene rosso il grep che prova la
+  // cancellazione, per una ragione che non e' un chiamante sopravvissuto. Il
+  // fatto si registra, il simbolo no (disciplina del piano 50-07, ripresa dal
+  // 50-08).
   /** Requires authentication */
   requireAuth: boolean;
   /**
@@ -169,7 +192,7 @@ export interface NavItem {
   capability: CapabilityKey | null;
 }
 
-// Full navigation items list with role/status requirements
+// Full navigation items list with role and capability requirements
 //
 // ── La voce `Home` e' uscita con la fase 50 (D-50-12) ────────────────────────
 //
@@ -196,16 +219,16 @@ const NAV_ITEMS: NavItem[] = [
     label: "Events",
     icon: "calendar",
     roles: null,
-    requireApproved: false,
     requireAuth: false,
     capability: null,
   },
   {
-    // ── `requireApproved` era `true`, ed e' `false` dalla fase 50 ───────────
+    // ── La voce Gallery portava un cancello sull'approvazione ───────────────
     //
-    // Era **un cancello su `status`**, e D-50-04 pretende che non ne
-    // sopravviva nessuno: la colonna sparisce dal database in questa stessa
-    // fase.
+    // Fino alla fase 50 chiedeva che chi guardava fosse approvato: era **un
+    // cancello su `status`**, e D-50-04 pretende che non ne sopravviva nessuno.
+    // Il piano 50-06 lo ha spento, questo (50-09) ha tolto il campo che lo
+    // poneva, e la colonna sparisce dal database nella stessa fase.
     //
     // **Non e' un allargamento d'accesso, ed e' la parte da leggere prima di
     // "riparare" questa riga.** La pagina non ha alcuna guardia propria: filtra
@@ -226,7 +249,6 @@ const NAV_ITEMS: NavItem[] = [
     label: "Gallery",
     icon: "image",
     roles: null,
-    requireApproved: false,
     requireAuth: false,
     capability: null,
   },
@@ -235,9 +257,9 @@ const NAV_ITEMS: NavItem[] = [
     //
     // **What it was.** This entry used to be filtered by a role list plus an
     // approval flag, while the middleware and the door's own guard ask
-    // `door.operate` — a key granted with `requires_approved = false`
-    // **deliberately** (D-06 of Phase 43: a pending organizer must not be
-    // refused in front of a queue). The two disagreed in exactly one cell:
+    // `door.operate` — a key Phase 43 granted **without** asking for approval
+    // (D-06, deliberately: a pending organizer must not be refused in front of
+    // a queue). The two disagreed in exactly one cell:
     // **an organizer in status `pending` was admitted by the server and shown
     // no Check-in tab.**
     //
@@ -291,7 +313,6 @@ const NAV_ITEMS: NavItem[] = [
     label: "Check-in",
     icon: "qrcode",
     roles: null,
-    requireApproved: false,
     requireAuth: true,
     capability: CAP.DOOR_OPERATE,
   },
@@ -313,7 +334,6 @@ const NAV_ITEMS: NavItem[] = [
     label: "Account",
     icon: "user",
     roles: null,
-    requireApproved: false,
     requireAuth: false,
     capability: null,
   },
@@ -323,35 +343,37 @@ const NAV_ITEMS: NavItem[] = [
  * Filter navigation items on what the subject is, and on what the subject may
  * do.
  *
- * ── Gli esiti, RIMISURATI sul filtro dopo la fase 50 ────────────────────────
+ * ── Gli esiti, rimisurati sul filtro UNA VOLTA ANCORA (fase 50, 50-09) ─────
  *
- * **Questo elenco e' stato riscritto, non ritoccato.** Diceva *«Non
+ * **Terza riscrittura in una fase, e l'ultima**: la prima diceva *«Non
  * autenticato: Home, Events, Gallery — 3 schede»* e distingueva quattro righe
- * per stato di approvazione. **Nessuna di quelle righe si verifica piu':**
- * `Home` non e' piu' una voce (D-50-12) e nessuna voce guarda piu'
- * l'approvazione (D-50-04). Un docblock che descrive un esito che non si
- * verifica piu' e' **peggio di un docblock assente**, perche' chi lo legge ci
- * costruisce sopra invece di andare a guardare.
+ * per stato di approvazione; la seconda (50-06) tolse `Home` e le tre righe
+ * dello stato; questa toglie **il parametro** che le produceva. Un docblock che
+ * descrive un esito che non si verifica piu' e' peggio di un docblock assente,
+ * perche' chi lo legge ci costruisce sopra invece di andare a guardare.
  *
  * - **Non autenticato**: Events, Gallery, **Account → `/login`** (3 schede).
  *   L'insieme delle capability e' vuoto, quindi Check-in resta fuori
  *   esattamente come sempre. Account e' **nuovo** per questo soggetto
  *   (D-50-13): prima non vedeva alcuna voce Account.
  * - **Un account qualunque con ruolo `member`**: Events, Gallery, **Account →
- *   `/dashboard`** (3 schede). **Una riga sola dove ce n'erano tre**, ed e' il
- *   punto: `pending`, `approved` e `rejected` producevano tre barre diverse, e
- *   l'asse che le separava sta sparendo dal prodotto.
+ *   `/dashboard`** (3 schede).
  * - **Organizer o master**: Events, Gallery, Check-in, Account (4 schede).
  *   Check-in e' filtrato su `door.operate`, che il ruolo tiene.
  * - **Staff**: Events, Gallery, Account — **piu' Check-in quando e' assegnato
  *   a una serata in corso**, perche' `staff` non tiene `door.operate` per
  *   ruolo e lo tiene solo per assegnazione viva.
  *
+ * **Quattro esiti dove ce n'erano sette.** Non e' una semplificazione di
+ * scrittura: `pending`, `approved` e `rejected` producevano tre barre diverse
+ * per lo stesso ruolo, e l'asse che le separava non esiste piu' nel prodotto.
+ * Il soggetto e' il suo ruolo piu' cio' che puo' fare, e nient'altro.
+ *
  * **Cosa NON e' cambiato, e va tenuto contro la riparazione sbagliata.** Il
  * ramo delle capability e' intatto: la porta continua a essere filtrata su
- * `door.operate`, chiave concessa con `requires_approved = false` (D-06 della
- * fase 43) **proprio perche'** un organizer non approvato non doveva essere
- * respinto davanti a una fila. Con `status` che sparisce, quella concessione
+ * `door.operate`, chiave che la fase 43 (D-06) concesse **senza** chiedere
+ * l'approvazione, proprio perche' un organizer non approvato non doveva essere
+ * respinto davanti a una fila. Con l'asse dello stato via, quella concessione
  * smette di avere un caso da prevenire — ma il filtro resta il filtro giusto,
  * ed e' lo **stesso predicato del middleware**. Aggiungere qui un controllo di
  * qualunque tipo sulla porta e' la riparazione che chiude la porta.
@@ -378,6 +400,20 @@ const NAV_ITEMS: NavItem[] = [
  * the door at `DoorSurface.tsx:130`, which is the premise the paragraph above
  * rests on and not an assumption inherited with it.
  *
+ * ── Il secondo parametro e' uscito, e la proprieta' scritta sopra si e' spesa
+ *
+ * La firma prendeva `(role, status, capabilities, liveAssignmentCapabilities)`.
+ * **`status` e' via** (fase 50, D-50-01): la colonna che lo produceva non
+ * esiste piu' e il filtro non aveva piu' un ramo che la leggesse.
+ *
+ * **La lista dei punti d'innesto da correggere non e' stata costruita a
+ * memoria: l'ha costruita il compilatore**, ed e' esattamente cio' che il
+ * paragrafo qui sopra prometteva — *un quattordicesimo che se ne dimenticasse
+ * e' un errore di compilazione che nomina il file*. Tolto il parametro, `next
+ * build` ha nominato **tredici** file, uno per mount, piu' `AppNav.tsx` per la
+ * prop. Il numero coincide con i tredici che questo docblock dichiarava, per la
+ * terza misura di fila (34-05, poi dopo la fase 42, poi qui).
+ *
  * @param capabilities the keys the subject holds by role
  * @param liveAssignmentCapabilities the coarser set held by a live per-night
  *   assignment, or `null` when the payload did not carry the key. **Both are
@@ -388,12 +424,10 @@ const NAV_ITEMS: NavItem[] = [
  */
 export function getVisibleNavItems(
   role: UserRole | null,
-  status: UserStatus | null,
   capabilities: readonly CapabilityKey[],
   liveAssignmentCapabilities: readonly string[] | null
 ): NavItem[] {
   const isAuthenticated = role !== null;
-  const isApproved = status === "approved";
 
   const visible = NAV_ITEMS.filter((item) => {
     // Check authentication requirement
@@ -401,19 +435,18 @@ export function getVisibleNavItems(
       return false;
     }
 
-    // Check approval requirement.
+    // ── Il ramo dell'approvazione e' uscito qui (fase 50, 50-09) ───────────
     //
-    // **Nessuna voce risponde piu' a questa clausola dalla fase 50**: `/gallery`
-    // era l'ultima e ha perso il campo con D-50-04. La clausola resta perche'
-    // la firma la smonta il piano 50-09 coi suoi tredici punti d'innesto, non
-    // questo — e perche' toglierla e rimetterla e' come una barra comincia ad
-    // avere due autori. Non e' codice morto per sbaglio: e' codice che aspetta
-    // di essere tolto dal piano che lo dichiara.
-    if (item.requireApproved) {
-      if (isAuthenticated && !isApproved) {
-        return false;
-      }
-    }
+    // Stava fra il controllo dell'autenticazione e quello del ruolo, e chiedeva
+    // se chi guarda fosse approvato. **Non c'e' piu' niente da chiedere**: la
+    // colonna su cui rispondeva non esiste, e il campo che la invocava e' uscito
+    // da `NavItem` nello stesso commit. Toglierne uno solo dei due avrebbe
+    // lasciato o un campo che nessuno legge o un ramo che nessuno raggiunge —
+    // due modi diversi di far credere che l'asse esista ancora.
+    //
+    // **La barra si filtra su tre cose, ed e' l'elenco intero**: sessione,
+    // ruolo, capability. Un quarto criterio qui dentro e' una decisione
+    // d'accesso, non una rifinitura.
 
     // Check role restriction
     if (item.roles !== null) {

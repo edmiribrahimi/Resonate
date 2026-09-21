@@ -3,7 +3,7 @@ import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
 import AppNav from "@/components/layout/AppNav";
 import ScannerClient from "./ScannerClient";
-import type { UserRole, UserStatus } from "@/types/database";
+import type { UserRole } from "@/types/database";
 
 /**
  * The door's surface. It has a server-side gate, and it did not always.
@@ -79,8 +79,10 @@ import type { UserRole, UserStatus } from "@/types/database";
  * is what lets
  * the Check-in entry be drawn on `door.operate` — the same key the guard below
  * asks — instead of on a role list plus an approval flag (D-39-06). It still
- * takes `role` and `status` as well, because four of its five entries are
- * governed by no capability at all.
+ * takes `role` as well, because four of its five entries are governed by no
+ * capability at all. It took an approval status too, until Phase 50 removed the
+ * axis — and this file is one of the thirteen mount sites the compiler named
+ * when the parameter left the signature.
  *
  * That is a **visibility** change and nothing else. The guard below is
  * unchanged by it, and so is `requireDoorOperator({ partyId })` in the three
@@ -151,7 +153,6 @@ export default async function DoorSurface() {
       <AppNav
         form="phone"
         role={ctx.role as UserRole | null}
-        status={ctx.status as UserStatus | null}
         capabilities={[...ctx.capabilities]}
         liveAssignmentCapabilities={
           ctx.liveAssignmentCapabilities ? [...ctx.liveAssignmentCapabilities] : null

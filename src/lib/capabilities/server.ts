@@ -25,7 +25,7 @@
  * a capability check performed with it proves nothing about the caller. Worse,
  * it is not even wrong-but-permissive: a service-role token carries no `sub`,
  * so `auth.uid()` is null and `my_access_context()` answers
- * `{"role": null, "status": null, "capabilities": []}` — a confident "no
+ * `{"role": null, "capabilities": []}` — a confident "no
  * capabilities" about nobody (measured in `32-06-SUMMARY.md` § F1). That is a
  * silent-failure shape, and it is the reason the import below is the one it is.
  *
@@ -195,20 +195,20 @@ import type { CapabilityKey } from "./keys";
  * first. It is **`string | null`, never `""`** — see `ANONYMOUS_CONTEXT` below,
  * and `@/lib/capabilities/guards`, which is where that distinction is made safe.
  *
- * `role` and `status` are still here, and the reason has changed. It is no
- * longer the header injection in `src/lib/supabase/middleware.ts`, which plan
- * 33-14 deleted outright
- * (measured: **44** files read the injected role/status headers, not 46, and
- * phase 33 takes that count to **0**). It is `AppNav` and `StaffNav` — two
- * `"use client"` components that take `role` and `status` as props and
- * therefore cannot import this module. Next.js's own guidance for that case is
- * to resolve in a parent Server Component and pass the values down as props,
- * which is exactly what the converted pages do. Converting those two components
- * to consume capabilities is **phase 34 (STAFF-03)**, and that phase owns
- * removing these two fields from the payload.
+ * `role` is still here; **the second field beside it non lo e' piu'** — la
+ * chiave `'status'` e' uscita dal payload con la migration della fase 50
+ * (`20260921120000`, entrambi i sovraccarichi di `my_access_context`), e
+ * leggerla qui significherebbe mappare un campo che non arriva. La sua ultima
+ * ragione di esistere era `AppNav`, che la prendeva come prop: la firma di
+ * `getVisibleNavItems` l'ha persa nello stesso commit di questa riga.
  *
- * **No new caller may branch on `role` or `status`.** A page passing them to a
- * nav is not branching. Every decision asks `capabilities`.
+ * `role` resta, e la ragione e' la stessa di prima: `AppNav` e `StaffNav` sono
+ * `"use client"` e non possono importare questo modulo. Next.js's own guidance
+ * for that case is to resolve in a parent Server Component and pass the values
+ * down as props, which is exactly what the converted pages do.
+ *
+ * **No new caller may branch on `role`.** A page passing it to a nav is not
+ * branching. Every decision asks `capabilities`.
  *
  * ── `liveAssignmentCapabilities`, and the distinction everything rests on ─────
  *
@@ -256,7 +256,6 @@ export interface AccessContextResult {
   capabilities: Set<CapabilityKey>;
   userId: string | null;
   role: string | null;
-  status: string | null;
   liveAssignmentCapabilities: Set<string> | null;
 }
 
@@ -290,7 +289,6 @@ const ANONYMOUS_CONTEXT: AccessContextResult = {
   capabilities: new Set<CapabilityKey>(),
   userId: null,
   role: null,
-  status: null,
   liveAssignmentCapabilities: new Set<string>(),
 };
 
@@ -464,7 +462,6 @@ async function interpretAccessContext(
     capabilities?: unknown;
     user_id?: unknown;
     role?: unknown;
-    status?: unknown;
     live_assignment_capabilities?: unknown;
   };
 
@@ -497,7 +494,7 @@ async function interpretAccessContext(
     ? new Set(payload.live_assignment_capabilities as string[])
     : null;
 
-  // `user_id` is mapped exactly as `role` and `status` are, and on purpose
+  // `user_id` is mapped exactly as `role` is, and on purpose
   // there is NO fallback here. Reaching for `supabase.auth.getUser()` when
   // the key is absent would restore the round trip the migration exists to
   // avoid — and it would restore it on the very paths where `cache()` does
@@ -509,7 +506,12 @@ async function interpretAccessContext(
     capabilities: new Set(payload.capabilities as CapabilityKey[]),
     userId: typeof payload.user_id === "string" ? payload.user_id : null,
     role: typeof payload.role === "string" ? payload.role : null,
-    status: typeof payload.status === "string" ? payload.status : null,
+    // La chiave `'status'` stava qui, e **non e' stata lasciata cadere in
+    // silenzio**: la funzione di database non la mette piu' nel payload
+    // (fase 50), quindi mapparla avrebbe prodotto `null` per tutti — un valore
+    // che si legge come «non approvato» invece che come «la domanda non esiste
+    // piu'». Sono due cose diverse, e la seconda non ha un posto in questo
+    // oggetto.
     liveAssignmentCapabilities,
   };
 }

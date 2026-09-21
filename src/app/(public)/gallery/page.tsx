@@ -5,7 +5,7 @@ import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle } from "@/components/ui/Typography";
 import { getAccessContext } from "@/lib/capabilities/server";
 import GalleryClient from "./GalleryClient";
-import type { UserRole, UserStatus } from "@/types/database";
+import type { UserRole } from "@/types/database";
 
 /**
  * The public gallery — converted whole by plan 41-08.
@@ -35,11 +35,17 @@ import type { UserRole, UserStatus } from "@/types/database";
  * on the viewer, and it is the same filter it was.
  */
 export default async function GalleryPage() {
-  // Role and status come from the session, not from a request header. Neither
-  // gates anything here — the media query below filters on `status =
-  // "approved"` (the moderation state of the row, not the viewer's) and is
-  // unchanged. Both values go to the navigation, a "use client" component.
-  const { role, status, capabilities, liveAssignmentCapabilities } =
+  // Role comes from the session, not from a request header, and gates nothing
+  // here — the media query below filters on `status = "approved"`, which is the
+  // moderation state of the ROW and never was the viewer's, and is unchanged.
+  // The value goes to the navigation, a "use client" component.
+  //
+  // An approval status used to be read beside it, for the navigation only. Phase
+  // 50 removed the axis. **The Gallery tab is now drawn to everyone**, which is
+  // a visibility change and not an access one: this page has never had a guard
+  // of its own and anybody who knows the address already arrives (`NAV-02`,
+  // phase 52, builds the real gate).
+  const { role, capabilities, liveAssignmentCapabilities } =
     await getAccessContext();
 
   const supabase = await createClient();
@@ -124,7 +130,6 @@ export default async function GalleryPage() {
 
       <AppNav
         role={role as UserRole | null}
-        status={status as UserStatus | null}
         capabilities={[...capabilities]}
         liveAssignmentCapabilities={
           liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null

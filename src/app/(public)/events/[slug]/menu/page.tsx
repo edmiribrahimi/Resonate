@@ -8,7 +8,7 @@ import AppNav from "@/components/layout/AppNav";
 import AnimatedSection from "@/components/motion/AnimatedSection";
 import { Card } from "@/components/ui/Card";
 import { PageShell } from "@/components/ui/PageShell";
-import type { UserRole, UserStatus, DrinkItem } from "@/types/database";
+import type { UserRole, DrinkItem } from "@/types/database";
 import GuestTokenDisplay from "./GuestTokenDisplay";
 // Login/signup invite for guests temporarily disabled — re-enable by
 // restoring this import and the <GuestLoginBanner /> render below.
@@ -104,10 +104,11 @@ import PartyDrinkMenu from "./PartyDrinkMenu";
  * comment: Tailwind scans comments, cannot tell a description from a use, and
  * an abbreviated one emits a malformed rule and a build warning (DEF-41-01).
  *
- * **No capability check was touched.** `AppNav` receives the same four props in
- * the same order the wrapper received them, and the cast stays at the page
- * boundary because the navigation is a `"use client"` component that cannot
- * import the resolver. `role` and `status` are PRESENTATION here — they choose
+ * **No capability check was touched.** `AppNav` receives the same props in
+ * the same order the wrapper received them — three since Phase 50 dropped the
+ * approval axis, four before — and the cast stays at the page boundary because
+ * the navigation is a `"use client"` component that cannot
+ * import the resolver. `role` is PRESENTATION here — it chooses
  * which entries are drawn, nothing more — and hiding an entry was never
  * protection: the refusal is the middleware's and the boundary on the data is
  * the RLS policy.
@@ -175,7 +176,7 @@ export default async function MenuPage({
   // inbound header, which any client can send.
   const serviceClient = getServiceClient();
 
-  // Identity, role, status and capabilities from the SESSION. One round trip,
+  // Identity, role and capabilities from the SESSION. One round trip,
   // memoised by `cache()` for this render. `userId` is the caller's own
   // `auth.uid()`, derived inside Postgres from the JWT, and is `string | null`
   // — never `""`. It replaces the `supabase.auth.getUser()` call that used to
@@ -184,7 +185,7 @@ export default async function MenuPage({
   // An anonymous visitor is a NORMAL case, not a failure: `my_access_context()`
   // is granted to `authenticated` only, so `anon` is refused with 42501 and the
   // resolver answers the empty context (no capabilities, null identity).
-  const { capabilities, userId, role, status, liveAssignmentCapabilities } =
+  const { capabilities, userId, role, liveAssignmentCapabilities } =
     await getAccessContext();
   const isAuthenticated = userId !== null;
 
@@ -378,7 +379,6 @@ export default async function MenuPage({
       {isAuthenticated && (
         <AppNav
           role={role as UserRole | null}
-          status={status as UserStatus | null}
           capabilities={[...capabilities]}
           liveAssignmentCapabilities={
             liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null

@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import AppNav from "@/components/layout/AppNav";
 import StaffNav from "@/components/staff/StaffNav";
 import { getAccessContext } from "@/lib/capabilities/server";
-import type { UserRole, UserStatus } from "@/types/database";
+import type { UserRole } from "@/types/database";
 
 /**
  * The collapsed work surface: one access-context resolution, both navs mounted
@@ -124,19 +124,23 @@ import type { UserRole, UserStatus } from "@/types/database";
  *
  * So `AppNav` and `StaffNav` now take **the same shape**: serialisable
  * capability keys, resolved here in the Server Component because both are
- * `"use client"` and cannot import the DAL. The two `role` / `status` casts
- * survive alongside them — the nav still draws four entries that no capability
- * governs — but **once, here, instead of twice on every page**. They are the
- * same narrowing the pages performed: `AccessContextResult` types both fields
- * `string | null` because they come back from an untyped `rpc()`, and the nav
- * declares the narrower unions. Nothing in this file branches on them.
+ * `"use client"` and cannot import the DAL. The `role` cast survives alongside
+ * them — the nav still draws four entries that no capability governs — but
+ * **once, here, instead of on every page**. It is the same narrowing the pages
+ * performed: `AccessContextResult` types the field `string | null` because it
+ * comes back from an untyped `rpc()`, and the nav declares the narrower union.
+ * Nothing in this file branches on it.
+ *
+ * **There used to be two casts here, not one.** The second narrowed the
+ * approval axis; Phase 50 removed the axis, the type and the payload key in one
+ * pass, so there is no second value to narrow.
  */
 export default async function WorkSurfaceLayout({
   children,
 }: {
   children: ReactNode;
 }) {
-  const { capabilities, role, status, liveAssignmentCapabilities } =
+  const { capabilities, role, liveAssignmentCapabilities } =
     await getAccessContext();
 
   const staffCapabilities = [...capabilities];
@@ -145,7 +149,6 @@ export default async function WorkSurfaceLayout({
     <>
       <AppNav
         role={role as UserRole | null}
-        status={status as UserStatus | null}
         capabilities={staffCapabilities}
         liveAssignmentCapabilities={
           liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null

@@ -177,7 +177,8 @@ function Transition({
 
 export default async function MembershipRegisterPage() {
   // Resolved once by `(work)/layout.tsx`, which also mounts both navs and now
-  // holds the `UserRole` / `UserStatus` casts that used to sit here.
+  // holds the `UserRole` cast that used to sit here — it used to be two, and
+  // the second one went with the approval axis in Phase 50.
   // `getAccessContext` is `cache()`-scoped per request, so asking again for
   // this page's own guard costs no second round trip.
   const ctx = await getAccessContext();

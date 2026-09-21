@@ -24,7 +24,7 @@ import MediaGallerySection from "./MediaGallerySection";
 import { logMoneyPathFailure } from "@/lib/failure/money-path";
 import { formatTime } from "@/utils/formatTime";
 import { CalendarIcon, ClockIcon, MapPinIcon, LockClosedIcon, MusicalNoteIcon } from "@/components/ui/Icons";
-import type { UserRole, UserStatus, AccessType } from "@/types/database";
+import type { UserRole, AccessType } from "@/types/database";
 import { venueRevealHours } from "@/utils/datetime";
 import {
   isNightSecret,
@@ -375,8 +375,10 @@ export default async function EventDetailPage({
   } = await supabase.auth.getUser();
   const isAuthenticated = !!user;
 
-  // Role, status and capabilities from the SESSION, not from an inbound header.
-  const { capabilities, role, status, liveAssignmentCapabilities } =
+  // Role and capabilities from the SESSION, not from an inbound header. The
+  // approval status that used to be read here went with the axis (fase 50): il
+  // suo ultimo lettore era la barra, e la barra non lo chiede piu'.
+  const { capabilities, role, liveAssignmentCapabilities } =
     await getAccessContext();
 
   // ⚠️ VENUE SECRECY — AND THESE TWO NO LONGER DECIDE IT.
@@ -1958,7 +1960,6 @@ export default async function EventDetailPage({
           CAPABILITY CHECK IS TOUCHED. */}
       <AppNav
         role={role as UserRole | null}
-        status={status as UserStatus | null}
         capabilities={[...capabilities]}
         liveAssignmentCapabilities={
           liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null

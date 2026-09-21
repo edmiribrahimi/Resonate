@@ -12,7 +12,7 @@ import { mayShowVenueToTicketHolder } from "@/lib/venue-reveal/venue-disclosure"
 import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle } from "@/components/ui/Typography";
 import { Button, FOCUS_RING } from "@/components/ui/Button";
-import type { UserRole, UserStatus } from "@/types/database";
+import type { UserRole } from "@/types/database";
 
 /**
  * The ticket surface — converted onto the shared primitives by plan 41.2-08.
@@ -117,12 +117,15 @@ export default async function TicketPage({
     redirect("/login");
   }
 
-  // Role and status come from the session, not from a request header. NEITHER
-  // IS A TERM IN THE VENUE GATE below, and that is deliberate: the entitlement
+  // Role comes from the session, not from a request header. There used to be an
+  // approval status beside it; Phase 50 removed the axis, and with it the only
+  // value this page read for the navigation alone.
+  //
+  // ROLE IS NOT A TERM IN THE VENUE GATE below, and that is deliberate: the entitlement
   // on this surface is *holding this ticket*, which `.eq("user_id", user.id)`
   // has already established, and adding a role term would make the same night
   // answer two different ways to two holders of the same ticket type.
-  const { role, status, capabilities, liveAssignmentCapabilities } =
+  const { role, capabilities, liveAssignmentCapabilities } =
     await getAccessContext();
 
   // Fetch ticket with joins including party data.
@@ -393,7 +396,6 @@ export default async function TicketPage({
 
       <AppNav
         role={role as UserRole | null}
-        status={status as UserStatus | null}
         capabilities={[...capabilities]}
         liveAssignmentCapabilities={
           liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null

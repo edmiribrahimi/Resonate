@@ -8,7 +8,7 @@ import { getAccessContext } from "@/lib/capabilities/server";
 import { Button, FOCUS_RING } from "@/components/ui/Button";
 import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle, SectionHeading } from "@/components/ui/Typography";
-import type { UserRole, UserStatus } from "@/types/database";
+import type { UserRole } from "@/types/database";
 
 /**
  * The public artist profile — converted by plan 41.2-04.
@@ -77,11 +77,12 @@ export default async function ArtistPage({
   const { slug } = await params;
   const supabase = await createClient();
 
-  // Role and status come from the session, not from a request header. Neither
-  // changes what this page fetches or shows about an artist; `role` decides
-  // whether the edit affordance below is drawn, and `status` only reaches the
-  // nav. See the comment on that affordance for why the predicate is untouched.
-  const { role, status, capabilities, liveAssignmentCapabilities } =
+  // Role comes from the session, not from a request header, and does not change
+  // what this page fetches or shows about an artist: it decides whether the edit
+  // affordance below is drawn. See the comment on that affordance for why the
+  // predicate is untouched. An approval status used to be read beside it and
+  // only ever reached the nav; Phase 50 removed the axis.
+  const { role, capabilities, liveAssignmentCapabilities } =
     await getAccessContext();
 
   // Fetch artist
@@ -278,7 +279,6 @@ export default async function ArtistPage({
 
       <AppNav
         role={role as UserRole | null}
-        status={status as UserStatus | null}
         capabilities={[...capabilities]}
         liveAssignmentCapabilities={
           liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null

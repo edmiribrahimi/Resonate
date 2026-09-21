@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle } from "@/components/ui/Typography";
-import type { UserRole, UserStatus } from "@/types/database";
+import type { UserRole } from "@/types/database";
 
 /**
  * The membership card surface — converted by plan 41.2-07.
@@ -69,15 +69,14 @@ export default async function MembershipCardPage() {
 
   if (!user) redirect("/login");
 
-  // A pure nav-prop read: `role` and `status` are PRESENTATION here — nothing
-  // on this page branches on them, and no capability key belongs in this file.
+  // A pure nav-prop read: `role` is PRESENTATION here — nothing on this page
+  // branches on it, and no capability key belongs in this file.
   //
-  // `status` qui viene dal risolutore, non da `profiles`: la colonna non esiste
-  // piu' e questa e' una prop che la barra riceve ancora. **La toglie il piano
-  // 50-09**, che possiede `AppNav` e ogni pagina che lo monta; toglierla da una
-  // sola delle sue chiamate lascerebbe il componente con una prop che meta'
-  // dell'albero passa e meta' no.
-  const { role, status, capabilities, liveAssignmentCapabilities } =
+  // Accanto stava lo stato, che veniva dal risolutore e non da `profiles`. Il
+  // piano 50-09 l'ha tolto **da tutte e tredici le chiamate nello stesso
+  // commit**, come questa riga chiedeva: toglierlo da una sola avrebbe lasciato
+  // il componente con una prop che meta' dell'albero passa e meta' no.
+  const { role, capabilities, liveAssignmentCapabilities } =
     await getAccessContext();
 
   const fullName = user.user_metadata?.full_name || "Member";
@@ -160,7 +159,6 @@ export default async function MembershipCardPage() {
 
       <AppNav
         role={role as UserRole | null}
-        status={status as UserStatus | null}
         capabilities={[...capabilities]}
         liveAssignmentCapabilities={
           liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null

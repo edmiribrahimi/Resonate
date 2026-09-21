@@ -84,8 +84,9 @@ export default async function AssignmentsPage({ params }: PageProps) {
   // protected by a redirect alone, and `access-gating.md` is explicit that a
   // redirect is not a boundary.
   //
-  // The two nav mounts and the two `as UserRole` / `as UserStatus` casts that
-  // stood here are gone: `admin/(work)/layout.tsx` resolves the context once for
+  // The two nav mounts and the `as UserRole` cast that stood here are gone —
+  // the cast used to be two, and the second named the approval axis Phase 50
+  // removed: `admin/(work)/layout.tsx` resolves the context once for
   // the whole tree and draws both navs (D-34-07). `getAccessContext` is
   // `cache()`-scoped per request, so this second ask costs no round trip.
   if (!ctx.capabilities.has(CAP.ORGANIZER_ACCESS)) {

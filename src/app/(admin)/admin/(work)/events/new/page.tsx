@@ -25,7 +25,8 @@ import { Chip } from "@/components/ui/Chip";
  * question inside itself — which is why `actions.ts` stays outside `(work)`
  * (R-WORK-ROUTES) and is imported by absolute specifier from here.
  *
- * Both navs and the two `UserRole` / `UserStatus` casts are `(work)/layout.tsx`'s.
+ * Both navs and the `UserRole` cast are `(work)/layout.tsx`'s. The cast used to
+ * be two: the second named the approval axis, which Phase 50 removed.
  *
  * ── The catalogue read, and the filter it deliberately does not apply ────────
  *
