@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
-status: ready_to_plan
-stopped_at: Phase 50 complete (12/12) — ready to discuss Phase 58
-last_updated: 2026-09-21T17:17:59.989Z
+status: planning
+stopped_at: Phase 51 context gathered
+last_updated: "2026-09-21T20:54:20.543Z"
 last_activity: 2026-09-21
 progress:
   total_phases: 51
@@ -588,8 +588,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-09-21T16:55:00.799Z
-**Stopped at:** Completato 50-12-PLAN.md — i moduli della persona corretti dopo la cancellazione, verify:persona 7/7, e 50-VERIFICATION.md con evidenza eseguita
+**Last session:** 2026-09-21T20:54:20.539Z
+**Stopped at:** Phase 51 context gathered
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
