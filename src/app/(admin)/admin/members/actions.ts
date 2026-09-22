@@ -288,8 +288,6 @@ export type DeleteAccountFailure =
   | "delete_account_admitted_guests"
   /** Ha convalidato biglietti alla porta: `tickets.checked_in_by`. */
   | "delete_account_checked_in_tickets"
-  /** Ha registrato presenze alla porta: `attendances.checked_in_by`. */
-  | "delete_account_checked_in_attendances"
   /** Ha operato lo scanner: `door_scan_events.operator_id`. */
   | "delete_account_has_door_scans"
   /** Ha concesso assegnazioni: `party_assignments.assigned_by`. */
@@ -1790,11 +1788,20 @@ export async function createAccount(input: {
  *
  * L'elenco **non** e' quello di `50-RESEARCH.md` §4.1, che ne dichiarava sette
  * e ne elencava otto: e' quello **misurato** in `50-MEASURES.md` M10. Le tre
- * differenze sono `attendances.checked_in_by`,
+ * differenze erano la presenza registrata alla porta,
  * `guest_list_entries.checked_in_by` e `ticket_refunds.processed_by` — e le
- * prime due **sono due porte**: sono le colonne che registrano chi ha ammesso
+ * prime due **erano due porte**: le colonne che registrano chi ha ammesso
  * qualcuno. Ignorarle avrebbe prodotto il `23503` davanti a una fila, la sera
  * in cui si cancella un account di staff che ha lavorato.
+ *
+ * **Una delle due porte e' uscita dallo schema il 2026-09-22 (D-51-14).** La
+ * tabella delle presenze aveva zero righe sul laboratorio e zero in produzione,
+ * e il piano 51-12 l'ha tolta con le sue policy e i suoi vincoli: la sua riga e'
+ * uscita da qui **nello stesso atto**, perche' un censimento che interroga una
+ * tabella inesistente prende `42P01`, e questa funzione — correttamente — non
+ * procede su un censimento incompleto. Il risultato sarebbe stato che
+ * **nessun account si sarebbe potuto piu' cancellare**, con `write_failed` e
+ * senza che il messaggio dicesse perche'. L'altra porta, la guest list, resta.
  */
 type BlockingSet = {
   /** Il codice di rifiuto proprio di questo insieme. */
@@ -1857,13 +1864,6 @@ const BLOCKING_SETS: readonly BlockingSet[] = [
     column: "checked_in_by",
     one: "1 biglietto convalidato alla porta",
     many: "biglietti convalidati alla porta",
-  },
-  {
-    failure: "delete_account_checked_in_attendances",
-    table: "attendances",
-    column: "checked_in_by",
-    one: "1 presenza registrata alla porta",
-    many: "presenze registrate alla porta",
   },
   {
     failure: "delete_account_admitted_guests",

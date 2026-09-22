@@ -263,15 +263,6 @@ const NOTICES: Record<MemberNoticeKind, Notice> = {
       "holder. The count below is what blocks it.",
   },
 
-  delete_account_checked_in_attendances: {
-    tone: "refusal",
-    title: "This account recorded attendances — it cannot be deleted",
-    body:
-      "Nothing was deleted. An attendance records who admitted the person, " +
-      "and the database refuses to leave that column empty. The count below " +
-      "is what blocks it.",
-  },
-
   delete_account_admitted_guests: {
     tone: "refusal",
     title: "This account admitted guests — it cannot be deleted",

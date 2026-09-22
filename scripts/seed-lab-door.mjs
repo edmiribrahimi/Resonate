@@ -510,14 +510,22 @@ async function reset() {
   //   ticket_orders      → ticket_tiers   RESTRICT   (fase 49)
   //   pending_purchases  → ticket_tiers   RESTRICT
   //   door_scan_events   → auth.users     NO ACTION  su `operator_id`
-  //   attendances        → auth.users     NO ACTION  su `checked_in_by`
   //   ticket_refunds     → auth.users     NO ACTION  su `requested_by`
   //   guest_list_entries → profiles       NO ACTION  su `added_by`
   //
-  // Le due della porta — `door_scan_events` e `attendances` — non bloccavano una
-  // `delete` di tabella: bloccavano la cancellazione degli ACCOUNT, che questo
-  // script fa dopo e **senza guardare l'esito**. Un laboratorio azzerato a meta'
-  // con un messaggio di successo e' peggio di uno non azzerato.
+  // Quella della porta — `door_scan_events` — non bloccava una `delete` di
+  // tabella: bloccava la cancellazione degli ACCOUNT, che questo script fa dopo
+  // e **senza guardare l'esito**. Un laboratorio azzerato a meta' con un
+  // messaggio di successo e' peggio di uno non azzerato.
+  //
+  // **Una settima riga stava qui e non c'e' piu'.** La tabella delle presenze,
+  // che bloccava per `checked_in_by`, e' uscita dallo schema il 2026-09-22
+  // (D-51-14, migration `20260922180000`). E' uscita anche da questo elenco
+  // **nello stesso atto**: un `delete from` su una tabella inesistente prende
+  // `42P01`, e questa funzione solleva — cioe' `--reset` si fermerebbe a meta',
+  // che e' esattamente lo stato che il paragrafo qui sopra dichiara peggiore di
+  // tutti. La regola 3 di questo file applicata a se stessa: **un insieme di
+  // cascate si rilegge dal catalogo**, e il catalogo non ha piu' quella tabella.
   //
   // `artists`, `production_plan` e `production_space` sono qui per completezza:
   // hanno anch'esse una chiave bloccante verso `venues`, `event_parties` o
@@ -528,7 +536,6 @@ async function reset() {
     "pending_purchases",
     "ticket_refunds",
     "door_scan_events",
-    "attendances",
     "tickets",
     "ticket_tiers",
     "party_assignments",

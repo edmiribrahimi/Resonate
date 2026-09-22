@@ -83,7 +83,28 @@ const IMAGE = `postgres:${REQUIRED_POSTGRES_VERSION}`;
  * there: a container that applied half the migrations and reported success
  * would produce a baseline that agrees with production for no reason at all.
  */
-const FLOOR_RLS_ENABLED_TABLES = 20;
+const FLOOR_RLS_ENABLED_TABLES = 19;
+
+/**
+ * ── Why this floor is 19 and was 20, which is NOT "the floor was lowered
+ *    because it tripped" ────────────────────────────────────────────────────
+ *
+ * The docblock this number was copied from says, in as many words: *if a floor
+ * trips, the correct response is to investigate the database, not to lower the
+ * number.* That rule holds. This is the other case — the one where the cause is
+ * known, declared and dated **before** the number moves.
+ *
+ * Migration `20260922180000_drop_membership_code_and_rename_acts.sql`
+ * (phase 51, D-51-14) drops `public.attendances`, with its two policies. The
+ * container replays every migration over the base schema, so from that file
+ * onward it builds **19** RLS-enabled tables where `32-04-SUMMARY.md` recorded
+ * 20 — `postgres 17.6, 20 tables with row-level security`.
+ *
+ * Leaving 20 would have thrown `The schema did not build. Nothing was
+ * measured.` on a schema that built perfectly. A refusal that names the wrong
+ * cause is worse than no refusal: it sends the next reader to look for a
+ * migration that failed, and none did.
+ */
 
 /**
  * ── Where the container's schema comes from, and why it is not just the
@@ -96,6 +117,11 @@ const FLOOR_RLS_ENABLED_TABLES = 20;
  * first migration opens with `ALTER TABLE public.profiles ADD COLUMN role`.
  * They come from `supabase/schema.sql`, which the file's own header calls the
  * "fresh database setup".
+ *
+ * That sentence describes the BASE, and stays true: the base still creates all
+ * six, `attendances` included. What changed on 2026-09-22 is what the base ends
+ * up as — migration `20260922180000` drops `attendances` at the end of the
+ * replay, which is why the floor above is 19 and not 20.
  *
  * The current `supabase/schema.sql` cannot be that base either: it has been
  * partially updated alongside five later migrations, so it already carries
