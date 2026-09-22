@@ -96,7 +96,27 @@ import type {
 // The list to walk is `43-RESEARCH.md` § G.1; plan 43-14 walks its interface
 // half. Do not read a green build as evidence that the four-role model is
 // wired — it is evidence of the casts.
-export type UserRole = "master" | "organizer" | "staff" | "member";
+export type UserRole = "master" | "organizer" | "staff" | "attendee";
+// ── Il quarto valore si chiamava `member` fino alla fase 51 (D-51-06) ────────
+//
+// E' cambiato il nome, non l'insieme: i ruoli restano quattro e il quarto e'
+// sempre quello di chi partecipa — compra un biglietto o e' invitato. Non
+// `guest`, che alla porta e nella coda offline nomina gia' l'invitato in lista;
+// non `buyer`, falso per chi entra da guest list senza pagare.
+//
+// **Questo tipo e' uno specchio, e uno specchio ha due facce.** Il vincolo
+// `profiles_role_check` dichiara accanto a se' di rispecchiare `UserRole`
+// (`20260808000500_staff_role.sql:79-94`): o i due si muovono insieme, o il
+// database rifiuta con `23514` cio' che il compilatore ha accettato. La faccia
+// SQL e' gia' passata — migration
+// `20260922120000_role_attendee_and_capability_keys` (piano 51-08), applicata
+// al laboratorio e in coda per la produzione col piano 51-13, e il verso del
+// deploy e' **codice prima, migration subito dopo**.
+//
+// E vale qui l'avvertimento scritto sopra per `staff`: i siti che scrivono
+// `role as UserRole` su un valore letto dal database non producono alcun errore
+// di build. Un verde non prova che il nome nuovo sia arrivato ovunque — prova
+// che i cast sono ancora al loro posto.
 // ── L'unione dei tre valori dello stato stava qui (fase 50, D-50-01) ─────────
 //
 // `"pending" | "approved" | "rejected"`, accanto ai quattro ruoli come se i due
@@ -111,8 +131,15 @@ export interface Profile {
   id: string;
   email: string;
   full_name: string;
-  membership_code: string;
   role: UserRole;
+  // Qui stava anche il codice socio (fase 51, D-51-02), e non e' uscito perche'
+  // dava fastidio: e' una credenziale che nessuna porta verifica piu'. Le due
+  // superfici che la mostravano e la rotta che la confrontava sono cadute coi
+  // piani 51-04 e 51-05; la colonna cade col piano 51-12. **Il suo nome non si
+  // ricopia qui**, per la ragione che `roles.ts` scrive accanto alla propria
+  // rimozione: una prosa che lo nomina tiene rosso il grep che prova la
+  // cancellazione.
+  //
   // Qui stavano tre campi, e sono usciti insieme alle tre colonne che
   // descrivevano (fase 50): lo stato di approvazione (D-50-01) e le due del
   // referral — chi ha invitato e per quale via si e' entrati (D-50-01, REG-03).
