@@ -74,7 +74,13 @@ const TICKET_TOKEN_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[
  */
 const NOT_VALID_MESSAGE: Record<DoorNotValidReason, string> = {
   invalid_signature: "This code was not issued by us",
-  unknown_code: "No ticket or member matches this code",
+  // The word here was "member" until 2026-09-22, and the sentence was still
+  // true — nothing had matched — but nobody holds a member card any more
+  // (MEM-03), so the noun named a thing this door cannot be shown. Not a new
+  // refusal: the same one, in the vocabulary the product still has. Plan 51-02
+  // left it deliberately, so that one plan and not two would rewrite a sentence
+  // read in front of a queue.
+  unknown_code: "No ticket matches this code",
   wrong_night: "This code is for another night",
   no_party_selected: "Choose the party first — a scan needs a night",
   // The one member of the union no live scan can produce: the check-in route
@@ -501,6 +507,24 @@ interface ScanRecord {
   canUndo: boolean;
   /** For a local reversal while the radio is off: `partyId:subjectType:subjectId`. */
   localKey?: string;
+}
+
+/**
+ * What kind of thing the door just handled — the flash's subtitle, since
+ * D-51-05 moved that subtitle from *who* to *what*.
+ *
+ * The tier when the ticket carries one, the plain kind otherwise, in the two
+ * words the rest of this screen already uses (`failedEntryLabel` above, the
+ * history list below). By construction it cannot name a person: it takes a
+ * subject kind and a tier, and neither is a name.
+ */
+function ticketKindLabel(
+  type: ScanRecord["type"],
+  tierName?: string | null
+): string {
+  const tier = tierName?.trim();
+  if (tier) return tier;
+  return type === "guest" ? "Guest list" : "Ticket";
 }
 
 export default function ScannerClient() {
@@ -1721,12 +1745,16 @@ export default function ScannerClient() {
           // device's queue — it was already reported — so the record on the
           // server still says the person came in and nothing here will change
           // that. Saying "undone" flat would be the silent failure.
+          // The subtitle names the kind and the state of the reversal, never the
+          // holder (D-51-05). The two facts it has to keep apart are still
+          // apart: held here, or already reported and therefore still standing
+          // on the server.
           showFlash(
             "error",
             "Undone on this device",
             result.reversalHeld
-              ? `${record.name} — held here, not yet reported`
-              : `${record.name} — the server already has the entry, undo it again with signal`
+              ? `${ticketKindLabel(record.type, record.ticketType)} — held here, not yet reported`
+              : `${ticketKindLabel(record.type, record.ticketType)} — the server already has the entry, undo it again with signal`
           );
         } catch (error) {
           console.error("scanner:local_undo_failed", { key: record.localKey, error });
@@ -1774,7 +1802,11 @@ export default function ScannerClient() {
           // Red on purpose, and it is not a refusal of the code: at the door it
           // means *this person is no longer admitted*, which is the fact the
           // operator has just created.
-          showFlash("error", "Check-in undone", record.name);
+          showFlash(
+            "error",
+            "Check-in undone",
+            ticketKindLabel(record.type, record.ticketType)
+          );
           fetchAttendance(searchQuery || undefined);
           return;
         }
@@ -1961,25 +1993,32 @@ export default function ScannerClient() {
       case "recorded": {
         const flags = readFlags(parsed);
         const flagged = flags.length > 0;
-        const label = readSubjectLabel(parsed) ?? readString(parsed, "member_name");
         const tier = readString(parsed, "tier_name");
         const isGuestList = readString(parsed, "ticket_type") === "guest_list";
-        const subtitle = flagged
-          ? flagSentence(flags)
-          : [tier, isGuestList ? "Guest List" : null].filter(Boolean).join(" · ") ||
-            undefined;
+        const kind = ticketKindLabel(isGuestList ? "guest" : "ticket", tier);
+        const subtitle =
+          [kind, flagged ? flagSentence(flags) : null].filter(Boolean).join(" · ") ||
+          undefined;
 
+        // D-51-05: the title is the outcome. It used to be the holder's label —
+        // `subject.label`, with the body's older holder field read behind it —
+        // which put a name on a full-screen verdict read in front of the person
+        // it names, on a ticket that is to the bearer. The name is still on this
+        // screen, in the history row written just below and in the night's list,
+        // because those are lists somebody consults rather than a verdict that
+        // flashes.
+        //
+        // The older field is gone from this file entirely, and the assertion for
+        // that is a grep over the whole of it — so it is described here and not
+        // quoted, on the precedent `reportServerFault` already sets below.
+        //
         // Amber for a flagged admission: the person is admitted either way, and
         // the colour says *look at this afterwards*, never *stop*.
-        showFlash(
-          flagged ? "already_recorded" : "success",
-          label ?? (flagged ? "Admitted" : "Ticket holder"),
-          subtitle
-        );
+        showFlash(flagged ? "already_recorded" : "success", "Admitted", subtitle);
         addScanRecord({
           id: ticketId,
           type: isGuestList ? "guest" : "ticket",
-          name: label ?? "Admitted",
+          name: readSubjectLabel(parsed) ?? "Admitted",
           ticketType: tier ?? undefined,
           status: flagged ? "already_recorded" : "success",
           reason: flagged ? flagSentence(flags) : undefined,
@@ -2004,13 +2043,17 @@ export default function ScannerClient() {
       }
 
       case "already_recorded": {
-        // FIX-04a: the holder's label, then the fact — a time and an operator.
-        // No cause word: this screen is read in front of the person it would be
-        // a verdict about.
-        const label =
-          readSubjectLabel(parsed) ?? readString(parsed, "member_name") ?? "Ticket holder";
+        // FIX-04a: the fact — a time and an operator. No cause word: this screen
+        // is read in front of the person it would be a verdict about.
+        //
+        // D-51-05 took the holder's label out of the title and left the FACT
+        // where it was, on purpose. `deferred-items.md` §7 names that fact among
+        // the costs of dropping the name: a time and a device is the only thing
+        // staff have to tell two reads of one code from two people arriving one
+        // after the other. The name went; the fact stayed.
+        const label = readSubjectLabel(parsed) ?? "Ticket holder";
         const fact = recordedFact(readString(parsed, "at"), readOperatorLabel(parsed));
-        showFlash("already_recorded", label, fact);
+        showFlash("already_recorded", "Already recorded", fact);
         addScanRecord({
           id: ticketId,
           type: "ticket",
@@ -2025,19 +2068,23 @@ export default function ScannerClient() {
 
       case "not_valid": {
         const sentence = notValidSentence(parsed);
-        const holder = readString(parsed, "member_name");
         const night = readString(parsed, "party_title") ?? readString(parsed, "event_title");
+        // The subtitle is the one thing that helps: which night the code does
+        // belong to. It used to fall back to the holder's name, which on a
+        // refusal is the worst place of all for a name — it invites the operator
+        // to argue with the person about who they are, on a screen that has
+        // already said the code is not good for tonight (D-51-05).
         showFlash(
           "error",
           sentence,
           readString(parsed, "reason") === "wrong_night" && night
             ? `That code belongs to ${night}`
-            : (holder ?? undefined)
+            : undefined
         );
         addScanRecord({
           id: ticketId,
           type: "ticket",
-          name: holder ?? "Unknown",
+          name: readSubjectLabel(parsed) ?? "Unknown",
           status: "error",
           reason: sentence,
           timestamp: Date.now(),
@@ -2066,7 +2113,11 @@ export default function ScannerClient() {
       if (cached) {
         if (cached.checkedIn) {
           const fact = recordedFact(cached.checkedInAt, cached.checkedInBy);
-          showFlash("already_recorded", cached.name, fact);
+          // Same shape as the online branch: the outcome, then the fact, and
+          // `Offline` so the operator knows which memory answered. The cached
+          // name stays in the history row below and out of the verdict
+          // (D-51-05).
+          showFlash("already_recorded", "Already recorded", `${fact} · Offline`);
           addScanRecord({
             id: ticketId,
             type: cached.ticketType === "guest_list" ? "guest" : "ticket",
@@ -2089,17 +2140,22 @@ export default function ScannerClient() {
         // A refund known at download time produces the same admit-and-flag
         // locally as the server produces online (FIX-09).
         const flagged = Boolean(cached.refundedAt);
-        const subtitle = flagged
-          ? `${FLAG_MESSAGE.refunded_before_night} · Offline`
-          : [
-              cached.tierName,
-              cached.ticketType === "guest_list" ? "Guest List" : null,
-              "Offline",
-            ]
-              .filter(Boolean)
-              .join(" · ");
+        const subtitle = [
+          ticketKindLabel(
+            cached.ticketType === "guest_list" ? "guest" : "ticket",
+            cached.tierName
+          ),
+          flagged ? FLAG_MESSAGE.refunded_before_night : null,
+          "Offline",
+        ]
+          .filter(Boolean)
+          .join(" · ");
 
-        showFlash(flagged ? "already_recorded" : "success", cached.name, subtitle);
+        // D-51-05: `cached.name` was the title here. It is the point
+        // `deferred-items.md` §7 names as `:2186` — the offline admission, the
+        // one read most often at 02:00 — and it is the one place the name was
+        // read straight off this device's own cache rather than off a response.
+        showFlash(flagged ? "already_recorded" : "success", "Admitted", subtitle);
         addScanRecord({
           id: ticketId,
           type: cached.ticketType === "guest_list" ? "guest" : "ticket",
@@ -2236,7 +2292,10 @@ export default function ScannerClient() {
 
       if (res.ok) {
         const name = readString(parsed, "name") ?? "Guest";
-        showFlash("success", name, "Guest List");
+        // The name is how this button was found — the operator typed it into the
+        // search and tapped the row — so it is already on screen, in the list,
+        // and it does not need to become the verdict as well (D-51-05).
+        showFlash("success", "Admitted", ticketKindLabel("guest"));
         addScanRecord({
           id: guestListEntryId,
           type: "guest",
@@ -2255,7 +2314,7 @@ export default function ScannerClient() {
       if (res.status === 409) {
         const name = readString(parsed, "name") ?? "Guest";
         const fact = recordedFact(readString(parsed, "at"), readOperatorLabel(parsed));
-        showFlash("already_recorded", name, fact);
+        showFlash("already_recorded", "Already recorded", fact);
         addScanRecord({
           id: guestListEntryId,
           type: "guest",
