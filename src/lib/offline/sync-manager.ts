@@ -366,33 +366,18 @@ function targetFor(entry: PendingCheckin): Target {
         },
         legacySuccess: null,
       };
-    case "membership":
-      // `entryRole` is the role the roster on this device held **at the door**,
-      // and the route reads it only when `source === "offline_sync"` — which is
-      // the only case that reaches here. Online, the door and the write are the
-      // same moment and the route uses the profile it has just read; queued,
-      // they are hours apart and only the device holds what was true then.
-      //
-      // **An entry with no role sends no field**, following the `guest` branch
-      // below: state the absence rather than paper over it with a value that
-      // would be silently wrong. Two kinds of entry arrive here without one — a
-      // scan queued by a release before this one, and a scan taken while the
-      // roster on this device predated the role field. Neither is dropped,
-      // neither is retried differently, and neither is reported as carrying a
-      // marker: the route writes NULL and admits, and NULL means `unknown`, not
-      // `member`.
-      return {
-        url: "/api/membership/verify",
-        body: {
-          code: entry.subjectId,
-          partyId: entry.partyId,
-          scannedAt: entry.scannedAt,
-          deviceId: entry.deviceId,
-          source: "offline_sync",
-          ...(entry.entryRole ? { entryRole: entry.entryRole } : {}),
-        },
-        legacySuccess: null,
-      };
+    // ── The third branch left with the third type (MEM-03) ──────────────────
+    //
+    // There used to be a `membership` case here, draining to the membership
+    // verification route with the role the roster held at the door. Nobody holds
+    // a card, the route is going, and `QueuedSubjectType` is down to two —
+    // which is what makes this removal checkable rather than trusted: this
+    // `switch` is exhaustive over that union, so a branch left behind is a type
+    // error and a branch missing is a type error too.
+    //
+    // Entries of the old kind still sitting on a phone never reach here: the
+    // version-6 upgrade in `checkin-store.ts` drops them by key before the first
+    // drain of the night, and says so once in the console (D-51-11).
     case "guest":
       // `source` and `scannedAt` are sent so that the route can tell a report
       // from the drain apart from a tap on the button, which is what keeps its

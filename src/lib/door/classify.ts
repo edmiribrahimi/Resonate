@@ -79,10 +79,14 @@ export interface ClassifiedEntry {
   subjectType: DoorSubjectType;
   /**
    * What was scanned, as an identifier: the ticket, the guest-list entry, or —
-   * on the membership path, which has neither — the holder's user id. NULL on a
-   * scan that resolved to nothing at all (an unreadable code), and on a refunded
-   * admission, whose `ticket_id` must be NULL because the ticket row is gone
-   * (`src/app/api/tickets/checkin/route.ts:456-461`).
+   * on rows of the membership kind, which carry neither — the holder's user id.
+   * NULL on a scan that resolved to nothing at all (an unreadable code), and on
+   * a refunded admission, whose `ticket_id` must be NULL because the ticket row
+   * is gone (`src/app/api/tickets/checkin/route.ts:456-461`).
+   *
+   * The third case is **historical only** (D-51-13): no scan produces one any
+   * more, and the rows that carry it are earlier nights this register still has
+   * to be able to read.
    */
   subjectId: string | null;
   /** The classification. NULL means no rule reached it — see `deriveCause`. */
@@ -141,11 +145,15 @@ function emptyCounters(): Record<DoorScanCause, number> {
 /**
  * What a repeat read is a repeat *of*.
  *
- * The ticket path carries `ticket_id`; the membership path carries neither a
- * ticket nor an entry and is identified by its holder
- * (`src/app/api/membership/verify/route.ts:169-183`). A row with none of the
- * three cannot be paired with anything and returns NULL, which the caller reads
- * as "no previous read is knowable".
+ * The ticket path carries `ticket_id`; a row of the membership kind carries
+ * neither a ticket nor an entry and is identified by its holder. A row with none
+ * of the three cannot be paired with anything and returns NULL, which the caller
+ * reads as "no previous read is knowable".
+ *
+ * The third arm stays because the rows stay (D-51-13). Nothing writes one now —
+ * the path that did left with MEM-03, and the address it used to be cited at is
+ * deliberately not named here, because a citation of a route nobody can call is
+ * dated documentation.
  */
 function subjectKey(row: DoorScanEvent): string | null {
   if (row.ticket_id) return `ticket:${row.ticket_id}`;
