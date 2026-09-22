@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: Phase 51 context gathered
-last_updated: "2026-09-22T17:50:00.000Z"
+stopped_at: Completed 51-13-PLAN.md — atto di produzione speso, autorizzazione ESAURITA
+last_updated: "2026-09-22T19:31:00.000Z"
 last_activity: 2026-09-22
 progress:
   total_phases: 12
   completed_phases: 4
   total_plans: 55
-  completed_plans: 47
+  completed_plans: 48
   percent: 33
 ---
 

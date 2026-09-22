@@ -452,7 +452,7 @@ Plans:
 > resta quella di sempre: rifiutare un ospite valido e' peggio che ammetterne uno
 > doppio.
 
-**Plans:** 13/15 plans executed
+**Plans:** 14/15 plans executed
 
 Plans:
 **Wave 1**
@@ -485,7 +485,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5)*
 
-- [ ] 51-13-PLAN.md — la produzione, sotto autorizzazione datata: deploy, due migration, cancellazione per chiave (checkpoint del proprietario)
+- [x] 51-13-PLAN.md — la produzione, sotto autorizzazione datata: deploy, due migration, la cancellazione SENZA SOGGETTI (zero righe), permesso ESAURITO il 2026-09-22T19:24:05Z
 
 **Wave 7** *(blocked on Wave 6)*
 
