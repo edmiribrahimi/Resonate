@@ -16,9 +16,22 @@
 # in the repository combining all three properties:
 #
 #   1. It is in the `(public)` route group, so no middleware prefix rule gates
-#      it. `protectedPrefixes` (src/lib/supabase/middleware.ts:136) is
-#      /dashboard /membership-card /attendance /admin /organizer — and /events
-#      is in none of them.
+#      it. The prefix list is `PROTECTED_PREFIXES`, and since phase 37 it is
+#      DECLARED in `src/lib/routes/next-redirect.ts` and only READ by the
+#      middleware (src/lib/supabase/middleware.ts:584), so that the bouncer and
+#      the `?next=` allow-list cannot drift apart. **Re-measured 2026-09-22,
+#      phase 51: it is three prefixes — /dashboard /admin /door — and /events is
+#      in none of them.**
+#
+#      This line used to say five, at a line number in the middleware, and both
+#      halves had gone stale: the organizer tree went when phase 34 collapsed
+#      the two work trees, and the two member surfaces went with their pages in
+#      phase 51 (MEM-01, MEM-02). None of the three departed names is written
+#      out here, because this comment's job is to say what the list CONTAINS —
+#      a reader grepping it for an address has to get an answer about today.
+#      The claim is re-derived from the constant rather than remembered, since
+#      what makes this probe worth running is that /events is NOT gated, and
+#      that is exactly the sentence being asserted.
 #   2. Its `canManage` is decided from the HEADER ALONE:
 #      `role === "master" || role === "organizer"` (menu/page.tsx:72), where
 #      `role` came from `headersList.get("x-user-role")` (:56).
@@ -137,9 +150,16 @@ THE POSITIVE CONTROL — the part that makes a green from this probe mean anythi
 
   1. Comment out the three strip lines:
 
-         src/lib/supabase/middleware.ts:210   requestHeaders.delete("x-user-role");
-         src/lib/supabase/middleware.ts:211   requestHeaders.delete("x-user-status");
-         src/lib/supabase/middleware.ts:212   requestHeaders.delete("x-user-id");
+         src/lib/supabase/middleware.ts:697   requestHeaders.delete("x-user-role");
+         src/lib/supabase/middleware.ts:698   requestHeaders.delete("x-user-status");
+         src/lib/supabase/middleware.ts:699   requestHeaders.delete("x-user-id");
+
+     RE-MEASURED 2026-09-22, phase 51. These said 210-212, which is where they
+     sat when this script was written; the file has grown since. GREP FOR THE
+     THREE STATEMENTS RATHER THAN TRUSTING THE NUMBERS — a line number in a
+     procedure is the part that rots first, and commenting out three lines that
+     are not the strip produces a probe that stays quiet for the wrong reason,
+     which is a false negative wearing a green.
 
   2. ASSERT THE MUTATION IS APPLIED, BEFORE READING ANY RESULT:
 
@@ -401,7 +421,7 @@ if [ "$FORGED_HITS" -gt 0 ]; then
   echo "    WHERE: ${URL}"
   echo "           src/app/(public)/events/[slug]/menu/page.tsx:56  reads x-user-role"
   echo "           src/app/(public)/events/[slug]/menu/page.tsx:72  decides canManage from it"
-  echo "           src/lib/supabase/middleware.ts:210-212           should have stripped it"
+  echo "           src/lib/supabase/middleware.ts:697-699           should have stripped it"
   echo "    BODIES: ${ANON_OUT} (anonymous), ${FORGED_OUT} (forged)"
   echo ""
   echo "    If you are running the positive control, THIS IS THE EXPECTED RESULT and"

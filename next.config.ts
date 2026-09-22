@@ -83,11 +83,33 @@ const nextConfig: NextConfig = {
     // cancella ogni documento in cache a ogni rilascio, quindi il rischio
     // residuo e' il **solo** ingresso di redirect HTTP del browser.
     //
-    // Le tre che restano sono coppie italiano → inglese di indirizzi che
+    // ── E l'alias dello storico e' uscito qui (fase 51, MEM-02) ─────────────
+    //
+    // **Erano tre voci, sono due.** La terza era la coppia italiano → inglese
+    // dello storico di chi e' stato alle serate, cancellato in questo stesso
+    // piano: se ne va con la pagina che puntava, per la ragione gia' scritta
+    // qui sopra — un rimando verso un indirizzo che risponde 404 promette una
+    // porta che non c'e'.
+    //
+    // **Il costo e' lo stesso di `T-50-28`, e si dichiara invece di scoprirlo.**
+    // Chi ha seguito quell'alias anche una sola volta continuera' a essere
+    // mandato sulla pagina cancellata **dalla propria cache**, e ricevera' un
+    // 404. Disposizione `accept` (`T-51-17`): e' la proprieta' di un 308, non
+    // un difetto di questa modifica, e l'esito per quella persona e' una pagina
+    // che non esiste — non un percorso che la porta da qualche altra parte.
+    //
+    // **Nessun letterale rimosso resta scritto qui**, ne' in questo paragrafo
+    // ne' in quello della fase 50: questa funzione e' l'elenco di cio' che
+    // viene rimandato, e un `grep` su di essa deve rispondere *«questo alias e'
+    // servito?»*, non trovare il necrologio di uno che non lo e' piu'.
+    //
+    // Nessuna voce nuova: il rimando verso la pagina dell'account lo aggiunge
+    // il piano 51-06, insieme alla pagina che servira' quell'indirizzo.
+    //
+    // Le due che restano sono coppie italiano → inglese di indirizzi che
     // esistono ancora.
     return [
       { source: "/eventi/:path*", destination: "/events/:path*", permanent: true },
-      { source: "/presenze", destination: "/attendance", permanent: true },
       { source: "/galleria", destination: "/gallery", permanent: true },
     ];
   },
