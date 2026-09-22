@@ -473,6 +473,7 @@ Plans:
 
 - [ ] 51-09-PLAN.md — le superfici di lavoro: niente piu' `member`, niente piu' codice socio
 - [ ] 51-10-PLAN.md — il tipo, il middleware, la pagina dell'account e il lessico verso le persone
+- [ ] 51-15-PLAN.md — il check-in per nome entra in coda a radio spenta (chiusura del buco misurato da P-51-1, scritto il 2026-09-22)
 
 **Wave 4** *(blocked on Wave 3)*
 
