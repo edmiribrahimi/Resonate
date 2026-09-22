@@ -21,14 +21,14 @@ import type { DoorNotValidReason, DoorSubjectType } from "@/lib/door/outcome";
  *    It moves to `failedCheckins` and stays visible. A discarded entry and a
  *    synced one look identical to a counter, and the counter is the only
  *    observer this project has — there is no error tracking.
- * 3. **A membership code queued at two parties produces two entries.** The
+ * 3. **The same subject queued at two parties produces two entries.** The
  *    record key is `partyId:subjectType:subjectId`, so a double bill — one
  *    event, two parties — no longer overwrites the first admission with the
  *    second.
- * 4. **A membership QR still carries no signature**, so its proof is weaker
- *    than a ticket's: a membership entry queues with `token: null` because
- *    there is nothing to carry, not because the code was discarded. Written
- *    down rather than papered over.
+ * 4. **A queued entry carries whatever proof it was read with, and no more.**
+ *    `token` is the signed string for a ticket and `null` where there is no
+ *    signature to carry — written down rather than papered over, because the
+ *    route re-verifies what it is given and cannot invent what it is not.
  *
  * A fifth, from version 4: **the upgrade callback is cumulative, and no step
  * may undo an earlier one.** Each version is its own `oldVersion <` block doing
@@ -45,6 +45,13 @@ import type { DoorNotValidReason, DoorSubjectType } from "@/lib/door/outcome";
  * verdict that is not there is `null`, meaning *not resolved*, and never
  * *refused*.
  *
+ * A seventh, from version 6: **the door has two kinds of subject, not three.**
+ * The member card left the product (MEM-03), so the queue lost its third type,
+ * the roster store went with it, and the version-6 step is the only step of this
+ * store that opens the queue — to drop, by key, the entries of that kind a phone
+ * may still be carrying. It is a break of the property version 5 states, and it
+ * is written there as a break, not left to be discovered.
+ *
  * Two limits that remain, unchanged and deliberate:
  * - Tickets bought after the list was downloaded are not in the cache. Offline
  *   they are admitted and flagged, never refused — refusing a valid guest
@@ -54,20 +61,25 @@ import type { DoorNotValidReason, DoorSubjectType } from "@/lib/door/outcome";
  */
 
 const DB_NAME = "resonate-checkin";
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 
 /** The `meta` key under which this install's device id lives. */
 const DEVICE_ID_KEY = "deviceId";
 
 /**
- * The `meta` key marking that this device's roster was cached before members
- * carried a role.
+ * The `meta` key the version-4 step writes — **historical, and read by nobody.**
  *
- * Set by the version-4 step and cleared by the first {@link cacheMembers} that
- * actually sees a role. It exists so a device that upgrades mid-season does not
- * spend the night queueing admissions with no marker while believing it knows:
- * the scanner reads it and refreshes the roster through the call it already
- * makes.
+ * It marked that this device's roster had been cached before members carried a
+ * role, and the scanner used it to force one extra roster refresh. There is no
+ * roster any more (MEM-03), so the reader is gone and the key means nothing.
+ *
+ * The constant survives for one reason and it is not nostalgia: **the version-4
+ * step still writes it, and a step already shipped is never rewritten.** The
+ * callback is cumulative — a device sitting at v3 tonight still runs v4 on its
+ * way to v6 — so editing that step to inline a string would be a retroactive
+ * change to a migration other devices have already performed. What the v6 step
+ * does instead is delete the key it leaves behind: cumulative, in order, each
+ * step doing only its own work.
  */
 const ROSTER_PREDATES_ROLE_KEY = "rosterPredatesRole";
 
@@ -101,8 +113,19 @@ export const MAX_SYNC_ATTEMPTS = 8;
 /** Operator label written when the only thing this device knows is that it was this device. */
 export const THIS_DEVICE_LABEL = "this device";
 
-/** How a queued entry is drained — which endpoint it belongs to. */
-export type QueuedSubjectType = "ticket" | "guest" | "membership";
+/**
+ * How a queued entry is drained — which endpoint it belongs to.
+ *
+ * Two members since version 6. `"membership"` was the third, and it left with
+ * the endpoint it drained to (MEM-03): nobody holds a card, so no scan can
+ * produce one. Narrowing the union is what makes the removal checkable —
+ * `sync-manager.ts` drains through a `switch` on this type, so a branch left
+ * behind is a build error rather than a case nobody reads.
+ *
+ * Entries of the old third type can still be **on a device**, queued before the
+ * upgrade. The version-6 step below is what deals with them, by key.
+ */
+export type QueuedSubjectType = "ticket" | "guest";
 
 /** Why a queued entry can never succeed. */
 export type FailureReason = DoorNotValidReason | "unexpected_response";
@@ -124,9 +147,10 @@ export type FailureReason = DoorNotValidReason | "unexpected_response";
  *
  * `resolvedAt` is the **server's** clock at resolution, and it is here so the
  * device can measure the drift of its own clock instead of trusting it. Same
- * lexicon as `scannedAt` below and as
- * `src/app/api/membership/verify/route.ts:412`: a device clock is evidence,
- * never authority.
+ * lexicon as `scannedAt` below: a device clock is evidence, never authority.
+ * *(The route this line used to cite as the other half of that lexicon leaves
+ * the product in this phase — MEM-03 — and a citation of an address nobody can
+ * call is dated documentation, so the property is stated on its own.)*
  */
 export interface CachedDoorAuth {
   mayScan: boolean;
@@ -157,34 +181,13 @@ export interface AttendeeRecord {
   lastSeenAt: string;
 }
 
-/** A member of the roster, resolvable offline. A membership code is genuinely global. */
-export interface MemberRecord {
-  membershipCode: string;
-  userId: string;
-  fullName: string;
-  /**
-   * The role the roster carried at the moment this record was cached.
-   *
-   * **Optional, and `undefined` means "this device does not know" — never
-   * "member".** A record cached by a release before the roster carried a role
-   * has none, and inventing `member` there would turn an absence of knowledge
-   * into a claim. It is the same distinction `attendances.entry_role` carries as
-   * NULL on the other side of the wire (plan 43-10): `unknown`, not a default.
-   *
-   * Typed `string` and not `UserRole`: the roster arrives from `fetch` as JSON,
-   * so nothing here can guarantee the closed set. The server validates it
-   * against `ROLES` on sync, and an unrecognised label writes NULL **and admits**.
-   */
-  role?: string;
-}
-
 /** A scan that has happened and has not yet been reported. */
 export interface PendingCheckin {
   key: string;
   type: QueuedSubjectType;
   subjectId: string;
   partyId: string;
-  /** The full signed string exactly as scanned. `null` for a membership code or a guest entry, which have no signature. */
+  /** The full signed string exactly as scanned. `null` for a guest-list entry, which has no signature. */
   token: string | null;
   /** Device clock at the read. Evidence, not authority. */
   scannedAt: string;
@@ -229,15 +232,6 @@ export interface PendingCheckin {
   undoneAt?: string;
   /** Who reversed it, so the record can say. Never a bare "somebody". */
   undoneBy?: string;
-  /**
-   * The role the roster held **at the door**, for a membership entry.
-   *
-   * Absent on every entry queued before this release, and absent whenever the
-   * roster on this device did not carry a role. Absent is sent as absent — the
-   * sync omits the field entirely rather than substituting a value, and the
-   * route writes NULL and admits. A queued entry is never dropped for lacking it.
-   */
-  entryRole?: string;
 }
 
 /** A scan that can never succeed. Never deleted — a lost entry and a synced one are indistinguishable to a counter. */
@@ -261,9 +255,27 @@ interface CheckinDB extends DBSchema {
       "by-subject": string;
     };
   };
+  /**
+   * ── Historical: created by the version-3 step, destroyed by the version-6 one ─
+   *
+   * The roster of member codes, resolvable offline. Nothing in the product reads
+   * or writes it any more — the reader, the writer and the endpoint that filled
+   * it all left with MEM-03 — and the version-6 step deletes the store outright.
+   *
+   * It stays **declared** for exactly one reason: the version-3 step creates it,
+   * and a step that has already run on devices is never rewritten (see the
+   * cumulative discipline in this file's docblock). Both the step that creates it
+   * and the step that destroys it have to be able to name it, and `idb` types
+   * both calls against this interface. A device that installs the app today
+   * creates the store in v3 and loses it in v6, inside one `versionchange`.
+   *
+   * The value shape is the key and nothing else: no name, no role, no code
+   * beyond the key itself. Whatever a device is still holding in there is read
+   * by nobody before it is dropped.
+   */
   members: {
-    key: string; // membership_code (e.g. RSN-XXXXXXXX)
-    value: MemberRecord;
+    key: string;
+    value: { membershipCode: string };
   };
   pendingCheckins: {
     key: string;
@@ -293,9 +305,29 @@ interface LegacyAttendee {
   guestListEntryId?: string;
 }
 
+/**
+ * The queue type that left in version 6, spelled **once**.
+ *
+ * The step that drops those entries and the history that declares they can exist
+ * read the same constant, so the two cannot drift apart into a step looking for a
+ * string nothing writes.
+ */
+const HISTORICAL_MEMBERSHIP_QUEUE_TYPE = "membership";
+
+/**
+ * The queue union as versions 2 to 5 wrote it — three members.
+ *
+ * Declared because it is **true of data on devices**: a phone that has not
+ * opened the app since the last night can be holding rows of the third kind, and
+ * a type that denied it would make the step that has to find them unwritable.
+ */
+type LegacyQueuedSubjectType =
+  | QueuedSubjectType
+  | typeof HISTORICAL_MEMBERSHIP_QUEUE_TYPE;
+
 interface LegacyPending {
   id: string;
-  type: QueuedSubjectType;
+  type: LegacyQueuedSubjectType;
   checkedInAt: string;
   partyId: string;
 }
@@ -306,17 +338,32 @@ interface CheckinDBv2 extends DBSchema {
     value: LegacyAttendee;
     indexes: { "by-party": string };
   };
-  members: { key: string; value: MemberRecord };
   pendingCheckins: { key: string; value: LegacyPending };
 }
 
-const QUEUE_TYPE_BY_SUBJECT: Record<DoorSubjectType, QueuedSubjectType> = {
+/**
+ * The subject kinds the door can still queue.
+ *
+ * `DoorSubjectType` keeps three members on purpose (D-51-13): `'membership'`
+ * stays **readable** in `door_scan_events` and in its SQL `CHECK`, because the
+ * door's register of verdicts is not rewritten. What it is not any more is
+ * **writable** — no scan produces one — and this is where that distinction is
+ * expressed, rather than by a map with a member nothing can reach.
+ */
+type QueueableSubjectType = Exclude<DoorSubjectType, "membership">;
+
+const QUEUE_TYPE_BY_SUBJECT: Record<QueueableSubjectType, QueuedSubjectType> = {
   ticket: "ticket",
   guest_list_entry: "guest",
-  membership: "membership",
 };
 
-const SUBJECT_BY_QUEUE_TYPE: Record<QueuedSubjectType, DoorSubjectType> = {
+/**
+ * Keyed over the **legacy** union, not the current one: the only caller is the
+ * version-3 rekey, which reads rows written before version 6 and must be able to
+ * resolve all three of them. A lookup that returned `undefined` here would build
+ * a record key with the word `undefined` in it.
+ */
+const SUBJECT_BY_QUEUE_TYPE: Record<LegacyQueuedSubjectType, DoorSubjectType> = {
   ticket: "ticket",
   guest: "guest_list_entry",
   membership: "membership",
@@ -382,7 +429,13 @@ function rekeyPending(v: LegacyPending, deviceId: string): PendingCheckin {
   const subjectType = SUBJECT_BY_QUEUE_TYPE[v.type];
   return {
     key: attendeeKey(v.partyId, subjectType, v.id),
-    type: v.type,
+    // The legacy type is carried across **as it was read**, including the third
+    // kind the current union no longer names. The cast is the honest shape of
+    // that: the copy step does not get to decide anything about a row, it copies
+    // it, and rewriting a kind here would be a decision taken where the whole
+    // point is not to lose one. The version-6 step below runs after this one in
+    // the same `versionchange` and is where the decision happens, by key.
+    type: v.type as QueuedSubjectType,
     subjectId: v.id,
     partyId: v.partyId,
     // An entry queued before this release genuinely has no token. Carrying that
@@ -592,6 +645,101 @@ function getDB(): Promise<IDBPDatabase<CheckinDB>> {
         // rewrite the prose, never weaken the check. Anyone tempted to "fix" the
         // wording here is about to disable the only thing standing between a
         // schema bump and a lost queue.
+      }
+
+      if (oldVersion < 6) {
+        // ── Version 6: the ONE step of this store that TOUCHES THE QUEUE ─────
+        //
+        // Say that first, because every step before this one was written to be
+        // able to say the opposite. Version 5 states the property in full — *it
+        // does not read the queue store, it does not rewrite a row of it, it
+        // does not delete or re-create it* — and this step **breaks that
+        // property deliberately**, on a decision (D-51-11), not by oversight.
+        // A reader arriving here after reading version 5 has to be told which of
+        // the two it is, or the next person to touch this file will "repair" a
+        // step that is doing exactly what it was asked to do.
+        //
+        // What it breaks it for: MEM-03 removes the member card, and with it the
+        // third queue type. A phone can arrive at this upgrade carrying entries
+        // of that kind — scanned with the radio off, never drained — and there
+        // is no endpoint left for them to drain to. They are dropped here, in
+        // silence on screen and with **one line in the console**: D-51-11 is the
+        // owner's decision that no surface is raised for them, and
+        // `meta-gates.md` is the floor under it — a category and a count, never a
+        // generic message, so the one observer this project has can tell this
+        // apart from anything else.
+        //
+        // What it does NOT break, and these are the rules the earlier steps set:
+        //
+        //  1. **Only entries of the removed kind are touched, and by key.** The
+        //     `ticket` and `guest` rows are not read to be written back and not
+        //     re-keyed: they are left where they are. A step that rewrote the
+        //     whole queue to drop a third of it would be the wrong verb — and
+        //     the wrong direction of failure, since deleting by key can only
+        //     ever find too little, never too much (`ai-engineering.md`).
+        //  2. **The store is destroyed after the queue work is finished**, never
+        //     before — the copy-before-delete order the version-3 step wrote
+        //     down, applied to a step that has nothing to copy.
+        //  3. **Only `idb` promises are awaited in here.** One await on anything
+        //     else lets the `versionchange` transaction close mid-migration, and
+        //     there is no test runner in this repository that could catch it.
+        //     `console.warn` is not an await, which is why it can be emitted
+        //     from inside without weakening this.
+        //
+        // ── AND A NOTE ON THE COMMENT ABOVE ──────────────────────────────────
+        // The version-5 block is forbidden from naming `pendingCheckins`,
+        // because the assertion that it leaves the queue alone is a grep for
+        // that identifier inside its body. **This block names it, and that is
+        // correct**: this step really does open it. The two facts live three
+        // lines apart on purpose, so nobody reads the identifier here and
+        // concludes the rule was broken by distraction.
+        const pendingStore = tx.objectStore("pendingCheckins");
+        const failedStore = tx.objectStore("failedCheckins");
+
+        // Counted while scrolling, the shape the house already used for a merge:
+        // one pass, one number, and no second read of a store this step has
+        // already changed — a count taken with the thing that caused the change
+        // is an echo, not a measurement (`ai-engineering.md`).
+        let dropped = 0;
+
+        for (const entry of await pendingStore.getAll()) {
+          // The cast is the truth of the data against the truth of the type: the
+          // union no longer names this kind, and a device can still be holding
+          // it. Comparing through `string` says so out loud instead of widening
+          // the union back.
+          if ((entry.type as string) !== HISTORICAL_MEMBERSHIP_QUEUE_TYPE) continue;
+          await pendingStore.delete(entry.key);
+          dropped++;
+        }
+
+        // The failed list too: it is never emptied by design — a lost entry and
+        // a synced one look identical to a counter — but an entry whose endpoint
+        // no longer exists can only ever be a line nobody can act on.
+        for (const entry of await failedStore.getAll()) {
+          if ((entry.type as string) !== HISTORICAL_MEMBERSHIP_QUEUE_TYPE) continue;
+          await failedStore.delete(entry.key);
+          dropped++;
+        }
+
+        // The marker the version-4 step wrote, now that nothing reads it. Left
+        // behind it would be a `meta` key claiming something about a roster that
+        // no longer exists.
+        await tx.objectStore("meta").delete(ROSTER_PREDATES_ROLE_KEY);
+
+        // Strictly last of the structural work, and only once the queue is done.
+        if (db.objectStoreNames.contains("members")) {
+          db.deleteObjectStore("members");
+        }
+
+        // One line, one category, one count — covering both stores above. No
+        // identifier of any person is in it: the key of a dropped entry carried
+        // a member code, and a code in a console log is a credential in a
+        // screenshot (T-51-09).
+        if (dropped > 0) {
+          console.warn("checkin-store:v6_dropped_membership_entries", {
+            count: dropped,
+          });
+        }
       }
     },
   });
@@ -881,7 +1029,7 @@ export interface LocalCheckinResult {
  */
 export async function checkInLocally(
   partyId: string,
-  subjectType: DoorSubjectType,
+  subjectType: QueueableSubjectType,
   subjectId: string,
   opts: { token: string | null; name?: string }
 ): Promise<LocalCheckinResult> {
@@ -951,69 +1099,6 @@ export async function checkInLocally(
   return { key, attendee: record, wasCached, alreadyRecorded, at };
 }
 
-/** What the door learned from a local membership check-in. */
-export interface LocalMemberCheckinResult {
-  key: string;
-  alreadyRecorded: boolean;
-  at: string;
-}
-
-/**
- * Queue a membership admission.
- *
- * The composite key is the change that makes the same member at two parties on
- * one device produce two entries instead of one overwriting the other.
- * `token` is `null` because a membership QR is a plain URL — there is no
- * signature to carry, and that is a weaker proof than a ticket's.
- *
- * `entryRole` is what the roster on this device said **at the moment of the
- * scan**, and it is optional in the strong sense: a device whose roster has no
- * role queues the admission all the same, with the field absent. It is a label,
- * never a permission — nothing here reads it to decide anything, and the door's
- * verdict is taken before it is written.
- *
- * When an entry for this key is already queued, the existing one is kept whole,
- * role included: the marker belongs to the first admission, the one that took a
- * place. It is the same rule the route applies on its duplicate branch.
- */
-export async function checkInMemberLocally(
-  partyId: string,
-  membershipCode: string,
-  entryRole?: string
-): Promise<LocalMemberCheckinResult> {
-  const db = await getDB();
-  const deviceId = await getDeviceId();
-
-  const key = attendeeKey(partyId, "membership", membershipCode);
-  const now = new Date().toISOString();
-
-  const tx = db.transaction("pendingCheckins", "readwrite");
-  const queued = await tx.store.get(key);
-  if (!queued) {
-    await tx.store.put({
-      key,
-      type: "membership",
-      subjectId: membershipCode,
-      partyId,
-      token: null,
-      scannedAt: now,
-      deviceId,
-      attempts: 0,
-      state: "pending",
-      // Absent stays absent. A placeholder would be a value the report cannot
-      // tell apart from a real one.
-      ...(entryRole ? { entryRole } : {}),
-    });
-  }
-  await tx.done;
-
-  return {
-    key,
-    alreadyRecorded: queued !== undefined,
-    at: queued?.scannedAt ?? now,
-  };
-}
-
 /**
  * Mark a cached attendee as checked in **without** queueing anything.
  *
@@ -1040,10 +1125,10 @@ export interface LocalUndoResult {
   /**
    * There was a cached attendee row, and it no longer says checked in.
    *
-   * `false` is **not** a failure on its own: a membership admission writes no
-   * attendee row at all ({@link checkInMemberLocally} touches only the queue), so
-   * there is nothing to revert and nothing went wrong. The field a caller should
-   * branch on is {@link reversalHeld}.
+   * `false` is **not** a failure on its own: an admission can be queued without
+   * a cached attendee row behind it, in which case there is nothing to revert
+   * and nothing went wrong. The field a caller should branch on is
+   * {@link reversalHeld}.
    */
   reverted: boolean;
   /**
@@ -1311,85 +1396,6 @@ export async function bumpAttempts(key: string): Promise<BumpResult> {
 }
 
 /**
- * Merge the member roster.
- *
- * It does not clear: the roster is the device's only way to resolve a
- * membership code offline, and emptying it during a refresh is the same defect
- * as emptying the attendee cache, in a different store. That property is
- * unchanged here, and this plan did not weaken it.
- *
- * **The parameter type is load-bearing.** This function writes the record field
- * by field, so a field the type does not name is a field that is silently
- * dropped — and because the roster arrives from `fetch` as JSON, TypeScript
- * raises nothing when that happens. Before this plan `role` was exactly that:
- * present in the payload since plan 43-10, discarded here without a trace, and
- * a green build said nothing. Anything added to the roster payload from now on
- * has to be added in **both** places or it does not reach the device.
- */
-export async function cacheMembers(
-  members: Array<{
-    id: string;
-    full_name: string;
-    membership_code: string;
-    /** Optional on the wire: an older deployment does not send it. */
-    role?: string;
-  }>
-): Promise<number> {
-  const db = await getDB();
-  // `meta` joins the scope so the flag below is cleared in the same transaction
-  // that made it false. Two transactions could leave the roster refreshed and
-  // the flag still set, which would cost one extra refresh — harmless, but the
-  // single transaction costs nothing and cannot disagree with itself.
-  const tx = db.transaction(["members", "meta"], "readwrite");
-  const store = tx.objectStore("members");
-  let merged = 0;
-  let sawRole = false;
-  for (const m of members) {
-    const role = typeof m.role === "string" && m.role.length > 0 ? m.role : undefined;
-    if (role) sawRole = true;
-    await store.put({
-      membershipCode: m.membership_code,
-      userId: m.id,
-      fullName: m.full_name,
-      // Written only when the payload carried one. An absent role is left
-      // absent rather than stored as an empty string: `undefined` here means
-      // "this device does not know", and "" would be a value that looks like an
-      // answer.
-      ...(role ? { role } : {}),
-    });
-    merged++;
-  }
-  // Cleared only when a role was actually seen. A roster served by a deployment
-  // that predates plan 43-10 carries none, and clearing the flag on it would
-  // declare the device up to date on the strength of a refresh that changed
-  // nothing.
-  if (sawRole) {
-    await tx.objectStore("meta").delete(ROSTER_PREDATES_ROLE_KEY);
-  }
-  await tx.done;
-  return merged;
-}
-
-/**
- * Whether this device's roster was cached before members carried a role.
- *
- * Read by the scanner on open. `true` is not a reason to refuse anybody and is
- * never rendered as one: it only means the next roster refresh matters more
- * than usual, because until it happens every membership admission queues with
- * no marker.
- *
- * A device that cannot answer the question is treated as **not** predating —
- * the caller then behaves exactly as it did before this plan, which is the
- * conservative direction here: the roster refresh it already performs still
- * runs.
- */
-export async function rosterPredatesRole(): Promise<boolean> {
-  const db = await getDB();
-  const flag = await db.get("meta", ROSTER_PREDATES_ROLE_KEY);
-  return flag?.value === "true";
-}
-
-/**
  * Remember the door verdict the server resolved for ONE night.
  *
  * Called once, from the fetch the scanner already makes when a night is opened.
@@ -1466,12 +1472,4 @@ export async function readDoorAuth(
     validUntil: v.validUntil,
     resolvedAt: v.resolvedAt,
   };
-}
-
-/** Look up a member by membership code in the offline roster. */
-export async function findMember(
-  membershipCode: string
-): Promise<MemberRecord | undefined> {
-  const db = await getDB();
-  return db.get("members", membershipCode);
 }
