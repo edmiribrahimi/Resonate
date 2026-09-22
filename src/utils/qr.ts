@@ -49,13 +49,13 @@ export function verifyTicketToken(token: string): string | null {
  * that nevertheless read as the place where the door credential was born.
  * `BUY-05` was written against it on that misreading.
  *
- * **Where the code is minted today, and for how much longer.** The single
- * generator is the database trigger `public.handle_new_user`, which since
- * migration `20260905130000_membership_code_crypto.sql` uses
- * `extensions.gen_random_bytes` — a CSPRNG — over a 32-character alphabet,
- * 10 characters long: 2^50. **That minting is itself on its way out** (D-51-02:
- * `profiles.membership_code`, its trigger and its type go with plan 51-12), so
- * this paragraph describes a rule that is being withdrawn, not one to build on.
+ * **Where the code was minted, and when the minting stopped.** The single
+ * generator was the trigger `public.handle_new_user`, which from 2026-09-05
+ * drew from `extensions.gen_random_bytes` — a CSPRNG — over a 32-character
+ * alphabet, 10 long: 2^50. **That minting is over** (D-51-02): the column on
+ * `profiles`, its unique constraint and its TypeScript type left the
+ * laboratory at 2026-09-22T17:45:54Z and production at 19:20:24.987Z. No door
+ * reads a member code any more — its route went out in the same phase (MEM-03).
  *
  * If you are here to add a JavaScript generator back: don't. A second
  * generator is a second entropy story, and only one of the two would be the
