@@ -310,6 +310,73 @@ function formatListAge(ageMs: number): string {
  * reports what it can observe — that it is not receiving live updates — and does
  * not guess at why. One place decides who the operator is, and it is not here.
  */
+/**
+ * What the guest-list warning says, and why it is a FUNCTION of the age.
+ *
+ * ── D-51-10, and the defect it replaces ─────────────────────────────────────
+ *
+ * Until 2026-09-22 this screen carried a notice pushed into the `cacheNotices`
+ * array, which said the roster of members on this device had not been
+ * refreshed. The owner saw it lit beside a green **Online** pill, over a list
+ * that had just been downloaded. (The old wording is described and not quoted:
+ * the assertion for its absence is a grep over this file, and quoting it here
+ * would break the check — the same precedent `reportServerFault` sets below,
+ * and the one plan 31-07 learned by breaking.) It was not lying about a fetch:
+ * it was a value somebody had
+ * written, and `setCacheNotices` is reached only by a fetch that gets all the
+ * way through, so every early return of `fetchAttendance` left the last notice
+ * standing. Once lit, it stayed lit until a whole successful round said
+ * otherwise, which is a state, not a truth.
+ *
+ * **A derived warning cannot do that**, and that is the whole of the repair: it
+ * is computed from the age of the list on every render, so the moment the list
+ * is fresh the sentence is gone, with nothing to clear and nobody to remember
+ * clearing it. No new boolean was introduced for it — the machine already
+ * existed (`lastFetchAtRef` → `listAgeMs` → `listIsStale`), and a second flag
+ * would be a second thing that can be wrong.
+ *
+ * ── Two situations, told apart in the TEXT and not in a second state ─────────
+ *
+ * - **Never downloaded** (`ageMs === null`) — nobody can be found by name on
+ *   this device at all. It is the more dangerous of the two and the one the
+ *   staleness band deliberately does not cover.
+ * - **Downloaded and stale** — somebody added to the guest list since then is
+ *   not here, and will not be found by name.
+ *
+ * ── Why it says «guest list» and not «attendee list» ────────────────────────
+ *
+ * Because of what the list is *for* with the radio off. A ticket carries a
+ * signed QR and is admitted offline whether or not it is cached — the uncached
+ * branch of `ticketOffline` admits and flags rather than refusing. The one
+ * person who genuinely depends on the downloaded list is the invited guest with
+ * no email and therefore no QR, who is found by **name** or not at all
+ * (D-51-10). The warning names the case it is about.
+ *
+ * ── The sentence ends by saying what to do instead of refusing ──────────────
+ *
+ * Deliberately, and in the same shape the notice it replaces had. The door's
+ * asymmetry is that refusing a valid guest happens in front of a queue while
+ * admitting a duplicate is a number in a report (`checkin-offline.md`), so a
+ * warning that only described a risk would read, at 02:00, as permission to
+ * refuse.
+ */
+function guestListWarningText(ageMs: number | null): string {
+  if (ageMs === null) {
+    return (
+      "The guest list has NOT been downloaded on this device for tonight. " +
+      "With the radio off nobody can be found by name here — do not refuse a " +
+      "guest on the strength of this screen; let them in and sort it out in " +
+      "the night's review."
+    );
+  }
+  return (
+    `The guest list on this device was NOT refreshed (${formatListAge(ageMs)}). ` +
+    "A guest added to the list since then will not be found by name — do not " +
+    "refuse them on the strength of this screen; let them in and sort it out " +
+    "in the night's review."
+  );
+}
+
 function stalenessBandText(channelIsLive: boolean, ageMs: number): string {
   const minutes = Math.floor(ageMs / 60_000);
   const age =
@@ -3018,6 +3085,39 @@ export default function ScannerClient() {
             >
               {stalenessBandText(channelLive, listAgeMs)}
             </button>
+          </div>
+        )}
+
+        {/*
+          ── D-51-10: the guest-list warning, derived like the band above it ────
+
+          Same family, same reason for being derived, one difference that is the
+          point: this one also covers `listAgeMs === null`, the case the band
+          deliberately excludes. The band reports an age and offers a reload, so
+          it has nothing to say before there is an age. This one reports what the
+          missing or ageing list means **at the door** — a guest without a QR is
+          found by name or not at all — and that is most true precisely when no
+          list has been downloaded yet.
+
+          Two elements rather than one folded sentence, and not to be
+          "simplified" into the band: the band is a tappable action about the
+          list as a whole, this is a standing instruction about refusing people.
+          They also switch on at different moments, so one element would have to
+          carry two conditions and would end up lying about one of them.
+
+          It is **not** in `cacheNotices`, for the reason written over that array
+          above: every early return of `fetchAttendance` replaces it wholesale,
+          which is exactly the moment this sentence is the only thing saying the
+          list cannot be trusted. That is the defect this replaces — see
+          `guestListWarningText`.
+        */}
+        {(listAgeMs === null || listIsStale) && (
+          <div
+            className="mb-4 rounded-xl border border-sem-warn/40 bg-sem-warn/10 px-3 py-2 text-xs leading-relaxed text-sem-warn"
+            role="status"
+            aria-live="polite"
+          >
+            {guestListWarningText(listAgeMs)}
           </div>
         )}
 
