@@ -452,16 +452,16 @@ Plans:
 > resta quella di sempre: rifiutare un ospite valido e' peggio che ammetterne uno
 > doppio.
 
-**Plans:** 14 plans
+**Plans:** 5/14 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 51-01-PLAN.md — `P-51-1` scritta, e la corsa «prima» a radio spenta sul codice attuale (checkpoint del proprietario)
-- [ ] 51-02-PLAN.md — via il ramo socio dalla coda offline, dallo scanner e dall'annullamento; IndexedDB a v6
-- [ ] 51-03-PLAN.md — via `/api/membership/verify` e `/list`, le due regole del service worker, e il glob morto della persona
-- [ ] 51-04-PLAN.md — via la membership card e lo storico presenze: superfici, mappe di rotta, manifest, alias italiano
-- [ ] 51-05-PLAN.md — il catalogo del laboratorio e i conteggi, prima che esista una riga di migration
+- [x] 51-01-PLAN.md — `P-51-1` scritta, e la corsa «prima» a radio spenta sul codice attuale (checkpoint del proprietario)
+- [x] 51-02-PLAN.md — via il ramo socio dalla coda offline, dallo scanner e dall'annullamento; IndexedDB a v6
+- [x] 51-03-PLAN.md — via `/api/membership/verify` e `/list`, le due regole del service worker, e il glob morto della persona
+- [x] 51-04-PLAN.md — via la membership card e lo storico presenze: superfici, mappe di rotta, manifest, alias italiano
+- [x] 51-05-PLAN.md — il catalogo del laboratorio e i conteggi, prima che esista una riga di migration
 
 **Wave 2** *(blocked on Wave 1)*
 
