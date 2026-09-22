@@ -11,6 +11,7 @@ import {
   type DoorSubjectType,
 } from "@/lib/door/outcome";
 import { readNightArm } from "@/lib/door/night-arm";
+import { judgeAtScanTime } from "@/lib/door/judge-at-scan-time";
 import {
   DOOR_UNRESOLVED_ERROR,
   DOOR_UNRESOLVED_STATUS,
@@ -34,7 +35,7 @@ function refuse(auth: Extract<DoorAuth, { ok: false }>) {
       error: auth.error,
       ...(auth.kind === "unresolved" ? { status: DOOR_UNRESOLVED_STATUS } : {}),
     },
-    { status: auth.status }
+    { status: auth.status },
   );
 }
 
@@ -119,7 +120,7 @@ interface DoorAuthorisation {
  * out above and in `refuse` — the same discipline, on the other branch.
  */
 function doorAuthorisation(
-  auth: Extract<DoorAuth, { ok: true }>
+  auth: Extract<DoorAuth, { ok: true }>,
 ): DoorAuthorisation {
   return {
     mayScan: auth.mayScan,
@@ -172,9 +173,7 @@ function doorAuthorisation(
  * in `.planning/codebase/CONCERNS.md` is the same defect one product surface
  * over.
  */
-type AssignmentProbe =
-  | { ok: true; partyIds: Set<string> }
-  | { ok: false };
+type AssignmentProbe = { ok: true; partyIds: Set<string> } | { ok: false };
 
 /**
  * Which nights the CURRENT session holds a live `door.operate` assignment on.
@@ -225,7 +224,7 @@ async function liveDoorAssignments(): Promise<AssignmentProbe> {
     console.error(
       `[attendance.assignments_lookup_failed] could not read party_assignments ` +
         `for the night list: ${error.code ?? "unknown"}. This is NOT "no ` +
-        `assignments" and must never be answered with an empty list.`
+        `assignments" and must never be answered with an empty list.`,
     );
     return { ok: false };
   }
@@ -236,7 +235,7 @@ async function liveDoorAssignments(): Promise<AssignmentProbe> {
   return {
     ok: true,
     partyIds: new Set(
-      rows.filter((r) => Date.parse(r.ends_at) > now).map((r) => r.party_id)
+      rows.filter((r) => Date.parse(r.ends_at) > now).map((r) => r.party_id),
     ),
   };
 }
@@ -345,7 +344,7 @@ interface RefundRow {
 function operatorLabel(
   checkedIn: boolean,
   operatorId: string | null,
-  labels: Map<string, string>
+  labels: Map<string, string>,
 ): string | null {
   if (!checkedIn) return null;
   if (!operatorId) return OPERATOR_NOT_RECORDED;
@@ -369,7 +368,7 @@ function operatorLabel(
  */
 function refundedHolderName(
   row: RefundRow,
-  labels: Map<string, string>
+  labels: Map<string, string>,
 ): string {
   if (row.type !== "user_request") return REFUNDED_SUBJECT_LABEL;
   return labels.get(row.requested_by) ?? REFUNDED_SUBJECT_LABEL;
@@ -445,7 +444,7 @@ function shortId(id: string): string {
 function ticketLabel(
   ticket: TicketRow,
   tierName: string | null,
-  labels: Map<string, string>
+  labels: Map<string, string>,
 ): string {
   const named = labels.get(ticket.user_id);
   if (named) return named;
@@ -525,7 +524,7 @@ export async function GET(request: Request) {
   if (partyIdFilter !== null && !UUID_PATTERN.test(partyIdFilter)) {
     return NextResponse.json(
       { error: "partyId must be a uuid" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -539,7 +538,7 @@ export async function GET(request: Request) {
   // check counts occurrences of it in this file, and a check that has to be
   // read around is a check that gets ignored the third time it goes red.
   const auth = await requireDoorOperator(
-    partyIdFilter ? { partyId: partyIdFilter } : undefined
+    partyIdFilter ? { partyId: partyIdFilter } : undefined,
   );
 
   // ── Who is admitted, and to how much ─────────────────────────────────────
@@ -573,7 +572,7 @@ export async function GET(request: Request) {
           status: DOOR_UNRESOLVED_STATUS,
           source: "party_assignments",
         },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -642,11 +641,11 @@ export async function GET(request: Request) {
     console.error(
       `[attendance.parties_lookup_failed] could not read event_parties for the ` +
         `night list: ${partiesError.code ?? "unknown"}. This is NOT "no nights ` +
-        `tonight".`
+        `tonight".`,
     );
     return NextResponse.json(
       { error: "Could not read the list of nights", source: "event_parties" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -688,7 +687,7 @@ export async function GET(request: Request) {
         serviceClient
           .from("tickets")
           .select(
-            "id, party_id, tier_id, checked_in, checked_in_at, checked_in_by, user_id, ticket_type, holder_label"
+            "id, party_id, tier_id, checked_in, checked_in_at, checked_in_by, user_id, ticket_type, holder_label",
           )
           .eq("event_id", party.event_id)
           .or(`party_id.eq.${party.id},party_id.is.null`)
@@ -699,7 +698,7 @@ export async function GET(request: Request) {
         serviceClient
           .from("guest_list_entries")
           .select(
-            "id, first_name, last_name, status, email, checked_in_at, checked_in_by"
+            "id, first_name, last_name, status, email, checked_in_at, checked_in_by",
           )
           .eq("event_id", party.event_id)
           .or(`party_id.eq.${party.id},party_id.is.null`)
@@ -716,12 +715,12 @@ export async function GET(request: Request) {
         serviceClient
           .from("ticket_refunds")
           .select(
-            "refunded_ticket_id, refunded_party_id, refunded_event_id, refunded_at, requested_by, type"
+            "refunded_ticket_id, refunded_party_id, refunded_event_id, refunded_at, requested_by, type",
           )
           .eq("status", "approved")
           .not("refunded_ticket_id", "is", null)
           .or(
-            `refunded_party_id.eq.${party.id},and(refunded_party_id.is.null,refunded_event_id.eq.${party.event_id})`
+            `refunded_party_id.eq.${party.id},and(refunded_party_id.is.null,refunded_event_id.eq.${party.event_id})`,
           ),
       ]);
 
@@ -899,7 +898,7 @@ export async function GET(request: Request) {
 
       const refundedAttendees: AttendeeItem[] = [...refundsByTicket.values()]
         .filter((row): row is RefundRow & { refunded_ticket_id: string } =>
-          Boolean(row.refunded_ticket_id)
+          Boolean(row.refunded_ticket_id),
         )
         .map((row) => ({
           subjectType: "ticket",
@@ -958,10 +957,12 @@ export async function GET(request: Request) {
           attendees: filteredAttendees,
         },
       };
-    })
+    }),
   );
 
-  const failure = results.find((r): r is Extract<PartyResult, { ok: false }> => !r.ok);
+  const failure = results.find(
+    (r): r is Extract<PartyResult, { ok: false }> => !r.ok,
+  );
   if (failure) {
     console.error("[attendance] attendee list unavailable", failure);
     return NextResponse.json(
@@ -970,7 +971,7 @@ export async function GET(request: Request) {
         source: failure.source,
         partyId: failure.partyId,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -1009,7 +1010,7 @@ async function bindNightToGuestEntry(
   serviceClient: ReturnType<typeof getServiceClient>,
   entryPartyId: string | null,
   entryEventId: string,
-  namedNight: string | null
+  namedNight: string | null,
 ): Promise<GuestNightBinding> {
   if (entryPartyId) {
     // The subject's own night wins. A body that names a different one is
@@ -1075,15 +1076,16 @@ async function bindNightToGuestEntry(
  *   1. The role call stays exactly where it was and keeps its arguments:
  *      whoever holds `door.operate` by role — `master`, `organizer` — resolves
  *      once, pays nothing, and their path is unchanged.
- *   2. The per-night arm runs **only** on the refusal branch of the first, and
- *      **only when this is not a queued report**. Both halves are load-bearing;
- *      the second is not an optimisation. Plan 35-12 measured that judging a
- *      queued report by *"is the assignment live NOW"* readmits ASSIGN-03: an
- *      assignment granted **after** the scan reads as live at drain time. This
- *      route has no `judgeAtScanTime` and writes no `door_scan_events` row, so
- *      it cannot judge the past moment — and the honest answer to a queued
- *      report from an unassigned account is the refusal it already had. Named
- *      limit, not an oversight: see *What a queued report still gets* below.
+ *   2. The per-night arm runs **only** on the refusal branch of the first. For
+ *      a **live** tap it asks *"is the assignment live NOW"* (`readNightArm`).
+ *      For a **queued report** it must not — plan 35-12 measured that judging
+ *      a report by *now* readmits ASSIGN-03: an assignment granted **after**
+ *      the tap reads as live at drain time. Until 2026-09-22 this route had no
+ *      way to ask about the past moment and refused the report instead; that
+ *      "named limit" became a false refusal the day the button gained an
+ *      offline branch (plan 51-15, `51-ESITI.md` P-51-1 «dopo» step 7). The
+ *      report is now judged at `scannedAt` by `judgeAtScanTime` — the same
+ *      function, from `@/lib/door/judge-at-scan-time`, the check-in route uses.
  *   3. The night is **bound to the subject before anything is granted**
  *      ({@link bindNightToGuestEntry}), the rule `bindNightToSubject` enforces on
  *      the undo route. The night is read from the ROW when the row has one; the
@@ -1102,17 +1104,20 @@ async function bindNightToGuestEntry(
  * on every `online` for the rest of the night against a condition no retry
  * changes.
  *
- * ── What a queued report still gets, said out loud ──────────────────────────
+ * ── What a queued report gets, said out loud ────────────────────────────────
  *
- * A drained guest entry from an account refused by role keeps its `403` and
- * lands in `blocked`, exactly as before this change. That bucket is **counted on
- * the scanner's screen** (`getBlockedCount`) and has a way out
- * (`retryBlockedAfterSignIn`), so it is visible rather than silent — but a
- * sign-in does not turn anybody into an assignee, and this route cannot ask the
- * question that would: it has no record of the moment the name was tapped.
- * Closing that half means giving the guest path the evidence the ticket path
- * carries, which is a change to the queue's request model and not to this
- * handler. Stated instead of left to be discovered.
+ * A drained guest entry from an account refused by role is judged at the moment
+ * the name was tapped (`scannedAt`, the phone's clock — evidence, not
+ * authority, with the accepted failure mode written out in
+ * `judge-at-scan-time.ts`). Assigned then → recorded, attributed to that
+ * account. Never assigned → the same `403` as before, `blocked`, counted on the
+ * scanner's screen. Revoked after the tap → recorded and logged under its own
+ * category, because a presence that happened is not erased by a later
+ * revocation. Question unanswerable → `503`, `retry`. The paragraph that stood
+ * here until 2026-09-22 said this half could not be closed without changing the
+ * queue's request model; the drain already sent `scannedAt` and `partyId`
+ * (`sync-manager.ts`, `case "guest"`), so the model needed no change — only the
+ * question did.
  *
  * ── What a refused caller now pays, and what it may learn ───────────────────
  *
@@ -1150,7 +1155,7 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json(
       { error: "Invalid request body" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -1158,7 +1163,7 @@ export async function POST(request: Request) {
   if (!guestListEntryId) {
     return NextResponse.json(
       { error: "guestListEntryId is required" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -1177,11 +1182,16 @@ export async function POST(request: Request) {
     typeof body.scannedAt === "string" &&
     !Number.isNaN(Date.parse(body.scannedAt));
 
-  // A refused caller reporting from the drain is answered here, with the 403 it
-  // has always had, before a single read. This is what makes the arm below
-  // unreachable from the drain by construction — and it is the ASSIGN-03
-  // protection, not a shortcut: see point 2 of the docblock.
-  if (!auth.ok && isQueuedReport) return refuse(auth);
+  // Until 2026-09-22 a refused caller reporting from the drain was answered
+  // here with its 403, before a single read, and the docblock called that a
+  // declared limit. It stopped being one the day the *Check in* button gained an
+  // offline branch (plan 51-15): the first real drain from an assigned member of
+  // staff answered *"Sign in again"* to an admission that had already happened.
+  // A queued report now goes through the binding below and is judged AT SCAN
+  // TIME — the same question, from the same module, the check-in route asks.
+  const queuedScannedAt = isQueuedReport
+    ? new Date(body.scannedAt as string).toISOString()
+    : null;
 
   // The night named by the caller, shape-checked before it can reach the guard,
   // which THROWS on a malformed id rather than laundering it into the retryable
@@ -1204,7 +1214,7 @@ export async function POST(request: Request) {
   const { data: entryData, error: fetchError } = await serviceClient
     .from("guest_list_entries")
     .select(
-      "id, status, first_name, last_name, checked_in_at, checked_in_by, updated_at, party_id, event_id"
+      "id, status, first_name, last_name, checked_in_at, checked_in_by, updated_at, party_id, event_id",
     )
     .eq("id", guestListEntryId)
     .maybeSingle();
@@ -1223,12 +1233,12 @@ export async function POST(request: Request) {
           error: DOOR_NIGHT_ERROR[DOOR_NIGHT_UNRESOLVED],
           status: DOOR_NIGHT_UNRESOLVED,
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
     return NextResponse.json(
       { error: "Could not read the guest list entry" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -1239,7 +1249,7 @@ export async function POST(request: Request) {
     if (!auth.ok) return refuse(auth);
     return NextResponse.json(
       { error: "Guest list entry not found" },
-      { status: 404 }
+      { status: 404 },
     );
   }
 
@@ -1267,7 +1277,7 @@ export async function POST(request: Request) {
       serviceClient,
       entry.party_id,
       entry.event_id,
-      namedNight
+      namedNight,
     );
 
     if (!binding.bound) {
@@ -1277,7 +1287,7 @@ export async function POST(request: Request) {
             error: DOOR_NIGHT_ERROR[DOOR_NIGHT_UNRESOLVED],
             status: DOOR_NIGHT_UNRESOLVED,
           },
-          { status: 403 }
+          { status: 403 },
         );
       }
       // `no_night` and `mismatch`: there is no night bound to this subject to
@@ -1290,34 +1300,79 @@ export async function POST(request: Request) {
       return refuse(auth);
     }
 
-    // THE per-night question, asked here and nowhere else on this route.
-    // Inline rather than inside `readNightArm` so that the two forms of the
-    // guard appear in this file in the order they run — a helper declared above
-    // would be hoisted and would measure backwards.
-    let perNight: DoorAuth | null;
-    try {
-      perNight = await requireDoorOperator({ partyId: binding.night });
-    } catch (error) {
-      // Entered by POSITION; the error is never parsed (CR-01).
-      console.error("[door.night_arm_threw] attendance", error);
-      perNight = null;
-    }
-
-    const arm = await readNightArm(perNight);
-
-    if (!arm.granted) {
-      // The refusal the role arm had already produced, reissued with a cause of
-      // its own. Same status code, so nobody's bucket moved; a distinct value
-      // and a distinct sentence, so the operator at the door can tell "not
-      // assigned at all" from "wrong night selected" from "the question could
-      // not be asked".
-      return NextResponse.json(
-        { error: arm.error, status: arm.status },
-        { status: arm.http }
+    if (queuedScannedAt !== null) {
+      // ── Arm 2, for a report from the drain ────────────────────────────────
+      //
+      // The night is bound (above), so the question can be asked about a
+      // moment: *was this account assigned to that night when the name was
+      // tapped?* Judged at `scannedAt`, never at *now* — an assignment granted
+      // after the tap does not sanitise the report (ASSIGN-03), and one revoked
+      // after it does not erase a presence that happened. The five arms map onto
+      // the three buckets the drain already knows (`sync-manager.ts`): a
+      // resolved refusal keeps the 403 → `blocked`; a vanished session is 401 →
+      // `blocked`, which a sign-in genuinely clears; an unanswered question is
+      // 503 → `retry`.
+      const judgement = await judgeAtScanTime(
+        serviceClient,
+        binding.night,
+        queuedScannedAt,
       );
-    }
+      switch (judgement.kind) {
+        case "live":
+          operatorId = judgement.operatorId;
+          break;
+        case "revoked_after_scan":
+          // `guest_list_entries` has no flag column for this, unlike
+          // `door_scan_events`. The admission is recorded — it happened while
+          // the assignment was live — and the anomaly is logged with its own
+          // category rather than hidden in either direction.
+          console.warn("[attendance] guest queued report after revocation", {
+            guestListEntryId,
+            partyId: binding.night,
+            scannedAt: queuedScannedAt,
+          });
+          operatorId = judgement.operatorId;
+          break;
+        case "never_assigned":
+          return refuse(auth);
+        case "unauthenticated":
+          return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        case "unresolved":
+          return NextResponse.json(
+            { error: DOOR_UNRESOLVED_ERROR, status: DOOR_UNRESOLVED_STATUS },
+            { status: 503 },
+          );
+      }
+    } else {
+      // THE per-night question, asked here and nowhere else on this route.
+      // Inline rather than inside `readNightArm` so that the two forms of the
+      // guard appear in this file in the order they run — a helper declared above
+      // would be hoisted and would measure backwards.
+      let perNight: DoorAuth | null;
+      try {
+        perNight = await requireDoorOperator({ partyId: binding.night });
+      } catch (error) {
+        // Entered by POSITION; the error is never parsed (CR-01).
+        console.error("[door.night_arm_threw] attendance", error);
+        perNight = null;
+      }
 
-    operatorId = arm.operatorId;
+      const arm = await readNightArm(perNight);
+
+      if (!arm.granted) {
+        // The refusal the role arm had already produced, reissued with a cause of
+        // its own. Same status code, so nobody's bucket moved; a distinct value
+        // and a distinct sentence, so the operator at the door can tell "not
+        // assigned at all" from "wrong night selected" from "the question could
+        // not be asked".
+        return NextResponse.json(
+          { error: arm.error, status: arm.status },
+          { status: arm.http },
+        );
+      }
+
+      operatorId = arm.operatorId;
+    }
   }
 
   if (entry.status === "checked_in") {
@@ -1382,7 +1437,7 @@ export async function POST(request: Request) {
         error: "Guest already checked in",
         alreadyCheckedIn: true,
       },
-      { status: DOOR_HTTP.already_recorded }
+      { status: DOOR_HTTP.already_recorded },
     );
   }
 
@@ -1409,7 +1464,7 @@ export async function POST(request: Request) {
     });
     return NextResponse.json(
       { error: "Failed to record the guest check-in" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
