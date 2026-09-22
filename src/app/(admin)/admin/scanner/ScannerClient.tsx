@@ -2334,15 +2334,151 @@ export default function ScannerClient() {
   };
 
   /**
-   * The *Check in* button beside a guest-list name. Online only — it has no
-   * offline branch and never had one.
+   * The *Check in* button beside a guest-list name. **Two branches**, and the
+   * second one is why this function was rewritten.
    *
-   * Every outcome now reaches the screen. It used to write into a `message`
-   * state that **nothing rendered**: a 409, a 500 and a dead radio all set a
-   * string nobody could see, which is the newsletter form's defect
-   * (`meta-gates.md`) reproduced in a second place.
+   * Until 2026-09-22 this was online only, and its docblock said so plainly:
+   * it had never had a second branch. That was accurate, and it was the
+   * defect: the one subject who **cannot** be scanned is the invitee without an
+   * email, who carries no QR and is found by name in the downloaded list
+   * (D-51-10). With the radio off, the branch that did not exist turned the
+   * only path that person has into a red *Connection error* — measured, at the
+   * door, on a real phone (`51-ESITI.md`, `P-51-1` step 5). A false refusal in
+   * front of a queue is the worse of the two errors by a wide margin
+   * (`checkin-offline.md`), so offline this **admits and queues**, exactly as a
+   * scanned ticket has always done.
+   *
+   * - **Online** — unchanged, byte for byte: the route answers, and its three
+   *   outcomes reach the screen. It used to write into a `message` state that
+   *   **nothing rendered**: a 409, a 500 and a dead radio all set a string
+   *   nobody could see, which is the newsletter form's defect
+   *   (`meta-gates.md`) reproduced in a second place.
+   * - **Offline** — `checkInLocally` with `"guest_list_entry"`, which the store
+   *   maps to a `guest` queue entry (`checkin-store.ts`, `QUEUE_TYPE_BY_SUBJECT`)
+   *   and the drain already knows how to send (`sync-manager.ts`, `case "guest"`,
+   *   which treats 200 **and** 409 as success). Nothing new is built here: the
+   *   queue, the type and the drain arrived with plan 51-02.
+   *
+   * The `token` is `null` by construction, and that is not an omission: an
+   * invitee admitted by name carries no signature to hand over. It is the one
+   * caller the store's `token: string | null` was widened for.
    */
   const handleGuestCheckIn = async (guestListEntryId: string) => {
+    // The name comes off the row this button belongs to. There is no free-text
+    // path into here: the operator searched the downloaded list and tapped a
+    // row, so the id — and the label — are the list's, not typed
+    // (T-51-15-02). It rides along to `checkInLocally` only so that a queued
+    // entry the phone never re-fetches still resolves to a person in the
+    // history and in the failed list. It is **not** the verdict (D-51-05).
+    const rowName =
+      attendance?.attendees.find((a) => a.guestListEntryId === guestListEntryId)
+        ?.name ?? "Guest";
+
+    /**
+     * Admit here, report later. Shared by both offline paths — the radio
+     * declared off, and the radio that claimed to be on and was not.
+     *
+     * Never throws: a store failure gets its own sentence through
+     * `reportStoreFault`, because the cache is not the network and the two must
+     * not read the same (`meta-gates.md`).
+     */
+    const queueGuestLocally = async (partyId: string) => {
+      try {
+        const result = await checkInLocally(
+          partyId,
+          "guest_list_entry",
+          guestListEntryId,
+          { token: null, name: rowName }
+        );
+        const localKey = attendeeKey(
+          partyId,
+          "guest_list_entry" satisfies DoorSubjectType,
+          guestListEntryId
+        );
+
+        if (result.alreadyRecorded) {
+          // Not a refusal, and not a second admission: the first queued entry
+          // keeps its `scannedAt` (`checkin-store.ts`), so the person is counted
+          // once. The screen shows the **fact** — when, and by whom this device
+          // holds it — never the name.
+          const fact = recordedFact(
+            result.at,
+            result.attendee.checkedInBy ?? THIS_DEVICE_LABEL
+          );
+          showFlash("already_recorded", "Already recorded", `${fact} · Offline`);
+          addScanRecord({
+            id: guestListEntryId,
+            type: "guest",
+            name: rowName,
+            ticketType: "Guest List",
+            status: "already_recorded",
+            reason: fact,
+            timestamp: Date.now(),
+            canUndo: false,
+          });
+          return;
+        }
+
+        // Same shape as the offline ticket admission above: outcome in the
+        // title, kind and which memory answered in the subtitle.
+        showFlash("success", "Admitted", `${ticketKindLabel("guest")} · Offline`);
+        addScanRecord({
+          id: guestListEntryId,
+          type: "guest",
+          name: rowName,
+          ticketType: "Guest List",
+          status: "success",
+          timestamp: Date.now(),
+          canUndo: true,
+          // Without this, an undo with the radio still off would refuse itself:
+          // `handleUndo`'s offline arm reverses by local key. The supervision
+          // check in front of it is unchanged — this only makes the entry
+          // reversible for whoever is allowed to reverse it.
+          localKey,
+        });
+
+        // The list on screen is the only place the operator can see that this
+        // person is in. Offline there is no `fetchAttendance` to answer, so the
+        // row is moved here — from the same result the queue was written from,
+        // not from a guess about the clock.
+        setAttendance((prev) =>
+          prev
+            ? {
+                ...prev,
+                attendees: prev.attendees.map((a) =>
+                  a.guestListEntryId === guestListEntryId
+                    ? { ...a, checkedIn: true, checkedInAt: result.at }
+                    : a
+                ),
+              }
+            : prev
+        );
+
+        // Immediately, so the «Pending» pill rises while the flash is still up:
+        // it is the only on-screen evidence that the admission is held rather
+        // than reported, and this repository has no error tracking to say so
+        // afterwards (`meta-gates.md`).
+        await refreshQueueCounts();
+      } catch (error) {
+        reportStoreFault(guestListEntryId, "guest", error);
+      }
+    };
+
+    // A queued admission is party-scoped — the record key carries the night —
+    // so without a night there is nothing to file. Unreachable from the UI (the
+    // button only renders inside a selected party's list) and refused out loud
+    // anyway, on the same rule as a scan (`checkin-offline.md`, gate *identita'
+    // del party*).
+    if (!selectedPartyId) {
+      refuse("no_party_selected", guestListEntryId, "guest");
+      return;
+    }
+
+    if (!navigator.onLine) {
+      await queueGuestLocally(selectedPartyId);
+      return;
+    }
+
     try {
       const res = await fetch("/api/tickets/attendance", {
         method: "POST",
@@ -2396,10 +2532,27 @@ export default function ScannerClient() {
 
       reportServerFault(res.status, parsed, guestListEntryId, "guest");
     } catch (error) {
-      // The one place this string survives, and the only cause it now covers:
-      // the request never reached a server.
-      console.error("scanner:guest_checkin_unreachable", error);
-      showFlash("error", "Connection error", "The guest was not checked in");
+      // ── The radio said it was on, and it was not ────────────────────────────
+      //
+      // The only cause this arm covers is still the same one: the request never
+      // reached a server. What changed is the answer. It used to show
+      // *«Connection error — The guest was not checked in»* and stop there,
+      // which at 02:00 is a valid invitee sent away because a bar of signal
+      // lied — and `navigator.onLine` lying is the **ordinary** case at a door,
+      // not the exotic one. So this takes the same offline branch as a declared
+      // airplane mode: admit, queue, drain when the signal really returns.
+      //
+      // Its own category, and deliberately not the old
+      // `scanner:guest_checkin_unreachable`: the two events must stay apart in
+      // the log. An admission taken with the radio **declared** off is silent
+      // here, exactly as a scanned ticket's is; an admission taken because a
+      // live-looking network failed is a fact about the venue's signal that
+      // whoever reads the console afterwards needs to be able to count
+      // (`meta-gates.md`, zero silent failures). Renaming rather than keeping
+      // both avoids two console lines for one event, which is how a category
+      // stops meaning anything.
+      console.error("scanner:guest_checkin_queued_after_unreachable", error);
+      await queueGuestLocally(selectedPartyId);
     }
   };
 
