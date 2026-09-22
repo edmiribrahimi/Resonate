@@ -4,13 +4,13 @@ milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
 stopped_at: Phase 51 context gathered
-last_updated: "2026-09-22T15:52:17.000Z"
+last_updated: "2026-09-22T17:50:00.000Z"
 last_activity: 2026-09-22
 progress:
   total_phases: 12
   completed_phases: 4
   total_plans: 55
-  completed_plans: 46
+  completed_plans: 47
   percent: 33
 ---
 

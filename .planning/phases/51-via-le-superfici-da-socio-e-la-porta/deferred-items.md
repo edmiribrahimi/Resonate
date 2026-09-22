@@ -69,3 +69,64 @@ la loro voce e' uscita da `capability-routes.ts` con la chiave
 **51-06** in questa onda e del **51-10** nell'onda 3: due agenti sullo stesso
 file vanno sequenziati, non parallelizzati (`ai-engineering.md`, gate
 *multi-agent*). La riga e' di chi tiene quel file.
+
+---
+
+## D-51-12-A — `PROBE_PAYLOADS` copre 24 tabelle RLS su 40, e non e' colpa di questa fase
+
+**Trovata dal piano 51-12, 2026-09-22.**
+
+`npm run baseline:rls` non puo' andare a fondo contro il laboratorio, e la
+ragione **non** e' il rinomina del registro. Isolando il controllo a due vie di
+`scripts/rls-baseline.mjs:2238-2251` e interrogandolo contro il laboratorio:
+
+    tabelle RLS sul laboratorio : 40   (pavimento del banco: 20)
+    voci in PROBE_PAYLOADS      : 24
+    «has no entry for»          : 16
+    «not RLS-enabled tables»    : nessuna
+
+**Il lato che questa fase governa e' pulito**: `account_acts` e' fra le tabelle
+RLS, `membership_acts` e `attendances` non ci sono piu', e `PROBE_PAYLOADS` non
+nomina nemmeno una tabella che non esista — cioe' il rinomina del piano 51-11 e
+la migration del 51-12 concordano con lo schema.
+
+Le sedici mancanti sono **tutte precedenti alla fase 51**: le quattordici
+`production_*` (fasi 44-48), `email_deliveries`, `ticket_orders` (fase 49),
+`drink_refund_request` e `venue_reveal_acts`. La tabella dei payload non e' stata
+estesa quando quelle tabelle sono nate, e il banco rifiuta invece di misurare a
+meta' — **che e' il comportamento giusto**, ed e' scritto accanto a se' stesso:
+*«a write matrix that silently skips a table is a matrix that cannot fail»*.
+
+**Perche' non e' riparata qui.** Sedici payload di scrittura vanno scritti uno
+per uno, ognuno con la propria riga di matrice attesa: e' il lavoro di un piano,
+non il ritocco di un altro. E riguarda ogni bersaglio, non solo il laboratorio.
+
+**Nota per chi la prende in mano.** Il pavimento del banco ospitato resta a 20 ed
+e' abbondantemente superato (40). Quello del **container** e' passato a 19 con il
+piano 51-12, perche' la tabella delle presenze esce dalla replica delle
+migration: la ragione e' scritta accanto al numero.
+
+---
+
+## D-51-12-B — Due prose che nominano ancora la credenziale della porta
+
+**Trovata dal piano 51-12, 2026-09-22.**
+
+- `src/utils/qr.ts:52-58` — dice che il conio *«e' in uscita»* e che la colonna
+  *«esce con il piano 51-12»*. Da oggi e' in uscita **solo in produzione**: sul
+  laboratorio e' gia' uscita. La frase diventa falsa del tutto quando il piano
+  51-13 applica la migration in produzione.
+- `src/types/database.ts:968` — nomina la colonna al passato, come origine di
+  un'etichetta.
+
+**Perche' non sono riparate qui.** `files_modified` del piano 51-12 non le
+contiene, e il piano 51-11 aveva gia' classificato la prima come *«una citazione
+corretta del piano che la chiude, non un lettore rimasto indietro»*. **La
+citazione e' corretta finche' il piano non ha chiuso.** Chiude con il 51-13:
+quel piano, o la VERIFICATION della fase, deve riscrivere le due frasi al
+passato. Nessun piano le possiede oggi, ed e' per questo che sono scritte qui.
+
+`supabase/schema.sql:58` nomina anche lui la colonna, e **resta com'e'**: e' lo
+schema di base, non la fonte di verita' dello schema (`CLAUDE.md`, guardrail 3),
+e il banco del container lo legge nella versione del commit iniziale, non in
+questa.

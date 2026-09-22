@@ -452,7 +452,7 @@ Plans:
 > resta quella di sempre: rifiutare un ospite valido e' peggio che ammetterne uno
 > doppio.
 
-**Plans:** 12/15 plans executed
+**Plans:** 13/15 plans executed
 
 Plans:
 **Wave 1**
@@ -481,7 +481,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4)*
 
-- [ ] 51-12-PLAN.md — migration 2: via il codice socio, registro rinominato, `attendances` svuotata per chiave e tolta (laboratorio)
+- [x] 51-12-PLAN.md — migration 2: via il codice socio, registro rinominato, `attendances` svuotata per chiave e tolta (laboratorio)
 
 **Wave 6** *(blocked on Wave 5)*
 
