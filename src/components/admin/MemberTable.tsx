@@ -384,19 +384,20 @@ function MemberActions({
   const [notice, setNotice] = useState<ActionNotice | null>(null);
   const [confirming, setConfirming] = useState(false);
 
-  // ── Il ruolo si legge come STRINGA, e non e' una scorciatoia ────────────────
+  // ── Il ponte `const role: string` e' scaduto, e per questo non c'e' piu' ────
   //
-  // Il database accetta `attendee` dal piano 51-08; l'unione `UserRole` in
-  // `src/types/database.ts` lo riceve dal piano 51-10, che corre accanto a
-  // questo. Nella finestra fra i due, confrontare l'unione vecchia con il
-  // valore nuovo e' un errore di build su un confronto che **a runtime e'
-  // giusto** — il valore arriva da `profiles.role`, non da questo file.
+  // Stava qui perche' il database accettava `attendee` dal piano 51-08 mentre
+  // l'unione `UserRole` lo riceveva dal 51-10: nella finestra fra i due,
+  // confrontare l'unione vecchia col valore nuovo era un errore di build su un
+  // confronto giusto a runtime. Quel piano e' atterrato — `UserRole` in
+  // `src/types/database.ts` porta oggi il quarto valore — e la riga se ne va
+  // come dichiarava di dover fare.
   //
-  // Quando l'unione avra' il quarto valore questa riga potra' sparire: e' un
-  // ponte fra due piani, dichiarato, non un allentamento del tipo. Cio' che si
-  // puo' SCRIVERE resta chiuso altrove — `WritableRole` in `actions.ts`, e
-  // `isWritableRole` contro il filo.
-  const role: string = member.role;
+  // I quattro confronti qui sotto leggono `member.role`, cioe' l'unione: un
+  // refuso — `"attendeee"`, `"Attendee"` — adesso e' un errore di build invece
+  // di una colonna di pulsanti che non compare mai. Cio' che si puo' SCRIVERE
+  // resta chiuso altrove: `WritableRole` in `actions.ts`, e `isWritableRole`
+  // contro il filo.
 
   // Don't show actions for the user's own row
   if (member.id === currentUserId) {
@@ -408,7 +409,7 @@ function MemberActions({
   // Hiding is NOT refusing, and the server knows it: every act reads the
   // subject's current role and returns `forbidden` / `subject_is_master` for
   // one. This branch is the affordance; that check is the boundary.
-  if (role === "master") {
+  if (member.role === "master") {
     return <span className="text-xs text-muted">--</span>;
   }
 
@@ -481,7 +482,7 @@ function MemberActions({
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {/* attendee -> staff, or attendee -> organizer */}
-      {role === "attendee" && (
+      {member.role === "attendee" && (
         <>
           <ActionButton
             onClick={changeRole("staff")}
@@ -500,7 +501,7 @@ function MemberActions({
 
       {/* staff -> organizer, or staff -> member. Togliere `staff` e' cio' che
           libera il posto gratuito permanente che quell'account vale. */}
-      {role === "staff" && (
+      {member.role === "staff" && (
         <>
           <ActionButton
             onClick={changeRole("organizer")}
@@ -520,7 +521,7 @@ function MemberActions({
       {/* organizer -> staff, or organizer -> member. Two steps down and not
           one, because they are different outcomes: the first keeps the free
           entry, the second does not. */}
-      {role === "organizer" && (
+      {member.role === "organizer" && (
         <>
           <ActionButton
             onClick={changeRole("staff")}
