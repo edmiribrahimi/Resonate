@@ -496,31 +496,24 @@ export default async function DashboardPage({
               questo commit fa davvero, cioe' togliere un avviso.
             */}
             <>
-                <SectionHeading>My Stuff</SectionHeading>
+                {/*
+                  Qui stava il blocco «My Stuff»: due riquadri, uno verso
+                  `/membership-card` e uno verso `/attendance`. La fase 51
+                  cancella entrambe le superfici (MEM-01, MEM-02), e con
+                  `typedRoutes` un `<Link>` verso una pagina che non esiste piu'
+                  non compila: il link e la pagina escono percio' nello stesso
+                  commit, e non c'e' modo di dimenticarne uno.
 
-                {/* Quick Actions */}
-                <div className="grid grid-cols-2 gap-3">
-                  {/*
-                    The two tiles declare the 44px floor on the LINK, which is the
-                    element a finger lands on — §6.3, and the gate reads the element
-                    rather than the box drawn inside it. The tiles themselves keep
-                    their own density: the card primitive's 24px padding is emitted
-                    after a shorter value in the sheet and would win, which is the
-                    named-value ordering defect DrinkTokenCard.tsx:81-87 records.
-                  */}
-                  <Link href="/membership-card" className="block min-h-11">
-                    <div className="rounded-2xl border border-accent/30 bg-gradient-to-br from-surface to-accent/5 p-4 transition-all hover:border-accent/50 active:scale-95 active:opacity-80 h-full">
-                      <span className="text-2xl">&#127915;</span>
-                      <p className="mt-2 text-sm font-semibold">Membership Card</p>
-                    </div>
-                  </Link>
-                  <Link href="/attendance" className="block min-h-11">
-                    <Card className="px-4 py-4 transition-all hover:border-accent/50 active:scale-95 active:opacity-80 h-full">
-                      <span className="text-2xl">&#128202;</span>
-                      <p className="mt-2 text-sm font-semibold">Event History</p>
-                    </Card>
-                  </Link>
-                </div>
+                  Non si perde nulla di cio' che i due riquadri mostravano.
+                  «Event History» apriva una superficie che non ha mai letto
+                  nulla — un `TODO` e un array vuoto costante — quindi l'unico
+                  ramo raggiungibile era «No attendance recorded yet».
+                  «Membership Card» rendeva un codice socio che la porta non
+                  verifica piu'.
+
+                  Il fragment resta perche' i suoi figli tengono il rientro che
+                  avevano, per la stessa ragione scritta sopra.
+                */}
 
                 {/* My Tickets — only for regular members */}
                 {isMemberRole && (
