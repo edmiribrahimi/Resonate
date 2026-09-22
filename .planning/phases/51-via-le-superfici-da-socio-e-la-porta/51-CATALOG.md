@@ -1093,3 +1093,81 @@ Ogni interrogazione di questo file e' passata da
 L'endpoint `POST /v1/projects/{ref}/database/migrations` **non e' stato chiamato**.
 Nessun `INSERT`, `UPDATE`, `DELETE` o DDL e' stato eseguito su nessuno dei due
 progetti. Nessun pacchetto e' stato installato; `package.json` non e' cambiato.
+
+---
+
+# 4. La prova sul laboratorio — `scripts/purge-attendances.mjs`
+
+**Scritto dal piano 51-12, 2026-09-22.** Questa sezione e' l'unica del file che
+registra una **scrittura**: la dichiarazione di sola lettura qui sopra copre le
+sezioni 1, 2 e 3, che sono di un altro piano, e non questa.
+
+Lo strumento e' quello che il piano 51-13 usera' in produzione. **Qui e' stato
+provato dove non costa nulla**, e provato *fino in fondo* — compresa la
+cancellazione, che con zero righe non sarebbe stata esercitata affatto.
+
+## 4a — Le due corse a tabella vuota
+
+| Passo | Fonte | Esito |
+|---|---|---|
+| Conteggio per provenienza | Management API, `read_only: true` | `party_id` valorizzato **0**, `party_id` nullo **0**, totale **0** |
+| Cascata in uscita (`confrelid`) | `pg_constraint`, catalogo vivo | **0 righe** — cancellare una presenza non tocca nient'altro |
+| Cascata in entrata (`conrelid`) | `pg_constraint` | **4** — `events`, `event_parties`, `auth.users` ×2. Direzione **opposta**, fuori dall'istantanea |
+| Istantanea | file `.env.attendances-snapshot.<ISO>.json` | scritta, 0 righe, piu' il vicinato |
+| Chiavi catturate | stessa interrogazione del conteggio | nessuna |
+| Contatore di controllo | **PostgREST**, chiave di servizio | **0** — concorde con la prima fonte |
+| Atto | — | **non eseguito**: *una decisione senza soggetti non si esegue* |
+
+Ore UTC: `--dry-run` alle **17:43:54Z**, `--apply` alle **17:43:56Z**. Entrambe
+uscita **0**.
+
+**Il vicinato misurato in quelle corse coincide riga per riga con §3d**
+(`door_scan_events` 2, `event_parties` 3, `events` 3, `party_assignments` 3,
+`profiles` 8, `tickets` 5), letto quattro ore dopo e da una corsa diversa.
+
+## 4b — La corsa che ha cancellato davvero
+
+**A tabella vuota il ramo (f) non gira, e un ramo che non gira non e'
+provato.** Sarebbe stato consegnato al piano 51-13 — cioe' alla produzione — un
+percorso di cancellazione mai eseguito una volta. Quindi: **una riga usa-e-getta
+seminata sul laboratorio**, con `party_id` valorizzato (la popolazione che
+D-51-04 autorizza) ed `entry_role` palesemente finto, e lo strumento lanciato su
+di lei.
+
+| Passo | Fonte | Esito |
+|---|---|---|
+| Conteggio per provenienza | Management API | `party_id` valorizzato **1**, `party_id` nullo **0** |
+| Istantanea | file datato | scritta **prima** dell'atto, con la riga dentro |
+| Chiave catturata | stessa interrogazione del conteggio | **1**, stampata nel referto |
+| Atto | `DELETE … WHERE id = ANY(ARRAY[…]::uuid)` | **1 riga cancellata**, alle **17:44:32Z** |
+| Controllo `catturate == cancellate` | interno | passato |
+| Contatore di controllo | **PostgREST**, chiave di servizio | **0** |
+
+Rilettura indipendente subito dopo, dal Management API in sola lettura:
+`public.attendances` **0 righe**, e **0** con l'etichetta della prova. Il
+laboratorio e' tornato dov'era.
+
+**Nessun id compare in questo file**, per la convenzione dichiarata in testa: qui
+stanno nomi di oggetti di schema e conteggi. Gli id stanno nelle istantanee, che
+vivono su percorsi `.env*` — coperti da `.gitignore` per intero — e non in
+`.planning/`, che e' versionato e pubblico.
+
+## 4c — Cosa la prova ha stabilito, e cosa no
+
+**Stabilito.** Il rifiuto del ref di produzione e' la prima cosa eseguita e
+funziona (provato passando `--project` con il ref di produzione: uscita **2**,
+nessuna lettura). Il conteggio tiene separate le due popolazioni. La cascata si
+legge dal catalogo e le due direzioni non si confondono. L'istantanea precede
+ogni scrittura. La cancellazione e' **per chiave**, su una lista catturata dalla
+stessa interrogazione che l'ha contata. Il contatore di controllo arriva da
+PostgREST e la sua guardia verifica che l'URL nomini davvero il bersaglio
+dell'atto — un contatore che leggesse un altro progetto tornerebbe zero e
+sembrerebbe una conferma.
+
+**Non stabilito, e va detto.** Il ramo dell'**autorizzazione** non e' stato
+percorso fino in fondo: `51-AUTHORISATION.md` non esiste ancora — lo scrive il
+piano 51-13 — quindi sono stati provati solo i suoi **rifiuti** (documento
+assente, e ref di produzione senza argomenti). Il percorso che legge una
+concessione valida e la **marca esaurita** sara' esercitato la prima volta in
+produzione. La forma esatta che quel documento deve avere e' scritta nel
+docblock in testa allo strumento: e' un contratto, non un suggerimento.
