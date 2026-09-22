@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: Completed 51-13-PLAN.md — atto di produzione speso, autorizzazione ESAURITA
+stopped_at: Phase 51 complete — 15/15 plans, in produzione dal 2026-09-22 19:13Z; VERIFICATION human_needed (passo 2, avviso guest list)
 last_updated: "2026-09-22T21:05:00.000Z"
 last_activity: 2026-09-22
 progress:
-  total_phases: 12
-  completed_phases: 4
-  total_plans: 55
-  completed_plans: 49
-  percent: 33
+  total_phases: 51
+  completed_phases: 50
+  total_plans: 387
+  completed_plans: 387
+  percent: 100
 ---
 
 # State: Resonate
@@ -30,13 +30,13 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 51 — via-le-superfici-da-socio-e-la-porta
+**Current Focus:** Phase 52 — la barra di navigazione e i ritocchi (da discutere e pianificare)
 
 ## Current Position
 
-Phase: 51 (via-le-superfici-da-socio-e-la-porta) — EXECUTING
-Plan: 1 of 14
-undici, contati dai SUMMARY su disco.
+Phase: 51 (via-le-superfici-da-socio-e-la-porta) — COMPLETE il 2026-09-22
+Plan: 15 of 15 (14 pianificati + 51-15, chiusura di un buco misurato da P-51-1)
+Next: Phase 52 — nessun piano, nessun CONTEXT: parte da /gsd-discuss-phase 52
 
 **Cosa e' in produzione — DEPLOYATO il 2026-09-07.** Le sei migration erano
 applicate dal 2026-09-06; il codice le ha raggiunte il giorno dopo: 55 commit
@@ -282,7 +282,7 @@ SUMMARY su quindici: la fase e' eseguita.** Il piano 37-13 ha chiuso l'onda 7 il
 sostituite, e undici voci `human_needed` consolidate nel suo SUMMARY. Le onde 8 e
 9 (piani 37-14 e 37-15) hanno chiuso i reperti del code review: CR-01, WR-01,
 WR-03, WR-05, WR-06, WR-07, WR-08 e la voce 4 di `deferred-items.md`.
-Status: Executing Phase 51
+Status: Ready to execute
 scritto «riportato come avvenuto, non misurato da me» — ed era la cosa giusta da
 scrivere dalla sua posizione. La misura pero' esiste, ed e' dell'orchestratore
 che gliel'aveva riportato:
