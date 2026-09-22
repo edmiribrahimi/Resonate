@@ -74,7 +74,13 @@ const TICKET_TOKEN_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[
  */
 const NOT_VALID_MESSAGE: Record<DoorNotValidReason, string> = {
   invalid_signature: "This code was not issued by us",
-  unknown_code: "No ticket or member matches this code",
+  // The word here was "member" until 2026-09-22, and the sentence was still
+  // true — nothing had matched — but nobody holds a member card any more
+  // (MEM-03), so the noun named a thing this door cannot be shown. Not a new
+  // refusal: the same one, in the vocabulary the product still has. Plan 51-02
+  // left it deliberately, so that one plan and not two would rewrite a sentence
+  // read in front of a queue.
+  unknown_code: "No ticket matches this code",
   wrong_night: "This code is for another night",
   no_party_selected: "Choose the party first — a scan needs a night",
   // The one member of the union no live scan can produce: the check-in route
@@ -304,6 +310,73 @@ function formatListAge(ageMs: number): string {
  * reports what it can observe — that it is not receiving live updates — and does
  * not guess at why. One place decides who the operator is, and it is not here.
  */
+/**
+ * What the guest-list warning says, and why it is a FUNCTION of the age.
+ *
+ * ── D-51-10, and the defect it replaces ─────────────────────────────────────
+ *
+ * Until 2026-09-22 this screen carried a notice pushed into the `cacheNotices`
+ * array, which said the roster of members on this device had not been
+ * refreshed. The owner saw it lit beside a green **Online** pill, over a list
+ * that had just been downloaded. (The old wording is described and not quoted:
+ * the assertion for its absence is a grep over this file, and quoting it here
+ * would break the check — the same precedent `reportServerFault` sets below,
+ * and the one plan 31-07 learned by breaking.) It was not lying about a fetch:
+ * it was a value somebody had
+ * written, and `setCacheNotices` is reached only by a fetch that gets all the
+ * way through, so every early return of `fetchAttendance` left the last notice
+ * standing. Once lit, it stayed lit until a whole successful round said
+ * otherwise, which is a state, not a truth.
+ *
+ * **A derived warning cannot do that**, and that is the whole of the repair: it
+ * is computed from the age of the list on every render, so the moment the list
+ * is fresh the sentence is gone, with nothing to clear and nobody to remember
+ * clearing it. No new boolean was introduced for it — the machine already
+ * existed (`lastFetchAtRef` → `listAgeMs` → `listIsStale`), and a second flag
+ * would be a second thing that can be wrong.
+ *
+ * ── Two situations, told apart in the TEXT and not in a second state ─────────
+ *
+ * - **Never downloaded** (`ageMs === null`) — nobody can be found by name on
+ *   this device at all. It is the more dangerous of the two and the one the
+ *   staleness band deliberately does not cover.
+ * - **Downloaded and stale** — somebody added to the guest list since then is
+ *   not here, and will not be found by name.
+ *
+ * ── Why it says «guest list» and not «attendee list» ────────────────────────
+ *
+ * Because of what the list is *for* with the radio off. A ticket carries a
+ * signed QR and is admitted offline whether or not it is cached — the uncached
+ * branch of `ticketOffline` admits and flags rather than refusing. The one
+ * person who genuinely depends on the downloaded list is the invited guest with
+ * no email and therefore no QR, who is found by **name** or not at all
+ * (D-51-10). The warning names the case it is about.
+ *
+ * ── The sentence ends by saying what to do instead of refusing ──────────────
+ *
+ * Deliberately, and in the same shape the notice it replaces had. The door's
+ * asymmetry is that refusing a valid guest happens in front of a queue while
+ * admitting a duplicate is a number in a report (`checkin-offline.md`), so a
+ * warning that only described a risk would read, at 02:00, as permission to
+ * refuse.
+ */
+function guestListWarningText(ageMs: number | null): string {
+  if (ageMs === null) {
+    return (
+      "The guest list has NOT been downloaded on this device for tonight. " +
+      "With the radio off nobody can be found by name here — do not refuse a " +
+      "guest on the strength of this screen; let them in and sort it out in " +
+      "the night's review."
+    );
+  }
+  return (
+    `The guest list on this device was NOT refreshed (${formatListAge(ageMs)}). ` +
+    "A guest added to the list since then will not be found by name — do not " +
+    "refuse them on the strength of this screen; let them in and sort it out " +
+    "in the night's review."
+  );
+}
+
 function stalenessBandText(channelIsLive: boolean, ageMs: number): string {
   const minutes = Math.floor(ageMs / 60_000);
   const age =
@@ -501,6 +574,24 @@ interface ScanRecord {
   canUndo: boolean;
   /** For a local reversal while the radio is off: `partyId:subjectType:subjectId`. */
   localKey?: string;
+}
+
+/**
+ * What kind of thing the door just handled — the flash's subtitle, since
+ * D-51-05 moved that subtitle from *who* to *what*.
+ *
+ * The tier when the ticket carries one, the plain kind otherwise, in the two
+ * words the rest of this screen already uses (`failedEntryLabel` above, the
+ * history list below). By construction it cannot name a person: it takes a
+ * subject kind and a tier, and neither is a name.
+ */
+function ticketKindLabel(
+  type: ScanRecord["type"],
+  tierName?: string | null
+): string {
+  const tier = tierName?.trim();
+  if (tier) return tier;
+  return type === "guest" ? "Guest list" : "Ticket";
 }
 
 export default function ScannerClient() {
@@ -1721,12 +1812,16 @@ export default function ScannerClient() {
           // device's queue — it was already reported — so the record on the
           // server still says the person came in and nothing here will change
           // that. Saying "undone" flat would be the silent failure.
+          // The subtitle names the kind and the state of the reversal, never the
+          // holder (D-51-05). The two facts it has to keep apart are still
+          // apart: held here, or already reported and therefore still standing
+          // on the server.
           showFlash(
             "error",
             "Undone on this device",
             result.reversalHeld
-              ? `${record.name} — held here, not yet reported`
-              : `${record.name} — the server already has the entry, undo it again with signal`
+              ? `${ticketKindLabel(record.type, record.ticketType)} — held here, not yet reported`
+              : `${ticketKindLabel(record.type, record.ticketType)} — the server already has the entry, undo it again with signal`
           );
         } catch (error) {
           console.error("scanner:local_undo_failed", { key: record.localKey, error });
@@ -1774,7 +1869,11 @@ export default function ScannerClient() {
           // Red on purpose, and it is not a refusal of the code: at the door it
           // means *this person is no longer admitted*, which is the fact the
           // operator has just created.
-          showFlash("error", "Check-in undone", record.name);
+          showFlash(
+            "error",
+            "Check-in undone",
+            ticketKindLabel(record.type, record.ticketType)
+          );
           fetchAttendance(searchQuery || undefined);
           return;
         }
@@ -1961,25 +2060,32 @@ export default function ScannerClient() {
       case "recorded": {
         const flags = readFlags(parsed);
         const flagged = flags.length > 0;
-        const label = readSubjectLabel(parsed) ?? readString(parsed, "member_name");
         const tier = readString(parsed, "tier_name");
         const isGuestList = readString(parsed, "ticket_type") === "guest_list";
-        const subtitle = flagged
-          ? flagSentence(flags)
-          : [tier, isGuestList ? "Guest List" : null].filter(Boolean).join(" · ") ||
-            undefined;
+        const kind = ticketKindLabel(isGuestList ? "guest" : "ticket", tier);
+        const subtitle =
+          [kind, flagged ? flagSentence(flags) : null].filter(Boolean).join(" · ") ||
+          undefined;
 
+        // D-51-05: the title is the outcome. It used to be the holder's label —
+        // `subject.label`, with the body's older holder field read behind it —
+        // which put a name on a full-screen verdict read in front of the person
+        // it names, on a ticket that is to the bearer. The name is still on this
+        // screen, in the history row written just below and in the night's list,
+        // because those are lists somebody consults rather than a verdict that
+        // flashes.
+        //
+        // The older field is gone from this file entirely, and the assertion for
+        // that is a grep over the whole of it — so it is described here and not
+        // quoted, on the precedent `reportServerFault` already sets below.
+        //
         // Amber for a flagged admission: the person is admitted either way, and
         // the colour says *look at this afterwards*, never *stop*.
-        showFlash(
-          flagged ? "already_recorded" : "success",
-          label ?? (flagged ? "Admitted" : "Ticket holder"),
-          subtitle
-        );
+        showFlash(flagged ? "already_recorded" : "success", "Admitted", subtitle);
         addScanRecord({
           id: ticketId,
           type: isGuestList ? "guest" : "ticket",
-          name: label ?? "Admitted",
+          name: readSubjectLabel(parsed) ?? "Admitted",
           ticketType: tier ?? undefined,
           status: flagged ? "already_recorded" : "success",
           reason: flagged ? flagSentence(flags) : undefined,
@@ -2004,13 +2110,17 @@ export default function ScannerClient() {
       }
 
       case "already_recorded": {
-        // FIX-04a: the holder's label, then the fact — a time and an operator.
-        // No cause word: this screen is read in front of the person it would be
-        // a verdict about.
-        const label =
-          readSubjectLabel(parsed) ?? readString(parsed, "member_name") ?? "Ticket holder";
+        // FIX-04a: the fact — a time and an operator. No cause word: this screen
+        // is read in front of the person it would be a verdict about.
+        //
+        // D-51-05 took the holder's label out of the title and left the FACT
+        // where it was, on purpose. `deferred-items.md` §7 names that fact among
+        // the costs of dropping the name: a time and a device is the only thing
+        // staff have to tell two reads of one code from two people arriving one
+        // after the other. The name went; the fact stayed.
+        const label = readSubjectLabel(parsed) ?? "Ticket holder";
         const fact = recordedFact(readString(parsed, "at"), readOperatorLabel(parsed));
-        showFlash("already_recorded", label, fact);
+        showFlash("already_recorded", "Already recorded", fact);
         addScanRecord({
           id: ticketId,
           type: "ticket",
@@ -2025,19 +2135,23 @@ export default function ScannerClient() {
 
       case "not_valid": {
         const sentence = notValidSentence(parsed);
-        const holder = readString(parsed, "member_name");
         const night = readString(parsed, "party_title") ?? readString(parsed, "event_title");
+        // The subtitle is the one thing that helps: which night the code does
+        // belong to. It used to fall back to the holder's name, which on a
+        // refusal is the worst place of all for a name — it invites the operator
+        // to argue with the person about who they are, on a screen that has
+        // already said the code is not good for tonight (D-51-05).
         showFlash(
           "error",
           sentence,
           readString(parsed, "reason") === "wrong_night" && night
             ? `That code belongs to ${night}`
-            : (holder ?? undefined)
+            : undefined
         );
         addScanRecord({
           id: ticketId,
           type: "ticket",
-          name: holder ?? "Unknown",
+          name: readSubjectLabel(parsed) ?? "Unknown",
           status: "error",
           reason: sentence,
           timestamp: Date.now(),
@@ -2066,7 +2180,11 @@ export default function ScannerClient() {
       if (cached) {
         if (cached.checkedIn) {
           const fact = recordedFact(cached.checkedInAt, cached.checkedInBy);
-          showFlash("already_recorded", cached.name, fact);
+          // Same shape as the online branch: the outcome, then the fact, and
+          // `Offline` so the operator knows which memory answered. The cached
+          // name stays in the history row below and out of the verdict
+          // (D-51-05).
+          showFlash("already_recorded", "Already recorded", `${fact} · Offline`);
           addScanRecord({
             id: ticketId,
             type: cached.ticketType === "guest_list" ? "guest" : "ticket",
@@ -2089,17 +2207,22 @@ export default function ScannerClient() {
         // A refund known at download time produces the same admit-and-flag
         // locally as the server produces online (FIX-09).
         const flagged = Boolean(cached.refundedAt);
-        const subtitle = flagged
-          ? `${FLAG_MESSAGE.refunded_before_night} · Offline`
-          : [
-              cached.tierName,
-              cached.ticketType === "guest_list" ? "Guest List" : null,
-              "Offline",
-            ]
-              .filter(Boolean)
-              .join(" · ");
+        const subtitle = [
+          ticketKindLabel(
+            cached.ticketType === "guest_list" ? "guest" : "ticket",
+            cached.tierName
+          ),
+          flagged ? FLAG_MESSAGE.refunded_before_night : null,
+          "Offline",
+        ]
+          .filter(Boolean)
+          .join(" · ");
 
-        showFlash(flagged ? "already_recorded" : "success", cached.name, subtitle);
+        // D-51-05: `cached.name` was the title here. It is the point
+        // `deferred-items.md` §7 names as `:2186` — the offline admission, the
+        // one read most often at 02:00 — and it is the one place the name was
+        // read straight off this device's own cache rather than off a response.
+        showFlash(flagged ? "already_recorded" : "success", "Admitted", subtitle);
         addScanRecord({
           id: ticketId,
           type: cached.ticketType === "guest_list" ? "guest" : "ticket",
@@ -2236,7 +2359,10 @@ export default function ScannerClient() {
 
       if (res.ok) {
         const name = readString(parsed, "name") ?? "Guest";
-        showFlash("success", name, "Guest List");
+        // The name is how this button was found — the operator typed it into the
+        // search and tapped the row — so it is already on screen, in the list,
+        // and it does not need to become the verdict as well (D-51-05).
+        showFlash("success", "Admitted", ticketKindLabel("guest"));
         addScanRecord({
           id: guestListEntryId,
           type: "guest",
@@ -2255,7 +2381,7 @@ export default function ScannerClient() {
       if (res.status === 409) {
         const name = readString(parsed, "name") ?? "Guest";
         const fact = recordedFact(readString(parsed, "at"), readOperatorLabel(parsed));
-        showFlash("already_recorded", name, fact);
+        showFlash("already_recorded", "Already recorded", fact);
         addScanRecord({
           id: guestListEntryId,
           type: "guest",
@@ -2532,10 +2658,49 @@ export default function ScannerClient() {
 
   return (
     <div className="mx-auto w-full max-w-5xl min-h-dvh bg-ground pb-24">
-      {/* Sticky header with party info, search, and filters */}
+      {/*
+        ── The pinned bar, and WHY it holds two things and not nine ───────────
+
+        `position: sticky` pins an element's **top edge**, not its content. An
+        element taller than the viewport therefore scrolls away exactly like any
+        other: its top edge stays glued to `top: 0` while everything below the
+        window's bottom edge — which, on a phone, is most of it — travels up out
+        of sight.
+
+        Until 2026-09-22 this one element ran from here to the filter tabs: the
+        night's title and **QR Scan**, then the night-is-over notice, the clock
+        drift, the queue pills, the failed-entries panel, the progress row, the
+        search field and the tabs. On a phone that is far taller than the
+        window, so the two controls at the top — the title, and the only way to
+        open the camera — left the view the moment the attendee list was
+        scrolled, while the search and the tabs stayed. The owner saw it on
+        three screenshots out of four.
+
+        So the criterion for what may live in here is **not** editorial and it
+        is one line: **the pinned part must sit comfortably inside a phone's
+        window.** Anything added below re-creates the defect with fewer rows,
+        and the failure is silent — it looks right on a laptop every time.
+
+        What is deliberately still inside: the back arrow and the connectivity
+        pill. Both sit *on the title's own line* and add no height at all, and
+        the pill is the one fact whose whole value is being visible while
+        something else is being read. The status pills, the notices, the
+        counter, the search and the tabs are out, below, and scroll.
+
+        The two causes that are **not** the explanation were checked rather than
+        assumed (51-RESEARCH §5.3): no ancestor of this element scrolls — the
+        only wrapper is `body` at `min-h-dvh` — and `viewportFit` is not
+        declared, so a standalone iOS window keeps its content inside the safe
+        area. Height is what is left, and height is what this splits.
+
+        **This is assumption A2 of the research, and a build cannot confirm it.**
+        Step 6 of `P-51-1`, on a real phone in the lab, is the confirmation. If
+        that step still shows the title leaving the view, the cause is something
+        else and this repair is to be redone rather than padded.
+      */}
       <div className="sticky top-0 z-10 bg-ground px-6 pt-6 pb-3">
-        {/* Party header + actions */}
-        <div className="flex items-center justify-between mb-3">
+        {/* Party header + actions — the night, and the way into the camera */}
+        <div className="flex items-center justify-between">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <button
@@ -2632,7 +2797,17 @@ export default function ScannerClient() {
           </button>
           )}
         </div>
+      </div>
 
+      {/*
+        Everything the pinned bar above used to swallow. It scrolls, and that is
+        the decision, not an oversight: it is read when somebody goes looking
+        for it, while the title and the camera have to be reachable at every
+        moment of the night. Nothing here changed — the notice, the pills, the
+        counter, the search and the tabs are the same elements with the same
+        behaviour; they moved.
+      */}
+      <div className="px-6 pb-3">
         {/* The night is over, said once, with a way back that costs one tap. */}
         {nightIsOver && (
           <div className="mb-3 rounded-lg border border-sem-warn/30 bg-sem-warn/10 px-3 py-2">
@@ -2959,6 +3134,39 @@ export default function ScannerClient() {
             >
               {stalenessBandText(channelLive, listAgeMs)}
             </button>
+          </div>
+        )}
+
+        {/*
+          ── D-51-10: the guest-list warning, derived like the band above it ────
+
+          Same family, same reason for being derived, one difference that is the
+          point: this one also covers `listAgeMs === null`, the case the band
+          deliberately excludes. The band reports an age and offers a reload, so
+          it has nothing to say before there is an age. This one reports what the
+          missing or ageing list means **at the door** — a guest without a QR is
+          found by name or not at all — and that is most true precisely when no
+          list has been downloaded yet.
+
+          Two elements rather than one folded sentence, and not to be
+          "simplified" into the band: the band is a tappable action about the
+          list as a whole, this is a standing instruction about refusing people.
+          They also switch on at different moments, so one element would have to
+          carry two conditions and would end up lying about one of them.
+
+          It is **not** in `cacheNotices`, for the reason written over that array
+          above: every early return of `fetchAttendance` replaces it wholesale,
+          which is exactly the moment this sentence is the only thing saying the
+          list cannot be trusted. That is the defect this replaces — see
+          `guestListWarningText`.
+        */}
+        {(listAgeMs === null || listIsStale) && (
+          <div
+            className="mb-4 rounded-xl border border-sem-warn/40 bg-sem-warn/10 px-3 py-2 text-xs leading-relaxed text-sem-warn"
+            role="status"
+            aria-live="polite"
+          >
+            {guestListWarningText(listAgeMs)}
           </div>
         )}
 

@@ -21,6 +21,26 @@ import { useEffect, type ReactNode } from "react";
  */
 export type ScanFlashType = "success" | "already_recorded" | "error";
 
+/**
+ * ── D-51-05: the title is the OUTCOME, and it is never a person's name ───────
+ *
+ * This screen is read out loud, in front of the person it is about, by someone
+ * holding a phone at arm's length with a queue behind them. A name rendered
+ * here turns a bearer ticket into an identity check: the ticket is to the
+ * bearer (D-49-03), so a name that does not match the face in front of the
+ * scanner invites a refusal the product never asked for — and refusing a valid
+ * guest is the worse of the two errors, because it happens in front of a queue
+ * (`checkin-offline.md`).
+ *
+ * So `title` carries *what happened* — admitted, already recorded, or the
+ * reason for a refusal — and `subtitle` carries *what kind of ticket it was*
+ * and where the verdict came from. Names stay in the night's list and in the
+ * scan history, which are lists somebody consults, not a verdict that flashes.
+ *
+ * The component cannot enforce this — both props are strings — so the rule
+ * lives with the callers in `ScannerClient.tsx`, and this paragraph is what a
+ * reader tempted to pass a name again is supposed to hit first.
+ */
 interface ScanFlashProps {
   type: ScanFlashType;
   title: string;
@@ -91,10 +111,29 @@ interface FlashState {
  * **Dwell is information.** `already_recorded` sits for 2500 ms rather than 2000
  * because it carries a time and an operator to read, and it is read while
  * someone is waiting.
+ *
+ * **The three fills are OPAQUE, and that is a fix, not a tidy-up (D-51-05).**
+ * They each carried a ninety-per-cent alpha until 2026-09-22, and the owner,
+ * walking the lab on a phone, read *«Scanner paused»* and rows of the attendee
+ * list through the verdict. The number is described rather than written,
+ * because the assertion for its absence is a grep over this file and a quoted
+ * example would break it — the same reason `reportServerFault` in
+ * `ScannerClient.tsx` names its predecessor by shape.
+ *
+ * A fill that lets the screen underneath show through turns the one
+ * element whose whole job is to be unmistakable at arm's length into a wash
+ * over something else. The alpha was the only thing that made that possible, so
+ * the alpha is gone — the dwells are untouched, because dwell is the channel
+ * that carries the fact, not the one that carried the defect.
+ *
+ * `scripts/verify-scan-legibility.mjs` reads the alpha off these very strings
+ * and composites at whatever it finds, so it measured the change rather than
+ * being told about it: every pair still clears 10 and every glyph still clears
+ * its floor at alpha 1.
  */
 const FLASH_STATES: Record<ScanFlashType, FlashState> = {
   success: {
-    bg: "bg-green-500/90",
+    bg: "bg-green-500",
     delay: 1500,
     icon: (
       <Glyph>
@@ -107,7 +146,7 @@ const FLASH_STATES: Record<ScanFlashType, FlashState> = {
     ),
   },
   already_recorded: {
-    bg: "bg-sem-done/90",
+    bg: "bg-sem-done",
     delay: 2500,
     // A clock face: it reads as *already, earlier*. An exclamation mark or a
     // crossed circle would read as a refusal, which this state never is.
@@ -122,7 +161,7 @@ const FLASH_STATES: Record<ScanFlashType, FlashState> = {
     ),
   },
   error: {
-    bg: "bg-red-600/90",
+    bg: "bg-red-600",
     delay: 2000,
     icon: (
       <Glyph>

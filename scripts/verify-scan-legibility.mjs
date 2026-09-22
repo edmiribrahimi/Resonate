@@ -36,11 +36,19 @@
  *
  * ── THE COMPOSITE, WHICH NEITHER PRIOR TABLE CONSIDERED ─────────────────────
  *
- * The flash renders at `/90`, not full. The number a person sees is the fill
- * composited over `--ground`, so that is what this gate measures — the
- * compositing is done in LINEAR light, which is what a browser does and what
- * reproduces `#00C04D` for `bg-green-500/90` over `#0A0712`. A gate that
- * measured the token would be measuring something nobody looks at.
+ * The number a person sees is the fill **as composited over `--ground`**, not
+ * the token, so that is what this gate measures — the compositing is done in
+ * LINEAR light, which is what a browser does. A gate that measured the token
+ * would be measuring something nobody looks at.
+ *
+ * The alpha is **read off the utility string**, never assumed: `parseUtility`
+ * takes the `/NN` when there is one and `1` when there is not. That is why this
+ * paragraph no longer names a number. It used to say *"the flash renders at
+ * `/90`, not full"*, and on 2026-09-22 the three flash fills became opaque
+ * (D-51-05: at `/90` the list and *«Scanner paused»* showed through the
+ * verdict). The sentence was true when written and false the moment the product
+ * moved — while the gate itself was right all along, because it reads the alpha
+ * instead of believing a comment about it.
  *
  * ── THE ONE EXCLUDED PAIR, AND WHY IT CHECKS ITS OWN PREMISE ────────────────
  *
