@@ -113,7 +113,7 @@ function selfCheck() {
  *
  *   1. **READ-ONLY BY CONSTRUCTION, CHECKED AGAINST ITS OWN SOURCE.** The
  *      service key is used for exactly three things — minting a link, resolving
- *      one member profile, and signing the sessions out — and never for a read
+ *      one attendee profile, and signing the sessions out — and never for a read
  *      of a production table. The self-check above runs first.
  *
  *   2. **THE ASSERTION IS A PAIR, PER TABLE, AND NEVER A SINGLE VALUE.**
@@ -135,7 +135,7 @@ function selfCheck() {
  *      and print the answer. Assumed revocation is not revocation.
  *
  *   4. **IT PRINTS NO TOKEN, NO EMAIL AND NO ROW.** Role words, table names,
- *      counts and outcomes only. The member's address is resolved at run time
+ *      counts and outcomes only. The attendee's address is resolved at run time
  *      and never printed. A refusal probe that printed a row would be printing
  *      exactly the material the policies exist to hold — and `.planning/` is
  *      tracked and this repository is PUBLIC (`CLAUDE.md` Guardrail 5), so this
@@ -267,7 +267,7 @@ function printContract() {
   console.log("  ── the subjects ───────────────────────────────────────────────────────");
   console.log("");
   console.log("    master      the positive control — holds the key");
-  console.log("    member      the refusal — a real auth.uid(), a real profile, no grant");
+  console.log("    attendee    the refusal — a real auth.uid(), a real profile, no grant");
   console.log("    anonymous   the floor — the anon key and no session at all");
   console.log("");
 }
@@ -329,7 +329,7 @@ const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
  * client that made it even with `persistSession: false`, and supabase-js
  * attaches an in-memory session to every subsequent request. A floor client
  * that had exchanged a token would silently be reading as that user, and the
- * "anon" column of the table below would be a second copy of the "member"
+ * "anon" column of the table below would be a second copy of the "attendee"
  * column wearing another name. Every exchange therefore happens on a throwaway
  * client (`mintSession`), and this one only ever reads.
  */
@@ -451,62 +451,65 @@ if (!master.session) {
 minted.push(master);
 console.log("    master      session minted");
 
-/* ── the refusal: one member, resolved at run time and never printed ──────── */
+/* ── the refusal: one attendee, resolved at run time and never printed ──────── */
 
-const memberLookup = await admin
+const attendeeLookup = await admin
   .from("profiles")
   .select("id, email, created_at")
-  .eq("role", "member")
+  .eq("role", "attendee")
   .order("created_at", { ascending: true })
   .limit(1);
 
-if (memberLookup.error) {
-  console.log("    member      lookup refused");
+if (attendeeLookup.error) {
+  console.log("    attendee    lookup refused");
   await revokeAll();
   refuse(
-    `the member lookup refused: ${memberLookup.error.code ?? ""} ${memberLookup.error.message}\n` +
+    `the attendee lookup refused: ${attendeeLookup.error.code ?? ""} ${attendeeLookup.error.message}\n` +
       "       Nothing was measured."
   );
 }
 
-const memberRow = memberLookup.data?.[0];
-if (!memberRow?.email) {
-  console.log("    member      no member profile resolved");
+const attendeeRow = attendeeLookup.data?.[0];
+if (!attendeeRow?.email) {
+  console.log("    attendee    no attendee profile resolved");
   await revokeAll();
   refuse(
-    "no member profile could be resolved, so no unentitled signed-in subject exists to\n" +
+    "no attendee profile could be resolved, so no unentitled signed-in subject exists to\n" +
       "       refuse. Nothing was measured."
   );
 }
 
-console.log("    member      one member profile resolved");
+console.log("    attendee    one attendee profile resolved");
 
-const member = await mintSession(memberRow.email, "member");
-if (!member.session) {
-  console.log("    member      session could not be minted");
+const attendee = await mintSession(attendeeRow.email, "attendee");
+if (!attendee.session) {
+  console.log("    attendee    session could not be minted");
   await revokeAll();
-  refuse(`the member session could not be minted — ${member.why}\n       Nothing was measured.`);
+  refuse(`the attendee session could not be minted — ${attendee.why}\n       Nothing was measured.`);
 }
-minted.push(member);
-console.log("    member      session minted");
+minted.push(attendee);
+console.log("    attendee    session minted");
 console.log("    anonymous   no session — the anon key alone");
 console.log("");
 
 /* ── the pair, per table ──────────────────────────────────────────────────── */
 
 const masterClient = clientForSession(master.session.access_token);
-const memberClient = clientForSession(member.session.access_token);
+const attendeeClient = clientForSession(attendee.session.access_token);
 
 say("  ── the pair, per table ────────────────────────────────────────────────");
 say("");
-say(`    ${"table".padEnd(28)} ${"master".padStart(7)} ${"member".padStart(7)} ${"anon".padStart(6)}  outcome`);
+// `attendee` e' due caratteri piu' lungo di `member`: la colonna passa da 7 a 8
+// **sia qui sia nella riga dei dati**, o l'intestazione scivola di uno e una
+// tabella disallineata si legge come un numero nella colonna sbagliata.
+say(`    ${"table".padEnd(28)} ${"master".padStart(8)} ${"attendee".padStart(8)} ${"anon".padStart(6)}  outcome`);
 
 let refusedRows = 0;
 let discriminatingRows = 0;
 
 for (const { section, table } of ALL_TARGET_TABLES) {
   const control = await countRows(masterClient, table);
-  const subject = await countRows(memberClient, table);
+  const subject = await countRows(attendeeClient, table);
   const floor = await countRows(anonymous, table);
 
   const show = (measure) => (measure.count === null ? "—" : String(measure.count));
@@ -540,7 +543,7 @@ for (const { section, table } of ALL_TARGET_TABLES) {
   }
 
   say(
-    `    ${table.padEnd(28)} ${show(control).padStart(7)} ${show(subject).padStart(7)} ${show(floor).padStart(6)}  ${outcome}`
+    `    ${table.padEnd(28)} ${show(control).padStart(8)} ${show(subject).padStart(8)} ${show(floor).padStart(6)}  ${outcome}`
   );
   say(`      section: ${section}`);
 }

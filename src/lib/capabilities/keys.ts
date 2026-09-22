@@ -1,5 +1,5 @@
 /**
- * The seventeen capability keys, named once.
+ * The fifteen capability keys, named once.
  *
  * This module is the source. It imports nothing — not even
  * `@/types/database`, which imports *from here* — for the same reason
@@ -28,7 +28,7 @@
  *
  * The check that closes the gap is `scripts/verify-capabilities.mjs`, added by
  * plan `32-10`: it reads `private.capabilities` and asserts that the set below
- * and the catalogue are the same seventeen strings. Until it runs, the guarantee
+ * and the catalogue are the same fifteen strings. Until it runs, the guarantee
  * here is a convention, not a mechanism.
  *
  * ⚠ AND IT IS RED FROM THIS COMMIT, ON PURPOSE. Phase 45 splits one key into
@@ -40,13 +40,27 @@
  * reds are the gate working. **Neither is repaired by editing a constant in
  * `verify-capabilities.mjs`** — that is the exact failure its own comment names.
  *
+ * ⚠ 2026-09-22 — FASE 51 (D-51-07), E QUESTA VOLTA IL ROSSO E' SOLO CONTRO LA
+ * PRODUZIONE. `membership.active` e `membership.card.view` escono da qui e dal
+ * catalogo **nello stesso commit**, con
+ * `20260922120000_role_attendee_and_capability_keys.sql`. Il laboratorio ha la
+ * migration applicata (piano 51-08), quindi li' i due insiemi concordano gia' e
+ * `verify:capabilities` e' verde; **contro la produzione resta rosso fino al
+ * piano 51-13**, che e' l'atto che applica la migration li'. Un gate rosso senza
+ * il nome di chi lo chiude e' un gate che nessuno rilancia: il nome e' 51-13.
+ *
+ * `membership.active` era gia' senza concessioni dal 2026-09-21 — la fase 50
+ * (D-50-28) ne cancello' le quattro e **lascio' la chiave** proprio per non
+ * rendere rosso questo confronto prima del piano che tocca il codice. Questo e'
+ * quel piano, e il debito si chiude qui.
+ *
  * **Editing this file means editing the migration in the same commit** — the
  * same rule `outcome.ts` states for its `CHECK` constraints, for the same
  * reason, with one less safety net.
  *
  * ── Named by the question, not by the predicate ──────────────────────────────
  *
- * Three of these seventeen resolve to the same predicate today — `STAFF_MANAGE`,
+ * Three of these fifteen resolve to the same predicate today — `STAFF_MANAGE`,
  * `ORGANIZER_ACCESS` and `DOOR_OPERATE` are all "role ∈ {master, organizer},
  * status ignored". They are deliberately three keys and not one, because they
  * are three different questions. A later phase that grants one night's door
@@ -83,10 +97,12 @@
  *   - `DOOR_SUPERVISE` on `DOOR_OPERATE` would make every operator a
  *     supervisor, which is exactly what ASSIGN-05 refuses; on `STAFF_MANAGE` it
  *     would hand one night's supervision the whole back office for ever.
- *   - `MEDIA_UPLOAD` on `MEMBERSHIP_ACTIVE` would confuse the per-night work
- *     upload with the member-level contribution every approved account already
- *     has — the distinction `20260808000500_staff_role.sql:125-136` was written
- *     to keep.
+ *   - `MEDIA_UPLOAD` on the old `membership.active` would have confused the
+ *     per-night work upload with the member-level contribution every approved
+ *     account then had — the distinction
+ *     `20260808000500_staff_role.sql:125-136` was written to keep. That key is
+ *     gone (fase 51, D-51-07) and the reason for the separate name is not: it
+ *     is what made `MEDIA_UPLOAD` survive the removal of the other.
  *   - `PARTY_MANAGE` on `ORGANIZER_ACCESS` would open the organizer AREA, which
  *     is a property of the account with no night in it, instead of one night's
  *     surfaces.
@@ -279,7 +295,7 @@
  */
 
 /**
- * The seventeen keys. Spelled exactly as the rows of `private.capabilities`
+ * The fifteen keys. Spelled exactly as the rows of `private.capabilities`
  * (`supabase/migrations/20260807000000_capability_model.sql` section 7,
  * `20260808002000_membership_register.sql` section 1 for the ninth,
  * `20260809001000_assignment_resolver.sql` section 1 for the tenth to twelfth,
@@ -288,6 +304,14 @@
  * seventeenth — which SUPERSEDES
  * `20260815120100_production_calendar_access.sql` section 1, whose single key is
  * retired by `20260817120500_production_read_retire.sql`).
+ *
+ * **Diciassette fino al 2026-09-22, quindici da allora** (fase 51, D-51-07):
+ * `membership.active` e `membership.card.view` sono uscite con
+ * `20260922120000_role_attendee_and_capability_keys.sql`. Gli ordinali qui sopra
+ * sono l'ordine in cui le chiavi furono **aggiunte**, non la loro posizione in
+ * questo oggetto, e **non si rinumerano**: due uscite non cambiano chi aggiunse
+ * la nona. Rinumerarli renderebbe irrintracciabile ogni riferimento gia'
+ * scritto altrove.
  */
 export const CAP = {
   /** P1 — the 34 policies gating on `is_admin_or_organizer()`. Status ignored. */
@@ -296,8 +320,6 @@ export const CAP = {
   MASTER_MANAGE: "master.manage",
   /** P3 — the four `artists`/`venues` organizer policies. Status REQUIRED. */
   CATALOGUE_MANAGE: "catalogue.manage",
-  /** P5 — `get_user_status() = 'approved'` alone; role irrelevant. */
-  MEMBERSHIP_ACTIVE: "membership.active",
   /**
    * The six master-only surfaces — analytics and its two sub-pages, newsletter,
    * finance, members/growth. Six named addresses, not a prefix: the binding
@@ -312,13 +334,11 @@ export const CAP = {
   ORGANIZER_ACCESS: "organizer.access",
   /** Middleware `/admin/scanner` and the four door routes: ROLE ALONE. */
   DOOR_OPERATE: "door.operate",
-  /** Middleware `/membership-card` and `/attendance`: status alone, any role. */
-  MEMBERSHIP_CARD_VIEW: "membership.card.view",
   /** Read the register of acts on a member's role and status. Role AND approved. */
   REGISTER_READ: "register.read",
   /** Reverse a check-in already recorded at the door. ASSIGN-05, and NOT `DOOR_OPERATE`. */
   DOOR_SUPERVISE: "door.supervise",
-  /** Upload media to a night. The per-night work upload, not `MEMBERSHIP_ACTIVE`. */
+  /** Upload media to a night. The per-night work upload, and never the account-level one. */
   MEDIA_UPLOAD: "media.upload",
   /** Manage one night's operational surfaces. Not `ORGANIZER_ACCESS`, which is the area. */
   PARTY_MANAGE: "party.manage",
@@ -356,7 +376,7 @@ export type CapabilityKey = (typeof CAP)[keyof typeof CAP];
  * One sentence per key, for the humans who read a permission decision.
  *
  * Typed as a **total** `Record` over the union on purpose, exactly as
- * `DOOR_OUTCOME_KINDS` is in `@/lib/door/outcome`: adding an eighteenth key to
+ * `DOOR_OUTCOME_KINDS` is in `@/lib/door/outcome`: adding a sixteenth key to
  * `CAP` without a description here is a `npm run build` error, and removing a
  * key leaves an unreachable entry that is also an error. It is the one part of
  * this file's contract the compiler can hold — and it held it when the ninth key
@@ -378,7 +398,7 @@ export type CapabilityKey = (typeof CAP)[keyof typeof CAP];
  * with no entry there is also a build error. The two records are the compiler's
  * whole half of this file's contract, and a new key pays both in one commit.
  *
- * It cannot hold the other part — that these strings match the seventeen rows in
+ * It cannot hold the other part — that these strings match the fifteen rows in
  * `private.capabilities`. That is `scripts/verify-capabilities.mjs`'s job, and
  * that check needs a live database: it is RED between the commit that adds a key
  * here and the deploy that applies the migration adding the row. For this split
@@ -392,20 +412,16 @@ export const CAP_DESCRIPTIONS: Record<CapabilityKey, string> = {
     "Operations reserved to the master role: deleting an event, deleting an artist or a venue, changing another member's role or status.",
   "catalogue.manage":
     "Create and edit artists and venues. Requires an approved status as well as the role — this is the other, stricter definition of organizer.",
-  "membership.active":
-    "Act as an approved member: upload event media, rsvp. Status only; every role holds it once approved.",
   "admin.access": "Reach the admin area other than the scanner.",
   "organizer.access": "Reach the organizer area.",
   "door.operate":
     "Work the door: scan, admit, undo. Role alone, deliberately — a pending organizer must not be refused in front of a queue.",
-  "membership.card.view":
-    "See the membership card and the attendance history. Status alone, any role.",
   "register.read":
     "Read the register of acts on a member's role and status — who was created, approved, rejected, promoted, demoted, deactivated or reactivated, by whom and when. Role AND an approved status, because the register contains rejections.",
   "door.supervise":
     "Reverse a check-in already recorded at the door. A different question from door.operate: an operator admits, a supervisor undoes. Role alone on both grants, deliberately — the undo is what corrects a wrong refusal, and it happens in front of a queue.",
   "media.upload":
-    "Upload media to a night. The per-night work upload — the photographer uploading to the night they worked — not the member-level contribution, which is membership.active.",
+    "Upload media to a night. The per-night work upload — the photographer uploading to the night they worked. The account-level contribution it was named apart from, membership.active, left the catalogue in phase 51 (D-51-07); this key stays scoped to the night, which is the reason it survived.",
   "party.manage":
     "Manage one night's operational surfaces: that night's review, its door register, its guest list. Scoped to a single date, which is why it is not organizer.access.",
   "venue.reveal":

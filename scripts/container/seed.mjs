@@ -10,7 +10,7 @@
  * TWELVE grid personas, then FOUR. The grid had two axes, ROLE and STATUS —
  * four roles × three statuses — and phase 50 deletes `profiles.status` from the
  * database altogether (D-50-01). A column that does not exist cannot be an axis,
- * so the grid collapses onto its remaining one: `master`, `organizer`, `member`,
+ * so the grid collapses onto its remaining one: `master`, `organizer`, `attendee`,
  * `staff`, one persona each. Nobody was dropped for being surplus; eight of the
  * twelve were a state, and the state is gone.
  *
@@ -30,7 +30,7 @@
  * e restano QUATTRO persone — una per ruolo. Nessuna e' stata tolta perche' di
  * troppo: otto erano uno stato, e lo stato non esiste piu'.*
  *
- * The four that remain still satisfy the two guarantees below: `member` and
+ * The four that remain still satisfy the two guarantees below: `attendee` and
  * `master` are two distinct owners, and every RLS table still gets two rows.
  *
  * WHY THE SHAPE OF THE DATA IS THE WHOLE POINT. `32-RESEARCH.md` § *Pitfall 3*:
@@ -42,7 +42,7 @@
  *
  *   1. every one of the 20 RLS tables holds **at least two** rows;
  *   2. every table that HAS an owner column holds rows owned by **two different
- *      personas** — one `member`, one `master`.
+ *      personas** — one `attendee`, one `master`.
  *
  * Without (2) "mine" and "not mine" are indistinguishable, `auth.uid() = user_id`
  * is satisfied by everything or by nothing, and the baseline is a green screen
@@ -68,7 +68,7 @@
  * membership code is one a real signup **cannot** mint: `handle_new_user()`
  * draws from `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`, an alphabet with no `0` and no
  * `1`, while every code here is `RSN-SEED000<n>` — three zeroes in the middle.
- * A seeded code can therefore never collide with a member's.
+ * A seeded code can therefore never collide with an attendee's.
  *
  * NOTHING HERE WRITES `profiles.status`, AND THAT IS WHAT MAKES IT RUN ON BOTH
  * SIDES OF PHASE 50's MIGRATION. The column is `NOT NULL DEFAULT 'approved'`
@@ -326,7 +326,7 @@ const THIRD_AXIS_PERSONAS = [
  *
  * The first group is the literal `32000004` — phase 32, plan 04 — so anyone who
  * finds one of these in a database knows immediately where it came from and
- * that it is not a member's identifier.
+ * that it is not an attendee's identifier.
  */
 function seedUuid(seed) {
   const h = createHash('md5').update(`rls-baseline-container:${seed}`).digest('hex');
@@ -460,7 +460,7 @@ export async function seedContainer(admin) {
   const owners = await ownerColumnsOf(admin);
   const personas = buildPersonas();
   const byLabel = new Map(personas.map((p) => [p.label, p]));
-  const rowOwners = [byLabel.get('member'), byLabel.get('master')];
+  const rowOwners = [byLabel.get('attendee'), byLabel.get('master')];
 
   // ── NO CONSTRAINT IS DROPPED HERE ANY MORE ───────────────────────────────
   //

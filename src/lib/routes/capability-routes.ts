@@ -273,9 +273,12 @@ export const CAPABILITY_ROUTES = {
    * down so the next reader does not re-litigate it.
    *
    * **No ambiguity is introduced**, and it is checked rather than hoped: `/door`
-   * is one literal segment, and the other one-segment patterns in this map —
-   * `/admin`, `/membership-card`, `/attendance` — all carry different literals,
-   * so the load-time ambiguity throw at the foot of this file does not fire.
+   * is one literal segment, and the other one-segment patterns in this map carry
+   * different literals, so the load-time ambiguity throw at the foot of this file
+   * does not fire. Fino al 2026-09-22 quelli erano tre — `/admin`,
+   * `/membership-card`, `/attendance` — e dal piano 51-08 e' rimasto `/admin`:
+   * le altre due uscite con `membership.card.view` (D-51-07). Meno pattern a un
+   * segmento significa meno occasioni di ambiguita', mai di piu'.
    */
   [CAP.DOOR_OPERATE]: {
     routes: ["/admin/scanner", "/door"],
@@ -403,15 +406,21 @@ export const CAPABILITY_ROUTES = {
   },
 
   /**
-   * Genuinely route-scoped, and **outside** the collapsed tree. Marking it as
-   * gating rows would be the exact lie D-34-11 exists to prevent, and it is why
-   * this module is the whole application's route↔capability map rather than
-   * `/admin`'s.
+   * ── `membership.card.view` stava qui, e non c'e' piu' ──────────────────────
+   *
+   * Era l'unica voce **fuori** dall'albero di lavoro: legava
+   * `/membership-card` e `/attendance`, due indirizzi da socio. Il piano 51-04
+   * ha tolto le due pagine, il piano 51-08 ha tolto la chiave dal catalogo e da
+   * `CAP` (D-51-07), e la voce esce **con la chiave** — perche' questa mappa e'
+   * un `Record` TOTALE su `CapabilityKey`: lasciare le rotte senza la chiave non
+   * compila, e lasciare la chiave senza le rotte sarebbe una voce che mente.
+   *
+   * Non apre nulla: `_everyStaffRouteIsBound` guarda i soli indirizzi sotto
+   * `/admin`, e il middleware fallisce chiuso solo dentro l'albero di lavoro
+   * (`isUnderWorkTree`). Due indirizzi che non esistono piu' su disco non hanno
+   * bisogno di un legame, e darglielo sarebbe una mappa che descrive un
+   * prodotto diverso da quello spedito.
    */
-  [CAP.MEMBERSHIP_CARD_VIEW]: {
-    routes: ["/membership-card", "/attendance"],
-  },
-
   [CAP.MASTER_MANAGE]: {
     scope: "table",
     reason:
@@ -482,12 +491,12 @@ export const CAPABILITY_ROUTES = {
     alsoGatesTables: true,
   },
 
-  [CAP.MEMBERSHIP_ACTIVE]: {
-    scope: "table",
-    reason:
-      "Gates rows and the member-level contribution, not addresses; the guard is `src/lib/media/may-upload.ts`.",
-  },
-
+  /**
+   * `membership.active` stava qui con `scope: "table"`. Le sue quattro
+   * concessioni erano gia' state cancellate dalla fase 50 (D-50-28); la chiave
+   * esce dal catalogo e da `CAP` con il piano 51-08 (D-51-07), e questa voce
+   * esce con lei — un `Record` totale non ammette il residuo.
+   */
   [CAP.DOOR_SUPERVISE]: {
     scope: "table",
     reason:
@@ -834,9 +843,11 @@ export const CAPABILITY_ROUTES = {
    * **No key that phase 45 put on the `scope: "table"` branch remains there.**
    * That is a claim about this file and it was checked by reading it rather than
    * by arithmetic — and the first version of this paragraph got it wrong, which
-   * is why the measurement is written out. Five entries are still on that branch,
-   * and **none of them belongs to this phase**: `master.manage`,
-   * `membership.active`, `door.supervise`, `media.upload` and `venue.reveal`.
+   * is why the measurement is written out. Five entries were still on that
+   * branch when phase 45 closed, and **none of them belonged to that phase**:
+   * `master.manage`, `membership.active`, `door.supervise`, `media.upload` and
+   * `venue.reveal`. **Quattro dal 2026-09-22**: `membership.active` e' uscita
+   * dal catalogo con il piano 51-08 (D-51-07), e con lei la sua voce qui.
    * Each gates rows and opens no address, which is what that branch is for; the
    * four section keys were the only ones parked there waiting for a page, and all
    * four have one now.

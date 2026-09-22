@@ -3,7 +3,7 @@
  * rls-baseline.mjs — the CAP-03 evidence harness.
  *
  * Why it exists: phase 32 replaces the predicate of every RLS policy in this
- * database while promising that a master, an organizer and a member can do
+ * database while promising that a master, an organizer and an attendee can do
  * neither more nor less than before. That is a measurement problem, not a
  * coding one — 67 policies cannot be judged by reading a diff — and **a
  * baseline taken after the change is not a baseline**. This script captures
@@ -639,9 +639,13 @@ export async function captureB1(target, { phasePoint }) {
  * (`20260921120000`, sezione 3a). A distinction that no database can hold is
  * not a row this matrix is failing to cover.
  *
- * `authenticated/no-profile` is not padding. The middleware's `?? "member"`
- * default and the NULL-versus-false behaviour of a missing profile row are both
- * BEHAVIOUR, and neither is observable with any other persona.
+ * `authenticated/no-profile` is not padding. Il valore di ripiego che il
+ * middleware assegna a chi non ha un profilo — `member` fino al 2026-09-22,
+ * `attendee` dal piano 51-06 — e la NULL-versus-false behaviour of a missing
+ * profile row are both BEHAVIOUR, and neither is observable with any other
+ * persona. Il letterale non si cita qui perche' vive in
+ * `src/lib/supabase/middleware.ts`, e un secondo posto in cui e' scritto e' un
+ * secondo posto da cui puo' divergere.
  *
  * A persona that does not exist on a target is recorded `absent`, never
  * omitted — an omitted row is indistinguishable from a row that agreed.
@@ -666,7 +670,11 @@ export async function captureB1(target, { phasePoint }) {
  * `seed.mjs` asserts the count on every run rather than trusting this comment,
  * because a comment is not a guard.
  */
-export const PERSONA_ROLES = ['master', 'organizer', 'member', 'staff'];
+// `member` e' diventato `attendee` il 2026-09-22 (piano 51-08, D-51-06), **nella
+// stessa posizione**: l'ordine di questo array decide gli id delle persone
+// seminate da `scripts/container/seed.mjs`, e rinumerarli renderebbe illeggibile
+// ogni artefatto gia' catturato. Si cambia il nome, non il posto.
+export const PERSONA_ROLES = ['master', 'organizer', 'attendee', 'staff'];
 const PERSONA_ANON = 'anon';
 const PERSONA_NO_PROFILE = 'authenticated/no-profile';
 export const PERSONA_LABELS = [PERSONA_ANON, PERSONA_NO_PROFILE, ...PERSONA_ROLES].sort(
@@ -678,11 +686,19 @@ export const PERSONA_LABELS = [PERSONA_ANON, PERSONA_NO_PROFILE, ...PERSONA_ROLE
  * expected is exit 1, because a matrix quietly missing its most interesting
  * rows is the failure mode `verify-persona.mjs:225-233` refuses.
  *
- * Production holds 4 profiles — measured 2026-09-21: 1 `master`, 1 `organizer`
- * and 2 `member`, and no `staff`. The floor below names only `master` and
- * `member` because those are the two that have been there since phase 32; an
- * `organizer` that resolves as well is a persona GAINED, and a gained persona
- * is never an error.
+ * Production holds 4 profiles — measured 2026-09-21 e riconfermato 2026-09-22:
+ * 1 `master`, 1 `organizer` and 2 of the role that is now `attendee`, and no
+ * `staff`. The floor below names only `master` and `attendee` because those are
+ * the two that have been there since phase 32 — sotto il nome `member` fino al
+ * 2026-09-22 (piano 51-08, D-51-06); an `organizer` that resolves as well is a
+ * persona GAINED, and a gained persona is never an error.
+ *
+ * ⚠ **In produzione quelle due righe portano ancora `member` finche' il piano
+ * 51-13 non applica `20260922120000_role_attendee_and_capability_keys.sql`.**
+ * Una cattura contro la produzione prima di quell'atto riporta `attendee`
+ * assente, ed e' il gate che dice la verita': il codice e il database non sono
+ * ancora allo stesso passo. Contro il laboratorio, dove la migration e'
+ * applicata, la persona risolve.
  *
  * The container is required to offer **all four roles**. That is the reason it
  * exists: `staff` and `organizer` cannot be measured anywhere else, and a
@@ -699,7 +715,7 @@ export const PERSONA_LABELS = [PERSONA_ANON, PERSONA_NO_PROFILE, ...PERSONA_ROLE
  * produced it (plan 50-02). The floor is the same two roles it has always been.
  */
 const EXPECTED_PERSONAS = {
-  production: [PERSONA_ANON, PERSONA_NO_PROFILE, 'master', 'member'],
+  production: [PERSONA_ANON, PERSONA_NO_PROFILE, 'master', 'attendee'],
   container: [...PERSONA_LABELS],
 };
 
@@ -722,7 +738,7 @@ export function assertUuid(value, what) {
  *
  * **The uuid is used and discarded: only the label reaches the artefact.**
  * `.planning/` is tracked and this repository is PUBLIC (CLAUDE.md Guardrail
- * 5) — a member's uuid is a member identifier, and publishing one is
+ * 5) — an attendee's uuid is a person identifier, and publishing one is
  * irreversible. Every resolved uuid is registered with `redact()` so it cannot
  * reach an error message either.
  *
@@ -738,7 +754,7 @@ export function assertUuid(value, what) {
 const PERSONA_SQL = `
 select role, (array_agg(id order by id))[1]::text as subject
   from public.profiles
- where role in ('master','organizer','member','staff')
+ where role in ('master','organizer','attendee','staff')
  group by role
 `;
 
@@ -1049,7 +1065,7 @@ export async function captureB2(target, { phasePoint, targetName }) {
  *     the referenced table, resolved ONCE with a privileged read. Resolving it
  *     inside the persona transaction — as the plan first proposed — would run
  *     the sub-select under that persona's READ policies, so `master` and
- *     `member` would be probing different rows and the matrix would stop being
+ *     `attendee` would be probing different rows and the matrix would stop being
  *     a matrix. Where the referenced table is empty the nil uuid is used and
  *     the insert fails `23503`, which D-19 records as inconclusive rather than
  *     hiding.
@@ -1191,7 +1207,7 @@ export const PROBE_PAYLOADS = {
   // `event_parties_select_published` only shows a night whose event is
   // published, and `event_parties_select_admin` shows every night to
   // `staff.manage`. The same expression would then yield the event id for a
-  // master and NULL for a member — a `23502` for one persona and a real probe
+  // master and NULL for an attendee — a `23502` for one persona and a real probe
   // for another. `private.party_event_id(uuid)` is `SECURITY DEFINER` (and
   // granted to `authenticated` and `anon`) precisely so the value is the SAME
   // FOR EVERY PERSONA, which is the invariant that makes the matrix a matrix.
@@ -1586,7 +1602,7 @@ export const PROBE_PAYLOADS = {
     },
     update: 'sumup_transaction_code',
   },
-  // The named evidence cell: member → 42501, master → ok:1.
+  // The named evidence cell: attendee → 42501, master → ok:1.
   venues: { insert: { columns: ['name', 'slug'], values: [PROBE_TEXT, PROBE_TEXT] }, update: 'bio' },
 };
 
