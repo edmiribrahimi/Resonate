@@ -355,12 +355,35 @@ export const PENDING_SURFACES = [
  * lato-albero vale la pena di scriverlo invece di essere una fonte permanente
  * di rumore.
  *
- * **Rimisurato il 2026-09-21, fase 50: sono 44** = **36** dichiarate + **6** in
- * attesa di un'altra fase + **2** qui. Le due differenze sono dello stesso
+ * **Rimisurato il 2026-09-21, fase 50: erano 44** = **36** dichiarate + **6** in
+ * attesa di un'altra fase + **2** qui. Le due differenze erano dello stesso
  * commit: `/register` **cancellata** (D-50-11, nessuno si iscrive piu' da solo)
  * e `/` passata di lista, perche' ha smesso di disegnare qualcosa. Il numero si
  * rilegge dal gate a ogni corsa — **questa prosa no**, ed e' la ragione per cui
  * porta la data accanto al numero invece che il numero da solo.
+ *
+ * **Rimisurato il 2026-09-22, fase 51 (MEM-01, MEM-02): sono 44** = **36**
+ * dichiarate + **6** in attesa di un'altra fase + **2** qui. Le due differenze
+ * sono dello stesso commit delle pagine: la card del socio e lo storico delle
+ * presenze sono **cancellati**, e le loro due voci escono da `CONVERTED` qui,
+ * perche' un'entry che punta a un file che non c'e' fa asserire al gate la cosa
+ * giusta sul file sbagliato — ed e' esattamente quello che ha fatto: la corsa
+ * prima di questa modifica si e' fermata con *«CONVERTED names … which is not on
+ * disk under that exact name»*, su entrambe.
+ *
+ * **E qui la prosa ha una cosa da dire che il gate non puo' dire.** I numeri di
+ * oggi sono **le stesse cifre** della riga del 2026-09-21, ma non perche' nulla
+ * si sia mosso: fra le due misure l'albero e' cresciuto di due pagine
+ * pubbliche, e quella riga era diventata **falsa per due** su entrambi i lati.
+ * Misurato al commit `e05d098`, cioe' un istante prima di questo piano, il
+ * censimento diceva **46** = **38** + 6 + 2. Togliendo due pagine dichiarate si
+ * e' tornati alle cifre di prima **per un'altra strada**.
+ *
+ * E' il motivo per cui questo blocco **aggiunge una riga datata invece di
+ * correggere quella sopra**: una prosa che si sovrascrive perde la prova che il
+ * numero era stato giusto e poi aveva smesso di esserlo. Un numero esatto per
+ * coincidenza e' indistinguibile, a occhio, da un numero esatto perche'
+ * qualcuno l'ha riletto — e l'unica differenza e' la data accanto.
  *
  * **What check F does NOT make true.** It closes ONE direction — a page that
  * exists and is not accounted for. It does not close the other: a page declared
@@ -973,6 +996,23 @@ export const CONVERTED = [
    * PHASE 41.2 WAVE 3 — the public funnel, the two member surfaces and the
    * ticket, converted by plans 41.2-06, 41.2-07 and 41.2-08.
    *
+   * ── TWO OF THE FOUR ARE GONE, 2026-09-22, PHASE 51 (MEM-01, MEM-02) ────────
+   *
+   * **This block declared four entries and now declares two.** The two member
+   * surfaces — the card and the attendance history — were DELETED, pages and
+   * routes, and their entries came out in the same commit as their files. The
+   * paragraphs below still say "these four" and "all four", and they are LEFT
+   * SAYING IT: they are the record of what plan 41.2-19 measured on the day it
+   * wrote, and a record edited to match today stops being evidence of anything.
+   * Read them as history, and read this note as the correction — the same shape
+   * the census arithmetic at the head of this file uses, where a stale line is
+   * kept and a dated one is added under it.
+   *
+   * What does NOT survive as history is a claim a gate would act on: no entry
+   * here names a file that is not on disk, which is the one condition
+   * `checkManifest()` refuses on, and it refused on both of them before this
+   * edit.
+   *
    * Same construction as every block above it, and for the same reason: every
    * reason below is the text the plan that did the work reported in its own
    * SUMMARY, taken rather than re-composed, with the only editorial change
@@ -1017,14 +1057,6 @@ export const CONVERTED = [
   [
     "/events", "src/app/(public)/events/page.tsx", "default",
     "plan 41.2-06 — whole, and 'whole' here is FOUR files: the route file, the tab surface it mounts, the format filter row and the route-adjacent placeholder the extension of the scanned set now reaches. NOT on §4's closed wide list and therefore default, which is not a fallback but the answer for every surface nobody had to argue about. THE WIDE FORM WAS DEFERRED AND NOT REJECTED, and this surface was the phase's ONE candidate for it: §4's stated criterion is a surface whose primary object is a dense table or a multi-column grid, and the nights render as a single column today — measured on the markup rather than argued, since the grid utility occurs nowhere in the tab file. Should a later phase lay the nights out in columns the change is one word in the shell's call plus a line on §4's list, and the deferral is written above the call in the file itself so the next reader sees a decision and not an oversight. THE CAUTION, because this is the public funnel and it is the surface that names venues: the declared render mode is still DECLARED and not derived — a copy of this list rendered before a reveal window and served after it shows the wrong side of a one-way switch, so venue-secrecy.md requires the mark rather than the observation; the stored-flag comparison is still written explicitly against false, so a row that never arrived, a join that failed or an absent column still counts as secret, and the count of the other forms of that flag is equal before and after; the label ternary is byte-identical with the SECRET BRANCH FIRST, and it is the only rendering of a venue on this surface; and the night select's column multiset is unchanged — 22 tokens, 17 distinct — proved over comment-stripped source rather than by reading a diff, because a column dropping out of that list fails nothing and merely changes what a predicate sees. The qualified embed hint survives too: unqualified it answers with an ambiguity error and FAILS SILENTLY, rendering the page as though there were no nights at all. THE NAVIGATION SENTENCE: this surface mounts the responsive form DIRECTLY and declares the tablet-tier column clearance in the same commit, the declaration byte-identical by checksum to the specimen at src/app/(public)/gallery/page.tsx:110 and the declaring element wrapping the shell with the navigation as its sibling; width may change layout and never membership, and the same four props go in, in the same order, so no entry can appear or disappear. RECORDED AND NOT REPAIRED: the listing's transient catch collapses a transport failure with no code into the sentence a stranger reads as an empty product, and this repository has no error tracking, so that sentence is the whole of what anybody learns. THE NO-BEHAVIOUR-CHANGE SENTENCE, which is the line a reviewer greps the diff against: no query changed, no column added, no capability check touched, no action payload altered",
-  ],
-  [
-    "/attendance", "src/app/(members)/attendance/page.tsx", "default",
-    "plan 41.2-07 — whole, and 'whole' here is ONE file: the route file itself, with no loading, error or not-found file beside it — the directory was listed, not assumed. This is the phase's CONTROL SURFACE and the reason it is worth its own entry: no money, no venue, no dialog, and zero measured interactive elements, so the diff it produced is the baseline three heavier plans are read against — 113 insertions on a 74-line file, of which the MARKUP moved five lines and the other 71 are the docblock and the placement comments. A reader costing the remaining conversions from the raw number would be costing the prose. NOT on §4's closed wide list and therefore default, which is not a fallback. THE NAVIGATION SENTENCE: the responsive form is mounted DIRECTLY and the tablet-tier column clearance declared in the same commit, byte-identical by checksum to the specimen at src/app/(public)/gallery/page.tsx:110, the declaring element wrapping the shell with the navigation as its sibling; width may change layout and never membership, and the same four props go in so no entry appears or disappears. DECLARED RATHER THAN HIDDEN: the list branch on this surface is a pre-existing stub — a TODO and a hardcoded empty array — so the empty branch is the only branch a member can reach, and it was INHERITED unchanged because fetching rows is a query and this conversion opens none. The branch was converted anyway, since a branch that never draws still ships its class strings to checks A and B. THE NO-BEHAVIOUR-CHANGE SENTENCE, which is the line a reviewer greps the diff against: no query changed, no column added, no capability check touched, no action payload altered",
-  ],
-  [
-    "/membership-card", "src/app/(members)/membership-card/page.tsx", "default",
-    "plan 41.2-07 — whole, and 'whole' here is FOUR files: the route file, its route-adjacent placeholder, the card view it mounts and the referral control beside it. That last file is reached by TWO of this phase's closures, so it was converted once as spine ahead of both, with the reason written INTO the file rather than only into a SUMMARY, so that this surface and the dashboard stay two plans instead of being merged into one. NOT on §4's closed wide list and therefore default. THE DOOR CAUTION: the conditional guarding what a person holds up at an entrance is BYTE-IDENTICAL apart from two spaces of indentation the shell's nesting supplied, proved on the trimmed line by checksum, and the card element with its three props is byte-identical by the same instrument; the code's payload, its 192px box in BOTH branches and its two tones are the module's and that module was read and never written; and the four token renames on the card view are declared ALIASES of their replacements, so the diff is provably a rename that moves no computed value at all — which is the only kind of edit this surface accepts, because refusing a valid guest is worse than admitting a duplicate and the first error happens in front of a queue. The accent-bordered gradient was deliberately kept OFF the card primitive: adopting it would delete the edge, flatten the gradient and reflow two padding zones, which is a redesign of the object a person presents at a door rather than a conversion. THE NAVIGATION SENTENCE: the responsive form is mounted DIRECTLY and the tablet-tier clearance declared in the same commit, byte-identical by checksum to the specimen at src/app/(public)/gallery/page.tsx:110, the declaring element wrapping the shell with the navigation as its sibling; width may change layout and never membership, and the same four props go in so no entry appears or disappears — a sentence that is load-bearing rather than ceremonial on the member area, where what a person can see IS the product. THE NO-BEHAVIOUR-CHANGE SENTENCE, which is the line a reviewer greps the diff against: no query changed, no column added, no capability check touched, no action payload altered",
   ],
   [
     "/tickets/[id]", "src/app/(public)/tickets/[id]/page.tsx", "default",
