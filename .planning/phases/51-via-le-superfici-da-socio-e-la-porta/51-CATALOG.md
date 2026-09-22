@@ -869,3 +869,227 @@ commit dopo descrive una tabella che non esiste.
 | Trigger sull'`UPDATE` del ruolo | **non nominato** | **esiste e scrive su `party_assignments`** — 0 righe oggi | **catalogo** |
 | Colonna `role` del registro | implicita in `p_role` | **non esiste**: e' `role_after`, e non ha `CHECK` | **catalogo** |
 | Funzioni che nominano `attendances` | — | **zero** | catalogo |
+
+---
+
+# 3. I conteggi, e da dove vengono
+
+Questa sezione serve a **scrivere la domanda al proprietario, non a eseguirla**.
+Vale per intero `ai-engineering.md`: conteggio prima, istantanea su ogni tabella
+raggiungibile per cascata, rimozione per chiave primaria su una lista catturata,
+contatore di controllo da una fonte diversa, autorizzazione datata che si consuma
+una volta.
+
+## 3a — Le righe di `public.attendances`, per provenienza
+
+**Letto in sola lettura su entrambi i progetti: laboratorio 2026-09-22 13:42:29Z,
+produzione 2026-09-22 13:42:35Z.**
+
+```sql
+select count(*) filter (where party_id is not null) as da_porta,
+       count(*) filter (where party_id is null)     as pre_porta,
+       count(*)                                     as totale
+from   public.attendances;
+```
+
+| Popolazione | Che cosa e' | Laboratorio | **Produzione** |
+|---|---|---|---|
+| `da_porta` (`party_id IS NOT NULL`) | scritta da una scansione socio — **cio' che D-51-04 autorizza a cancellare** | **0** | **0** |
+| `pre_porta` (`party_id IS NULL`) | residuo pre-porta — **D-51-04 non la nomina** | **0** | **0** |
+| `totale` | | **0** | **0** |
+
+> # ⚠ Ci sono zero righe da cancellare. In laboratorio e in produzione.
+>
+> **La tabella e' vuota su entrambi i progetti.** Le due popolazioni che questa
+> fase teneva separate — quella autorizzata e quella da riportare al proprietario
+> come seconda domanda — **sono entrambe vuote**.
+
+**Perche' si dice adesso, e non a meta' di un runbook.** La fase 50 ha gia'
+incontrato questa situazione e l'ha dichiarata invece di lasciarla scoprire:
+`50-AUTHORISATION.md` §1.0 mette il conteggio **davanti** alla domanda e conclude
+che **una decisione senza soggetti non si esegue**. E' lo stesso caso, e la
+risposta e' la stessa forma.
+
+**Che cosa ne segue, piano per piano:**
+
+| Piano | Cosa cambia |
+|---|---|
+| **51-13 (`51-AUTHORISATION.md`)** | La domanda sulla **cancellazione** non ha soggetti: si porta al proprietario il **numero zero**, non una richiesta di autorizzazione. Un'autorizzazione e' un atto che si consuma una volta: chiederla per cancellare nulla la spende per nulla. La **seconda domanda** (le righe `party_id IS NULL` che D-51-04 non nomina) **decade con lo stesso numero** — non c'e' un residuo su cui decidere. |
+| **51-12 (l'atto)** | I sette passi di `51-RESEARCH.md` §3.4 — istantanea, cattura degli `id`, `DELETE … WHERE id = ANY($1)`, contatore da fonte diversa — **non hanno oggetto**. Restano **scritti**, perche' il conteggio si riprende il giorno dell'atto e un numero diverso da zero li riaccende tutti. |
+| **D-51-14 (togliere la tabella)** | **Non decade.** Svuotare non e' togliere: la tabella, le sue due policy, i suoi cinque vincoli e i suoi quattro indici esistono comunque e vanno via con una migration. Che sia gia' vuota rende quel `DROP` **piu' semplice**, non superfluo — e toglie dal percorso la parte irreversibile. |
+
+**Il numero non e' una conclusione permanente.** E' una misura del 2026-09-22, e
+`51-RESEARCH.md:300` dice che l'unico scrittore vivo e'
+`api/membership/verify/route.ts:528`: finche' quella rotta esiste, **una
+scansione socio fra oggi e il giorno dell'atto scrive una riga**. Il conteggio si
+riprende, e si riprende **con questa stessa query**.
+
+## 3b — La cascata, enumerata dal catalogo vivo
+
+**Letto su entrambi: laboratorio 2026-09-22 13:42:49Z, produzione 2026-09-22
+13:43:00Z.** Due direzioni, in una query sola, perche' confonderle e' il modo in
+cui un'istantanea copre la tabella sbagliata.
+
+```sql
+select 'PENDE DA attendances' as direzione, c.conrelid::regclass::text,
+       c.conname, pg_get_constraintdef(c.oid), c.confrelid::regclass::text
+from   pg_constraint c
+where  c.confrelid = 'public.attendances'::regclass      -- chi pende da lei
+union all
+select 'attendances PENDE DA', c.conrelid::regclass::text,
+       c.conname, pg_get_constraintdef(c.oid), c.confrelid::regclass::text
+from   pg_constraint c
+where  c.conrelid = 'public.attendances'::regclass       -- da cosa pende lei
+  and  c.contype = 'f'
+order  by 1, 2, 3;
+```
+
+### Direzione 1 — chi pende da `attendances` (`confrelid`)
+
+**Zero righe. Su entrambi i progetti.**
+
+Nessuna tabella, in nessuno schema, ha una chiave esterna verso
+`public.attendances`. **La cascata in uscita e' vuota: cancellare righe di
+`attendances` non tocca nient'altro.**
+
+`51-RESEARCH.md:333-339` lo prevedeva, avendolo cercato **nei file**, e si
+dichiarava da rimisurare: *«l'enumerazione della cascata va rifatta dal catalogo
+vivo prima dell'atto, non fidandosi di questo paragrafo — che e' letto dai file e
+i file trovano cio' che una migration ha scritto, non cio' che c'e'»*. **Rifatta,
+e conferma.** Ed e' proprio perche' poteva smentire che valeva la pena farla: nel
+verso opposto, l'incidente della fase 36 ha perso 63 righe in sette tabelle
+perche' l'istantanea copriva solo cio' che l'agente intendeva toccare.
+
+### Direzione 2 — da cosa pende `attendances` (`conrelid`)
+
+| `conname` | Definizione | Padre |
+|---|---|---|
+| `attendances_event_id_fkey` | `FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE` | `public.events` |
+| `attendances_party_id_fkey` | `FOREIGN KEY (party_id) REFERENCES event_parties(id) ON DELETE CASCADE` | `public.event_parties` |
+| `attendances_user_id_fkey` | `FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE` | `auth.users` |
+| `attendances_checked_in_by_fkey` | `FOREIGN KEY (checked_in_by) REFERENCES auth.users(id)` | `auth.users` — **`NO ACTION`** |
+
+**Questa e' la direzione opposta, e non e' la cascata dell'atto.** Dice che
+cancellare un evento, una serata o un utente porta via le presenze — **non** che
+cancellare una presenza porti via qualcosa. Le quattro righe sono identiche sui
+due progetti.
+
+E' esattamente la confusione che l'incidente della fase 36 rende costosa: un
+agente che leggesse queste quattro righe come «la cascata» metterebbe nella
+propria istantanea `events`, `event_parties` e `auth.users` — tre tabelle che
+l'atto non tocca — **e continuerebbe a non sapere se qualcosa pende dall'altra
+parte**. Le due direzioni si interrogano separatamente, o non si e' misurato
+niente.
+
+## 3c — Le tabelle che l'istantanea del piano 51-12 deve coprire
+
+**Derivato dalla lettura di §3b, non dalla memoria:**
+
+| Tabella | Perche' e' dentro (o fuori) |
+|---|---|
+| `public.attendances` | **dentro** — e' la tabella toccata |
+| *(nessun'altra)* | la direzione `confrelid` e' **vuota**: niente pende da lei |
+
+**L'istantanea e' una tabella sola, ed e' vuota.** Cio' significa che l'atto di
+D-51-04 **non ha una parte irreversibile**: non c'e' alcuna riga la cui perdita
+non si possa annullare, perche' non c'e' alcuna riga. La procedura resta scritta
+per intero in `51-12`, perche' la si percorre con il conteggio del giorno.
+
+## 3d — I totali per tabella, come base del contatore «prima»
+
+**Produzione: letto 2026-09-22 13:43:11Z. Laboratorio: 13:43:16Z.**
+
+```sql
+select 'public.attendances' as tabella, count(*) from public.attendances
+union all select 'public.events',            count(*) from public.events
+union all select 'public.event_parties',     count(*) from public.event_parties
+union all select 'public.door_scan_events',  count(*) from public.door_scan_events
+union all select 'public.tickets',           count(*) from public.tickets
+union all select 'public.party_assignments', count(*) from public.party_assignments
+union all select 'public.membership_acts',   count(*) from public.membership_acts
+union all select 'public.profiles',          count(*) from public.profiles
+order by 1;
+```
+
+| Tabella | Laboratorio | **Produzione** | Nel perimetro dell'atto? |
+|---|---|---|---|
+| `public.attendances` | 0 | **0** | **SI — l'unica** |
+| `public.door_scan_events` | 2 | **0** | no — vicinato |
+| `public.event_parties` | 3 | **3** | no — padre |
+| `public.events` | 3 | **2** | no — padre |
+| `public.membership_acts` | 3 | **2** | no — §2 |
+| `public.party_assignments` | 3 | **0** | no — §2g |
+| `public.profiles` | 8 | **4** | no — §1e |
+| `public.tickets` | 5 | **0** | no — vicinato |
+
+Le sette righe oltre `attendances` **non sono nel perimetro dell'atto** — sono il
+vicinato misurato, cioe' cio' che un contatore di controllo deve poter confrontare
+per accorgersi se qualcosa e' cambiato dove non doveva. `ai-engineering.md` chiede
+che la conferma si prenda **da una fonte diversa da quella su cui si e' agito**:
+questi numeri vengono dal Management API, quindi **il contatore di controllo del
+giorno dell'atto si prende da PostgREST con la chiave di servizio**, e si
+confronta con questa colonna.
+
+**Due differenze fra i due ambienti, da conoscere prima e non durante:**
+
+- **La produzione non ha biglietti, non ha convalide alla porta e non ha
+  assegnazioni** — `tickets`, `door_scan_events` e `party_assignments` sono a
+  zero. Il laboratorio li ha, seminati. Una procedura che si aspettasse di
+  trovare un biglietto in produzione non troverebbe nulla.
+- **Il laboratorio ha esattamente una riga con il valore storico che D-51-13
+  conserva.** Letto 2026-09-22 13:43:26Z:
+
+  ```sql
+  select subject_type, count(*) from public.door_scan_events group by 1 order by 1;
+  ```
+
+  | `subject_type` | Laboratorio | Produzione |
+  |---|---|---|
+  | `membership` | **1** | 0 *(la tabella e' vuota)* |
+  | `ticket` | 1 | 0 |
+
+  Quella riga e' il residuo della corsa `P-50-8` del 2026-09-21. **Conferma che
+  D-51-13 protegge qualcosa di reale**: il `CHECK` che conserva `'membership'`
+  come valore storico ha una riga che lo usa, e riscriverlo — o stringerlo —
+  renderebbe quella riga non valida. Un `CHECK` ristretto **non** rifiuta le
+  righe esistenti a meno che non lo si validi, ma la prima `ALTER TABLE … ADD
+  CONSTRAINT` che lo facesse verrebbe respinta con `23514` **sul laboratorio, non
+  in produzione** — cioe' esattamente dove serve che succeda.
+
+## 3e — Questi conteggi si riprendono il giorno dell'atto
+
+**Nessun numero di questa sezione autorizza un'esecuzione.** Sono letti il
+2026-09-22 e servono a **scrivere la domanda**, che e' cio' che `51-13` fara'.
+
+Il giorno dell'atto si rifanno, nell'ordine e con queste stesse query:
+
+1. `§3a` — il conteggio per provenienza, laboratorio e produzione separatamente.
+2. `§3b` direzione `confrelid` — la cascata, perche' una migration fra oggi e
+   allora puo' averla creata.
+3. `§3d` — i totali del vicinato, per la linea di base del contatore.
+
+**Se `§3a` torna ancora zero, l'atto non si esegue** — e si dichiara chiuso con il
+numero, come `50-AUTHORISATION.md` §1.0. Se torna diverso da zero, si riparte dal
+passo 1 di `51-RESEARCH.md` §3.4, per intero.
+
+---
+
+## Riepilogo della sezione 3
+
+| Punto | L'elenco letto dai file diceva | Il catalogo dice | Vince |
+|---|---|---|---|
+| Righe `party_id IS NOT NULL` | non misurate | **0** in lab e in produzione | catalogo |
+| Righe `party_id IS NULL` | «da contare a parte, seconda domanda» | **0** — la seconda domanda non ha soggetti | catalogo |
+| Cascata in uscita (`confrelid`) | vuota, letta dai file | **vuota**, letta dal catalogo vivo, su entrambi | pari |
+| Tabelle dell'istantanea | `attendances` intera | **`attendances` e basta — ed e' vuota** | pari |
+| `door_scan_events` col valore storico | non misurato | **1 riga nel lab, 0 in produzione** | catalogo |
+
+---
+
+## Dichiarazione di sola lettura
+
+Ogni interrogazione di questo file e' passata da
+`POST /v1/projects/{ref}/database/query` con **`read_only: true`** nel corpo.
+L'endpoint `POST /v1/projects/{ref}/database/migrations` **non e' stato chiamato**.
+Nessun `INSERT`, `UPDATE`, `DELETE` o DDL e' stato eseguito su nessuno dei due
+progetti. Nessun pacchetto e' stato installato; `package.json` non e' cambiato.
