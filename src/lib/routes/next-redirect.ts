@@ -122,8 +122,34 @@ const NEXT_ALLOW_LIST: readonly RegExp[] = [
   // `src/utils/slugify.ts` and uuids, both inside `[a-z0-9-]`. Four segments is
   // more than the deepest address the work surface has
   // (`/admin/events/<id>/media`) and far short of unbounded.
-  /^\/membership-card$/,
-  /^\/attendance$/,
+  //
+  // ── Two of the four are gone, 2026-09-22, phase 51 (MEM-01, MEM-02) ────────
+  //
+  // The member card's address and the attendance history's address were removed
+  // here, and from `PROTECTED_PREFIXES` below, in the same commit as their
+  // pages.
+  //
+  // **Neither literal is written anywhere in this file any more, and that is
+  // deliberate.** This module is the list of addresses a `?next=` may land on,
+  // so a `grep` for an address in here has to answer *"is this admitted?"* — an
+  // obituary in a comment would answer "yes" to a reader in a hurry and cost an
+  // audit its meaning. `git log -S` still has the two names for whoever needs
+  // them.
+  //
+  // **This is an access decision, declared, and it is not the same one the
+  // `/events/<slug>` entry above records.** There the note says the traffic
+  // ended and the permission stayed, because the address still exists and
+  // somebody could still be sent to it. Here **the address itself is gone**:
+  // there is no surface left to be taken back to after signing in, so keeping a
+  // pattern for it would not be caution — it would be a permission with nothing
+  // on the other end, and the next reader would have to go and find out that
+  // nothing is there.
+  //
+  // The two lists move together, and the reason is mechanical: dropping the
+  // prefixes without the patterns leaves this list naming addresses the product
+  // does not serve; dropping the patterns without the prefixes turns check
+  // [3/3] of `scripts/verify-routes.mjs` red, because every prefix must resolve
+  // through `resolveNext` unsubstituted.
   /^\/door$/,
   /^\/admin(?:\/[a-z0-9-]{1,64}){0,4}$/,
 ];
@@ -136,16 +162,22 @@ const NEXT_ALLOW_LIST: readonly RegExp[] = [
  * blocker D7: the middleware wrote a parameter name the reader did not read, and
  * nothing anywhere compared the two. `scripts/verify-routes.mjs` now asserts
  * that every prefix below resolves through {@link resolveNext} without being
- * substituted — so a sixth prefix added to this list without a matching pattern
- * above turns the gate red instead of silently sending that address's callers to
- * `/dashboard`.
+ * substituted — so a **fourth** prefix added to this list without a matching
+ * pattern above turns the gate red instead of silently sending that address's
+ * callers to `/dashboard`.
+ *
+ * *(They were five until 2026-09-22: the member card's address and the
+ * attendance history's came off with their pages in phase 51. The reasoning is
+ * written next to the patterns above, since that is where the access decision
+ * lives, and neither literal is repeated in this file for the reason given
+ * there. The count is spelled out rather than left as "one more than the list"
+ * because a sentence that says "a sixth" over a list of three is the kind of
+ * dated line this file has already had to correct once.)*
  *
  * The order is the middleware's `startsWith` order and carries no meaning.
  */
 export const PROTECTED_PREFIXES = [
   "/dashboard",
-  "/membership-card",
-  "/attendance",
   "/admin",
   "/door",
 ] as const;
