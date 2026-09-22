@@ -5,12 +5,14 @@ procedure: .planning/phases/51-via-le-superfici-da-socio-e-la-porta/51-PROCEDURE
 requirements: [MEM-03, MEM-04]
 environment: laboratorio permanente (`.planning/v1.6-LAB-DESIGN.md`), MAI la produzione
 lab_status: ACTIVE_HEALTHY
-lab_status_read: "2026-09-22T13:28:11Z"
-lab_serves_commit: 03e443e
-lab_serves_since: "2026-09-21T15:10:11Z"
+lab_status_read: "2026-09-22T17:35:00Z"
+lab_serves_commit: 44e8c65
+lab_serves_since: "2026-09-22T18:35:00Z"
+lab_served_commit_before_run: 03e443e
+lab_served_commit_during_run: 1159700
 runs_walked: 1
 runs_open: 1
-status: aperto — corsa «prima» PERCORSA il 2026-09-22, corsa «dopo» da percorrere
+status: aperto — corsa «prima» PERCORSA il 2026-09-22, corsa «dopo» in corso di trascrizione
 ---
 
 # Fase 51 — Gli esiti, percorrendo
@@ -247,6 +249,93 @@ questa fase. **Rinviato alla fase 52**, registrato come
 > Il passo **9** non e' percorribile nel «prima» e non lo e' stato: ne e' stata
 > prodotta **solo la precondizione**, che e' l'unica cosa che il «prima» poteva
 > lasciare.
+
+---
+
+## `PRE-LAB` della corsa «dopo» — accertata il 2026-09-22, la sera
+
+**La stessa precondizione, riaccertata prima della seconda corsa**, perche' fra
+le due il laboratorio ha ricevuto una migration e due dispiegamenti: cio' che
+`PRE-LAB` dichiarava al mattino misurava un altro artefatto.
+
+| Cosa | Letto | Quando (UTC) | Come |
+|---|---|---|---|
+| Stato del progetto di **laboratorio** | **`ACTIVE_HEALTHY`** | **2026-09-22 ~17:35Z** | Management API, in sola lettura, col rifiuto del ref di produzione eseguito prima della chiamata |
+| Migration 2 (il codice socio esce dal catalogo del laboratorio) | **applicata** | **2026-09-22T17:45:54Z** | piano 51-12, sul **solo** laboratorio |
+
+### I due dispiegamenti contro cui si e' misurato
+
+**Sono due, e la corsa li ha attraversati entrambi**: il secondo e' nato
+**durante** la corsa, per il difetto che il passo 7 ha fatto emergere. Scriverne
+uno solo racconterebbe una corsa che non e' avvenuta.
+
+| # | Commit | Ramo | Creato (UTC) | `READY` (UTC) | Cosa serviva |
+|---|---|---|---|---|---|
+| 1 | **`1159700`** | `lab` | 2026-09-22T17:54:34Z | **2026-09-22T17:56:15Z** | il codice della fase fino al piano 51-12 — i passi **9, 1, 2, 6, 3, 4, 5** e il **primo** tentativo del passo 7 |
+| 2 | **`44e8c65`** | `lab` | 2026-09-22 ~18:34Z | **2026-09-22 ~18:35Z** | il correttivo scritto in corsa — il **secondo** tentativo del passo 7 e il passo 8 |
+
+Il primo e' arrivato con `git push origin main:lab` alle **~17:54Z**, un
+avanzamento veloce da `03e443e` a `1159700`: `lab` era antenato di `main`, quindi
+nessuna riscrittura. **Il commit `03e443e` — quello della corsa «prima» — non e'
+piu' servito da quel momento**, ed e' la ragione per cui la corsa «dopo» misura
+davvero un codice diverso.
+
+### Le tre precondizioni, ricontrollate una per una
+
+| Precondizione | Stato al momento della corsa |
+|---|---|
+| L'invitato di guest list **senza email** | riga `63ebd88f-d2a7-4c65-81bf-afca5d52c350`, «Prova SenzaEmail», ancora **`invited`**: il passo 5 ha il suo soggetto |
+| Un **biglietto valido non scansionato** | i due gratuiti dell'**account di prova coniato dalla fase 50** sulla serata gratuita — «1 di 2» (`28a165b0…`) e «2 di 2» (`8ebc88c8…`), entrambi **non ancora scansionati** all'apertura della corsa |
+| La voce **`membership` in coda** sul telefono | **presente** — una sola, lasciata dalla corsa «prima» alle **14:32Z**, nella coda **v5**. La porta **non** era stata riaperta su quel telefono nel frattempo, come l'istruzione pretendeva |
+
+### Due aggiustamenti d'ambiente, entrambi sul solo laboratorio
+
+Nessuno dei due tocca il prodotto: sono **condizioni del banco di prova**, e si
+scrivono perche' senza di loro la corsa non sarebbe stata percorribile — e
+perche' la prossima corsa le ritrovera' uguali.
+
+1. **L'account di prova della fase 50 non aveva una password di banco.** E'
+   nato dal percorso «compra senza account» della fase 50, che conia l'account
+   dal biglietto: non ha mai avuto una credenziale da digitare. Gliene e' stata
+   **impostata una di laboratorio** — quella gia' usata dagli altri account di
+   prova, che vive in `.env.lab.local` e non si scrive qui — tramite l'API di
+   amministrazione dell'autenticazione, e la prova di accesso e' andata a buon
+   fine. **Solo sul laboratorio.**
+
+2. **Il QR del biglietto non era leggibile da uno schermo di portatile.** La
+   pagina `/tickets/[id]` disegna un PNG da **280 px** e lo mostra a **200 px**,
+   e il gettone firmato e' lungo **101 caratteri**: molto piu' denso del QR della
+   vecchia tessera. La fotocamera del telefono **non lo ha decodificato**,
+   nemmeno su uno schermo 4K allo zoom massimo. E' stato rigenerato lo **stesso
+   gettone** in un PNG da **1200 px**, e il telefono lo ha letto **al primo
+   colpo**.
+
+   > **E' un limite del banco di prova, non della porta**, e va detto in questa
+   > forma: alla porta il QR sta sul telefono dell'ospite, non su un monitor a
+   > due metri. **Ma e' una nota per il runbook** (`checkin-offline.md`, *prova
+   > quel giorno, su quel dispositivo*): chi ripercorrera' `P-51-1` da un
+   > portatile perdera' venti minuti sullo stesso scoglio se nessuno glielo
+   > scrive.
+
+### La riproduzione che ha toccato il laboratorio, e va dichiarata
+
+**Chi esegue il piano ha guidato un Chrome locale con una fotocamera finta**
+contro il laboratorio, per accertare che il codice dello scanner decodificasse
+davvero il gettone. **Ha scritto sul laboratorio**, quindi non e' un dettaglio di
+metodo: e' un'alterazione del banco, e la rilettura dal catalogo del passo 8 la
+ritrova.
+
+| Quando (UTC) | Cosa | Effetto sul catalogo del laboratorio |
+|---|---|---|
+| **2026-09-22T18:20:12Z** | il biglietto **«1 di 2»** letto **online**, con l'account di staff del banco | **ammesso** — una riga `recorded`, `source = online` |
+| **18:20:14Z – 18:21:29Z** | la fotocamera finta ha continuato a inquadrare lo stesso QR in circolo | **19 righe `already_recorded`** in `door_scan_events` |
+| dopo, **a radio spenta** | un biglietto di un'**altra** serata di laboratorio (`c65d3e87…`) letto offline | **ammesso e accodato in locale** (`resonate-checkin:v6`). Chrome e' stato chiuso **mentre era offline** e il suo profilo cancellato: **quella voce non ha mai raggiunto il laboratorio**, e quel biglietto risulta **ancora non scansionato** sul server |
+
+**Conseguenza da tenere a mente leggendo il passo 8:** il biglietto **«1 di 2» e'
+stato consumato dalla riproduzione, non dal proprietario**, e le **19** righe
+`already_recorded` sono sue. Il proprietario ha percorso i passi 3 e 4 con il
+biglietto **«2 di 2»**. Attribuire quelle righe alla corsa sarebbe esattamente il
+genere di esito inventato che `T-51-63` esiste per impedire.
 
 ---
 
