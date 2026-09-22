@@ -223,16 +223,21 @@ export default async function AccountPage({
 
   if (!user) redirect("/login");
 
-  const fullName = user.user_metadata?.full_name || "Member";
+  const fullName = user.user_metadata?.full_name || "Attendee";
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("membership_code, role, created_at")
+    // Il codice socio e' uscito da questa `select` (D-51-02): dopo il piano
+    // 51-06 nessun blocco della pagina lo rende, la colonna cade col piano
+    // 51-12, e una lettura che non alimenta nulla non e' innocua — e' peso su
+    // un percorso, e una colonna in piu' dentro il messaggio d'errore che
+    // Postgres restituisce quando una riga viene rifiutata.
+    .select("role, created_at")
     .eq("id", user.id)
     .single();
 
   const userEmail = user.email ?? "";
-  const memberSince = profile?.created_at
+  const attendeeSince = profile?.created_at
     ? (() => {
         const d = new Date(profile.created_at);
         const M = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -245,13 +250,22 @@ export default async function AccountPage({
       ? "Admin"
       : profile?.role === "organizer"
         ? "Organizer"
-        : "Member";
+        : "Attendee";
 
-  // Fetch user's tickets (only for regular members — admin/organizer don't buy tickets)
-  const isMemberRole = !profile?.role || profile.role === "member";
+  // Fetch user's tickets (only for attendees — admin/organizer don't buy tickets)
+  //
+  // ── Il ramo e' lo stesso, con un nome diverso (D-51-06) ────────────────────
+  //
+  // La condizione ha sempre avuto due modi di essere vera: nessun ruolo letto,
+  // oppure il ruolo di chi partecipa. Restano due, e nello stesso ordine —
+  // cambia solo come si scrive il secondo. Chi arriva senza riga di profilo
+  // cade nel primo modo esattamente come prima, e la lista che vede la
+  // interroga il suo client sotto le stesse policy di ieri: questo piano non
+  // ne tocca nessuna.
+  const isAttendeeRole = !profile?.role || profile.role === "attendee";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let tickets: any[] | null = null;
-  if (isMemberRole) {
+  if (isAttendeeRole) {
     const { data } = await supabase
       .from("tickets")
       .select(
@@ -459,7 +473,7 @@ export default async function AccountPage({
           <PostHogIdentify
             userId={user.id}
             email={userEmail}
-            role={role ?? "member"}
+            role={role ?? "attendee"}
           />
           <AnimatedSection>
             <header className="mb-6">
@@ -478,8 +492,8 @@ export default async function AccountPage({
                 <Badge className="mt-2 shrink-0">{roleLabel}</Badge>
               </div>
               <p className="mt-1 text-sm text-muted truncate">{userEmail}</p>
-              {memberSince && (
-                <p className="text-xs text-muted/60">Member since {memberSince}</p>
+              {attendeeSince && (
+                <p className="text-xs text-muted/60">Attendee since {attendeeSince}</p>
               )}
             </header>
           </AnimatedSection>
@@ -627,8 +641,8 @@ export default async function AccountPage({
                   avevano, per la stessa ragione scritta sopra.
                 */}
 
-                {/* My Tickets — only for regular members */}
-                {isMemberRole && (
+                {/* My Tickets — only for attendees */}
+                {isAttendeeRole && (
                 <div>
                   <SectionHeading>My Tickets</SectionHeading>
                   {/*

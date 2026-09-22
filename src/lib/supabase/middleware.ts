@@ -395,14 +395,18 @@ export async function updateSession(request: NextRequest) {
     const { data, error } = await supabase.rpc("my_access_context");
 
     if (error) {
-      // The old code discarded this error and silently defaulted to
-      // member/pending. The DEFAULTS are preserved below, because CAP-03
-      // requires every verdict to be the one it was — but the SILENCE is not.
+      // The old code discarded this error and silently defaulted to the
+      // weakest role and status it knew. The VERDICT is preserved below,
+      // because CAP-03 requires every verdict to be the one it was — but the
+      // SILENCE is not. The two names that default used to carry are not
+      // recopied here: one axis was deleted in phase 50 and the other was
+      // renamed in phase 51 (D-51-06), and a comment that keeps spelling them
+      // is how a deleted word survives its deletion.
       capabilitiesResolveFailed = true;
       console.error(
         `[capabilities.resolve_failed] middleware could not resolve the access ` +
           `context for ${request.nextUrl.pathname} — code=${error.code ?? "unknown"}. ` +
-          `Failing closed to member/pending with no capabilities: every ` +
+          `Failing closed to the empty capability set: every ` +
           `capability-gated route now bounces to /account.`
       );
     }
@@ -412,10 +416,12 @@ export async function updateSession(request: NextRequest) {
       live_assignment_capabilities?: unknown;
     } | null;
 
-    // An authenticated user with no profile row is a pending member, and the
-    // capability set for that subject is the empty set — which produces the
-    // same verdict on all four rules below as the `?? "member"` / `?? "pending"`
-    // defaults did, by a different mechanism. The defaults themselves are now
+    // An authenticated user with no profile row is an `attendee` holding
+    // nothing, and the capability set for that subject is the empty set —
+    // which produces the same verdict on all four rules below as the two
+    // per-axis defaults this branch used to write, by a different mechanism.
+    // **Renaming the role did not widen this.** The empty set is what decides,
+    // the name never reaches a decision, and the defaults themselves are now
     // redundant here: nothing in this file consumes `role` or `status`.
     capabilities = new Set(
       Array.isArray(context?.capabilities)
@@ -678,11 +684,16 @@ export async function updateSession(request: NextRequest) {
       //
       // Addresses outside the tree fall through exactly as they always did.
       // This map is the whole application's route↔capability map, not a census
-      // of everything the matcher sees: `/dashboard`, `/events/[slug]`, `/api/*`
+      // of everything the matcher sees: `/account`, `/events/[slug]`, `/api/*`
       // and the door's own `/api/tickets/checkin` are not in it and must not be
-      // judged by it. `/membership-card` and `/attendance` ARE in it, and are
-      // now judged through the same lookup as everything else — they are there
-      // precisely because calling them table-scoped would have been a lie.
+      // judged by it.
+      //
+      // Two member-facing addresses WERE in it, put there because calling them
+      // table-scoped would have been a lie. They are not in it any more, and
+      // not because the judgement changed: **the pages themselves were deleted**
+      // (plans 51-04 and 51-08), so the entries went with them. The sentence
+      // that still named them is deleted rather than corrected — an example
+      // that points at nothing teaches the next reader to distrust the rest.
       return bounceToAccount();
     }
   }

@@ -326,8 +326,10 @@ const EVENT_PAGE_REFUSAL: Record<EventPageRefusal, string> = {
  * enforced at the call site, and there is now one call site instead of three.
  * `details` is the field that matters: on a constraint violation PostgREST
  * returns the entire rejected row, and a `tickets` or `profiles` row carries
- * `membership_code`, which is the door credential
- * (`.planning/todos/pending/postgrest-details-leaks-the-row.md`).
+ * somebody's address and name
+ * (`.planning/todos/pending/postgrest-details-leaks-the-row.md`). Until phase 51
+ * this sentence named the door credential the row also carried; that column
+ * goes with plan 51-12, and the rule never rested on it.
  *
  * The two causes get two scopes and are not collapsed (`meta-gates.md`, zero
  * silent failures): *the database refused* carries a code and will not fix

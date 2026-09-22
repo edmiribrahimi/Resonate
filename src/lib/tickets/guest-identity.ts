@@ -14,12 +14,20 @@ import type { getServiceClient } from "@/lib/supabase/service";
  *
  * `49-CONTEXT.md` lo fissa come decisione: **nessun account nasce senza un
  * pagamento verificato dietro**. Creare l'identita' quando qualcuno apre un
- * checkout significherebbe coniare un conto per ogni carrello abbandonato — e
- * ogni conto nuovo porta con se' un `membership_code`, che in questo prodotto
- * **e' una credenziale della porta** e ammette senza leggere ne' ruolo ne' stato
- * (`access-gating.md`, gate *la porta ha due credenziali*). Un account fantasma
- * non e' una riga in piu' in una tabella: e' una chiave d'ingresso in piu' al
- * mondo.
+ * checkout significherebbe coniare un conto per ogni carrello abbandonato.
+ *
+ * **La decisione regge ancora, ma non piu' per la ragione che era scritta
+ * qui.** Fino alla fase 51 ogni conto nuovo nasceva con un codice socio, che
+ * era una credenziale della porta e ammetteva senza leggere il ruolo: un
+ * account fantasma era **una chiave d'ingresso in piu' al mondo**. Quella
+ * credenziale non esiste piu' — la porta verifica il biglietto e basta (piani
+ * 51-04 e 51-05, colonna via col 51-12) — quindi oggi un account fantasma non
+ * apre nulla. **Quello che resta e' una riga con l'indirizzo di una persona,
+ * coniata senza che quella persona abbia concluso niente**, ed e' su quello che
+ * il vincolo poggia adesso. E' una ragione piu' debole della precedente: chi un
+ * giorno volesse spostare il conio all'avvio del checkout non trovera' piu' una
+ * porta a fermarlo, e dovra' decidere consapevolmente sul dato, non trovarsi la
+ * decisione gia' presa.
  *
  * L'unico chiamante previsto e' quindi il webhook dei pagamenti, **dopo** aver
  * interrogato il fornitore con una GET (mai il corpo del messaggio).

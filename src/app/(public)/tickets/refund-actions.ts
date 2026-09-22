@@ -373,7 +373,7 @@ export async function approveRefund(refundId: string) {
       if (requesterProfile && eventData) {
         const html = await render(
           RefundApprovedEmail({
-            memberName: requesterProfile.full_name || "Member",
+            memberName: requesterProfile.full_name || "Attendee",
             eventTitle: eventData.title,
             amount: refund.amount,
           })
@@ -464,7 +464,7 @@ export async function rejectRefund(refundId: string, adminNote?: string) {
         if (eventData) {
           const html = await render(
             RefundRejectedEmail({
-              memberName: requesterProfile.full_name || "Member",
+              memberName: requesterProfile.full_name || "Attendee",
               eventTitle: eventData.title,
               adminNote: adminNote?.trim() || undefined,
             })

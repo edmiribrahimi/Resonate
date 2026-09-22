@@ -172,7 +172,7 @@ export async function GET(request: Request) {
       const profile = ticket.user_id ? profiloDi.get(ticket.user_id) : undefined;
       if (!profile) continue;
       const existing: Destinatario = emailMap.get(profile.email) ?? {
-        name: profile.full_name || "Member",
+        name: profile.full_name || "Attendee",
         userId: ticket.user_id ?? null,
         ticketIds: [],
         rsvpIds: [],
@@ -185,7 +185,7 @@ export async function GET(request: Request) {
       const profile = rsvp.user_id ? profiloDi.get(rsvp.user_id) : undefined;
       if (!profile) continue;
       const existing: Destinatario = emailMap.get(profile.email) ?? {
-        name: profile.full_name || "Member",
+        name: profile.full_name || "Attendee",
         userId: rsvp.user_id ?? null,
         ticketIds: [],
         rsvpIds: [],
