@@ -3,7 +3,8 @@ phase: 51-via-le-superfici-da-socio-e-la-porta
 document: gli esiti delle procedure della fase — oggi `P-51-1`, percorrendo
 procedure: .planning/phases/51-via-le-superfici-da-socio-e-la-porta/51-PROCEDURES.md
 requirements: [MEM-03, MEM-04]
-environment: laboratorio permanente (`.planning/v1.6-LAB-DESIGN.md`), MAI la produzione
+environment: le CORSE delle procedure girano sul laboratorio permanente (`.planning/v1.6-LAB-DESIGN.md`), MAI sulla produzione
+production_act: ".planning/phases/51-via-le-superfici-da-socio-e-la-porta/51-AUTHORISATION.md" — l'atto di produzione del 2026-09-22 e' registrato in fondo a questo file, e non e' una corsa: e' la spesa di un permesso datato
 lab_status: ACTIVE_HEALTHY
 lab_status_read: "2026-09-22T17:35:00Z"
 lab_serves_commit: 44e8c65
@@ -12,7 +13,7 @@ lab_served_commit_before_run: 03e443e
 lab_served_commit_during_run: 1159700
 runs_walked: 2
 runs_open: 0
-status: chiuso — corsa «prima» e corsa «dopo» PERCORSE il 2026-09-22; la «dopo» con un correttivo scritto in corsa (commit 44e8c65)
+status: chiuso — corsa «prima» e corsa «dopo» PERCORSE il 2026-09-22; atto di produzione SPESO il 2026-09-22; la «dopo» con un correttivo scritto in corsa (commit 44e8c65)
 ---
 
 # Fase 51 — Gli esiti, percorrendo
@@ -504,3 +505,344 @@ di questo file con la loro data**, non ripetendole. `MEM-03` dipende dal passo 9
 e il passo 9 dipende dalla precondizione che la corsa «prima» deve lasciare: se
 quella riga resta vuota, `MEM-03` non ha una prova su dispositivo e lo si
 dichiara, invece di sostituirla con una deduzione.
+
+---
+
+# L'atto di produzione — 2026-09-22
+
+> **Questo non e' una corsa: e' la spesa di un permesso datato.**
+> Il permesso e' `51-AUTHORISATION.md`, **concesso** il 2026-09-22 con la
+> risposta letterale **`TUTTO`**. Qui si registra **l'ora UTC di ogni passo
+> mentre accade**, non dopo — una riga si scrive quando il passo e' chiuso e
+> riletto.
+>
+> **Dove l'osservato differisce dall'atteso, la differenza si riporta per
+> prima.** Il perimetro scritto non si riscrive: le smentite stanno qui
+> (`T-51-58`).
+
+## Passo (a) — le precondizioni della spedizione, misurate e non ricordate
+
+| Condizione | Misurato | Quando (UTC) | Come |
+|---|---|---|---|
+| `npm run build` su artefatto fresco | **exit 0** (dopo `rm -rf .next`, poi riconfermato) | **19:04Z** | `next build --webpack`, che e' anche il typecheck. **Nessun test runner esiste per il prodotto** (`meta-gates.md`): non si dice il contrario |
+| `/membership-card` e `/attendance` nella mappa delle rotte del build | **assenti** — l'unica occorrenza e' `/api/tickets/attendance`, che e' un'altra cosa | 19:04Z | mappa delle rotte stampata dal build |
+| `npm run verify:persona` | **7/7 verdi**, controllo **F** compreso | **19:06Z** | `node scripts/verify-persona.mjs`, exit 0 |
+| File sotto `docs/`, `.firecrawl/` o `.env*` nel diff `origin/main..main` | **0** | **19:00Z** | `git diff --name-only` |
+| File **fuori** da `.planning/` nel diff | **67** — invariati rispetto alla misura di §1.3 | 19:00Z | `git diff --name-only`, escluso `.planning/` |
+| Commit da pubblicare | **84** (erano 82 alla scrittura del permesso: +2 di sola documentazione) | 19:00Z | `git rev-list --count origin/main..main` |
+| Chiavi nel diff | **zero chiavi vere** — vedi la nota qui sotto | **19:01Z** | `grep -E` su `eyJhbGciOi`, `sbp_`, `sb_secret_`, `re_`, `sup_sk_`, `SUPABASE_SERVICE_ROLE_KEY=`, `TICKET_SIGNING_SECRET=` |
+| Serate nella finestra ieri/oggi/domani | **0** | **19:09:25Z** | Management API, `read_only: true`, come `supabase_read_only_user` |
+| Produzione inerte | **0** serate future, **0** biglietti, **0** ordini, **0** scansioni, **0** presenze, **0** assegnazioni | 19:09:25Z | stessa lettura |
+
+> **La grep delle chiavi non e' tornata zero, e dirlo cosi' sarebbe falso.** Le
+> quattro sigle `eyJhbGciOi`, `sbp_`, `sb_secret_`, `sup_sk_` compaiono **una
+> volta ciascuna**, e tutte e quattro **nella stessa riga**: quella della tabella
+> di `51-AUTHORISATION.md` §1.3 che **elenca i modelli cercati**. Le 17
+> occorrenze di `re_` sono la coda di **`pre_porta`**, il nome della popolazione
+> contata in §1.0. **Zero stringhe a forma di chiave**, e la ragione e' scritta
+> invece che sottintesa: un «zero» spiegato e' un controllo, un «zero» nudo e'
+> una speranza.
+
+### La smentita che vale la pena leggere per prima: il ref del laboratorio NON si pubblica
+
+§1.3 dichiarava come **costo del passo (a)** che *«il ref del progetto di
+laboratorio compare 5 volte, in 4 file di `.planning/`»* e che il push lo
+avrebbe pubblicato per la prima volta. **Rimisurato alle 19:02Z, non e' vero.**
+
+| Misura | Come | Esito |
+|---|---|---|
+| Occorrenze del ref di laboratorio nel diff `origin/main..main` | confronto col valore letto da `.env.lab.local`, **mai stampato** | **0** |
+| File dell'albero di lavoro che lo contengono | `grep -rl -F` su `.planning`, `.claude`, `scripts`, `src`, `supabase` | **nessuno** |
+| Commit che lo hanno mai introdotto o tolto | `git log -S<ref> --all` | **nessuno** — non e' **mai** stato nella history |
+| Stringhe a forma di ref (`[a-z]{20}`) nel diff | `grep -oE` | **9**, tutte `cjsfocnhfzycbbgkwocx`, che e' **la produzione** e §1 dichiara gia' pubblica per costruzione |
+| `lab.resonatemotion.com` (il **nome dell'host**, non il ref) | `git grep -c -F origin/main` | **gia' pubblico** da prima di questa fase — fasi 49 e 50, `v1.6-LAB-DESIGN.md`. Il push ne aggiunge **17** occorrenze, che non sono informazione nuova |
+
+**Cosa e' successo, con ogni probabilita':** la misura di §1.3 ha contato il
+**nome dell'host** e l'ha chiamato **ref** — due cose che quello stesso riquadro
+distingueva. **La riga di §1.3 non viene riscritta**, e la smentita sta qui: il
+costo dichiarato del passo (a) **non si materializza**, e il proprietario ha
+accettato un costo che non c'era. E' il verso innocuo dell'errore, ma resta un
+errore di misura, e va detto **prima** che qualcuno lo citi come fatto.
+
+## Passo (a) — `git push origin main` e il deploy di produzione
+
+| Cosa | Valore | Quando (UTC) | Letto da |
+|---|---|---|---|
+| `git push origin main` | `78f4a81..c61760f` — **84 commit** pubblicati | **2026-09-22T19:11:22Z** | uscita di `git push`, poi `git rev-parse origin/main` = `c61760f` |
+| Deploy di produzione | **`dpl_F2pAcyhQfbJPx7sjWNyD7T4XHU53`**, `target: production`, sha **`c61760f`** | creato **19:11:25.967Z**, **`READY` alle 19:13:04.994Z** | **API Vercel** (`GET /v6/deployments`), **non** dal terminale del push |
+| Deploy dispiegato prima | `dpl_8CQLLCaKoDuVNnDCDTYT4MsXt4C9`, sha `78f4a81`, `READY` dal 2026-09-21T20:15:09Z | — | stessa lettura |
+| `https://www.resonatemotion.com/events`, da anonimo | **200** | **19:13:22Z** | `curl`, nessun cookie, nessuna identita' |
+| `/membership-card`, da anonimo | **404** | 19:13:22Z | stessa lettura — **la tessera non esiste piu'** |
+| `/attendance`, da anonimo | **404** | 19:13:22Z | stessa lettura — **la pagina delle presenze non esiste piu'** |
+| `/tickets`, `/door`, da anonimo | **307** | 19:13:22Z | reindirizzamento al login: e' l'atteso, non un difetto |
+
+**Durata effettiva della corsa del deploy: 1 minuto e 39 secondi** (19:11:25.967Z
+→ 19:13:04.994Z). **Da questo istante la finestra `23514` di §1.5 e' APERTA**: il
+codice dispiegato scrive `'attendee'` e il `CHECK` in produzione ammette ancora
+solo `'member'`.
+
+`Result: **(a) ESEGUITO** — 19:11:22Z (push) → 19:13:04Z (`READY`) → 19:13:22Z (le tre risposte da anonimo).`
+
+## Passo (b) — la migration del piano 51-08, applicata alla produzione
+
+**Applicata da `POST /v1/projects/{ref}/database/migrations`** — mai
+`/database/query` — in **una transazione sola**, senza `BEGIN;` esplicito
+(rifiutato dallo strumento se ci fosse stato).
+
+| Cosa | Valore |
+|---|---|
+| File | `supabase/migrations/20260922120000_role_attendee_and_capability_keys.sql`, 33 875 byte, 642 righe |
+| Partita / chiusa (UTC) | **19:15:07.921Z → 19:15:08.774Z** — **853 ms** |
+| HTTP | **200**, corpo `[]` |
+| **Versione coniata** | **`20260922191508`**, nome `20260922120000_role_attendee_and_capability_keys` |
+
+> **§4.2 (i) confermata per l'undicesima volta:** la versione registrata **non e'
+> il timestamp del file**. Chi cerchera' `20260922120000` in
+> `supabase_migrations.schema_migrations` **non lo trovera'**: la versione e'
+> **`20260922191508`**, l'istante dell'applicazione, e il nome porta il prefisso
+> del file.
+
+### La rilettura, **dal catalogo** — 19:15:55Z / 19:17:08Z
+
+| Cosa | Atteso (§2, cancello 2) | **Letto dal catalogo** |
+|---|---|---|
+| `profiles_role_check` | quattro valori, con `attendee` | `CHECK ((role = ANY (ARRAY['master','organizer','staff','attendee'])))` ✓ |
+| `role_capabilities_role_check` | idem | identico ✓ |
+| `profiles.role` DEFAULT | `'attendee'` | **`'attendee'::text`** ✓ (era `'member'::text`) |
+| Profili per ruolo | 2 `attendee`, 0 `member` | **`attendee` 2, `master` 1, `organizer` 1** — **zero `member`**, totale 4 ✓ |
+| `private.capabilities` | 17 → **15** | **15** ✓ — `membership.active` e `membership.card.view` **assenti entrambe** |
+| `private.role_capabilities` | 32 → **28** | **28** ✓ — `master` 15 + `organizer` 13; **zero concessioni al ruolo `member`** |
+| `public.party_assignments` | 0 prima, 0 dopo | **0 prima** (19:09:25Z) e **0 dopo** (19:15:55Z) ✓ — il trigger `profiles_release_expired_assignments` e' scattato due volte e **non ha scritto nulla**, come §1.1 aveva dichiarato |
+| `reconcile_master`, corpo | passa `'attendee'` | **`p_role => 'attendee'`** ✓ |
+
+> **Una lettura che sembrava un difetto e non lo e', e va scritta perche' il
+> prossimo la rifara'.** `position('''member''' in pg_get_functiondef(...))`
+> torna **3300**: nel corpo di `reconcile_master` la parola `'member'` **c'e'
+> ancora**. Riletta riga per riga, con la distinzione fra codice e commento:
+> **le tre righe che la nominano sono tutte commenti** — *«Fase 51 (D-51-06): era
+> `'member'`»* — e **l'unica riga eseguibile e' `p_role => 'attendee'`**. Un
+> `position()` su un `pg_get_functiondef` **non distingue un letterale da un
+> commento**, e chi si fermasse al numero direbbe che la migration non ha fatto
+> il suo lavoro.
+
+### §4.2 (iii) — l'ACL delle funzioni ridefinite, rimisurata e non ricordata
+
+| Funzione | `SECURITY DEFINER` | `search_path` | ACL |
+|---|---|---|---|
+| `public.handle_new_user` | **si'** | `""` | `postgres`, `anon`, `authenticated`, `service_role` — **come prima** |
+| `public.reconcile_master` | **si'** | `""` | **solo `postgres` e `service_role`** — nessun `EXECUTE` ad `anon` o `authenticated` |
+| `public.record_membership_act` | **si'** | `""` | solo `postgres` e `service_role` |
+| `public.record_party_assignment_act` | **si'** | `""` | solo `postgres` e `service_role` |
+
+**`CREATE OR REPLACE` su firma identica ha conservato l'ACL** — ottava verifica
+fra le fasi 49, 50 e 51. Non e' una memoria: e' un criterio di accettazione, e
+qui e' stato riletto.
+
+`Result: **(b) ESEGUITO** — applicata alle 19:15:08.774Z, versione `20260922191508`, riletta dal catalogo alle 19:15:55Z e 19:17:08Z. Nove controlli su nove corrispondono.`
+
+## Passo (c) — `purge-attendances.mjs` contro la produzione: **zero soggetti**
+
+Lanciato **con il documento concesso**, che lo strumento legge e verifica prima
+di toccare qualunque cosa:
+
+```
+node --env-file=.env.local scripts/purge-attendances.mjs --dry-run \
+     --project cjsfocnhfzycbbgkwocx \
+     --authorised .planning/.../51-AUTHORISATION.md --dated 2026-09-22
+```
+
+> **Un rifiuto prima del referto, e non e' un difetto.** Al primo tentativo lo
+> strumento ha risposto **`RIFIUTO` con uscita 2**: `SUPABASE_ACCESS_TOKEN` non
+> era nell'ambiente, perche' **lo script non carica i file `.env` da se'** — lo
+> fa `scripts/dev-lab.sh` per lui. Si e' ricaricato con `--env-file=.env.local`.
+> **Nessuna lettura era avvenuta**, ed e' esattamente cio' che l'uscita 2
+> significa nel suo docblock.
+
+| Cosa | Valore | Quando (UTC) |
+|---|---|---|
+| Bersaglio riconosciuto | **PRODUZIONE** | 19:19:13.347Z |
+| Autorizzazione letta e accettata | atto, concessione, data e non-esaurimento, tutti e quattro | 19:19:13.347Z |
+| `party_id` valorizzato — **cio' che D-51-04 autorizza** | **0** | **19:19:13.797Z** |
+| `party_id` nullo — **il residuo pre-porta** | **0** | 19:19:13.797Z |
+| Totale | **0** | 19:19:13.797Z |
+| Cascata **in uscita** (`confrelid`), dal catalogo | **0** — nessuna tabella pende da `attendances` | 19:19:13.797Z |
+| Cascata **in entrata** (`conrelid`) | **4** — `auth.users` ×2, `event_parties`, `events`. Direzione opposta: non e' la cascata dell'atto | 19:19:13.797Z |
+| Istantanea | scritta **prima** di qualunque scrittura, `0` righe, vicinato misurato. Il file e' coperto da `.gitignore:34` (`.env*`), verificato con `git check-ignore` | 19:19:13.346Z |
+| **Contatore di controllo, FONTE DIVERSA** — PostgREST con la chiave di servizio | **0** | **19:19:15.265Z** |
+| Uscita | **0** | 19:19:15.265Z |
+
+**Le due fonti concordano sullo zero.** Il Management API e PostgREST — due
+strade diverse verso lo stesso progetto, con la guardia sull'URL che impedisce al
+contatore di leggere un altro database e tornare zero **per la ragione
+sbagliata**.
+
+### `--apply` **non e' stato lanciato**, e la ragione e' il perimetro, non la fretta
+
+Lo strumento, a zero righe, **esce prima di qualunque `DELETE`** in entrambi i
+modi: il ramo dello zero precede la sezione dell'atto. Lanciare `--apply` avrebbe
+prodotto **lo stesso referto** e una seconda istantanea, ed e' la cosa che questo
+progetto ha scritto di non fare: *«una decisione senza soggetti non si esegue»*.
+`51-AUTHORISATION.md` §2, cancello 3, chiede il `--dry-run` **e ci si ferma se il
+numero non e' zero**. Il numero e' zero.
+
+**Conseguenza dichiarata:** lo strumento **non ha consumato** l'autorizzazione —
+lo dice lui stesso nel referto. La marcatura `spent: yes` e' quindi **a mano**, in
+chiusura d'atto, e il documento lo registra.
+
+`Result: **(c) ESEGUITO, SENZA SOGGETTI** — 19:19:13Z → 19:19:15Z, zero righe su due fonti, uscita 0, nessuna riga cancellata perche' non ce n'era nessuna.`
+
+## Passo (d) — la migration del piano 51-12, applicata alla produzione
+
+| Cosa | Valore |
+|---|---|
+| File | `supabase/migrations/20260922180000_drop_membership_code_and_rename_acts.sql`, 47 517 byte, 932 righe |
+| Partita / chiusa (UTC) | **19:20:24.302Z → 19:20:24.987Z** — **685 ms** |
+| HTTP | **200**, corpo `[]` |
+| **Versione coniata** | **`20260922192024`**, nome `20260922180000_drop_membership_code_and_rename_acts` |
+
+**La guardia `DO` del passo 7 e' passata senza sollevare**: `public.attendances`
+era vuota, misurata due volte da due fonti sette minuti prima.
+
+### La rilettura, **dal catalogo** — 19:20:57Z → 19:21:51Z
+
+| Cosa | Atteso (§2, cancello 4) | **Letto dal catalogo** |
+|---|---|---|
+| `profiles.membership_code` | **assente** | **0 colonne** con quel nome in `information_schema.columns` ✓ |
+| `public.account_acts` | **presente** | `to_regclass` → **`account_acts`** ✓, **2 righe** — le stesse due di prima del rinomina |
+| `public.membership_acts` | **assente** | `to_regclass` → **`null`** ✓ |
+| `public.attendances` | **inesistente** | `to_regclass` → **`null`** ✓ — `DROP TABLE` **senza `CASCADE`**, riuscito |
+| I **sette** vincoli rinominati | 7 | **7**: `account_acts_pkey`, `_act_check`, `_actor_attributed`, `_actor_id_fkey`, `_actor_kind_check`, `_party_id_fkey`, `_subject_id_fkey` ✓ |
+| I **tre** indici | 3 | **3**: `account_acts_pkey`, `idx_account_acts_actor`, `idx_account_acts_subject` ✓ |
+| Residui col prefisso vecchio | 0 | **0 vincoli** e **0 indici** che comincino per `membership_acts` ✓ |
+| La policy | rinominata | **`account_acts_select_register_read`**, `SELECT`, su `private.has_capability('register.read')` ✓ — **RLS attiva** |
+| **Il `REVOKE` su `service_role`** | intatto | `aclexplode(pg_class.relacl)`: a `service_role` restano **`SELECT`, `REFERENCES`, `TRIGGER`, `TRUNCATE`, `MAINTAIN`** e **NON** `INSERT`, `UPDATE`, `DELETE` ✓ — **la chiave di servizio non puo' scrivere nel registro se non passando da `record_account_act`**. E' il gate *chi decide e' tracciato* di `community-membership.md`, e sopravvive al rinomina |
+| Le quattro funzioni vive | 4 | **`handle_new_user`, `reconcile_master`, `record_account_act`, `record_party_assignment_act`** — tutte **`SECURITY DEFINER`** con **`search_path=""`** ✓. **`record_membership_act` non esiste piu'**: e' stata **rinominata**, non duplicata |
+| `reconcile_master`, corpo, righe eseguibili | chiama il nuovo nome | **`PERFORM public.record_account_act(`** ×2 e **`p_role => 'attendee'`** ✓ — **zero** righe eseguibili che nominino `membership_code` o `attendances` |
+| ACL delle funzioni | conservata | `reconcile_master`, `record_account_act`, `record_party_assignment_act`: **solo `postgres` e `service_role`**; `handle_new_user` come prima ✓ |
+
+### L'istantanea, ripresa — e la differenza da spiegare non c'e'
+
+| Misura | Atteso (§3.7) | **Riletto alle 19:21:51Z** |
+|---|---|---|
+| Tabelle in `public` | **40** (erano 41: esce `attendances`) | **40** ✓ |
+| Righe in tutto | **2397** | **2397** ✓ |
+| `private.role_capabilities` | **28** | **28** ✓ |
+
+**Nessuna differenza da spiegare riga per riga: non ce n'e' nessuna.** Il
+perimetro non ha cancellato **una sola riga di dati** in produzione, ed e' cio'
+che l'autorizzazione dichiarava in §1.0-bis.
+
+**Da questo istante entrambe le finestre di §1.5 sono CHIUSE.** Durate effettive:
+**`23514`** dalle **19:13:04.994Z** (deploy `READY`) alle **19:15:08.774Z** —
+**2 minuti e 4 secondi**; **`42883`/`42P01`** dalle 19:13:04.994Z alle
+**19:20:24.987Z** — **7 minuti e 20 secondi**. Su un progetto con **zero serate
+in vendita, zero biglietti, zero ordini e zero serate future**, entrambe sono
+costate **zero a chiunque**.
+
+`Result: **(d) ESEGUITO** — applicata alle 19:20:24.987Z, versione `20260922192024`, riletta dal catalogo alle 19:20:57Z e 19:21:51Z. Tredici controlli su tredici corrispondono.`
+
+## Passo (e) — la rilettura di controllo e i gate
+
+### La prova funzionale: **nessun account di prova e' stato creato**, e la ragione e' il perimetro
+
+`51-AUTHORISATION.md` §1 mette **«account creati a mano»** fra cio' che resta
+**fuori perimetro**. Il piano 51-13 prevedeva questa possibilita' e diceva cosa
+fare quando il perimetro non la nomina: **dirlo, e verificare invece che
+`reconcile_master` non riporti errori.** E' cio' che e' stato fatto.
+
+> **E `reconcile_master` non «gira a ogni deploy»** — riletto dal codice invece
+> che dalla memoria. L'unico chiamante e'
+> `src/app/api/auth/callback/route.ts:173`: gira al **primo accesso dopo un
+> deploy**, non al deploy. §1.1 e §2 lo scrivevano in forma abbreviata, e la
+> forma abbreviata avrebbe fatto cercare un'esecuzione che nessuno ha
+> innescato. **Senza coniare una sessione — fuori perimetro — quell'esecuzione
+> non si puo' provocare**, quindi si e' verificato cio' che si puo' verificare
+> in sola lettura: che **il chiamante e il catalogo concordino**.
+
+| Controllo | Letto | Quando (UTC) |
+|---|---|---|
+| Firma che il codice dispiegato invoca | `rpc("reconcile_master", { p_email })` | `route.ts:173` |
+| Firma nel catalogo di produzione | **`reconcile_master(p_email text) → jsonb`** ✓ | **19:23:30Z** |
+| `record_account_act` | `(p_subject_id uuid, p_act text, p_actor_id uuid, p_actor_kind text, p_role text, p_status text, p_note text, p_party_id uuid) → uuid` | 19:23:30Z |
+| `record_party_assignment_act` | `(p_party_id uuid, p_subject_id uuid, p_capability text, p_act text, p_actor_id uuid) → uuid` | 19:23:30Z |
+| `handle_new_user` | `() → trigger` | 19:23:30Z |
+
+**La cache dello schema di PostgREST ha ricaricato** — e questa e' la prova che
+il percorso del prodotto, non solo il catalogo, vede i nomi nuovi:
+
+| Tabella, via PostgREST | HTTP | Righe | Quando (UTC) |
+|---|---|---|---|
+| `account_acts` | **206** | **2** | **19:23:40Z** |
+| `membership_acts` | **404** | — | 19:23:40Z |
+| `attendances` | **404** | — | 19:23:40Z |
+| `profiles` | **206** | **4** | 19:23:40Z |
+
+### I gate
+
+| Gate | Esito | Quando (UTC) |
+|---|---|---|
+| **`npm run verify:capabilities`** contro la **PRODUZIONE** | **5/5 verde, 0 avvisi**, exit 0 — 15 chiavi su quattro lati, **28 concessioni e 32 rifiuti su 4 ruoli × 15 chiavi**, in entrambe le direzioni | **19:22:58Z** |
+| `npm run verify:persona` | **7/7 verdi**, exit 0 | 19:23:58Z |
+| `npm run build` | **exit 0** | 19:24:05Z |
+| `https://www.resonatemotion.com/events`, da anonimo, **dopo** le due migration | **200** | 19:23:54Z |
+| `/gallery`, da anonimo | **200** | 19:23:54Z |
+
+> **`verify:capabilities` era 3/5 ROSSO alle 18:49:45Z** — 17 chiavi dove il
+> codice ne dichiara 15, le due chiavi nel database e non in `keys.ts`, e un
+> ruolo non dichiarato (`member`) che teneva una capability. **E' verde adesso
+> perche' l'atto lo ha chiuso**, che e' cio' che §1.4 aveva scritto **prima** che
+> il permesso fosse chiesto.
+
+### `verify:refusal` — **NON lanciato**, e non e' una dimenticanza
+
+Lo script **conia sessioni sull'identita' di persone reali** (`generateLink` +
+`verifyOtp`) per misurare un rifiuto. `51-AUTHORISATION.md` §1.4 e §5 pongono la
+scelta in forma binaria: **o il perimetro lo nomina, o non si lancia**.
+
+**Il proprietario non lo ha nominato.** La risposta e' stata `TUTTO`, e `TUTTO`
+copre i cinque passi **come sono scritti in §1** — dove `verify:refusal` e'
+esplicitamente **fuori** a meno di menzione. La lettura conservativa e' quella
+della fase 50, ed e' la lettura dell'orchestratore, registrata come tale.
+
+**Quindi il gate resta ROSSO con la sua ragione scritta**, invece che verde per
+un passo che nessuno ha autorizzato. Lanciarlo sarebbe stato il *«gia' che ci
+siamo»* che **T-51-62** esiste per impedire. **Serve un atto nuovo, con la sua
+data**, e il perimetro di quell'atto sara' *«coniare e revocare fino a due
+sessioni su identita' gia' esistenti, senza creare profili, senza stamparne
+indirizzo ne' token»*.
+
+`Result: **(e) ESEGUITO** — 19:22:58Z → 19:24:05Z. `verify:capabilities` **5/5 contro la produzione**; `verify:refusal` **non lanciato, fuori perimetro, dichiarato**.`
+
+---
+
+## L'atto, chiuso
+
+| # | Passo | Eseguito (UTC) | Esito |
+|---|---|---|---|
+| (a) | `git push origin main` + deploy Vercel | **19:11:22Z → 19:13:04.994Z** | **eseguito** — `c61760f`, `dpl_F2pAcyhQfbJPx7sjWNyD7T4XHU53` |
+| (b) | `20260922120000_role_attendee_and_capability_keys` | **19:15:08.774Z** | **eseguito** — versione `20260922191508` |
+| (c) | `purge-attendances.mjs` | **19:19:13Z → 19:19:15Z** | **eseguito, senza soggetti** — zero righe su due fonti |
+| (d) | `20260922180000_drop_membership_code_and_rename_acts` | **19:20:24.987Z** | **eseguito** — versione `20260922192024` |
+| (e) | la rilettura e i gate | **19:22:58Z → 19:24:05Z** | **eseguito** — `verify:capabilities` 5/5; `verify:refusal` **non lanciato** |
+
+**Cinque passi su cinque, zero falliti.** **Durata dell'atto: 12 minuti e 43
+secondi** (19:11:22Z → 19:24:05Z). **Zero righe di dati cancellate**: 2397 righe
+prima, 2397 dopo, su 40 tabelle invece di 41.
+
+**Da qui in poi `51-AUTHORISATION.md` e' ESAURITA e non autorizza piu' niente.**
+
+### L'esaurimento e' meccanico, non una promessa — 19:26:30Z
+
+`spent: yes` e' stato messo **a mano** alle 19:24:05Z, perche' lo strumento marca
+il documento **solo dopo aver cancellato qualcosa** e qui non ha cancellato
+niente. Rilanciato subito dopo con lo stesso comando:
+
+```
+RIFIUTO: 51-AUTHORISATION.md e' gia' dichiarato ESAURITO: spent = yes.
+         Un'autorizzazione si consuma una volta. Se serve di nuovo, si
+         chiede di nuovo, e chi la concede rilegge i numeri del giorno.
+EXIT=2
+```
+
+**Uscita 2, nessuna lettura.** Il permesso non e' esaurito perche' un documento
+lo dice: e' esaurito perche' **lo strumento rifiuta di riusarlo**.

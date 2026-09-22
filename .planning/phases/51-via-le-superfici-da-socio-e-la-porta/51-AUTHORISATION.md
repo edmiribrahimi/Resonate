@@ -7,8 +7,8 @@ granted_date: 2026-09-22
 granted_by: il proprietario
 scope: un deploy, due migration nominate per file, una cancellazione senza soggetti, una rilettura
 answer: TUTTO
-status: CONCESSA — non ancora spesa
-exhausted: —
+status: ESAURITA
+exhausted: "2026-09-22T19:24:05Z"
 ---
 
 # Autorizzazione a scrivere in produzione — 2026-09-22
@@ -638,33 +638,87 @@ contro cui il proprietario ha percorso la corsa «dopo» di `P-51-1`.
 
 ## 6. Registro d'uso
 
-> **Da compilare MENTRE si spende, non dopo.** Una riga si scrive quando il passo
-> e' chiuso e riletto, non quando e' partito. **Oggi e' vuoto: nulla e' stato
-> concesso e nulla e' stato speso.**
+> **Compilato MENTRE si spendeva, non dopo.** Ogni riga e' stata scritta quando
+> il passo era chiuso e riletto, prima di partire col successivo. Il registro
+> lungo — con ogni ora, ogni fonte e ogni smentita — e' in **`51-ESITI.md`**,
+> capitolo *«L'atto di produzione — 2026-09-22»*.
 
 | # | Passo | Eseguito (UTC) | Versione coniata / valore letto | Riletto da | Esito |
 |---|---|---|---|---|---|
-| (a) | `git push origin main` + deploy Vercel | — | — | — | **non eseguito** |
-| (b) | `20260922120000_role_attendee_and_capability_keys` | — | — | — | **non eseguito** |
-| (c) | `purge-attendances.mjs` | — | — | — | **non eseguito** |
-| (d) | `20260922180000_drop_membership_code_and_rename_acts` | — | — | — | **non eseguito** |
-| (e) | la rilettura e i gate | — | — | — | **non eseguito** |
-| — | istantanea, ripresa | — | atteso: **40** tabelle / **2397** righe; `role_capabilities` **28** | — | **non ripresa** |
+| (a) | `git push origin main` + deploy Vercel | **19:11:22Z** → **`READY` 19:13:04.994Z** | `78f4a81..c61760f`, **84 commit**; `dpl_F2pAcyhQfbJPx7sjWNyD7T4XHU53` | **API Vercel**, non dal terminale del push; poi `/events` **200**, `/membership-card` **404**, `/attendance` **404** da anonimo alle 19:13:22Z | **ESEGUITO** |
+| (b) | `20260922120000_role_attendee_and_capability_keys` | **19:15:08.774Z** (853 ms) | versione coniata **`20260922191508`** | **catalogo** alle 19:15:55Z e 19:17:08Z — due `CHECK` a quattro valori con `attendee`, `DEFAULT 'attendee'`, **0 `member`** / **2 `attendee`**, `capabilities` **15**, `role_capabilities` **28**, `party_assignments` **0** | **ESEGUITO** — 9 controlli su 9 |
+| (c) | `purge-attendances.mjs` | **19:19:13Z → 19:19:15Z** | `--dry-run`, uscita **0** | **due fonti**: Management API **0** e PostgREST con la chiave di servizio **0** | **ESEGUITO, SENZA SOGGETTI** — zero righe, nessun `DELETE`, **lo strumento NON ha consumato il permesso** |
+| (d) | `20260922180000_drop_membership_code_and_rename_acts` | **19:20:24.987Z** (685 ms) | versione coniata **`20260922192024`** | **catalogo** alle 19:20:57Z e 19:21:51Z — colonna **assente**, `account_acts` **presente** (2 righe, 7 vincoli, 3 indici, 1 policy, **RLS attiva**), `membership_acts` e `attendances` **inesistenti**, `REVOKE` su `service_role` **intatto**, 4 funzioni vive | **ESEGUITO** — 13 controlli su 13 |
+| (e) | la rilettura e i gate | **19:22:58Z → 19:24:05Z** | `verify:capabilities` **5/5 verde, 0 avvisi** contro la produzione | firma di `reconcile_master` letta dal catalogo e confrontata col chiamante; PostgREST: `account_acts` **206/2**, `membership_acts` e `attendances` **404** | **ESEGUITO** — vedi le due note qui sotto |
+| — | istantanea, ripresa | **19:21:51Z** | atteso **40** tabelle / **2397** righe; `role_capabilities` **28** | **letto: 40 / 2397 / 28** | **RIPRESA — nessuna differenza da spiegare** |
+
+### Le quattro smentite, che stanno qui e non al posto delle righe originali
+
+**1. Il ref del laboratorio NON si e' pubblicato.** §1.3 lo dichiarava come costo
+del passo (a) — *«compare 5 volte, in 4 file di `.planning/`»*. Rimisurato alle
+**19:02Z**: **zero occorrenze** nel diff, **zero** nell'albero di lavoro, e
+`git log -S` dice che **non e' mai stato nella history**. Cio' che quella misura
+aveva contato e' il **nome dell'host**, che era **gia' pubblico** dalle fasi 49 e
+50. **Il proprietario ha accettato un costo che non esisteva.** Il verso e'
+innocuo; l'errore di misura resta, e va letto prima che qualcuno lo citi come
+fatto. §1.3 **non viene riscritta**.
+
+**2. Il push ha pubblicato 84 commit, non 82** — gia' dichiarato in §5-bis prima
+dell'atto. **Zero file fuori da `.planning/` nel delta**: il codice dispiegato e'
+quello di `44e8c65`, lo stesso contro cui e' stata percorsa la corsa «dopo» di
+`P-51-1`.
+
+**3. `verify:refusal` NON e' stato lanciato.** §1.4 e §5 ponevano la scelta come
+binaria: **o il perimetro lo nomina, o non si lancia**. **Questo documento non lo
+nomina** e il proprietario non lo ha nominato. **Il gate resta rosso con la sua
+ragione scritta**, che e' l'esito previsto e non un passo mancato. Per lanciarlo
+serve **un atto nuovo, con la sua data**, il cui perimetro sara' *«coniare e
+revocare fino a due sessioni su identita' gia' esistenti, senza creare profili,
+senza stamparne indirizzo ne' token»*.
+
+**4. Nessun account di prova e' stato creato in produzione**, perche' §1 mette
+«account creati a mano» **fuori perimetro**. Al suo posto si e' verificato in
+sola lettura che il **chiamante e il catalogo concordino** sulla firma di
+`reconcile_master`. E riletto dal codice: quella funzione **non gira a ogni
+deploy** — gira al **primo accesso dopo un deploy**
+(`src/app/api/auth/callback/route.ts:173`). §1.1 e §2 lo dicevano in forma
+abbreviata, e la forma abbreviata fa cercare un'esecuzione che nessuno ha
+innescato.
+
+### Cio' che il permesso copriva e non e' stato speso
+
+**Il `DELETE` su `public.attendances`.** Non per scelta e non per prudenza:
+**non aveva soggetti**, e lo strumento lo ha confermato da due fonti il giorno
+dell'atto. `spent: yes` nel blocco di §8 e' stato messo **a mano**, perche' lo
+strumento marca il documento **solo dopo aver cancellato qualcosa** — e non ha
+cancellato niente.
 
 ---
 
 ## 7. Chiusura
 
-**Non ancora esaurita.** Questo documento portera' `status: ESAURITA` con **l'ora
-esatta**, i passi eseguiti e quelli non eseguiti, **quando l'atto sara' stato
-speso** — e non prima.
+# ⚠ ESAURITA — 2026-09-22T19:24:05Z
 
-Se un passo non verra' eseguito, lo si dira' **al suo posto** nel registro d'uso,
-invece di riscrivere il perimetro: **una smentita sta nella nota d'uso, non al
-posto della riga originale** (minaccia T-51-58).
+**Cinque passi su cinque eseguiti, zero falliti.** L'atto e' durato **12 minuti
+e 43 secondi**, dalle **19:11:22Z** (il push) alle **19:24:05Z** (l'ultimo gate).
 
-> Quando questo documento portera' `status: ESAURITA`, **da li' in poi non
-> autorizzera' piu' niente**. Ogni scrittura in produzione successiva — un'altra
+- **Passi eseguiti:** (a), (b), (c), (d), (e).
+- **Passi falliti:** **nessuno.**
+- **Passi eseguiti ma senza soggetti:** **(c)** — zero righe da cancellare,
+  confermate da due fonti.
+- **Passi che il perimetro non nominava e che non sono stati eseguiti:**
+  `verify:refusal` e la creazione di un account di prova. **Dichiarati, non
+  aggirati.**
+- **Righe di dati cancellate in produzione: ZERO.** 2397 righe prima, **2397
+  dopo**, su **40** tabelle invece di 41.
+
+Le smentite stanno **nella nota d'uso di §6**, non al posto delle righe
+originali: **una smentita sta nella nota d'uso, mai al posto della riga
+originale** (minaccia T-51-58). Il registro lungo — ogni ora, ogni fonte, ogni
+differenza fra atteso e osservato — e' in **`51-ESITI.md`**, capitolo *«L'atto di
+produzione — 2026-09-22»*.
+
+> **Da qui in poi questo documento non autorizza piu' niente.** Ogni scrittura in produzione successiva — un'altra
 > migration, una riga seminata, un account creato, una sessione coniata, un campo
 > di configurazione — avra' bisogno di **un atto nuovo, con la sua data**.
 > `ai-engineering.md`: un'autorizzazione si consuma una volta e **non si estende
@@ -682,9 +736,15 @@ il documento, verifica l'atto, la concessione, la data e il non-esaurimento, e
 manca, se `granted` non e' `yes`, se `spent` non e' `no`, o se `granted_on` non
 coincide con la data passata a `--dated`.
 
-**Dal 2026-09-22 `granted` e' `yes` su entrambe le righe che lo strumento puo'
-leggere** — quella del frontmatter e quella del blocco — e `spent` e' ancora
-`no`: lo strumento accetta, e la accettera' **una volta sola**.
+**Lanciato alle 19:19:13Z con `--dry-run` contro la produzione, lo strumento ha
+letto questo documento e lo ha accettato**: atto, concessione, data e
+non-esaurimento, tutti e quattro. Poi ha contato **zero righe su due fonti** ed
+e' uscito **0 senza consumare il permesso**, come dichiara lui stesso.
+
+**`spent: yes` e' quindi stato messo A MANO**, alle **19:24:05Z**, e va detto
+invece che lasciato dedurre: lo strumento marca il documento **solo dopo aver
+cancellato qualcosa**, e qui non ha cancellato niente. **Da adesso rifiutera'
+questo documento con uscita 2**, ed e' corretto — il permesso e' speso.
 
 > **Una nota sulla forma, misurata e non dedotta.** Lo strumento cerca i campi con
 > `new RegExp("^" + nome + ":", "m")` e prende **la prima occorrenza nel file**.
@@ -702,11 +762,18 @@ act: attendances.purge
 target: production
 granted: yes
 granted_on: 2026-09-22
-spent: no
+spent: yes
+spent_at: 2026-09-22T19:24:05Z
 
 ---
 
 *Scritto il 2026-09-22 dal piano 51-13, task 1, PRIMA che la domanda fosse posta.*
 *Conteggi presi in sola lettura fra le 18:46:09Z e le 18:50:01Z, come*
-*`supabase_read_only_user`. Nessuna scrittura, nessuna migration applicata,*
-*niente spinto su `origin/main`, nessuna sessione coniata.*
+*`supabase_read_only_user`.*
+
+***Concesso** il 2026-09-22 verso le 19:05Z con la risposta letterale `TUTTO`.*
+***Speso** fra le 19:11:22Z e le 19:24:05Z, cinque passi su cinque, zero*
+*falliti, zero righe di dati cancellate. **Nessuna sessione coniata**, nessun*
+*account creato, nessun campo di configurazione toccato.*
+
+***ESAURITA.***
