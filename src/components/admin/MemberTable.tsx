@@ -127,11 +127,12 @@ function RoleBadge({ role }: { role: UserRole }) {
   //     non porta alcuna riga `door.operate`. Il viola e il blu dicono «questo
   //     account puo' di piu'»; per `staff` sarebbe una bugia detta
   //     dall'interfaccia prima che qualcuno legga una parola.
-  //   * `staff` deve restare TROVABILE a colpo d'occhio. **Il posto gratuito
-  //     permanente** che un account staff vale si vede solo se una riga staff
-  //     si distingue in una lista, e un badge identico pixel per pixel a quello
-  //     di un membro fa fare all'occhio un lavoro che dovrebbe fare la
-  //     superficie.
+  //   * `staff` deve restare TROVABILE a colpo d'occhio. Non piu' per il posto
+  //     gratuito permanente — quello e' uscito con la tessera nella fase 51,
+  //     vedi la legenda sotto la tabella — ma perche' chi conta gli account di
+  //     lavoro prima di una serata li deve distinguere in una lista, e un badge
+  //     identico pixel per pixel a quello di un attendee fa fare all'occhio un
+  //     lavoro che dovrebbe fare la superficie.
   //
   // Quindi: stessa famiglia neutra, e bordo **tratteggiato** invece che pieno.
   // Il tratteggio si legge come condizionale invece che come elevato, che e'
@@ -499,8 +500,10 @@ function MemberActions({
         </>
       )}
 
-      {/* staff -> organizer, or staff -> member. Togliere `staff` e' cio' che
-          libera il posto gratuito permanente che quell'account vale. */}
+      {/* staff -> organizer, oppure staff -> attendee. Togliere `staff` non
+          libera piu' alcun posto gratuito: il meccanismo e' uscito con la
+          tessera nella fase 51. Toglie l'idoneita' a essere assegnato a una
+          serata, che e' l'unica cosa che quel ruolo prepara. */}
       {member.role === "staff" && (
         <>
           <ActionButton
@@ -518,9 +521,11 @@ function MemberActions({
         </>
       )}
 
-      {/* organizer -> staff, or organizer -> member. Two steps down and not
-          one, because they are different outcomes: the first keeps the free
-          entry, the second does not. */}
+      {/* organizer -> staff, or organizer -> attendee. Two steps down and not
+          one, because they are different outcomes: the first leaves the account
+          eligible to be assigned to a night, the second does not. (Until phase
+          51 the distinction was written as "the first keeps the free entry" —
+          the card that granted it is gone, the two steps are not.) */}
       {member.role === "organizer" && (
         <>
           <ActionButton
