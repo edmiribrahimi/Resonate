@@ -64,12 +64,29 @@ type TaggedOutcome =
   | { ok: true }
   | { ok: false; failure: string; detail: string };
 
+/**
+ * ── Il VALORE del ruolo lo decide il `CHECK`, l'ETICHETTA no ────────────────
+ *
+ * `profiles_role_check` ammette quattro valori e nessun altro —
+ * `master`, `organizer`, `staff`, `attendee` — quindi ogni letterale scritto
+ * qui sotto e' un dato, non una parola scelta: un valore fuori da quei quattro
+ * torna `23514` dal database, non un errore di build. **L'etichetta** che un
+ * organizer legge accanto al valore e' invece discrezione di questo file e di
+ * `CreateAccountForm.tsx`, che ne usano una sola e la stessa. Chi la cambiera'
+ * domani cambi quella, mai il valore.
+ *
+ * **Il codice socio e' uscito da questa riga** con D-51-02: la sua colonna cade
+ * nel piano 51-12, e una superficie che la interroga dopo il `DROP COLUMN` non
+ * mostra un dato vuoto — chiede una colonna che non esiste. Il nome della
+ * colonna non e' scritto qui: la stessa grep-igiene che il piano 51-04 ha
+ * applicato agli elenchi d'accesso, cosi' che una ricerca per nome trovi i
+ * lettori veri e non i commenti che ne parlano.
+ */
 interface MemberRow {
   id: string;
   email: string;
   full_name: string;
   role: UserRole;
-  membership_code: string;
   created_at: string;
 }
 
@@ -106,7 +123,7 @@ function RoleBadge({ role }: { role: UserRole }) {
   //
   //   * `staff` NON deve prendere in prestito il vocabolario cromatico del
   //     potere. Misurato cella per cella nel piano 43-08 su 21 tabelle × 3
-  //     verbi: `staff` non concede **nulla** che un `member` non abbia gia', e
+  //     verbi: `staff` non concede **nulla** che un `attendee` non abbia gia', e
   //     non porta alcuna riga `door.operate`. Il viola e il blu dicono «questo
   //     account puo' di piu'»; per `staff` sarebbe una bugia detta
   //     dall'interfaccia prima che qualcuno legga una parola.
@@ -305,12 +322,12 @@ function DeleteConfirm({
 
   const lines = [
     "This removes the account entirely: the person stops being able to sign " +
-      "in, and their membership card stops working at the door.",
+      "in, and whatever the account holds stops being reachable.",
     "It cannot be undone. There is no point-in-time recovery on this " +
       "database, and no screen that puts an account back.",
     "It is recorded as a deletion, with your name and the time, and the row " +
-      "keeps the membership code the account had. The register is " +
-      "append-only: the row cannot be edited or deleted afterwards.",
+      "keeps a short identifier of the account. The register is append-only: " +
+      "the row cannot be edited or deleted afterwards.",
     "The account may refuse to be deleted — if it holds tickets, or has " +
       "worked a door, created a night's catalogue or touched a refund. The " +
       "answer will say which, and nothing will have been deleted.",
@@ -367,6 +384,20 @@ function MemberActions({
   const [notice, setNotice] = useState<ActionNotice | null>(null);
   const [confirming, setConfirming] = useState(false);
 
+  // ── Il ruolo si legge come STRINGA, e non e' una scorciatoia ────────────────
+  //
+  // Il database accetta `attendee` dal piano 51-08; l'unione `UserRole` in
+  // `src/types/database.ts` lo riceve dal piano 51-10, che corre accanto a
+  // questo. Nella finestra fra i due, confrontare l'unione vecchia con il
+  // valore nuovo e' un errore di build su un confronto che **a runtime e'
+  // giusto** — il valore arriva da `profiles.role`, non da questo file.
+  //
+  // Quando l'unione avra' il quarto valore questa riga potra' sparire: e' un
+  // ponte fra due piani, dichiarato, non un allentamento del tipo. Cio' che si
+  // puo' SCRIVERE resta chiuso altrove — `WritableRole` in `actions.ts`, e
+  // `isWritableRole` contro il filo.
+  const role: string = member.role;
+
   // Don't show actions for the user's own row
   if (member.id === currentUserId) {
     return <span className="text-xs text-muted">--</span>;
@@ -377,7 +408,7 @@ function MemberActions({
   // Hiding is NOT refusing, and the server knows it: every act reads the
   // subject's current role and returns `forbidden` / `subject_is_master` for
   // one. This branch is the affordance; that check is the boundary.
-  if (member.role === "master") {
+  if (role === "master") {
     return <span className="text-xs text-muted">--</span>;
   }
 
@@ -402,7 +433,7 @@ function MemberActions({
     }
   };
 
-  const changeRole = (to: "organizer" | "staff" | "member") => () =>
+  const changeRole = (to: "organizer" | "staff" | "attendee") => () =>
     handleAction(() => updateMemberRole(member.id, to));
 
   // ── Chi raggiunge QUALE controllo: chiunque raggiunga questa tabella ────────
@@ -449,8 +480,8 @@ function MemberActions({
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      {/* member -> staff, or member -> organizer */}
-      {member.role === "member" && (
+      {/* attendee -> staff, or attendee -> organizer */}
+      {role === "attendee" && (
         <>
           <ActionButton
             onClick={changeRole("staff")}
@@ -469,7 +500,7 @@ function MemberActions({
 
       {/* staff -> organizer, or staff -> member. Togliere `staff` e' cio' che
           libera il posto gratuito permanente che quell'account vale. */}
-      {member.role === "staff" && (
+      {role === "staff" && (
         <>
           <ActionButton
             onClick={changeRole("organizer")}
@@ -478,7 +509,7 @@ function MemberActions({
             dense={dense}
           />
           <ActionButton
-            onClick={changeRole("member")}
+            onClick={changeRole("attendee")}
             label="Remove staff"
             variant="demote"
             dense={dense}
@@ -489,7 +520,7 @@ function MemberActions({
       {/* organizer -> staff, or organizer -> member. Two steps down and not
           one, because they are different outcomes: the first keeps the free
           entry, the second does not. */}
-      {member.role === "organizer" && (
+      {role === "organizer" && (
         <>
           <ActionButton
             onClick={changeRole("staff")}
@@ -498,8 +529,8 @@ function MemberActions({
             dense={dense}
           />
           <ActionButton
-            onClick={changeRole("member")}
-            label="Make member"
+            onClick={changeRole("attendee")}
+            label="Make attendee"
             variant="demote"
             dense={dense}
           />
@@ -576,7 +607,7 @@ export default function MemberTable({
   const staffCount = members.filter((m) => m.role === "staff").length;
 
   /**
-   * Le cinque colonne, dichiarate una volta e disegnate due.
+   * Le quattro colonne, dichiarate una volta e disegnate due.
    *
    * E' l'intero argomento di D-41-17 in una costante. I due rami erano duecento
    * righe di markup scritte due volte, e la data un'espressione inline
@@ -590,10 +621,10 @@ export default function MemberTable({
    * la frase che stava qui, *«`role` e `status` sono due colonne e restano
    * due»*, non descrive piu' niente.
    *
-   * **Il codice di membership e' una colonna adesso.** E' la credenziale della
-   * porta, e la pagina che crea gli account e' il posto dove serve leggerlo;
-   * prima si vedeva solo nel riquadro di conferma di una creazione appena
-   * fatta. Prende la faccia dei dati perche' e' un identificativo, non prosa.
+   * **E la colonna del codice e' uscita** (D-51-02). Era la credenziale della
+   * porta; la porta non la verifica piu' e la colonna cade nel piano 51-12.
+   * Toglierla **prima** del `DROP COLUMN` e' il verso del deploy: al contrario,
+   * questa tabella chiederebbe una colonna inesistente. Le colonne sono quattro.
    *
    * `Joined` takes the data face so a column of dates aligns. Nothing here
    * re-declares the numeric-variant shorthand; the face already carries it.
@@ -616,13 +647,6 @@ export default function MemberTable({
       header: "Role",
       card: "mark",
       cell: (member) => <RoleBadge role={member.role} />,
-    },
-    {
-      key: "code",
-      header: "Code",
-      card: "meta",
-      figure: true,
-      cell: (member) => member.membership_code || "--",
     },
     {
       key: "joined",
@@ -668,7 +692,7 @@ export default function MemberTable({
       {/*
         La legenda, e non e' decorazione.
 
-        Un badge staff e' disegnato nello stesso neutro di un badge member con un
+        un badge staff e' disegnato nello stesso neutro di un badge attendee con un
         bordo tratteggiato — abbastanza vicino da dire «questo non concede nulla
         in piu'», abbastanza distinto da trovarsi in una lista. Uno stile di
         bordo non puo' dire PERCHE', quindi lo dice questa frase, sulla superficie
@@ -682,11 +706,10 @@ export default function MemberTable({
       */}
       <p className="mb-6 text-xs text-muted">
         A <span className="font-semibold text-ink">staff</span> account can do
-        nothing a member cannot. What it holds is free entry to every night
-        through the membership card, permanently and without expiry — a
-        permanent free seat at a venue that holds 150–300 people. Working the
-        door or a gallery comes from the night&apos;s own assignment and ends
-        with the night.
+        nothing an attendee cannot. What it holds is free entry to every night,
+        permanently and without expiry — a permanent free seat at a venue that
+        holds 150–300 people. Working the door or a gallery comes from the
+        night&apos;s own assignment and ends with the night.
       </p>
 
       {/* Filters.
@@ -739,7 +762,7 @@ export default function MemberTable({
             <option value="master">Master</option>
             <option value="organizer">Organizer</option>
             <option value="staff">Staff</option>
-            <option value="member">Member</option>
+            <option value="attendee">Attendee</option>
           </Select>
         </div>
       </div>
@@ -757,9 +780,8 @@ export default function MemberTable({
 
           Quali colonne sopravvivono su un telefono e' il giudizio che H41-3
           chiede, ed e' preso qui invece che dal layout: il NOME e' il titolo
-          della card, l'INDIRIZZO il suo sottotitolo, il RUOLO il suo mark, e
-          CODICE e DATA due dettagli etichettati sotto. Niente viene lasciato
-          cadere.
+          della card, l'INDIRIZZO il suo sottotitolo, il RUOLO il suo mark, e la
+          DATA un dettaglio etichettato sotto. Niente viene lasciato cadere.
 
           La selezione multipla e' uscita con le due azioni in blocco, e il
           riquadro espandibile con il referral che conteneva (D-50-08). */}

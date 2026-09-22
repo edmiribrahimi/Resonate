@@ -605,13 +605,15 @@ type ActRecorded = { memberId: string; actId: string | null };
 // PHASE 35 — a role write blocked by a live assignment, and the way out
 // =============================================================================
 //
-// Three exported acts write `role` and can now be refused with `23503` on
-// `party_assignments_assignee_role_fk`: `updateMemberRole` (any role move),
-// `deactivateMember` and `rejectMember` (both write `role: 'member'`). None of
-// them handled it before this plan, and all three would have answered with
-// their generic write failure — the exact shape of the recorded precedent, on
-// the one path where somebody is standing at a screen trying to get something
-// done tonight.
+// The acts that write `role` can be refused with `23503` on
+// `party_assignments_assignee_role_fk`. There were three when this was written;
+// `deactivateMember` and `rejectMember` left with the status axis (D-50-01), so
+// `updateMemberRole` is the one that remains — and the move that trips the key
+// is the one DOWN to `attendee`, which is the value the composite foreign key
+// refuses for a live assignment. It did not handle it before this plan, and
+// would have answered with its generic write failure — the exact shape of the
+// recorded precedent, on the one path where somebody is standing at a screen
+// trying to get something done tonight.
 //
 // The classification is CENTRAL — `classifyWriteFailure`, one branch, so it
 // cannot be added to two of the three paths and forgotten on the sibling
@@ -962,18 +964,22 @@ async function assertSubjectActionable(
  * to be reached. D-07 puts the ceiling on a *self-replicating* power, so the
  * difference between "refused" and "unrepresentable" is the whole margin.
  */
-type WritableRole = "organizer" | "staff" | "member";
+type WritableRole = "organizer" | "staff" | "attendee";
 
 /**
  * Ranked so that "promoted" and "demoted" are computed, not guessed.
  *
- * `staff` sits between the two (43-05, D-14): it grants nothing a member lacks
- * on its own, and everything an organizer has flows from `organizer`.
+ * `staff` sits between the two (43-05, D-14): it grants nothing an attendee
+ * lacks on its own, and everything an organizer has flows from `organizer`.
+ *
+ * The three keys are VALUES the database admits: `profiles_role_check` was
+ * narrowed to `('master','organizer','staff','attendee')` by plan 51-08, so a
+ * fourth key invented here is a `23514` at runtime, not a compile error.
  */
 const ROLE_RANK: Record<WritableRole, number> = {
   organizer: 3,
   staff: 2,
-  member: 1,
+  attendee: 1,
 };
 
 /**

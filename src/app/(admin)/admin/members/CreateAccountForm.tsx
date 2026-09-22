@@ -160,9 +160,19 @@ const NOTICES: Record<
  * and this `<select>` is a convenience, not a boundary. So nobody should
  * "complete" this list to match the members table — adding `master` here would
  * add an option the server refuses, not a capability.
+ *
+ * ── The VALUE is the database's. The LABEL is ours ───────────────────────────
+ *
+ * `value` is written into `profiles.role`, and `profiles_role_check` admits
+ * exactly `master`, `organizer`, `staff`, `attendee` since plan 51-08. A value
+ * outside that set is a `23514` raised **after** the account has been created
+ * in Auth — it is not a compile error, and nothing on this screen would have
+ * warned anybody. `label` is this product's word for it, chosen once and used
+ * identically on the members table. Change the label if the word should change;
+ * never the value.
  */
 const ROLE_OPTIONS = [
-  { value: "member", label: "Member" },
+  { value: "attendee", label: "Attendee" },
   { value: "staff", label: "Staff" },
   { value: "organizer", label: "Organizer" },
 ] as const;
@@ -179,7 +189,7 @@ export default function CreateAccountForm() {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
-  const [role, setRole] = useState<RoleValue>("member");
+  const [role, setRole] = useState<RoleValue>("attendee");
   const [isPending, startTransition] = useTransition();
 
   // An input complaint and a tagged failure are two different kinds of thing and
@@ -196,7 +206,7 @@ export default function CreateAccountForm() {
   const reset = () => {
     setEmail("");
     setFullName("");
-    setRole("member");
+    setRole("attendee");
     setInputError(null);
   };
 
