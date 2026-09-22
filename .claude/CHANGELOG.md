@@ -3,6 +3,70 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.24.0] - 2026-09-22
+
+### Changed — la porta perde una rotta e la persona smette di dichiararla: `checkin-offline.md`, `access-gating.md`, `meta-gates.md`, `CLAUDE.md`
+
+**Cosa e' cambiato.** La fase 51 (piano 51-03, MEM-03) ha cancellato
+`/api/membership/verify` e `/api/membership/list`. Con le rotte esce il glob
+`src/app/api/membership/**` da **tre** posti, che sono tre indici dello stesso
+fatto e che il verificatore legge separatamente:
+
+- il frontmatter `paths:` di `.claude/rules/checkin-offline.md` (controllo A:
+  senza la directory il glob diventa un path morto);
+- la riga d'indice `Check-in & Offline` di `CLAUDE.md` (controllo B: i due
+  insiemi devono restare identici, quindi si tolgono insieme);
+- la riga della tabella di priorita' di `.claude/rules/meta-gates.md`
+  (controllo G: una riga di routing su una directory sparita descrive un
+  routing che non esiste).
+
+Cambiano poi **tre citazioni in prosa**, e cambia **l'esempio, non il gate**:
+`checkin-offline.md` gate *rate limit sulla verifica*, e `access-gating.md` nel
+capoverso sull'entropia e nel gate *nessun rate limiting, oggi*. Il gate resta
+vero — **questo repo continua a non avere rate limiting** — e la riga lo dice
+nella forma corretta: la lista degli oracoli si e' accorciata perche' una rotta
+e' uscita, non perche' il difetto sia stato riparato.
+
+**Cosa lo ha fatto scattare.** `npm run verify:persona` **rosso su A e G**,
+lanciato dopo la cancellazione delle rotte e non prima — l'ordine e' il punto:
+un glob tolto prima che la directory sparisca lascia scoperti i file ancora
+presenti, e un modulo aggiornato prima della cancellazione descrive un futuro.
+
+**Scenario di carico e scatto.** File: `src/lib/offline/checkin-store.ts`.
+Moduli attesi: `checkin-offline.md` (primario, `src/lib/offline/**`) +
+`meta-gates.md`. Modifica-tipo che deve far scattare il gate: una rotta nuova
+che accetti un codice e risponda «valido / non valido» — o un tipo di voce di
+coda che vi drena — aggiunta senza dichiarare per iscritto che e' interrogabile
+senza costo.
+
+**Context budget, rimisurato dal controllo E — e il caso peggiore ha cambiato
+file, per una ragione che NON e' quella prevista dal gate.**
+
+| | file | byte | token | margine |
+|---|---|---|---|---|
+| prima | `src/app/(admin)/admin/(work)/venues/[slug]/page.tsx` | 48.118 | 13.366 | 1.634 |
+| dopo | `src/app/(admin)/admin/scanner/DoorSurface.tsx` | 48.314 | **13.421** | 1.579 |
+
+Il gate *context budget* dice che quando il caso peggiore cambia file **e' il
+progetto che si e' spostato**. Qui non lo e', e vale la pena scriverlo invece
+di lasciar leggere la tabella al contrario: il progetto non ha spostato nulla,
+**e' la persona che e' cresciuta sui due moduli che si caricano alla porta**.
+Scomposto:
+
+- la rimozione dei glob **sottrae 95 byte** a `CLAUDE.md` (−29) e
+  `meta-gates.md` (−66), cioe' a **ogni** file del repo, perche' quei due si
+  caricano sempre;
+- le tre riscritture in prosa **aggiungono 525 byte** a `checkin-offline.md`
+  (+370) e `access-gating.md` (+155), cioe' **solo** ai file che caricano la
+  porta — che sono esattamente quelli del caso peggiore nuovo.
+
+Netto sul caso peggiore vecchio: −95 byte (48.118 → 48.023). Netto sulla porta:
++430 byte (47.884 → 48.314), che e' quanto basta a farla passare in testa. Le
+riscritture erano gia' state **accorciate una volta** dopo la prima misura
+(13.520 → 13.421 token) applicando la priorita' del gate — *si taglia la
+descrizione, non la regola*: quello che resta e' il fatto datato e la situazione
+che fa scattare il gate, non la cronaca.
+
 ## [1.23.0] - 2026-09-21
 
 ### Changed — la lingua delle mail segue il prodotto: `comms-analytics.md`

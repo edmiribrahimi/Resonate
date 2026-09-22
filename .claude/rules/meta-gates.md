@@ -58,7 +58,6 @@ Quando piu' moduli coprono lo stesso file, vince il **piu' specifico**.
 | `src/app/(public)/events/**` | venue-secrecy | ticketing-payments, nextjs-architecture |
 | `src/lib/offline/**` | checkin-offline | supabase-data |
 | `src/app/api/tickets/checkin/**` | checkin-offline | ticketing-payments |
-| `src/app/api/membership/**` | checkin-offline | access-gating |
 | `src/app/**/scanner/**`, `src/components/scanner/**` | checkin-offline | access-gating, nextjs-architecture |
 | `src/app/(admin)/door/**` | checkin-offline | access-gating, nextjs-architecture |
 | `src/utils/qr.ts` | checkin-offline | access-gating |
