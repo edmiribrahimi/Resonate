@@ -452,7 +452,7 @@ Plans:
 > resta quella di sempre: rifiutare un ospite valido e' peggio che ammetterne uno
 > doppio.
 
-**Plans:** 5/14 plans executed
+**Plans:** 8/15 plans executed
 
 Plans:
 **Wave 1**
@@ -465,9 +465,9 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 51-06-PLAN.md — `/account` nasce da `/dashboard`, con il 308 permanente e le liste d'accesso
-- [ ] 51-07-PLAN.md — lo schermo della porta: opaco, senza nome, con la testata ferma e l'avviso derivato
-- [ ] 51-08-PLAN.md — migration 1: ruolo `attendee` e le due chiavi di capability, applicata al laboratorio
+- [x] 51-06-PLAN.md — `/account` nasce da `/dashboard`, con il 308 permanente e le liste d'accesso
+- [x] 51-07-PLAN.md — lo schermo della porta: opaco, senza nome, con la testata ferma e l'avviso derivato
+- [x] 51-08-PLAN.md — migration 1: ruolo `attendee` e le due chiavi di capability, applicata al laboratorio
 
 **Wave 3** *(blocked on Wave 2)*
 
