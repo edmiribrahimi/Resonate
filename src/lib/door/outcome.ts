@@ -52,6 +52,34 @@ export const DOOR_HTTP = {
  *
  * FIX-13: the subject of a door record is a ticket, an entry or a membership —
  * never a person. Mirrored by the `subject_type` CHECK in the migration.
+ *
+ * ── `'membership'` is a value to READ, never one to write again (D-51-13) ─────
+ *
+ * The member card left the product with MEM-03: no surface issues one, the
+ * scanner has no branch that recognises one, and the queue no longer has a type
+ * for one. What did **not** leave is the history: rows of
+ * `public.door_scan_events` written on earlier nights carry `subject_type =
+ * 'membership'`, and that register is the record of who was admitted at a door
+ * and on whose say-so. **It is not rewritten** — D-51-04 authorises deleting
+ * attendance rows and says nothing about this register, and a decision not
+ * taken is not a licence.
+ *
+ * So the union keeps three members and the SQL `CHECK` keeps three values, and
+ * **the mirror above is not broken, because neither side moves.** Editing either
+ * set means editing both in the same commit; editing neither is what this
+ * decision asks for, and the migration
+ * `20260805120000_door_scan_events.sql` is deliberately absent from this
+ * phase's diff.
+ *
+ * The same shape `MembershipAct` already carries (`src/lib/membership/acts.ts`),
+ * where `approved`, `rejected`, `deactivated` and `reactivated` stay in the
+ * union because existing rows are named by them. A union that could not name a
+ * row that exists makes unreadable exactly the history it was kept for.
+ *
+ * What holds the "never written again" half honest is a second type, not this
+ * comment: `QueueableSubjectType` in `src/lib/offline/checkin-store.ts` excludes
+ * this member, so the door's write paths cannot reach it and a `switch` that
+ * tried would not build.
  */
 export type DoorSubjectType = "ticket" | "guest_list_entry" | "membership";
 

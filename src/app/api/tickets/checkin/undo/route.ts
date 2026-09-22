@@ -23,7 +23,7 @@ import type { DoorScanEvent } from "@/types/database";
  * left to Phase 35, *who did* belonged here. **The deferred half has landed —
  * it is answered below and no longer a future question.** The half that was
  * never deferred is the one still incomplete: *who did* is recorded on **one
- * branch out of three**, and that is written here rather than left to be
+ * branch out of two**, and that is written here rather than left to be
  * discovered, because a gap nobody names is a gap nobody closes.
  *
  * **1. Who may undo: answered.** `door.supervise`, held by role (master,
@@ -32,15 +32,12 @@ import type { DoorScanEvent } from "@/types/database";
  *
  * **2. Who did undo: recorded on the TICKET branch only.** That branch writes a
  * `door_scan_events` row with `is_undo: true` and `operator_id`, before it
- * mutates anything. The **guest list** branch and the **membership** branch
- * write no register row at all — the guest list deferral is stated again at its
- * own site below, and the membership branch does not merely leave a gap: it
- * **DELETEs** the `attendances` row.
+ * mutates anything. The **guest list** branch writes no register row at all —
+ * the deferral is stated again at its own site below.
  *
- * The consequence, without softening: on those two branches a reversal is
- * invisible in the night's review list. Nothing distinguishes *«this person was
- * never admitted»* from *«this person was admitted and somebody reversed it»*,
- * and on the membership branch the admission itself stops existing. This
+ * The consequence, without softening: on that branch a reversal is invisible in
+ * the night's review list. Nothing distinguishes *«this person was never
+ * admitted»* from *«this person was admitted and somebody reversed it»*. This
  * product has **no error tracking** (`meta-gates.md`), so nobody finds that out
  * on their own — it is found out by a person reading a review list that is
  * quietly wrong, or not at all. `checkin-offline.md` asks for the opposite in
@@ -48,16 +45,18 @@ import type { DoorScanEvent } from "@/types/database";
  *
  * **3. Why it is not closed in this plan.** It is RECORDING work, not
  * authorisation work, and it has a perimeter of its own that does not fit
- * inside a gate: the two branches receive an id and no night, so recording them
- * needs the caller to name the night (`ScannerClient`), and the membership
- * branch needs to stop deleting a presence row — which changes what presence
- * data MEANS and is a decision about the register, not an adjustment to this
- * handler. Naming the work is the honest move; doing half of it here would
- * produce a register that is right on one branch, absent on another and
- * misleading on the third.
+ * inside a gate: the branch receives an id and no night, so recording it needs
+ * the caller to name the night (`ScannerClient`). Naming the work is the honest
+ * move; doing half of it here would produce a register that is right on one
+ * branch and absent on the other.
  *
  * Until that lands, ASSIGN-05 is **half closed**: the refusal is real, the
  * record is partial. A green on this plan is not the requirement being met.
+ *
+ * **There used to be a third branch**, reversing a membership admission by
+ * deleting its `attendances` row. It left with MEM-03, and the worst of the
+ * three gaps left with it: a reversal that made the admission itself stop
+ * existing.
  */
 
 const UUID_PATTERN =
@@ -217,7 +216,6 @@ export async function POST(request: Request) {
     let body: {
       ticketId?: string;
       guestListEntryId?: string;
-      attendanceId?: string;
       partyId?: string;
       deviceId?: string;
     };
@@ -230,11 +228,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const { ticketId, guestListEntryId, attendanceId, partyId } = body;
+    const { ticketId, guestListEntryId, partyId } = body;
 
-    if (!ticketId && !guestListEntryId && !attendanceId) {
+    if (!ticketId && !guestListEntryId) {
       return NextResponse.json(
-        { success: false, error: "ticketId, guestListEntryId, or attendanceId is required" },
+        { success: false, error: "ticketId or guestListEntryId is required" },
         { status: 400 }
       );
     }
@@ -467,12 +465,12 @@ export async function POST(request: Request) {
 
     // Undo guest list check-in
     //
-    // Deferred, and named rather than left silent: this branch and the
-    // membership one below still reverse without writing a `door_scan_events`
-    // row. Neither can, from the body they receive today — a guest entry and an
-    // attendance carry a nullable `party_id`, and the caller sends only an id.
-    // Recording them needs the scanner to pass the selected party, which is
-    // ScannerClient's change (plan 31-11), not this file's.
+    // Deferred, and named rather than left silent: this branch still reverses
+    // without writing a `door_scan_events` row. It cannot, from the body it
+    // receives today — a guest entry carries a nullable `party_id`, and the
+    // caller sends only an id. Recording it needs the scanner to pass the
+    // selected party, which is ScannerClient's change (plan 31-11), not this
+    // file's.
     if (guestListEntryId) {
       const { data: entry, error: fetchError } = await serviceClient
         .from("guest_list_entries")
@@ -528,49 +526,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true });
     }
 
-    // Undo membership attendance check-in
-    if (attendanceId) {
-      const { data: attendance, error: fetchError } = await serviceClient
-        .from("attendances")
-        .select("id, party_id, event_id")
-        .eq("id", attendanceId)
-        .single();
-
-      if (fetchError || !attendance) {
-        return NextResponse.json(
-          { success: false, error: "Attendance record not found" },
-          { status: 404 }
-        );
-      }
-
-      // Before the DELETE, and this is the branch where that matters most: the
-      // row is destroyed rather than flagged, so an unbound night here would be
-      // an authorisation for one night deleting the evidence of another.
-      if (namedNight) {
-        const binding = await bindNightToSubject(
-          serviceClient,
-          namedNight,
-          attendance.party_id as string | null,
-          attendance.event_id as string
-        );
-        if (!binding.bound) return refuseUnboundNight(binding);
-      }
-
-      const { error: deleteError } = await serviceClient
-        .from("attendances")
-        .delete()
-        .eq("id", attendanceId);
-
-      if (deleteError) {
-        return NextResponse.json(
-          { success: false, error: "Failed to undo membership check-in" },
-          { status: 500 }
-        );
-      }
-
-      return NextResponse.json({ success: true });
-    }
-
+    // ── The third arm is gone, and with it the last reader of `attendances` ──
+    //
+    // There used to be a membership branch here: it read a row of
+    // `public.attendances` by id and **deleted** it. It leaves with the
+    // credential it reversed (MEM-03) — nobody can produce a membership
+    // admission any more, so nothing can produce one to reverse.
+    //
+    // The consequence is worth naming because a later plan acts on it: the
+    // writer of that table left with the verification route, the reader leaves
+    // here, and after this commit `public.attendances` has **neither in the
+    // product**. What happens to the table and to the rows already in it is not
+    // this handler's decision — D-51-04 and D-51-14 own it, on the laboratory
+    // first, by primary key, with a count taken from a source other than the one
+    // acted on.
+    //
+    // The two arms staff actually use — ticket and guest list — are untouched,
+    // including the part of them that is still incomplete (the guest-list arm
+    // writes no register row; it is named at its own site above).
     return NextResponse.json(
       { success: false, error: "Invalid request" },
       { status: 400 }
