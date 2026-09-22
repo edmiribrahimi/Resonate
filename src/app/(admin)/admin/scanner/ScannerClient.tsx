@@ -2658,10 +2658,49 @@ export default function ScannerClient() {
 
   return (
     <div className="mx-auto w-full max-w-5xl min-h-dvh bg-ground pb-24">
-      {/* Sticky header with party info, search, and filters */}
+      {/*
+        ── The pinned bar, and WHY it holds two things and not nine ───────────
+
+        `position: sticky` pins an element's **top edge**, not its content. An
+        element taller than the viewport therefore scrolls away exactly like any
+        other: its top edge stays glued to `top: 0` while everything below the
+        window's bottom edge — which, on a phone, is most of it — travels up out
+        of sight.
+
+        Until 2026-09-22 this one element ran from here to the filter tabs: the
+        night's title and **QR Scan**, then the night-is-over notice, the clock
+        drift, the queue pills, the failed-entries panel, the progress row, the
+        search field and the tabs. On a phone that is far taller than the
+        window, so the two controls at the top — the title, and the only way to
+        open the camera — left the view the moment the attendee list was
+        scrolled, while the search and the tabs stayed. The owner saw it on
+        three screenshots out of four.
+
+        So the criterion for what may live in here is **not** editorial and it
+        is one line: **the pinned part must sit comfortably inside a phone's
+        window.** Anything added below re-creates the defect with fewer rows,
+        and the failure is silent — it looks right on a laptop every time.
+
+        What is deliberately still inside: the back arrow and the connectivity
+        pill. Both sit *on the title's own line* and add no height at all, and
+        the pill is the one fact whose whole value is being visible while
+        something else is being read. The status pills, the notices, the
+        counter, the search and the tabs are out, below, and scroll.
+
+        The two causes that are **not** the explanation were checked rather than
+        assumed (51-RESEARCH §5.3): no ancestor of this element scrolls — the
+        only wrapper is `body` at `min-h-dvh` — and `viewportFit` is not
+        declared, so a standalone iOS window keeps its content inside the safe
+        area. Height is what is left, and height is what this splits.
+
+        **This is assumption A2 of the research, and a build cannot confirm it.**
+        Step 6 of `P-51-1`, on a real phone in the lab, is the confirmation. If
+        that step still shows the title leaving the view, the cause is something
+        else and this repair is to be redone rather than padded.
+      */}
       <div className="sticky top-0 z-10 bg-ground px-6 pt-6 pb-3">
-        {/* Party header + actions */}
-        <div className="flex items-center justify-between mb-3">
+        {/* Party header + actions — the night, and the way into the camera */}
+        <div className="flex items-center justify-between">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <button
@@ -2758,7 +2797,17 @@ export default function ScannerClient() {
           </button>
           )}
         </div>
+      </div>
 
+      {/*
+        Everything the pinned bar above used to swallow. It scrolls, and that is
+        the decision, not an oversight: it is read when somebody goes looking
+        for it, while the title and the camera have to be reachable at every
+        moment of the night. Nothing here changed — the notice, the pills, the
+        counter, the search and the tabs are the same elements with the same
+        behaviour; they moved.
+      */}
+      <div className="px-6 pb-3">
         {/* The night is over, said once, with a way back that costs one tap. */}
         {nightIsOver && (
           <div className="mb-3 rounded-lg border border-sem-warn/30 bg-sem-warn/10 px-3 py-2">
