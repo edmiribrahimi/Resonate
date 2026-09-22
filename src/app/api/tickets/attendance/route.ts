@@ -1488,11 +1488,35 @@ export async function POST(request: Request) {
   // Update status to checked_in, and record the two facts the third outcome
   // promises: when, and who.
   const now = new Date().toISOString();
+
+  /**
+   * ── When the person actually walked in ───────────────────────────────────
+   *
+   * On a live tap these are the same instant. On a report from the drain they
+   * are not: the name was tapped at 01:40 with the radio off and the queue
+   * drains at 03:10, and until 2026-09-22 the row said 03:10 — an hour and a
+   * half of drift, written as fact.
+   *
+   * `judgeAtScanTime` accepts the phone's clock as evidence on the stated
+   * grounds that the anomaly stays **visible**, because the row carries
+   * `scanned_at` and `recorded_at` separately. **That mitigation does not exist
+   * here**: `guest_list_entries` has one temporal column and this route writes
+   * no `door_scan_events` row, so there is no second timestamp to read the
+   * distance from. Between a wrong clock that is visible and a wrong hour that
+   * is not, the queued moment is the one that at least describes the night —
+   * and on this branch it is the DEVICE's clock, not the server's.
+   *
+   * `updated_at` stays `now`: it is when the row last changed, which is true.
+   * The remaining debt — a `door_scan_events` row for the guest arm, with its
+   * two timestamps — is the one `undo/route.ts` has been naming for two phases.
+   */
+  const checkedInAt = queuedScannedAt ?? now;
+
   const { error: updateError } = await serviceClient
     .from("guest_list_entries")
     .update({
       status: "checked_in",
-      checked_in_at: now,
+      checked_in_at: checkedInAt,
       // The account that really did it, whichever arm granted. `NOT NULL` in
       // spirit if not in schema: an unattributed admission is the one thing
       // `ACCESS-MODEL-DECISIONS.md` §5 refuses.
@@ -1524,6 +1548,9 @@ export async function POST(request: Request) {
   return NextResponse.json({
     success: true,
     name: `${entry.first_name} ${entry.last_name}`,
-    checkedInAt: now,
+    // The value that was WRITTEN, not the clock of this read: on a live tap the
+    // two are the same instant, and on a drained report answering `now` would
+    // tell the caller an hour the row does not hold.
+    checkedInAt,
   });
 }
