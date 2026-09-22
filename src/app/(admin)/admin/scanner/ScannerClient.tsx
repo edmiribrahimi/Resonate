@@ -2006,6 +2006,43 @@ export default function ScannerClient() {
   }
 
   /**
+   * The same failure, for the one caller the sentence above cannot serve.
+   *
+   * `reportStoreFault` tells the operator to *"check the person in from the list
+   * on screen"*, which is right for a SCAN: the list is the other way in, and it
+   * is still standing. For the *Check in* button's offline arm it is circular —
+   * the operator has just tapped the row in that list, and tapping it is what
+   * failed. At 02:00 that sends them round the loop: retry, same error, same
+   * sentence, and nothing said about the person still standing there.
+   *
+   * So this arm says what happened and what to do instead. The door's asymmetry
+   * decides which way it leans (`checkin-offline.md`): a false refusal happens
+   * in front of a queue, a missing line in a report is corrected afterwards.
+   * **Nothing here refuses anybody** — the device failed, not the guest — and
+   * the written name is what makes the gap recoverable, since this repository
+   * has no error tracking and the operator on the spot is the only observer
+   * there is (`meta-gates.md`).
+   *
+   * Same category as its sibling, `scanner:store_failure`: it is the same
+   * fault, and splitting the log would hide half of it from whoever greps for
+   * it.
+   */
+  function reportGuestQueueFault(recordId: string, error: unknown) {
+    console.error("scanner:store_failure", { type: "guest", error });
+    const sentence = "Let them in and write the name down for tonight's review";
+    showFlash("error", "This device could not queue the entry", sentence);
+    addScanRecord({
+      id: recordId,
+      type: "guest",
+      name: "Unknown",
+      status: "error",
+      reason: `Not queued on this device — ${sentence.toLowerCase()}`,
+      timestamp: Date.now(),
+      canUndo: false,
+    });
+  }
+
+  /**
    * A scanned ticket, with the radio on.
    *
    * Returns `"network_failed"` when the request never reached a server — the one
@@ -2379,8 +2416,10 @@ export default function ScannerClient() {
      * declared off, and the radio that claimed to be on and was not.
      *
      * Never throws: a store failure gets its own sentence through
-     * `reportStoreFault`, because the cache is not the network and the two must
-     * not read the same (`meta-gates.md`).
+     * `reportGuestQueueFault` — this caller's own, because the sentence the
+     * scan path uses would send the operator back to the list they have just
+     * tapped. The cache is not the network, and neither of them reads like the
+     * other (`meta-gates.md`).
      */
     const queueGuestLocally = async (partyId: string) => {
       try {
@@ -2460,7 +2499,7 @@ export default function ScannerClient() {
         // afterwards (`meta-gates.md`).
         await refreshQueueCounts();
       } catch (error) {
-        reportStoreFault(guestListEntryId, "guest", error);
+        reportGuestQueueFault(guestListEntryId, error);
       }
     };
 
