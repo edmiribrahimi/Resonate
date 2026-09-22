@@ -177,7 +177,7 @@ export type MemberActFailure =
    */
   | "constraint_refused"
   /**
-   * `record_membership_act` raised `P0002` (`no_data_found`): the subject id
+   * `record_account_act` raised `P0002` (`no_data_found`): the subject id
    * does not name a profile. Distinguishable from every other cause, which is
    * the point — "the row is gone, reload" and "the write was refused" are two
    * different things to do next.
@@ -342,7 +342,7 @@ export type MemberActResult<T> = ActResult<T, MemberActFailure>;
 const CHECK_VIOLATION = "23514";
 
 /**
- * PostgreSQL `no_data_found` — what `record_membership_act` raises for a
+ * PostgreSQL `no_data_found` — what `record_account_act` raises for a
  * subject that does not exist (`20260808002000_membership_register.sql:417-423`).
  */
 const NO_DATA_FOUND = "P0002";
@@ -370,7 +370,7 @@ type WriteError = { code?: string | null; message?: string | null };
  * The category of a refused write, from its CODE alone.
  *
  * `23514` is also the code of the register's own CHECKs
- * (`membership_acts_act_check`, `membership_acts_actor_attributed`). Those are
+ * (`account_acts_act_check`, `account_acts_actor_attributed`). Those are
  * unreachable except by a bug in THIS file — a misspelled act value, or an
  * actor kind that disagrees with the actor — so mapping the code to
  * `constraint_refused` is right for the case an operator can meet, and the
@@ -498,8 +498,8 @@ function writeFailure(
  * A resolved actor: the access context, with the subject NARROWED to non-null.
  *
  * The narrowing is the point. Every act below writes `p_actor_id` from
- * `ctx.userId`, and `record_membership_act`'s table CHECK makes a `'user'` act
- * with a null actor unrepresentable (`membership_acts_actor_attributed`,
+ * `ctx.userId`, and `record_account_act`'s table CHECK makes a `'user'` act
+ * with a null actor unrepresentable (`account_acts_actor_attributed`,
  * proved by mutation in 43-07). Carrying the non-null through the type means
  * the compiler, and not a reviewer, is what stops an unattributed act being
  * written.
@@ -597,7 +597,7 @@ async function guarded<T, F extends string = MemberActFailure>(
  * The subject id and not the address: this project's logs end up in
  * screenshots, and an address in a log is an address published. A uuid names
  * the row without naming the person, which is the same rule
- * `record_membership_act` follows for `subject_label`.
+ * `record_account_act` follows for `subject_label`.
  */
 function logEmailFailure(action: string, memberId: string, error: unknown) {
   console.error(
@@ -754,7 +754,7 @@ async function withBlockingNights<T>(
 // The register write is NOT a second call
 // =============================================================================
 //
-// Every act below is ONE `.rpc()` to `public.record_membership_act`
+// Every act below is ONE `.rpc()` to `public.record_account_act`
 // (`supabase/migrations/20260808002000_membership_register.sql`), which performs
 // the `public.profiles` write and inserts its register row **inside one
 // transaction**.
@@ -770,7 +770,7 @@ async function withBlockingNights<T>(
 // ── Nothing here is typed by the compiler, and that is worth saying ──────────
 //
 // No Supabase client in this repository is parameterised with `Database`
-// (`src/types/database.ts`, and `acts.ts:28-33` says the same). So the function
+// (`src/types/database.ts`, and `acts.ts:51-57` says the same). So the function
 // name, the eight parameter names and every column name below are strings that
 // `npm run build` cannot check. A green build proves this file COMPILES; it
 // proves nothing about the RPC existing, its arguments being spelled right, or
@@ -802,7 +802,7 @@ async function recordAct(
     note?: string | null;
   }
 ): Promise<MemberActResult<ActRecorded>> {
-  const { data, error } = await serviceClient.rpc("record_membership_act", {
+  const { data, error } = await serviceClient.rpc("record_account_act", {
     p_subject_id: params.subjectId,
     p_act: params.act,
     p_actor_id: params.actorId,
@@ -1003,7 +1003,7 @@ const ROLE_RANK: Record<WritableRole, number> = {
  * are deserialised from a POST body; TypeScript is erased before any of that
  * runs, so `newRole: WritableRole` constrains what this repository can WRITE and
  * constrains nothing about what an authenticated organizer can SEND. A crafted
- * request carrying `"master"` would reach `record_membership_act` unopposed —
+ * request carrying `"master"` would reach `record_account_act` unopposed —
  * `profiles_role_check` admits `master`, because master is a real role — and the
  * self-replicating power D-07 forbids would have been granted by a value that
  * never appears in the source.
@@ -1139,10 +1139,10 @@ export async function updateMemberRole(
  *
  * Each revocation is recorded as `unassigned` by
  * `public.record_party_assignment_act`, and the role change is recorded as
- * `promoted` / `demoted` by `public.record_membership_act`. They are NOT fused
+ * `promoted` / `demoted` by `public.record_account_act`. They are NOT fused
  * into one entry. They are different things — a night's power taken back, and
  * an account's role moved — and the register is the only place that difference
- * survives a season (`acts.ts:41-45`, the same argument that keeps `rejected`
+ * survives a season (`acts.ts:93-97`, the same argument that keeps `rejected`
  * and `deactivated` apart for one identical write).
  *
  * ── IT STOPS AT THE FIRST FAILED REVOCATION ─────────────────────────────────
@@ -2021,7 +2021,7 @@ export type DeleteAccountResult = ActResult<
  * 3. censimento, 4. **riga di registro**, 5. cancellazione dell'utente Auth.
  *
  * La riga **prima** e non dopo: dopo, il soggetto non esiste piu' e
- * `record_membership_act` solleverebbe `P0002` — lascerebbe una cancellazione
+ * `record_account_act` solleverebbe `P0002` — lascerebbe una cancellazione
  * senza traccia, che e' esattamente cio' che `community-membership.md` vieta
  * col gate *chi decide e' tracciato*. Il prezzo, dichiarato invece che
  * scoperto: se la cancellazione fallisce DOPO la riga, il registro porta un

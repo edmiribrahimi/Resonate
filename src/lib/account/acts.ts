@@ -20,17 +20,24 @@
  *
  * ── IL RINOMINO DELLA FASE 51 NON HA ROTTO LO SPECCHIO ───────────────────────
  *
- * Questo modulo viveva in `src/lib/membership/acts.ts` e i due tipi si
- * chiamavano `MembershipAct` e `MembershipActorKind`; la tabella si chiamava
- * `public.membership_acts` e la funzione che la scrive
- * `record_membership_act` (D-51-08). Cambia **il nome**, non l'insieme: il
- * `CHECK` che specchia i dieci valori qui sotto cambia la **tabella** su cui
- * vive — `ALTER TABLE … RENAME TO account_acts`, piano 51-12 — e **non cambia
- * un solo letterale**. Scritto qui perche' la regola dell'unico commit sopra
- * non venga letta come violata: un commit che rinomina non e' un commit che
- * modifica un insieme, e chi trovasse i due nomi diversi fra codice e schema
- * sta guardando la finestra fra il piano 51-11 (questo file) e il piano 51-12
- * (la migration), che e' dichiarata e dura quanto quei due passi.
+ * Il registro, questo modulo e i due tipi portavano il nome del vecchio
+ * modello — quello in cui un account era una tessera — e la fase 51 li ha
+ * portati tutti su `account` (D-51-08). **I nomi vecchi non si scrivono qui**,
+ * nemmeno per spiegare il passaggio: una ricerca per nome deve trovare i
+ * lettori veri, non la nota che ne racconta l'uscita.
+ *
+ * Cambia **il nome**, non l'insieme: il `CHECK` che specchia i dieci valori
+ * qui sotto cambia la **tabella** su cui vive — `ALTER TABLE … RENAME TO
+ * account_acts`, piano 51-12 — e **non cambia un solo letterale**. Scritto
+ * perche' la regola dell'unico commit qui sopra non venga letta come violata:
+ * un commit che rinomina non e' un commit che modifica un insieme.
+ *
+ * Chi invece trovasse il codice e lo schema in disaccordo sui NOMI sta
+ * guardando una finestra dichiarata: **il codice prima (piano 51-11), la
+ * migration dopo (piano 51-12)**, e finche' dura la creazione di un account
+ * fallisce perche' chiama una funzione che ancora non si chiama cosi'. In
+ * produzione i due passi stanno dentro un solo atto autorizzato, uno dopo
+ * l'altro (piano 51-13).
  *
  * Why that rule is stated rather than assumed: a divergence between the table
  * and the code does not fail loudly. Adding `'suspended'` here and not there

@@ -193,7 +193,7 @@ async function reconcileMaster(): Promise<MasterFlag | null> {
     // nobody on its own. It does not have to. The state it describes is ALREADY
     // observable to the only person who can act on it, loudly and by a different
     // route: until the queue is applied, every act on `/admin/members` answers
-    // `write_failed` with its own notice, because `record_membership_act` is
+    // `write_failed` with its own notice, because `record_account_act` is
     // missing from the same database — and `/admin/members/register` is empty.
     // The operator meets the failure the first time they try to do their job.
     // What this branch removes is the audience that could do nothing about it.
@@ -225,7 +225,7 @@ async function reconcileMaster(): Promise<MasterFlag | null> {
   switch (outcome) {
     // The two silent outcomes. `unchanged` is the common case on every login.
     // `reconciled` is deliberately silent too: a demotion's observable effect is
-    // its row in `public.membership_acts`, which is the right place for it —
+    // its row in `public.account_acts`, which is the right place for it —
     // flagging it on the redirect of some unrelated person's login would put an
     // administrative event in front of somebody it is not about.
     case "reconciled":

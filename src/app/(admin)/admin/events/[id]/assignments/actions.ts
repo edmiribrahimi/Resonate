@@ -281,7 +281,7 @@ function classifyWriteError(error: {
  * Grant a per-night capability. ASSIGN-01.
  *
  * ONE call to `public.record_party_assignment_act`, which performs the
- * `party_assignments` row and its `membership_acts` act in ONE transaction —
+ * `party_assignments` row and its `account_acts` act in ONE transaction —
  * so a grant cannot succeed while its record fails, a divergence nothing in this
  * product would report.
  *

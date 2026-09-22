@@ -74,7 +74,7 @@ export const EMAIL_CATEGORIES = [
    * con `23514` su qualunque riga storica lo portasse — facendo tornare
    * indietro la migration intera. Una categoria che nessuno scrive piu' non e'
    * debito: e' il vocabolario di un registro che si continua a leggere, come
-   * `membership_acts` conserva gli atti che non si compiono piu'.
+   * `account_acts` conserva gli atti che non si compiono piu'.
    */
   "rsvp_confirmation",
   /*

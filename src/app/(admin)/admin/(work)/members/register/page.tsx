@@ -84,13 +84,13 @@ import type { AccountActRow } from "@/types/database";
 export const dynamic = "force-dynamic";
 
 /**
- * The columns of `public.membership_acts`, named once.
+ * The columns of `public.account_acts`, named once.
  *
  * There is no join here: `subject_id` and `actor_id` are resolved to display
  * names by a separate, non-fatal read below, so that a failure to label a row
  * cannot cost the row.
  */
-const MEMBERSHIP_ACT_COLUMNS =
+const ACCOUNT_ACT_COLUMNS =
   "id, act, subject_id, subject_label, actor_id, actor_kind, role_before, role_after, status_before, status_after, at, party_id, note";
 
 /**
@@ -186,8 +186,11 @@ export default async function MembershipRegisterPage() {
   // ── Two layers, and the surface needs both ──────────────────────────────────
   //
   // This is the **interface** layer, and it decides where somebody may GO. What
-  // decides what they may **READ** is `membership_acts_select_register_read`,
-  // the policy plan 43-07 wrote. The redirect on its own would leave the whole
+  // decides what they may **READ** is `account_acts_select_register_read`,
+  // the policy plan 43-07 wrote — nominata qui con il nome che prende dal
+  // piano 51-12, che la rinomina insieme alla tabella: un `RENAME TO` non muove
+  // i suoi satelliti, quindi la policy si rinomina una per una accanto a lei.
+  // The redirect on its own would leave the whole
   // register — rejections included — readable through PostgREST by anyone
   // holding the anonymous key, which is `CLAUDE.md` operating principle 2 in
   // its plainest form: the middleware is UX, the RLS is security.
@@ -223,8 +226,8 @@ export default async function MembershipRegisterPage() {
   let readError: string | null = null;
 
   const { data, error } = await supabase
-    .from("membership_acts")
-    .select(MEMBERSHIP_ACT_COLUMNS)
+    .from("account_acts")
+    .select(ACCOUNT_ACT_COLUMNS)
     .order("at", { ascending: false })
     .limit(PAGE_SIZE);
 
@@ -239,7 +242,8 @@ export default async function MembershipRegisterPage() {
     //
     // `error.code` and `error.message` only. Never `error.details`: measured in
     // plan 43-01, on a constraint violation against `public.profiles` it prints
-    // the whole failing row, membership code included.
+    // **the whole failing row** — every column, whatever they are that season.
+    // When it was measured, one of them was a credential.
     console.error("members.register:read", {
       code: error.code,
       message: error.message,
@@ -253,8 +257,9 @@ export default async function MembershipRegisterPage() {
   // Display names for the subjects and the actors.
   //
   // Non-fatal on purpose, exactly as `review/page.tsx` treats its operator
-  // labels: the register is readable with membership codes alone, and losing a
-  // season of history because a name lookup failed would be the worse failure.
+  // labels: the register is readable with the labels the rows already carry,
+  // and losing a season of history because a name lookup failed would be the
+  // worse failure.
   //
   // A `null` id is not a lookup that failed — it is an account that has been
   // deleted, and the row survives it deliberately (`ON DELETE SET NULL`, with
@@ -267,19 +272,30 @@ export default async function MembershipRegisterPage() {
     ),
   ];
 
-  // Il **codice tessera** entra in questa lettura accanto al nome, perche' e'
-  // l'etichetta durevole del registro: un profilo puo' avere `full_name` vuoto,
-  // e senza il codice questa pagina resterebbe senza niente da mostrare per un
-  // account che esiste benissimo.
+  // ── QUESTA LETTURA CHIEDE IL NOME, E NIENT'ALTRO ────────────────────────────
+  //
+  // Accanto al nome c'era una seconda colonna, la credenziale che ogni account
+  // portava: serviva come ripiego quando `full_name` era vuoto. **Esce con la
+  // colonna** (D-51-02, piano 51-12), e non viene sostituita da un'etichetta
+  // calcolata qui: l'etichetta del soggetto la scrive la funzione SQL dentro
+  // `subject_label` (D-51-15), e una seconda etichetta costruita da questa
+  // pagina divergerebbe dalla prima su ogni riga storica — due verita' sullo
+  // stesso atto, che e' la cosa che un registro non puo' permettersi.
+  //
+  // Resta il caso che il ripiego copriva: un account che esiste e non ha nome.
+  // Si distingue dal dato, non dall'etichetta — `found` dice che il profilo e'
+  // stato letto, e `actorOf` lo usa per non affermare «non c'e' piu'» di
+  // qualcuno che c'e'.
   const names: Record<string, string> = {};
-  const codes: Record<string, string> = {};
+  /** Gli id che la lettura ha davvero trovato — vuoto ≠ assente. */
+  const found = new Set<string>();
   /** La lettura e' fallita? NON e' la stessa cosa di «l'account non c'e' piu'». */
   let namesUnavailable = false;
 
   if (peopleIds.length > 0) {
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
-      .select("id, full_name, membership_code")
+      .select("id, full_name")
       .in("id", peopleIds);
 
     if (profilesError) {
@@ -291,18 +307,24 @@ export default async function MembershipRegisterPage() {
     }
     for (const p of profiles ?? []) {
       names[p.id] = p.full_name ?? "";
-      if (p.membership_code) codes[p.id] = p.membership_code;
+      found.add(p.id);
     }
   }
 
   /**
    * Who an act was aimed at.
    *
-   * The **membership code** is always shown, and the name only when it can
-   * still be resolved. That ordering is the register's own rule and not this
-   * page's taste: the code is the durable label, chosen by the migration
-   * precisely because it identifies a row without publishing a person, on the
-   * precedent that a LABEL may reach an artefact and an IDENTIFIER may not.
+   * **`subject_label` e' sempre mostrato, e il nome solo quando si riesce
+   * ancora a risolverlo.** Quell'ordine e' la regola del registro, non il gusto
+   * di questa pagina: l'etichetta e' durevole perche' e' sulla riga, e nomina
+   * un atto senza pubblicare una persona — il precedente per cui
+   * un'ETICHETTA puo' raggiungere un artefatto e un IDENTIFICATIVO no.
+   *
+   * **Questa pagina non sa, e non deve sapere, come l'etichetta e' fatta.** Le
+   * righe storiche portano il codice che gli account avevano, quelle nuove le
+   * prime 8 cifre dell'identificativo del soggetto (D-51-15): due stagioni di
+   * un registro append-only, e la pagina mostra cio' che la riga porta invece
+   * di ricalcolarlo — o la storia verrebbe riscritta a ogni render.
    *
    * **No email address is rendered anywhere on this page.** The register does
    * not store one, and this page does not fetch one — an audit surface is the
@@ -311,7 +333,7 @@ export default async function MembershipRegisterPage() {
   function subjectOf(row: AccountActRow) {
     const name = row.subject_id ? names[row.subject_id] : "";
     return {
-      code: row.subject_label,
+      label: row.subject_label,
       name: name || null,
       deleted: row.subject_id === null,
     };
@@ -356,11 +378,21 @@ export default async function MembershipRegisterPage() {
     const name = names[row.actor_id];
     if (name) return { label: name, note: null, isSystem: false };
 
-    const code = codes[row.actor_id];
-    if (code) {
-      // Il codice tessera e' l'etichetta durevole del registro: nomina la riga
-      // senza pubblicare una persona. Un nome vuoto non e' un account assente.
-      return { label: code, note: "This account has no name recorded.", isSystem: false };
+    if (found.has(row.actor_id)) {
+      // ── Trovato, e senza nome. NON e' «non c'e' piu'» ──────────────────────
+      //
+      // Il ripiego era la credenziale che ogni account portava; quella colonna
+      // esce con D-51-02, e al suo posto c'e' **cio' che la riga dell'atto ha
+      // gia'**: le prime 8 cifre di `actor_id`. Non e' un'etichetta presa da
+      // un'altra tabella — e' il dato dell'atto, abbreviato quanto basta a
+      // distinguere due righe a occhio, e non apre nulla. Stessa forma che
+      // D-51-15 da' a `subject_label` e che il riepilogo della porta usa gia'
+      // per lo stesso mestiere.
+      return {
+        label: row.actor_id.slice(0, 8),
+        note: "This account has no name recorded — these are the first 8 digits of its identifier, not a credential.",
+        isSystem: false,
+      };
     }
 
     return {
@@ -389,8 +421,9 @@ export default async function MembershipRegisterPage() {
         <PageTitle className="mt-2">Membership acts</PageTitle>
         <p className="mt-1 text-sm text-muted">
           Every change to an account&apos;s role or status, most recent first,
-          with who made it and when. Accounts are named by membership code —
-          the name beside it is shown only while the account still exists.
+          with who made it and when. Each act names its account by the label
+          recorded on it — the name beside it is shown only while the account
+          still exists.
         </p>
       </header>
 
@@ -430,7 +463,7 @@ export default async function MembershipRegisterPage() {
           stripped of the sentence somebody wrote to carry it.
 
           The policy agrees, and it is the policy and not this page that
-          enforces it: `membership_acts_select_register_read` asks only for
+          enforces it: `account_acts_select_register_read` asks only for
           `register.read`, so there is no own-row clause to widen and no
           endpoint to reach. Adding one would be a disclosure decision, taken
           deliberately, not a convenience.
@@ -481,7 +514,7 @@ export default async function MembershipRegisterPage() {
 
               <p className="mt-2 text-sm">
                 <span className="text-muted">Account </span>
-                <span className="font-mono text-xs">{subject.code}</span>
+                <span className="font-mono text-xs">{subject.label}</span>
                 {subject.name ? (
                   <span className="text-muted"> · {subject.name}</span>
                 ) : null}

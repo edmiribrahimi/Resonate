@@ -182,7 +182,7 @@ export default async function MembersPage() {
             the one written above the create form: this page already refused
             anybody without `organizer.access`, the register page re-asks for
             `register.read` on its own, and what may actually be READ is decided
-            by `membership_acts_select_register_read`. A hidden link protects
+            by `account_acts_select_register_read`. A hidden link protects
             nothing; a shown link that leads to a refusal costs a redirect.
 
             Un bordo che stava qui NON è più un bordo. Il commento diceva che

@@ -1027,7 +1027,7 @@ export interface AccountActRow {
    * `supabase/migrations/20260809002000_assignment_acts.sql:423-430` — *«on an
    * assignment act all four come out NON-NULL and equal … Measured against a
    * container; the opposite was written here first, and was wrong»* — and
-   * `src/lib/account/acts.ts:96-105`, which draws the useful consequence: the
+   * `src/lib/account/acts.ts:103-112`, which draws the useful consequence: the
    * `assigned` act preserves the role its holder carried at the grant, the one
    * fact `party_assignments.assignee_role` is nulled out of when the assignment
    * is retired.
