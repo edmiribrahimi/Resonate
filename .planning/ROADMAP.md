@@ -452,7 +452,7 @@ Plans:
 > resta quella di sempre: rifiutare un ospite valido e' peggio che ammetterne uno
 > doppio.
 
-**Plans:** 14/15 plans executed
+**Plans:** 15/15 plans executed
 
 Plans:
 **Wave 1**
@@ -489,7 +489,7 @@ Plans:
 
 **Wave 7** *(blocked on Wave 6)*
 
-- [ ] 51-14-PLAN.md — `P-51-1` corsa «dopo» e `51-VERIFICATION.md` (checkpoint del proprietario)
+- [x] 51-14-PLAN.md — `P-51-1` corsa «dopo» e `51-VERIFICATION.md` (checkpoint del proprietario)
 
 ### Phase 52: La barra di navigazione e i ritocchi
 
