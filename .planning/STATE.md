@@ -4,14 +4,14 @@ milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
 stopped_at: Phase 51 context gathered
-last_updated: "2026-09-21T22:04:27.166Z"
-last_activity: 2026-09-21
+last_updated: "2026-09-22T13:23:22.934Z"
+last_activity: 2026-09-22
 progress:
-  total_phases: 51
-  completed_phases: 49
-  total_plans: 386
-  completed_plans: 372
-  percent: 96
+  total_phases: 12
+  completed_phases: 4
+  total_plans: 55
+  completed_plans: 45
+  percent: 33
 ---
 
 # State: Resonate
@@ -30,12 +30,12 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 58 — il calendario si legge come lo si scrive
+**Current Focus:** Phase 51 — via-le-superfici-da-socio-e-la-porta
 
 ## Current Position
 
-Phase: 58
-Plan: Not started
+Phase: 51 (via-le-superfici-da-socio-e-la-porta) — EXECUTING
+Plan: 1 of 14
 undici, contati dai SUMMARY su disco.
 
 **Cosa e' in produzione — DEPLOYATO il 2026-09-07.** Le sei migration erano
@@ -282,7 +282,7 @@ SUMMARY su quindici: la fase e' eseguita.** Il piano 37-13 ha chiuso l'onda 7 il
 sostituite, e undici voci `human_needed` consolidate nel suo SUMMARY. Le onde 8 e
 9 (piani 37-14 e 37-15) hanno chiuso i reperti del code review: CR-01, WR-01,
 WR-03, WR-05, WR-06, WR-07, WR-08 e la voce 4 di `deferred-items.md`.
-Status: Ready to execute
+Status: Executing Phase 51
 scritto «riportato come avvenuto, non misurato da me» — ed era la cosa giusta da
 scrivere dalla sua posizione. La misura pero' esiste, ed e' dell'orchestratore
 che gliel'aveva riportato:
@@ -363,7 +363,7 @@ Note:
         organizer/approved, organizer/pending seminato a mano, staff, member —
         ne chiude la maggior parte. La fase 36 costruisce superfici pubbliche
         sopra quel modello: il debito non e' suo, ma le sta sotto.
-Last activity: 2026-09-21
+Last activity: 2026-09-22
 
 **Phase 31: EXECUTED, NOT VERIFIED.** 13 of 13 plans, 61 commits on
 `gsd/phase-31-live-defects-at-the-door-and-the-bar`. One of its four blocking
