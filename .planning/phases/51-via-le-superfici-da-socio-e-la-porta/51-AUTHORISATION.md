@@ -2,12 +2,12 @@
 phase: 51-via-le-superfici-da-socio-e-la-porta
 document: autorizzazione a scrivere in produzione — la quarta del progetto
 written: 2026-09-22
-granted: no
-granted_date: —
-granted_by: —
+granted: yes
+granted_date: 2026-09-22
+granted_by: il proprietario
 scope: un deploy, due migration nominate per file, una cancellazione senza soggetti, una rilettura
-answer: —
-status: SCRITTA, NON ANCORA CONCESSA
+answer: TUTTO
+status: CONCESSA — non ancora spesa
 exhausted: —
 ---
 
@@ -592,6 +592,50 @@ sarebbe un passo fuori perimetro eseguito «gia' che ci siamo», che e' la minac
 
 ---
 
+## 5-bis. La risposta, alla lettera — 2026-09-22, ~19:05Z
+
+> **`TUTTO`**
+
+Una parola sola, ed e' la prima delle quattro opzioni di §5: **(a) → (e),
+nell'ordine, oggi**. **`granted_by`: il proprietario.** La risposta e' riportata
+**letterale** e non riassunta: il frontmatter porta `answer: TUTTO`.
+
+### Le due domande che restavano, e chi ne ha dato la lettura
+
+**Queste due righe non sono parole del proprietario.** Sono la **lettura
+dell'orchestratore**, scritta come tale perche' una lettura attribuita a chi non
+l'ha detta e' la minaccia **T-51-58** nella sua forma piu' facile.
+
+| Domanda | Lettura dell'orchestratore | Che cosa comporta |
+|---|---|---|
+| **La seconda** — le righe pre-porta (`party_id IS NULL`) | *«sono zero, niente da decidere»* — il numero e' **0**, misurato alle **18:46:10Z** (§1.0) | La domanda **si chiude da sola**. Nessuna regola per il caso non-zero e' stata dichiarata: se il `--dry-run` del passo 3 riportasse un numero diverso da zero, **ci si ferma e si torna a chiedere**, perche' su quel caso non esiste una risposta |
+| **La terza** — `verify:refusal`, che **conia sessioni** | **fuori perimetro**: il proprietario **non lo ha nominato**, e la lettura conservativa e' quella della fase 50 — **non si lancia** | Il gate **resta rosso con la sua ragione scritta** (§1.4), invece che verde per un passo che nessuno ha autorizzato. Lanciarlo sarebbe il *«gia' che ci siamo»* di **T-51-62** |
+
+**`TUTTO` copre i cinque passi di §1 come sono scritti li'**, e §1.4 scrive che
+`verify:refusal` e' fuori a meno che il documento non lo nomini. **Questo
+documento non lo nomina.**
+
+### Una misura che si e' mossa fra la scrittura e la concessione
+
+§1 riga (a) dice **82 commit fino a `98ab62c`**, misurati prima della domanda.
+Fra quella misura e questa concessione il ramo ha guadagnato **due commit di sola
+documentazione**: `c8cf7c6`, che e' **questo documento**, e quello che registra
+**questa risposta**. Rimisurato alle **18:58Z**:
+
+| Misura | Alla scrittura | Alla concessione |
+|---|---|---|
+| Commit `78f4a81..main` | 82 | **84** |
+| File **fuori** da `.planning/` nel diff | 67 | **67 — invariati** |
+| Diff `98ab62c..main` fuori da `.planning/` | — | **0 file** |
+| Codice che la produzione riceve | `44e8c65` | **`44e8c65`, lo stesso** |
+
+**La riga (a) del perimetro non viene riscritta**: la smentita sta qui e nel
+registro d'uso, mai al posto dell'originale (T-51-58). E cio' che cambia e' il
+**numero di commit**, non **cio' che viene dispiegato**: il codice resta quello
+contro cui il proprietario ha percorso la corsa «dopo» di `P-51-1`.
+
+---
+
 ## 6. Registro d'uso
 
 > **Da compilare MENTRE si spende, non dopo.** Una riga si scrive quando il passo
@@ -638,8 +682,9 @@ il documento, verifica l'atto, la concessione, la data e il non-esaurimento, e
 manca, se `granted` non e' `yes`, se `spent` non e' `no`, o se `granted_on` non
 coincide con la data passata a `--dated`.
 
-**Oggi `granted` e' `no`: lo strumento rifiuterebbe, ed e' corretto** — nulla e'
-stato concesso.
+**Dal 2026-09-22 `granted` e' `yes` su entrambe le righe che lo strumento puo'
+leggere** — quella del frontmatter e quella del blocco — e `spent` e' ancora
+`no`: lo strumento accetta, e la accettera' **una volta sola**.
 
 > **Una nota sulla forma, misurata e non dedotta.** Lo strumento cerca i campi con
 > `new RegExp("^" + nome + ":", "m")` e prende **la prima occorrenza nel file**.
@@ -655,7 +700,7 @@ stato concesso.
 <!-- purge-attendances: grant -->
 act: attendances.purge
 target: production
-granted: no
+granted: yes
 granted_on: 2026-09-22
 spent: no
 
