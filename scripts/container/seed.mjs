@@ -64,11 +64,12 @@
  * NOTHING HERE RESEMBLES A REAL MEMBER (threat T-32-04-02). Every uuid is built
  * from the literal string `32000004` plus an md5 of a table name — no value is
  * copied from production. Every address is at `.invalid`, the reserved TLD that
- * can reach no inbox. Every name is a ROLE, never a person. And every
- * membership code is one a real signup **cannot** mint: `handle_new_user()`
- * draws from `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`, an alphabet with no `0` and no
- * `1`, while every code here is `RSN-SEED000<n>` — three zeroes in the middle.
- * A seeded code can therefore never collide with an attendee's.
+ * can reach no inbox. Every name is a ROLE, never a person.
+ *
+ * *E una credenziale sintetica non c'e' piu' affatto*: ogni persona ne portava
+ * una, in una forma che il conio del prodotto non poteva produrre, e **la
+ * colonna esce con il piano 51-12** (D-51-02). Un banco che non conia
+ * credenziali non ha bisogno di dimostrare che le sue non collidono.
  *
  * NOTHING HERE WRITES `profiles.status`, AND THAT IS WHAT MAKES IT RUN ON BOTH
  * SIDES OF PHASE 50's MIGRATION. The column is `NOT NULL DEFAULT 'approved'`
@@ -241,9 +242,10 @@ const DERIVED_REFERENCES = { party_series_format: 'formats' };
  * — this repository is PUBLIC): a first uuid group that is the literal
  * `35000001` and belongs to no real account, an address on the reserved
  * `.invalid` TLD that can reach no inbox, a `fullName` that is a ROLE AND ITS
- * AXIS and never a person, and a `membershipCode` `handle_new_user()` cannot
- * mint — its alphabet `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` holds neither `0` nor
- * `1`, and every code here holds both.
+ * AXIS and never a person. (Ognuna portava anche una credenziale sintetica,
+ * scelta in una forma che il conio del prodotto non poteva produrre: la
+ * colonna esce con D-51-02 e il campo e' uscito con lei, invece di restare
+ * vuoto — un campo che nessuno riempie e' una domanda per chi legge.)
  *
  * The `35000001` block is distinct from the `35000002-…-000000000001` literal
  * plan 35-02 pinned as the probe's `assigned_by` fallback: two blocks, two
@@ -318,7 +320,6 @@ const THIRD_AXIS_PERSONAS = [
   id: `35000001-0000-4000-8000-${String(i + 1).padStart(12, '0')}`,
   email: `seed-staff-${persona.key}@example.invalid`,
   fullName: `Seed Persona staff ${persona.axis}`,
-  membershipCode: `RSN-SEED350${i + 1}`,
 }));
 
 /**
@@ -360,7 +361,6 @@ function buildPersonas() {
       email: `seed-${role}@example.invalid`,
       // A ROLE, never a person. `.planning/` and this repository are public.
       fullName: `Seed Persona ${role}`,
-      membershipCode: `RSN-SEED000${index}`,
     });
   }
   return personas;
@@ -475,11 +475,15 @@ export async function seedContainer(admin) {
 
   // ── the four personas ────────────────────────────────────────────────────
   //
-  // The trigger `on_auth_user_created` mints a membership code with `random()`.
-  // It is real product behaviour and it is left installed; it is only silenced
-  // for the length of the seed, because a random code would make two identical
-  // runs produce two different databases and the determinism contract is what
-  // makes a diff between two captures mean anything.
+  // The trigger `on_auth_user_created` inserts the profile row itself. It is
+  // real product behaviour and it is left installed; it is only silenced for
+  // the length of the seed, so that the rows below are the ones this file
+  // wrote, with the explicit primary keys the determinism contract needs.
+  //
+  // Fino al piano 51-12 quel trigger coniava anche una credenziale casuale, e
+  // **quella** era la ragione scritta qui: due corse identiche producevano due
+  // database diversi. La credenziale esce con la sua colonna (D-51-02); il
+  // silenziamento resta, per la ragione che gli sopravvive.
   await admin.query('alter table auth.users disable trigger on_auth_user_created');
   try {
     for (const p of personas) {
@@ -488,9 +492,9 @@ export async function seedContainer(admin) {
         [p.id, p.email]
       );
       await admin.query(
-        `insert into public.profiles (id, email, full_name, membership_code, role)
-         values ($1::uuid, $2, $3, $4, $5)`,
-        [p.id, p.email, p.fullName, p.membershipCode, p.role]
+        `insert into public.profiles (id, email, full_name, role)
+         values ($1::uuid, $2, $3, $4)`,
+
       );
     }
 
@@ -512,9 +516,9 @@ export async function seedContainer(admin) {
         [p.id, p.email]
       );
       await admin.query(
-        `insert into public.profiles (id, email, full_name, membership_code, role)
-         values ($1::uuid, $2, $3, $4, $5)`,
-        [p.id, p.email, p.fullName, p.membershipCode, p.role]
+        `insert into public.profiles (id, email, full_name, role)
+         values ($1::uuid, $2, $3, $4)`,
+
       );
     }
   } finally {

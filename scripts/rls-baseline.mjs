@@ -1109,13 +1109,58 @@ export const PROBE_TEXT = `'rls-baseline-probe'`;
 export const PROBE_FUTURE_INSTANT = `'2099-12-31 23:00:00+00'::timestamptz`;
 
 export const PROBE_PAYLOADS = {
+  // ── QUESTA TABELLA DESCRIVE LO SCHEMA **DOPO** IL PIANO 51-12 ──────────────
+  //
+  // Due voci sono cambiate insieme alla migration del piano 51-12 e **non
+  // corrispondono al database finche' quella non e' applicata**: il registro
+  // degli atti si chiama `account_acts` e la voce `attendances` non c'e' piu',
+  // perche' quella tabella viene tolta (D-51-14). Su un bersaglio ancora al
+  // vecchio schema la corsa si ferma subito e **lo dice**, da entrambi i lati
+  // del controllo piu' sotto — «has no entry for» e «names tables that are
+  // not RLS-enabled tables». E' il verso dichiarato della fase, codice prima e
+  // schema dopo: il banco non prova a essere giusto su due schemi insieme,
+  // perche' un banco ambiguo misura ambiguamente.
+  //
+  // The register of acts on an account's role (plan 43-07, rinominato dalla
+  // fase 51 — D-51-08). It has RLS on and **no INSERT, UPDATE or DELETE policy
+  // at all**, deliberately (`20260808002000_membership_register.sql`,
+  // section 3): the only writer is `public.record_account_act`, which runs as
+  // its definer. So every cell of this row of the matrix is expected to refuse
+  // `42501` for EVERY persona including `master` — the same shape as `profiles`
+  // and `tickets`, and it is the assertion that proves "append-only by
+  // construction" rather than merely stating it.
+  //
+  // WHY `actor_kind = 'system'` AND NO `actor_id`, where the convention below
+  // says a subject column takes `auth.uid()`. There is no ownership predicate
+  // on this table for `auth.uid()` to satisfy, and the table-level CHECK
+  // `account_acts_actor_attributed` refuses `kind = 'user'` with a null
+  // actor. Postgres evaluates table constraints BEFORE the RLS `WITH CHECK`, so
+  // a payload carrying `auth.uid()` would report `23514` instead of `42501` for
+  // every persona whose `auth.uid()` is null — a refusal for the wrong reason,
+  // which is the one failure this payload table's header warns about. A `system`
+  // act is a legitimate row shape and satisfies the constraint unconditionally.
+  //
+  // `subject_label` PRENDE ORA LA SENTINELLA GENERICA, e il cambio e' il punto:
+  // prima era una stringa **a forma di credenziale**, scelta apposta per
+  // somigliare alla colonna che quel campo copiava. Quella colonna esce
+  // (D-51-02) e l'etichetta diventa le prime 8 cifre di un identificativo
+  // (D-51-15): una sentinella a forma di credenziale direbbe, a chiunque
+  // trovasse la riga o l'artefatto, che questo banco ne conia una. Non ne
+  // conia. Resta vero cio' che il vincolo chiedeva davvero — mai un indirizzo,
+  // mai un nome.
+  //
+  // `note` is the update column: it is the only column here that is neither
+  // evidence of what was true then nor part of the attribution, so a probe
+  // touching it cannot be read as an attempt to rewrite an act.
+  account_acts: {
+    insert: {
+      columns: ['act', 'subject_label', 'actor_kind'],
+      values: [`'created'`, PROBE_TEXT, `'system'`],
+    },
+    update: 'note',
+  },
   // A name and a slug, both unique; the sentinel collides with no real row.
   artists: { insert: { columns: ['name', 'slug'], values: [PROBE_TEXT, PROBE_TEXT] }, update: 'bio' },
-  // A check-in belongs to an event and to the subject checking in.
-  attendances: {
-    insert: { columns: ['event_id', 'user_id'], values: ['{{events}}', 'auth.uid()'] },
-    update: 'checked_in_at',
-  },
   // Both columns are foreign keys and together the primary key; production
   // holds no discount code, so this one is expected to fail 23503.
   discount_code_tiers: {
@@ -1343,7 +1388,7 @@ export const PROBE_PAYLOADS = {
   // deliberately (`20260810120000_formats_and_series.sql:452-476`): writes
   // arrive with the service client. So every insert cell of this row is expected
   // to refuse `42501` for EVERY persona including `master/approved` — the same
-  // shape as `party_credits`, `party_assignments`, `membership_acts`, `profiles`
+  // shape as `party_credits`, `party_assignments`, `account_acts`, `profiles`
   // and `tickets`.
   formats: {
     insert: {
@@ -1360,39 +1405,6 @@ export const PROBE_PAYLOADS = {
     },
     update: 'error_message',
   },
-  // The register of acts on a member's role and status (plan 43-07). It has RLS
-  // on and **no INSERT, UPDATE or DELETE policy at all**, deliberately
-  // (`20260808002000_membership_register.sql`, section 3): the only writer is
-  // `public.record_membership_act`, which runs as its definer. So every cell of
-  // this row of the matrix is expected to refuse `42501` for EVERY persona
-  // including `master/approved` — the same shape as `profiles` and `tickets`,
-  // and it is the assertion that proves "append-only by construction" rather
-  // than merely stating it.
-  //
-  // WHY `actor_kind = 'system'` AND NO `actor_id`, where the convention above
-  // says a subject column takes `auth.uid()`. There is no ownership predicate
-  // on this table for `auth.uid()` to satisfy, and the table-level CHECK
-  // `membership_acts_actor_attributed` refuses `kind = 'user'` with a null
-  // actor. Postgres evaluates table constraints BEFORE the RLS `WITH CHECK`, so
-  // a payload carrying `auth.uid()` would report `23514` instead of `42501` for
-  // every persona whose `auth.uid()` is null — a refusal for the wrong reason,
-  // which is the one failure this payload table's header warns about. A `system`
-  // act is a legitimate row shape and satisfies the constraint unconditionally.
-  //
-  // `subject_label` takes a code-shaped sentinel and not the generic probe
-  // string, because that column is documented as a membership code and never an
-  // address; same sentinel shape as the `profiles` payload's `membership_code`.
-  //
-  // `note` is the update column: it is the only column here that is neither
-  // evidence of what was true then nor part of the attribution, so a probe
-  // touching it cannot be read as an attempt to rewrite an act.
-  membership_acts: {
-    insert: {
-      columns: ['act', 'subject_label', 'actor_kind'],
-      values: [`'created'`, `'RSN-PROBE00'`, `'system'`],
-    },
-    update: 'note',
-  },
   // One unique column. `.invalid` is the reserved TLD — it can reach no inbox.
   newsletter_subscribers: {
     insert: { columns: ['email'], values: [`'rls-baseline-probe@example.invalid'`] },
@@ -1402,7 +1414,7 @@ export const PROBE_PAYLOADS = {
   // DELETE policy at all**, deliberately (`20260809000000_party_assignments.sql`,
   // section 3f): the only writer is the `SECURITY DEFINER` function of plan
   // 35-04. So every cell of this row is expected to refuse `42501` for EVERY
-  // persona including `master/approved` — the same shape as `membership_acts`,
+  // persona including `master/approved` — the same shape as `account_acts`,
   // `profiles` and `tickets`.
   //
   // WHICH OF THE TWO SUBJECT COLUMNS TAKES `auth.uid()` — the question
@@ -1494,7 +1506,7 @@ export const PROBE_PAYLOADS = {
   // section 3): writes arrive from the catalogue surface with the service
   // client. So every cell of this row is expected to refuse `42501` for EVERY
   // persona including `master/approved` — the same shape as `party_assignments`,
-  // `membership_acts`, `profiles` and `tickets`.
+  // `account_acts`, `profiles` and `tickets`.
   //
   // NO COLUMN HERE TAKES `auth.uid()`, and that is not an oversight in the
   // convention above: this table HAS no column naming an account. That absence
@@ -1561,12 +1573,19 @@ export const PROBE_PAYLOADS = {
   // `id` references auth.users, so a fresh uuid can never satisfy the FK — but
   // no INSERT policy exists on `profiles` at all, so RLS refuses first (42501)
   // and the cell is conclusive. `full_name` is the update column deliberately:
-  // `role` and `status` are the privilege-escalation surface and belong to
-  // CAP-06's dedicated probe, not to a generic matrix cell.
+  // `role` is the privilege-escalation surface and belongs to CAP-06's
+  // dedicated probe, not to a generic matrix cell.
+  //
+  // La quarta colonna era la credenziale che ogni profilo portava, con la sua
+  // sentinella a forma di codice: **esce con la colonna** (D-51-02, piano
+  // 51-12). Un `insert` che nomina una colonna inesistente riceverebbe `42703`
+  // invece del `42501` che questa cella deve misurare — cioe' un rifiuto per
+  // la ragione sbagliata, che e' il modo in cui un banco mente senza
+  // fallire.
   profiles: {
     insert: {
-      columns: ['id', 'email', 'full_name', 'membership_code'],
-      values: ['gen_random_uuid()', `'rls-baseline-probe@example.invalid'`, PROBE_TEXT, `'RSN-PROBE00'`],
+      columns: ['id', 'email', 'full_name'],
+      values: ['gen_random_uuid()', `'rls-baseline-probe@example.invalid'`, PROBE_TEXT],
     },
     update: 'full_name',
   },

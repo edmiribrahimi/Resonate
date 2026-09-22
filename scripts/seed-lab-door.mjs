@@ -229,11 +229,18 @@ async function seed() {
   // vincolo `profiles_role_implies_approved` ancora in vigore. Domani la colonna
   // non esiste e questa stessa riga continua a girare. In nessuno dei due stati
   // del database lo script va riscritto.
+  //
+  // E NON NOMINA PIU' NEMMENO LA CREDENZIALE. Qui l'`insert` scriveva una
+  // quarta colonna con un codice derivato dalla chiave della persona: esce con
+  // la colonna (D-51-02, piano 51-12). La differenza con `status` e' che qui
+  // la riga **non** vale prima e dopo — nominare una colonna che non c'e'
+  // significa `42703`, e questo banco e' scritto per lo schema che il
+  // laboratorio avra'.
   for (const a of ACCOUNTS) {
     const { id } = ids.accounts[a.key];
     await sql(`
-      insert into public.profiles (id, email, full_name, membership_code, role)
-      values (${q(id)}, ${q(a.email)}, ${q("Lab " + a.key)}, ${q("LAB" + a.key.toUpperCase().slice(0, 6))}, ${q(a.role)})
+      insert into public.profiles (id, email, full_name, role)
+      values (${q(id)}, ${q(a.email)}, ${q("Lab " + a.key)}, ${q(a.role)})
       on conflict (id) do update set role = excluded.role`);
   }
 
