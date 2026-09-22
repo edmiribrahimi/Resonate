@@ -10,9 +10,9 @@ lab_serves_commit: 44e8c65
 lab_serves_since: "2026-09-22T18:35:00Z"
 lab_served_commit_before_run: 03e443e
 lab_served_commit_during_run: 1159700
-runs_walked: 1
-runs_open: 1
-status: aperto — corsa «prima» PERCORSA il 2026-09-22, corsa «dopo» in corso di trascrizione
+runs_walked: 2
+runs_open: 0
+status: chiuso — corsa «prima» e corsa «dopo» PERCORSE il 2026-09-22; la «dopo» con un correttivo scritto in corsa (commit 44e8c65)
 ---
 
 # Fase 51 — Gli esiti, percorrendo
@@ -365,23 +365,135 @@ che la fase e' dispiegata sul laboratorio, **mai in produzione**.
 >    spento, non e' perche' il 403 e' stato corretto — e' perche' il percorso
 >    soci non c'e' piu'.
 
-**Percorsa da:** —
-**Data e ora:** —
-**Prova della modalita' aereo:** —
+**PERCORSA il 2026-09-22**, sul codice della fase, tutti e nove i passi.
+
+**Percorsa da:** il **proprietario**, sullo **stesso telefono** della corsa
+«prima» (iPhone), Safari in **scheda privata**, contro
+**`lab.resonatemotion.com`**. Serata di prova: la stessa, la serata gratuita del
+laboratorio.
+**Con quale account:** **uno solo** — l'**account di staff del banco assegnato
+alla serata** (`door.operate` **per assegnazione**, D-51-12). *(Nella corsa
+«prima» ne servivano due: l'account master serviva solo a produrre la
+precondizione del passo 9, perche' il registro dei soci dava 403 allo staff.
+Quel registro non esiste piu', e con esso la ragione del secondo account.)*
+**Data e ora:** **20:09–20:36 locali (18:09–18:36Z)**; la rilettura dal catalogo
+alle **18:37:28Z**. Torino e' UTC+2.
+**Prova della modalita' aereo — propria, non ereditata:** nella barra di stato si
+vede **l'icona dell'aeroplano** e **nessun indicatore di rete dati ne' di
+wi-fi**, alle **20:11** e di nuovo alle **20:24** (schermate e registrazioni del
+proprietario). Non era il solo wi-fi spento.
+**Contro quale codice:** i passi **9, 1, 2, 6, 3, 4, 5** e il **primo** tentativo
+del **7** sul dispiegamento **`1159700`**; il **secondo** tentativo del **7** e il
+passo **8** sul dispiegamento **`44e8c65`**, nato **durante** la corsa per il
+difetto che il passo 7 ha fatto emergere.
+
+> **L'ordine in cui e' stata percorsa non e' quello della tabella.** Il passo 9
+> viene **per primo**, perche' e' cio' che si vede all'apertura della porta e non
+> si puo' rimandare: una volta aperta, la coda vecchia e' gia' stata giudicata.
+> La tabella resta in ordine numerico per potersi confrontare con la corsa
+> «prima»; ogni cella porta la sua ora, che e' l'ordine vero.
+
+### I nove passi, con cio' che si e' **visto**
 
 | # | Cosa si e' **visto** |
 |---|---|
-| 1 | |
-| 2 | |
-| 3 | |
-| 4 | |
-| 5 | |
-| 6 | |
-| 7 | |
-| 8 | |
-| 9 | |
+| 1 | **20:09 locali (18:09Z), rete accesa, account di staff.** La lista si **scarica**: «Prova SenzaEmail · **Guest List** · **Check in**» e' presente, e le linguette dicono *All (4)* · *Not Arrived (3)* · *Checked In (1)* in quel momento. **Nessun banner sulla lista dei soci** — quel percorso non esiste piu'. Al primissimo caricamento, per un istante, compare l'avviso giallo *«The guest list has NOT been downloaded on this device for tonight…»*, che **si spegne appena la lista arriva**: e' l'avviso che dice il vero mentre e' vero |
+| 2 | **20:11 locali (18:11Z), radio spenta.** Il **testo e' quello nuovo**, e parla di **guest list** come D-51-10 prescrive: *«The guest list on this device was NOT refreshed (updated 2m ago). A guest added to the list since then will not be found by name — do not refuse them on the strength of this screen; let them in and sort it out in the night's review.»* Accanto, quello degli aggiornamenti dal vivo: *«This device is not receiving live updates. The list is less than a minute old — tap to reload.»* **La condizione di accensione, invece, non e' quella che il passo si aspettava:** l'avviso e' derivato dall'eta' della lista e si accende **appena la radio si spegne** (`listIsStale = !channelLive \|\| age > SAFETY_RELOAD_MS`). **Dice il vero** — a radio spenta la lista non si puo' rinfrescare — ma **differisce dalla lettera del passo 2**, che chiedeva «non acceso se la lista e' fresca». Registrato **come osservato**: e' una **decisione per il proprietario in sede di verifica**, non un difetto chiuso qui |
+| 3 | **20:24 locali (18:24Z), radio spenta.** Inquadrato il QR del biglietto **«2 di 2»** (il PNG nitido del `PRE-LAB`): **schermo VERDE e OPACO**, titolo **«Admitted»**, sottotitolo **«RSVP · Offline»**, **nessun nome**. In testata **«Pending (1)»**. D-51-05 onorata: titolo = esito, sottotitolo = tipo, e **il nome dell'intestatario che la corsa «prima» mostrava non c'e' piu'** |
+| 4 | **20:24 locali (18:24Z).** Lo **stesso** QR una seconda volta: **schermo VIOLA**, **«Already recorded — Recorded at 20:24 by this device · Offline»**, **nessun nome**. Non rifiutato, non contato due volte, e il **fatto** — ora e dispositivo — e' leggibile |
+| 5 | **20:24 locali (18:24Z), radio spenta.** Premuto **«Check in»** accanto a «Prova SenzaEmail»: **schermo VERDE, «Admitted — Guest list · Offline»**. La coda sale a **«Pending (2)»**, e l'elenco **«Recent scans»** mostra **entrambe** le ammissioni. **Nella corsa «prima» qui c'era lo schermo ROSSO «Connection error — The guest was not checked in», e nessuna voce in coda.** E' il buco che il piano 51-15 e' esistito per chiudere, e si chiude |
+| 6 | **20:11 locali (18:11Z)** (registrazione del proprietario). Scorrendo la lista, il **titolo** e il pulsante **«QR Scan»** **restano fissi in cima**. Nella corsa «prima» uscivano **subito** dalla vista. **Confermato** |
+| 7 | **Due tentativi, e fra i due un correttivo.** **Primo — 20:25–20:26 locali (18:25–18:26Z):** riaccesa la rete con la porta aperta, **il biglietto si drena**: «2 di 2» `checked_in_at` **18:25:50.151Z**, riga `recorded` in `door_scan_events`, `source = offline_sync`, `scanned_at` **18:24:44.964Z**, `recorded_at` **18:25:50.235Z** — **66 secondi** fra il tocco e la registrazione, che e' la finestra offline misurata. **La voce guest NON si drena:** pastiglia ambra **«Sign in again to record 1 entry»**, riepilogo **«Released 1 · recorded 0 · still waiting 0 · could not be recorded 0 · still held 1»**, contatori **3 / 4 (+1 guest list)**, «Prova SenzaEmail» ancora *Not arrived*. **La corsa si e' fermata qui**, com'e' scritto di fare — ed e' il riquadro sotto. **Secondo — 20:36 locali (18:36Z)**, sul dispiegamento `44e8c65`: il proprietario preme la pastiglia ambra → **«Retrying…»** → **drenata**. Contatori **4 / 4 (+1 guest list) (100%)**, **Checked In (4)**, **«Everyone has arrived!»**, **nessun avviso** con la rete accesa. «Prova SenzaEmail» **✓ 20:36** |
+| 8 | **E' una lettura dal catalogo, non un'osservazione**, e per questo sta anche in una sezione propria qui sotto, con l'ora. **2026-09-22T18:37:28Z, in sola lettura, sul laboratorio:** la riga `63ebd88f-…` risulta **`checked_in`**, `checked_in_at` **18:36:27.331+00**, `checked_in_by` = **l'account di staff del banco**. Per il biglietto del passo 3 — «2 di 2» — **una riga e una sola**, `recorded` / `offline_sync`. **Ma sulla serata le righe sono 21**, e le 19 in piu' sono della **riproduzione** dichiarata nel `PRE-LAB`, non della corsa |
+| 9 | **20:09 locali (18:09Z), all'apertura della porta sul codice della fase.** **Nessuna pastiglia «Pending»**: la voce `membership` lasciata in coda alle **14:32Z** **non c'e' piu'** — l'aggiornamento a **v6** l'ha scartata (D-51-11). **Nulla di `ticket` o `guest` e' andato perso, e non poteva esserlo:** quella era l'**unica** voce in coda, e la coda nuova ha poi accolto regolarmente le due voci dei passi 3 e 5, entrambe arrivate a destinazione. **La riga di console NON e' stata osservata:** nessun Web Inspector era collegato al telefono. **Si dichiara**, invece di dedurla dalla pastiglia sparita — la pastiglia prova che la voce non c'e' piu', non che sia stata loggata con categoria e conteggio |
 
-> `Result: pending`
+### Il difetto che il passo 7 ha fatto emergere, e che la fase ha corretto in corsa
+
+**E' esattamente il motivo per cui questa procedura esiste**, e per cui dice
+*«se qualcosa non si comporta come descritto, fermati li' e dillo»*.
+
+**Cosa succedeva.** `POST /api/tickets/attendance` respingeva al braccio del
+ruolo **ogni** rapporto in coda (`isQueuedReport`) proveniente da un account
+rifiutato li' — `if (!auth.ok && isQueuedReport) return refuse(auth)` — e lo
+**dichiarava come limite nel proprio docblock**: quella rotta non aveva un
+`judgeAtScanTime`, quindi non sapeva giudicare un momento passato. Ma lo staff
+tiene la porta **solo per assegnazione sulla serata**: un'ammissione guest
+accodata da un telefono di staff **non poteva drenarsi mai** — 403 → `blocked` →
+«Sign in again to record 1 entry», e **un nuovo accesso non cambia nulla**,
+perche' non e' l'identita' a mancare.
+
+**Riprodotto**, con una `POST` diretta con lo stesso account di staff:
+**403 `{"error":"Forbidden"}`**.
+
+**Perche' non era mai scattato.** Fino al piano 51-15 **nessuna voce guest era
+mai finita in coda**: il pulsante «Check in» era solo online, e il ramo offline
+non esisteva. Il primo drenaggio vero e' stato questo, ed e' stato il telefono
+del proprietario a trovarlo.
+
+**Il correttivo — commit `44e8c65`, su `main`, poi sul ramo `lab`, `READY`
+~18:35Z.** `judgeAtScanTime` e `ScanTimeJudgement` escono **byte per byte** da
+`src/app/api/tickets/checkin/route.ts` e vanno in
+`src/lib/door/judge-at-scan-time.ts`: una definizione, due rotte, la stessa
+risposta sulla stessa persona nella stessa serata. Nella rotta delle presenze il
+rapporto in coda **si lega alla serata** e si giudica a `scannedAt` — assegnazione
+viva allora → **registrato e attribuito**; **mai** assegnato → **lo stesso 403 di
+prima** (`blocked`); revocata **dopo** la scansione → **registrato**, con
+categoria di log propria; domanda senza risposta → **503** (`retry`). Il pulsante
+dal vivo, il percorso master e quello organizer **non cambiano di una riga**.
+`npm run build` **verde**. *(Prettier ha anche riavvolto qualche riga nelle due
+rotte: formattazione, nessun effetto.)*
+
+**Nota di dominio.** Il correttivo **non allarga chi puo' far entrare**: chi non
+era assegnato alla serata al momento della scansione riceve lo **stesso** 403 che
+riceveva prima. Rende registrabile un'ammissione **gia' avvenuta alla porta** da
+chi **era** autorizzato quando l'ha fatta — che e' l'asimmetria di
+`checkin-offline.md`: **rifiutare un ospite valido e' peggio che ammetterne uno
+doppio**, e perdere un ingresso gia' concesso e' la stessa perdita, differita
+alla riconciliazione.
+
+### La rilettura dal catalogo — fatta il 2026-09-22 alle 18:37:28Z, in sola lettura
+
+Letta dal catalogo del **laboratorio**, **in sola lettura**, sulla serata di
+prova. **La rilettura conferma, non sostituisce**: dice cosa e' stato
+**registrato**, non cosa si e' **visto**.
+
+| Cosa | Atteso dal passo 8 | Letto |
+|---|---|---|
+| La riga `63ebd88f-…` in `guest_list_entries` | `checked_in`, con `checked_in_at` valorizzato | **`status = checked_in`**, **`checked_in_at = 2026-09-22 18:36:27.331+00`**, `checked_in_by` = **l'account di staff del banco**. *(Nella corsa «prima» era `invited` / `NULL`.)* |
+| `door_scan_events` per il biglietto del passo 3 | **una riga e una sola** | **una riga e una sola** per «2 di 2»: `recorded`, `source = offline_sync`, `scanned_at` **18:24:44.964Z**, `recorded_at` **18:25:50.235Z** |
+| `door_scan_events` sulla serata, in tutto | — | **21 righe**: **1** della corsa `P-50-8` del 2026-09-21; **1 `recorded` / `online` + 19 `already_recorded`** (18:20:12Z–18:21:29Z) della **riproduzione** con fotocamera finta dichiarata nel `PRE-LAB`; **1 `recorded` / `offline_sync`**, che e' quella del proprietario |
+| Una riga `door_scan_events` per l'ingresso **guest** | — | **non c'e', e non e' un difetto:** il drenaggio guest scrive **solo** `guest_list_entries`, come dichiara il SUMMARY del piano 51-15. Chi la cercasse qui ne dedurrebbe un guasto |
+
+**Le 19 righe in piu' non sono della corsa**, e attribuirgliele sarebbe l'esito
+inventato che `T-51-63` esiste per impedire: la fotocamera finta ha inquadrato lo
+stesso QR in circolo per settantacinque secondi. **L'attesa «una riga e una
+sola» del passo 8 regge sul biglietto del proprietario**, che e' il soggetto del
+passo.
+
+### Cosa questa corsa ha fatto emergere e che NON e' di questa fase
+
+Due cose, **gia' registrate come todo** e **da non riaprire qui**:
+
+- `door-and-login-viewport-crops-under-keyboard.md` — il ritaglio sotto la
+  tastiera, gia' visto nella corsa «prima», rinviato alla fase 52;
+- `door-tabs-recent-scans-and-alerts.md` — **chiesto dal proprietario durante
+  questa corsa**: «Recent scans» e gli avvisi vogliono linguette proprie.
+
+> `Result: **PERCORSA, con un correttivo scritto in corsa**` — **2026-09-22,
+> 18:09Z–18:36Z, dal proprietario, su un telefono vero, in modalita' aereo vera,
+> contro il laboratorio.**
+> **Percorsi tutti e nove i passi.** I passi **9, 1, 2, 6, 3, 4, 5** e il primo
+> tentativo del **7** sul dispiegamento `1159700`; il secondo tentativo del **7**
+> e il passo **8** sul dispiegamento `44e8c65`.
+> **Il passo 7 si e' fermato al primo tentativo**, e la corsa **non e' stata
+> arrotondata**: il difetto — `/api/tickets/attendance` che respingeva ogni
+> rapporto in coda da un account con la porta per assegnazione — e' stato
+> corretto dal commit `44e8c65` e **il passo e' stato ripercorso**, non dedotto.
+> **Due cose restano aperte, e nessuna e' un passo mancato:** la **condizione di
+> accensione dell'avviso del passo 2**, che dice il vero ma non cio' che il passo
+> si aspettava — **decisione del proprietario in sede di verifica**; e la **riga
+> di console del passo 9**, **non osservata** perche' nessun Web Inspector era
+> collegato.
 
 ---
 
