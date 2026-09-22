@@ -130,3 +130,43 @@ passato. Nessun piano le possiede oggi, ed e' per questo che sono scritte qui.
 schema di base, non la fonte di verita' dello schema (`CLAUDE.md`, guardrail 3),
 e il banco del container lo legge nella versione del commit iniziale, non in
 questa.
+
+## D-51-REVIEW — Cio' che la code review del 2026-09-22 ha trovato e che NON e' stato corretto in fase
+
+`51-REVIEW.md` (commit `51f32aa`): 1 blocker, 10 avvertenze, 7 note. Corretti
+in coda alla fase, con un commit ciascuno: **CR-01** (i valori dell'`INSERT`
+nel banco del container), **WR-01** (rapporto guest in coda da account mai
+assegnato: ritirato con la sua ragione, non piu' «trattenuto»), **WR-02**
+(`checked_in_at` = `scannedAt` per un rapporto in coda), **WR-07**, **WR-09**,
+**WR-10**. Restano aperti, e stanno qui perche' nessun piano li possiede:
+
+- **WR-04 — l'avviso della guest list si accende appena la radio e' spenta**
+  (`listIsStale = !channelLive || …`). Dice il vero, ma la procedura chiedeva
+  «spento a lista fresca». **Decisione del proprietario**, aperta in
+  `51-VERIFICATION.md`; non si chiude d'ufficio in nessuna direzione.
+- **WR-03 — `revoked_after_scan` su un rapporto guest e' solo un `console.warn`**:
+  `guest_list_entries` non ha una colonna per marcarlo, il biglietto si'
+  (`door_scan_events.cause`). Chiuderlo significa dare al percorso guest una
+  riga di registro alla porta: e' una decisione di schema, non un fix.
+- **WR-05 — il `COMMENT ON TABLE private.role_capabilities` della migration
+  `20260922120000` dice «16 a master, 14 a organizer»: i numeri veri sono 15 e
+  13.** La migration e' applicata su lab e produzione: **non si edita** un file
+  applicato. Si corregge con una migration di solo `COMMENT` quando ce ne sara'
+  una da applicare comunque; fino ad allora, il numero giusto sta in
+  `51-VERIFICATION.md` e in `verify-capabilities.mjs`.
+- **WR-06 — `scripts/probe-forged-identity.sh:165,436` cita `middleware.ts:697-699`
+  come «rimisurato»: oggi sono `726-728`.** Il numero di riga in una procedura
+  e' un dato che scade; la sonda va riletta al prossimo uso e la citazione
+  sostituita da un `grep` sull'istruzione, come 51-04 aveva gia' fatto per
+  l'altra meta' del file.
+- **WR-08 — `src/types/database.ts:404`, `interface Attendance` sopravvive alla
+  tabella**, zero importatori. Uscira' con la prossima rigenerazione dei tipi.
+- **Note (7)** — `ROLES` senza consumatori; quattro citazioni datate di
+  `api/membership/verify` (fra cui `src/middleware.ts:38-40`, che dice ancora
+  che `/membership-card` e `/attendance` «are still judged downstream»); la
+  prova per mutazione di `verify-capabilities` non piu' eseguibile con
+  `('member', …)`; l'hint sul ruolo in `CreateAccountForm`; `/dashboard` in
+  `PROTECTED_PREFIXES` con la ragione scritta sbagliata; il `catch` di
+  `handleGuestCheckIn` con perimetro largo; chiave ricalcolata invece di
+  `result.key`. Tutte prosa o pulizia: **fase 52 (ritocchi) o 57 (documenti)**,
+  nessuna cambia un comportamento.
