@@ -133,7 +133,7 @@ export interface NavItem {
    *
    * ── Perche' esiste, e perche' non sono due voci (fase 50, D-50-13) ─────────
    *
-   * `Account` ha due destinazioni: `/dashboard` per chi ha una sessione,
+   * `Account` ha due destinazioni: `/account` per chi ha una sessione,
    * `/login` per chi non ce l'ha. Fino alla fase 50 la voce era `requireAuth`
    * e un anonimo **non vedeva alcun Account**; ora lo vede, e lo porta alla
    * pagina d'accesso.
@@ -187,7 +187,7 @@ export interface NavItem {
    * An optional field lets a sixth entry added two years from now forget the
    * question; a required one makes forgetting it a build error naming this file.
    * The four entries that answer `null` are answering, not abstaining — there is
-   * no capability governing `/`, `/events`, `/gallery` or `/dashboard`.
+   * no capability governing `/`, `/events`, `/gallery` or `/account`.
    */
   capability: CapabilityKey | null;
 }
@@ -327,9 +327,17 @@ const NAV_ITEMS: NavItem[] = [
     //
     // E' una **voce nuova per chi non ha sessione**, non un ritocco: stessa
     // etichetta, stessa icona, stessa posizione, e un indirizzo che dipende da
-    // chi guarda — `/login` da anonimo, `/dashboard` con una sessione. La
-    // differenza la risolve il filtro qui sotto, non una seconda voce.
-    href: "/dashboard",
+    // chi guarda — `/login` da anonimo, la pagina dell'account con una
+    // sessione. La differenza la risolve il filtro qui sotto, non una seconda
+    // voce.
+    //
+    // ── L'indirizzo e' `/account` dal 2026-09-22 (fase 51, D-51-09b) ────────
+    //
+    // La pagina si e' spostata, e la barra la segue **all'indirizzo vero**, non
+    // al vecchio: il vecchio risponde ancora, ma come 308, e mandare ogni tocco
+    // della barra attraverso un redirect sarebbe un giro in piu' a ogni
+    // apertura — pagato da chi tocca questa voce piu' spesso di ogni altra.
+    href: "/account",
     hrefWhenAnonymous: "/login",
     label: "Account",
     icon: "user",
@@ -357,7 +365,7 @@ const NAV_ITEMS: NavItem[] = [
  *   esattamente come sempre. Account e' **nuovo** per questo soggetto
  *   (D-50-13): prima non vedeva alcuna voce Account.
  * - **Un account qualunque con ruolo `member`**: Events, Gallery, **Account →
- *   `/dashboard`** (3 schede).
+ *   `/account`** (3 schede).
  * - **Organizer o master**: Events, Gallery, Check-in, Account (4 schede).
  *   Check-in e' filtrato su `door.operate`, che il ruolo tiene.
  * - **Staff**: Events, Gallery, Account — **piu' Check-in quando e' assegnato
@@ -487,7 +495,7 @@ export function getVisibleNavItems(
   //
   // Una voce con `hrefWhenAnonymous` prende quell'indirizzo quando non c'e'
   // sessione, il proprio altrimenti. Oggi ne esiste **una**, Account: `/login`
-  // da anonimo, `/dashboard` con una sessione.
+  // da anonimo, `/account` con una sessione.
   //
   // **Perche' qui e non con due voci in `NAV_ITEMS`.** Due voci con la stessa
   // etichetta e condizioni che si escludono a vicenda sono il modo in cui una
@@ -496,7 +504,7 @@ export function getVisibleNavItems(
   // che vede solo la seconda.
   //
   // **Questo non e' un controllo d'accesso e non deve diventarlo.** Decide un
-  // indirizzo da disegnare, non chi puo' raggiungerlo: `/dashboard` resta
+  // indirizzo da disegnare, non chi puo' raggiungerlo: `/account` resta
   // protetto da `capability-routes.ts` e dal middleware, e un anonimo che lo
   // scrive a mano viene rimbalzato esattamente come prima di questa riga.
   // `AppNav` disegna cio' che riceve e non risolve niente per conto suo (e'

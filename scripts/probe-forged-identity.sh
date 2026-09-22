@@ -18,20 +18,32 @@
 #   1. It is in the `(public)` route group, so no middleware prefix rule gates
 #      it. The prefix list is `PROTECTED_PREFIXES`, and since phase 37 it is
 #      DECLARED in `src/lib/routes/next-redirect.ts` and only READ by the
-#      middleware (src/lib/supabase/middleware.ts:584), so that the bouncer and
+#      middleware, which IMPORTS it rather than copying it, so the bouncer and
 #      the `?next=` allow-list cannot drift apart. **Re-measured 2026-09-22,
-#      phase 51: it is three prefixes — /dashboard /admin /door — and /events is
-#      in none of them.**
+#      phase 51, after the account page moved: it is four prefixes — /account
+#      /dashboard /admin /door — and /events is in none of them.**
 #
 #      This line used to say five, at a line number in the middleware, and both
 #      halves had gone stale: the organizer tree went when phase 34 collapsed
 #      the two work trees, and the two member surfaces went with their pages in
-#      phase 51 (MEM-01, MEM-02). None of the three departed names is written
-#      out here, because this comment's job is to say what the list CONTAINS —
-#      a reader grepping it for an address has to get an answer about today.
-#      The claim is re-derived from the constant rather than remembered, since
-#      what makes this probe worth running is that /events is NOT gated, and
-#      that is exactly the sentence being asserted.
+#      phase 51 (MEM-01, MEM-02). It then said three for a few hours, until the
+#      same phase moved the account page (D-51-09b) and added its new address
+#      beside the one it moved from. None of the departed names is written out
+#      here, because this comment's job is to say what the list CONTAINS — a
+#      reader grepping it for an address has to get an answer about today. The
+#      claim is re-derived from the constant rather than remembered, since what
+#      makes this probe worth running is that /events is NOT gated, and that is
+#      exactly the sentence being asserted.
+#
+#      ⚠ **/dashboard NO LONGER ANSWERS WITH A JUDGEMENT ABOUT YOU.** Since
+#      2026-09-22 it is a **308** towards /account, declared in the redirects()
+#      of next.config.ts — and the redirects of that file run **before** this
+#      middleware. A probe pointed at it therefore measures a change of ADDRESS
+#      and not a refusal of ACCESS. A 3xx read as evidence of gating is exactly
+#      the mistake v1.5 already made once, on the bare domain, which answers 307
+#      towards its www form for reasons that have nothing to do with identity.
+#      **Point an access probe at /account**, which is judged; read /dashboard's
+#      308 as routing.
 #   2. Its `canManage` is decided from the HEADER ALONE:
 #      `role === "master" || role === "organizer"` (menu/page.tsx:72), where
 #      `role` came from `headersList.get("x-user-role")` (:56).

@@ -103,14 +103,46 @@ const nextConfig: NextConfig = {
     // viene rimandato, e un `grep` su di essa deve rispondere *«questo alias e'
     // servito?»*, non trovare il necrologio di uno che non lo e' piu'.
     //
-    // Nessuna voce nuova: il rimando verso la pagina dell'account lo aggiunge
-    // il piano 51-06, insieme alla pagina che servira' quell'indirizzo.
+    // ── E QUI E' ENTRATA LA TERZA, CHE NON E' UN ALIAS (fase 51, D-51-09b) ──
     //
-    // Le due che restano sono coppie italiano → inglese di indirizzi che
-    // esistono ancora.
+    // **Erano due voci, sono tre**, e la terza non ha la forma delle altre. Le
+    // due sopra sono coppie italiano → inglese: due nomi per la stessa pagina.
+    // Questa e' **un indirizzo che si e' spostato** — la pagina dell'account e'
+    // passata da `/dashboard` a `/account`, e questa voce e' cio' che tiene
+    // vivo il vecchio.
+    //
+    // ⚠ **E' questa voce a tenere `/dashboard` dentro l'union di
+    // `typedRoutes`, ed e' la ragione per cui i circa quaranta rifiuti delle
+    // superfici di lavoro non sono stati toccati.** Misurato, non dedotto: i
+    // `source` dei redirect dichiarati qui entrano fra i percorsi validi
+    // (`.next/types/routes.d.ts`, `type RedirectRoutes`), quindi ogni
+    // `redirect("/dashboard")` sotto `src/app/(admin)/admin/(work)/` continua a
+    // compilare e resta **un** rifiuto solo. Misurato anche nell'altro verso,
+    // spostando la pagina prima di scrivere questa riga: il build si e' fermato
+    // su `artists/page.tsx:73` con *«Argument of type "/dashboard" is not
+    // assignable»*. Togliere questa voce senza riscrivere quei quaranta siti
+    // **rompe il build**, e non in silenzio — e' il verso buono in cui fallire.
+    //
+    // **Il costo, dichiarato e non scoperto, ed e' lo stesso di `T-50-28`.**
+    // `permanent: true` emette un **308**, e un 308 lo **memorizza il browser**:
+    // chi apre il vecchio indirizzo anche una sola volta continuera' a essere
+    // mandato su quello nuovo **dalla propria cache**, anche se un giorno si
+    // volesse tornare indietro. Disposizione `accept` (`T-51-24`). A differenza
+    // dei due casi qui sopra, pero', l'esito per quella persona **non e' un
+    // 404**: e' la pagina giusta al nuovo indirizzo, cioe' esattamente cio' che
+    // il redirect promette. E' il motivo per cui qui la disposizione si accetta
+    // senza riserve.
+    //
+    // **Ordine, perche' decide cosa vede un anonimo.** I redirect di questo file
+    // girano **prima** del middleware: chi non ha sessione e digita il vecchio
+    // indirizzo riceve 308 verso quello nuovo, e **poi** il rimbalzo a `/login`
+    // con `next=/account`. Per questo `/account` sta in `NEXT_ALLOW_LIST`
+    // **e** in `PROTECTED_PREFIXES` — le due liste in `src/lib/routes/
+    // next-redirect.ts`, dove la ragione e' scritta per esteso.
     return [
       { source: "/eventi/:path*", destination: "/events/:path*", permanent: true },
       { source: "/galleria", destination: "/gallery", permanent: true },
+      { source: "/dashboard", destination: "/account", permanent: true },
     ];
   },
 };

@@ -12,14 +12,56 @@ import { Badge } from "@/components/ui/Chip";
 import LogoutButton from "@/components/auth/LogoutButton";
 import ResetPasswordButton from "@/components/auth/ResetPasswordButton";
 import ChangeEmailButton from "@/components/auth/ChangeEmailButton";
-import DashboardDrinkTokens from "./DashboardDrinkTokens";
+import CollapsibleSection from "@/components/account/CollapsibleSection";
 import ManagementSection from "@/components/account/ManagementSection";
 import { visibleStaffTabs } from "@/lib/routes/staff-tabs";
 import PostHogIdentify from "@/components/analytics/PostHogIdentify";
 import type { UserRole } from "@/types/database";
 
 /**
- * The member dashboard — converted by plan 41.2-13.
+ * La pagina dell'account — convertita dal piano 41.2-13, spostata qui dal
+ * piano 51-06.
+ *
+ * ── L'indirizzo e' cambiato, e il vecchio non e' morto ──────────────────────
+ *
+ * Questo file stava a `/dashboard` (D-51-09b, 2026-09-22). Il vecchio indirizzo
+ * **resta servito**: `next.config.ts` ne fa un 308 verso qui, e la ragione e'
+ * scritta li' accanto alla voce. Due conseguenze che chi legge questo file deve
+ * sapere senza andarle a scoprire:
+ *
+ *   1. I circa quaranta rifiuti delle superfici di lavoro sotto
+ *      `src/app/(admin)/admin/(work)/` continuano a scrivere il vecchio
+ *      indirizzo, **e non sono stati toccati**: il `source` di un redirect
+ *      dichiarato in `next.config.ts` resta dentro l'union di `typedRoutes`,
+ *      quindi quelle chiamate compilano e restano un rifiuto solo, non quaranta
+ *      modifiche in un piano che sposta una pagina.
+ *   2. Un 308 lo memorizza il browser. Chi ha aperto il vecchio indirizzo anche
+ *      una sola volta arrivera' qui **dalla propria cache**, anche se un giorno
+ *      si volesse tornare indietro. Disposizione `accept` (`T-51-24`), la stessa
+ *      proprieta' che la fase 50 ha registrato in `T-50-28`.
+ *
+ * ── Cosa questa pagina mostra oggi, e cosa non mostra piu' (D-51-09) ────────
+ *
+ * **I biglietti, e nient'altro che sia un possesso.** Le serate in arrivo
+ * aperte, quelle passate dentro una sezione chiusa; poi il cambio email, il
+ * cambio password e l'uscita. Sono usciti da qui, in questo stesso commit, i
+ * token del bar e **la lettura che li alimentava**: una lettura che non disegna
+ * piu' nulla e' peso sul percorso, non una cosa innocua, ed era un giro in rete
+ * a ogni apertura di questa pagina.
+ *
+ * Il nome della tabella **non e' scritto qui**, e non e' pedanteria: un `grep`
+ * di quel nome su un file di pagina risponde alla domanda *«questa pagina legge
+ * quella tabella?»*, e un necrologio in un commento risponderebbe **«si'»** a
+ * chi legge di fretta, per sempre. E' la stessa disciplina che il piano 51-04
+ * ha applicato agli elenchi d'accesso; `git log -S` ha il nome per chi serve.
+ *
+ * Chi ha comprato un token lo redime dalla pagina della serata, che e' il posto
+ * dove si e' comprato e dove si e' al momento di bere; questa pagina non era
+ * l'unica strada verso di lui e non era nemmeno la piu' breve.
+ *
+ * `ManagementSection` **resta**, e resta di proposito: la toglie NAV-03 nella
+ * fase 52, e anticiparla qui allargherebbe questa fase di una decisione che non
+ * e' sua.
  *
  * ── What changed, and the one thing that deliberately did not ────────────────
  *
@@ -79,14 +121,14 @@ import type { UserRole } from "@/types/database";
  * — it is stated at length above each flag — and a visual conversion is not
  * where a product decides what it tells somebody it has just refused.
  */
-export default async function DashboardPage({
+export default async function AccountPage({
   searchParams,
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   // ── The flags that land HERE, and why they are read in one place ────────────
   //
-  // `/dashboard` is where several degraded paths deposit the person, each
+  // This page is where several degraded paths deposit the person, each
   // carrying its reason in the URL. A flag that nothing renders is a **silent
   // failure with a URL**: the person is bounced, the reason is right there in
   // the address bar, and the screen says nothing. In a product with no error
@@ -105,7 +147,7 @@ export default async function DashboardPage({
   // WR-04 is closed on this surface and stays closed: every value below is
   // rendered, none is merely read.
   //
-  // `bounceToDashboard()` in `src/lib/supabase/middleware.ts` sets one of three
+  // `bounceToAccount()` in `src/lib/supabase/middleware.ts` sets one of three
   // values, decided by position, or no parameter at all. Each gets its own
   // sentence below, and the sentences say **what to do**, not only what
   // happened: the person reading one of them may be standing at a door at two
@@ -146,8 +188,9 @@ export default async function DashboardPage({
   //
   // It matters more than it looks. The person followed a link that promised to
   // take them somewhere — most often the page where a new account sets its
-  // password — and arrived at a dashboard instead. Without this notice the only
-  // thing they can conclude is that the link did not work, which is wrong: the
+  // password — and arrived at their account page instead. Without this notice
+  // the only thing they can conclude is that the link did not work, which is
+  // wrong: the
   // link worked, and it is the destination that was refused. Somebody who has
   // just been given an account and cannot find the password field will ask for
   // a second invitation, and the second one will do exactly the same thing.
@@ -219,50 +262,21 @@ export default async function DashboardPage({
     tickets = data;
   }
 
-  // Fetch user's drink tokens grouped by event
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let drinkTokenGroups: { eventTitle: string; eventSlug: string; eventDate: string; tokens: any[] }[] = [];
-  if (isMemberRole) {
-    const { data: allTokens } = await supabase
-      .from("drink_tokens")
-      .select("id, drink_name, price, token, status, created_at, redeemed_at, refunded_at, event_id, events(title, slug, date)")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: true });
-
-    // Group by event, show events with unredeemed tokens first
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const groupMap = new Map<string, { eventTitle: string; eventSlug: string; eventDate: string; tokens: any[] }>();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (allTokens ?? []).forEach((t: any) => {
-      const evt = Array.isArray(t.events) ? t.events[0] : t.events;
-      const eid = t.event_id;
-      if (!groupMap.has(eid)) {
-        groupMap.set(eid, {
-          eventTitle: evt?.title ?? "Event",
-          eventSlug: evt?.slug ?? "",
-          eventDate: evt?.date ?? "",
-          tokens: [],
-        });
-      }
-      groupMap.get(eid)!.tokens.push(t);
-    });
-    drinkTokenGroups = Array.from(groupMap.values())
-      .filter(g => g.tokens.some((t: { status: string }) => t.status === "purchased") ||
-        g.tokens.some((t: { status: string; redeemed_at: string | null; refunded_at?: string | null }) => {
-          const completedAt = t.status === "refunded" ? t.refunded_at : t.redeemed_at;
-          if (!completedAt) return false;
-          const completed = new Date(completedAt);
-          const nowDate = new Date();
-          return (nowDate.getTime() - completed.getTime()) < 48 * 60 * 60 * 1000;
-        }))
-      .sort((a, b) => {
-        const aHasUnredeemed = a.tokens.some((t: { status: string }) => t.status === "purchased");
-        const bHasUnredeemed = b.tokens.some((t: { status: string }) => t.status === "purchased");
-        if (aHasUnredeemed && !bHasUnredeemed) return -1;
-        if (!aHasUnredeemed && bHasUnredeemed) return 1;
-        return 0;
-      });
-  }
+  // ── I TOKEN DEL BAR SONO USCITI DA QUESTA PAGINA — D-51-09, 2026-09-22 ────
+  //
+  // Qui stava la lettura che li raggruppava per serata, e sotto si montava la
+  // lista. Sono usciti **insieme**: il componente e' cancellato, la lettura non
+  // si fa piu', e nessuno dei due e' stato lasciato a girare "tanto non costa".
+  // Era un giro in rete a ogni apertura di questa pagina per costruire una
+  // lista che nessuno disegna.
+  //
+  // **Non si perde una strada, si perde una scorciatoia.** Un token si redime
+  // dalla pagina della serata — dove lo si e' comprato, e dove si e' al momento
+  // di berlo — e quella pagina non e' cambiata. Questa non era ne' l'unica via
+  // ne' la piu' breve.
+  //
+  // Il nome della tabella non e' scritto qui, per la ragione gia' data nel
+  // docblock in testa al file.
 
   // ── LA LETTURA DEI PROPRI MEDIA E' USCITA CON LA SEZIONE CHE LA MOSTRAVA ───
   //
@@ -270,7 +284,7 @@ export default async function DashboardPage({
   // raggruppamento per serata che alimentava la sezione dei propri media. Sono uscite
   // insieme al mount — D-50-03, il caricamento e' di organizer e staff — e non
   // sono state lasciate a girare "tanto non costa": era un giro in rete a ogni
-  // apertura del dashboard per costruire una lista che nessuno disegna piu'.
+  // apertura di questa pagina per costruire una lista che nessuno disegna piu'.
   //
   // `status` qui era **`event_media.status`**, la moderazione, una tabella
   // diversa da `profiles`: non e' la colonna che questa fase cancella. Se la
@@ -287,7 +301,105 @@ export default async function DashboardPage({
     const evt = Array.isArray(t.events) ? t.events[0] : t.events;
     return evt && (evt as { date: string }).date < now;
   });
-  const sortedTickets = [...upcomingTickets, ...pastTickets];
+
+  // ── LE DUE LISTE ERANO GIA' SEPARATE, E ORA SI VEDONO SEPARATE ─────────────
+  //
+  // Fino al 2026-09-22 venivano ricongiunte in una lista sola — le passate in
+  // coda alle prossime, distinte dalla sola opacita'. D-51-09 chiede che le
+  // passate stiano **in una sezione chiusa**, e la separazione non e' costata
+  // una query ne' un criterio nuovo: le due liste esistevano gia' qui sopra, e
+  // cio' che e' cambiato e' solo come si disegnano.
+  //
+  // **Il conto dell'assenza si fa sulla somma, non su una lista ricongiunta.**
+  // Entrambi i filtri scartano un biglietto la cui serata non si risolve, quindi
+  // «nessun biglietto» significa *nessuna delle due ne ha*, e non *la tabella e'
+  // vuota*: chi avesse un biglietto orfano vedrebbe lo stato vuoto, esattamente
+  // come prima, e questo non e' un cambio introdotto qui.
+  const hasAnyTicket = upcomingTickets.length + pastTickets.length > 0;
+
+  // La riga di un biglietto, scritta una volta e usata dalle due liste.
+  //
+  // Prima esisteva una sola volta perche' esisteva una sola lista. Dividendo
+  // la resa in due, ricopiarla sarebbe stato il modo piu' rapido per farle
+  // divergere al primo ritocco — e una riga di biglietto che si comporta
+  // diversamente a seconda della sezione e' un difetto che si nota solo dopo
+  // averne fatto uno.
+  //
+  // `isUpcoming` **resta calcolato dalla data**, non dedotto dalla sezione che
+  // sta disegnando: la lista viene dal filtro qui sopra, e leggere la data e'
+  // cio' che tiene il distintivo e l'opacita' d'accordo con essa.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const renderTicketRow = (ticket: any) => {
+    const evt = Array.isArray(ticket.events) ? ticket.events[0] : ticket.events;
+    const tier = Array.isArray(ticket.ticket_tiers)
+      ? ticket.ticket_tiers[0]
+      : ticket.ticket_tiers;
+    const eventData = evt as {
+      title: string;
+      date: string;
+      slug: string;
+      cover_image: string | null;
+    } | null;
+    const tierData = tier as { name: string } | null;
+    const isUpcoming = eventData ? eventData.date >= now : false;
+
+    return (
+      <Link
+        key={ticket.id}
+        href={`/tickets/${ticket.id}`}
+        className="block min-h-11"
+      >
+        <Card
+          className={`px-4 py-4 transition-all hover:border-accent/50 active:scale-[0.98] active:opacity-80 ${
+            !isUpcoming ? "opacity-60" : ""
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl">
+              {eventData?.cover_image ? (
+                <Image
+                  src={eventData.cover_image}
+                  alt={eventData.title ?? ""}
+                  width={48}
+                  height={48}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="h-full w-full bg-gradient-to-br from-accent/30 to-accent/10" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-ink truncate">
+                  {eventData?.title ?? "Event"}
+                </p>
+                {/*
+                  Two marks that state and cannot be operated, so both are
+                  Badges. They lose a green and an accent respectively:
+                  D-41.1-25 refuses a tone per outcome, and each word already
+                  carried the whole of its own meaning.
+                */}
+                {isUpcoming && <Badge className="shrink-0">Upcoming</Badge>}
+              </div>
+              <div className="flex items-center gap-2 mt-0.5">
+                {tierData?.name && <Badge>{tierData.name}</Badge>}
+                <span className="text-xs text-muted">
+                  {eventData
+                    ? (() => {
+                        const d = new Date(eventData.date + "T00:00:00");
+                        const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+                        return `${d.getDate()} ${M[d.getMonth()]}`;
+                      })()
+                    : ""}
+                </span>
+              </div>
+            </div>
+            <span className="shrink-0 text-muted">&#8250;</span>
+          </div>
+        </Card>
+      </Link>
+    );
+  };
 
   // Role and the resolved capability set, from the SESSION. Only the
   // source changed; l'approvazione che stava fra i due e' uscita con l'asse
@@ -534,7 +646,29 @@ export default async function DashboardPage({
                     Your tickets live here. You never need to open the email —
                     showing the QR code from the ticket is enough.
                   </p>
-                  {sortedTickets.length === 0 ? (
+                  {/*
+                    ── LE PASSATE STANNO IN UNA SEZIONE CHIUSA — D-51-09 ──────
+
+                    Prima era una lista sola: le passate in coda alle prossime,
+                    distinte dalla sola opacita'. Chi ha comprato dieci volte
+                    doveva scorrere nove serate finite per arrivare a quella di
+                    stasera — e quella di stasera e' l'unica che si mostra alla
+                    porta.
+
+                    La sezione chiusa e' **quella che la casa ha gia'**,
+                    `components/account/CollapsibleSection.tsx`, la stessa che
+                    tiene Management Tools qui sotto: annuncia lo stato con
+                    `aria-expanded`, dichiara il pavimento dei 44 px sul
+                    controllo e importa l'anello di fuoco. Non ne e' stata
+                    scritta una seconda, perche' una seconda diverge dalla
+                    prima al primo ritocco.
+
+                    `defaultOpen` **non e' passato**, e il valore di default del
+                    componente e' *chiusa*: e' il verso che D-51-09 chiede.
+                    Management Tools lo passa esplicitamente perche' li' il
+                    verso e' l'opposto.
+                  */}
+                  {!hasAnyTicket ? (
                     <Card>
                       <p className="text-sm text-muted/60">No tickets yet</p>
                       <Link
@@ -545,96 +679,64 @@ export default async function DashboardPage({
                       </Link>
                     </Card>
                   ) : (
-                    <div className="space-y-2">
-                      {sortedTickets.map((ticket) => {
-                        const evt = Array.isArray(ticket.events)
-                          ? ticket.events[0]
-                          : ticket.events;
-                        const tier = Array.isArray(ticket.ticket_tiers)
-                          ? ticket.ticket_tiers[0]
-                          : ticket.ticket_tiers;
-                        const eventData = evt as {
-                          title: string;
-                          date: string;
-                          slug: string;
-                          cover_image: string | null;
-                        } | null;
-                        const tierData = tier as { name: string } | null;
-                        const isUpcoming = eventData
-                          ? eventData.date >= now
-                          : false;
-
-                        return (
+                    <div className="flex flex-col gap-2">
+                      {upcomingTickets.length > 0 ? (
+                        <div className="space-y-2">
+                          {upcomingTickets.map(renderTicketRow)}
+                        </div>
+                      ) : (
+                        /*
+                          Lo stato vuoto di QUESTA lista, che non e' lo stato
+                          vuoto della pagina: qui dei biglietti ci sono, e sono
+                          tutti di serate finite. Senza questa frase la persona
+                          vedrebbe una sola sezione chiusa intitolata «Past» e
+                          dovrebbe aprirla per capire perche' sopra non c'e'
+                          niente — un vuoto indistinguibile da un guasto, che e'
+                          esattamente lo stato vuoto non disegnato di
+                          `nextjs-architecture.md`.
+                        */
+                        <Card>
+                          <p className="text-sm text-muted/60">
+                            Nothing coming up
+                          </p>
                           <Link
-                            key={ticket.id}
-                            href={`/tickets/${ticket.id}`}
-                            className="block min-h-11"
+                            href="/events"
+                            className="mt-3 inline-flex min-h-11 items-center text-sm font-medium text-accent hover:text-accent-hover"
                           >
-                            <Card
-                              className={`px-4 py-4 transition-all hover:border-accent/50 active:scale-[0.98] active:opacity-80 ${
-                                !isUpcoming ? "opacity-60" : ""
-                              }`}
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl">
-                                  {eventData?.cover_image ? (
-                                    <Image
-                                      src={eventData.cover_image}
-                                      alt={eventData.title ?? ""}
-                                      width={48}
-                                      height={48}
-                                      className="h-full w-full object-cover"
-                                    />
-                                  ) : (
-                                    <div className="h-full w-full bg-gradient-to-br from-accent/30 to-accent/10" />
-                                  )}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <p className="text-sm font-semibold text-ink truncate">
-                                      {eventData?.title ?? "Event"}
-                                    </p>
-                                    {/*
-                                      Two marks that state and cannot be operated,
-                                      so both are Badges. They lose a green and an
-                                      accent respectively: D-41.1-25 refuses a tone
-                                      per outcome, and each word already carried
-                                      the whole of its own meaning.
-                                    */}
-                                    {isUpcoming && (
-                                      <Badge className="shrink-0">Upcoming</Badge>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-2 mt-0.5">
-                                    {tierData?.name && (
-                                      <Badge>{tierData.name}</Badge>
-                                    )}
-                                    <span className="text-xs text-muted">
-                                      {eventData
-                                        ? (() => {
-                                            const d = new Date(eventData.date + "T00:00:00");
-                                            const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-                                            return `${d.getDate()} ${M[d.getMonth()]}`;
-                                          })()
-                                        : ""}
-                                    </span>
-                                  </div>
-                                </div>
-                                <span className="shrink-0 text-muted">&#8250;</span>
-                              </div>
-                            </Card>
+                            Discover events &rarr;
                           </Link>
-                        );
-                      })}
+                        </Card>
+                      )}
+
+                      {pastTickets.length > 0 && (
+                        <CollapsibleSection
+                          title={`Past (${pastTickets.length})`}
+                        >
+                          <div className="space-y-2 pb-1">
+                            {pastTickets.map(renderTicketRow)}
+                          </div>
+                        </CollapsibleSection>
+                      )}
                     </div>
                   )}
                 </div>
                 )}
 
-                {/* My Drinks — drink tokens with full redeem capability */}
-                {isMemberRole && drinkTokenGroups.length > 0 && (
-                  <DashboardDrinkTokens groups={drinkTokenGroups} />
-                )}
+                {/*
+                  ── QUI SI MONTAVANO I TOKEN DEL BAR — D-51-09, 2026-09-22 ───
+
+                  La sezione e' uscita insieme alla lettura che la alimentava e
+                  al componente che la disegnava: tre cose in un commit solo,
+                  perche' lasciarne in piedi una qualsiasi avrebbe lasciato o un
+                  import senza componente (build rosso) o una lettura senza
+                  disegno (un giro in rete per niente).
+
+                  Cosa resta a chi ha comprato un token: la pagina della serata,
+                  che e' dove lo si compra e dove lo si beve. Questa pagina non
+                  era ne' l'unica via ne' la piu' breve — e D-51-09 lascia qui i
+                  biglietti, che sono l'unica cosa che si deve poter mostrare
+                  alla porta.
+                */}
 
                 {/*
                   ── «My Media» E' USCITO DAL DASHBOARD — D-50-03, 2026-09-21 ──

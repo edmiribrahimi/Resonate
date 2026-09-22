@@ -10,7 +10,7 @@ import { PROTECTED_PREFIXES } from "@/lib/routes/next-redirect";
  * This project has no error tracking — no monitoring dependency in
  * `package.json` — so a `console.error` goes to a log nobody watches. On a
  * failure the four rules below fail closed to exactly today's verdicts, which
- * means the user sees an ordinary bounce to `/dashboard` and cannot tell an
+ * means the user sees an ordinary bounce to the account page and cannot tell an
  * infrastructure fault from a permissions refusal. This header is the
  * difference: it rides every response the middleware produces on the degraded
  * path, redirects included, so the failure is *observable* and not merely
@@ -25,7 +25,7 @@ const CAPABILITY_DIAGNOSTIC_HEADER = "x-capabilities-resolve-failed";
 /**
  * The three reasons a bounce can have, as VALUES.
  *
- * A gate that bounces a **validly assigned** member of staff to `/dashboard` at
+ * A gate that bounces a **validly assigned** member of staff to their account at
  * two in the morning, in front of a queue, is a new way of refusing somebody at
  * the door — precisely the failure this product has already decided it will not
  * build (`checkin-offline.md`, the asymmetry: a false refusal is the worse of
@@ -42,7 +42,7 @@ const CAPABILITY_DIAGNOSTIC_HEADER = "x-capabilities-resolve-failed";
  * Each is a value **decided by position** — which line set it — and never a
  * sentence to be interpreted downstream. Next redacts server-side error
  * messages in production builds (CR-01, `32-REVIEW.md`), and a category that
- * has to reach a screen cannot travel in prose. `/dashboard` renders one notice
+ * has to reach a screen cannot travel in prose. `/account` renders one notice
  * per value and renders **nothing** for a value it does not know: `?access=` is
  * a query string, so it is attacker-supplied input, and an invented value must
  * not be able to draw an authoritative-looking notice.
@@ -375,11 +375,11 @@ export async function updateSession(request: NextRequest) {
   // tracking. So the two are separated **by position** below: the verdict has
   // to refuse on `null` (admitting on a missing key would open the door to
   // every authenticated account the moment a migration lags), but the CAUSE
-  // says which of the two it was, and `/dashboard` draws them differently.
+  // says which of the two it was, and `/account` draws them differently.
   //
   // It stays `null` for a caller with no session, and that is unreachable
   // rather than chosen: the anonymous branch below redirects to `/login` and
-  // never calls `bounceToDashboard()`. `ANONYMOUS_CONTEXT` in the DAL takes the
+  // never calls `bounceToAccount()`. `ANONYMOUS_CONTEXT` in the DAL takes the
   // empty set instead, for a reason that does not apply here — it is a value
   // somebody can read.
   //
@@ -403,7 +403,7 @@ export async function updateSession(request: NextRequest) {
         `[capabilities.resolve_failed] middleware could not resolve the access ` +
           `context for ${request.nextUrl.pathname} — code=${error.code ?? "unknown"}. ` +
           `Failing closed to member/pending with no capabilities: every ` +
-          `capability-gated route now bounces to /dashboard.`
+          `capability-gated route now bounces to /account.`
       );
     }
 
@@ -492,9 +492,21 @@ export async function updateSession(request: NextRequest) {
   // The `cause` argument defaults to `null`, so the three rules that did not
   // change keep calling it with no arguments and keep producing byte-identical
   // URLs. Only the two widened rules pass a cause.
-  const bounceToDashboard = (cause: BounceCause = null) => {
+  // ── IL NOME SEGUE L'INDIRIZZO — 2026-09-22, fase 51, D-51-09b ─────────────
+  //
+  // Questa funzione si chiamava con il nome del vecchio indirizzo, e la pagina
+  // si e' spostata. Il nome e' stato cambiato insieme alla destinazione e non
+  // dopo: una funzione che dice di mandare da una parte e manda da un'altra e'
+  // la forma piu' economica di documentazione datata, e sta su un percorso di
+  // rifiuto, cioe' dove nessuno guarda finche' non serve.
+  //
+  // **La destinazione e' il nuovo indirizzo, non il vecchio**, benche' il
+  // vecchio risponda ancora: rimbalzare verso di lui costerebbe un 308 in piu'
+  // a ogni rifiuto, e `?access=` viaggerebbe attraverso un redirect per
+  // arrivare alla stessa pagina.
+  const bounceToAccount = (cause: BounceCause = null) => {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = "/account";
     // WR-04. This project has no error tracking, so a response header nothing
     // reads and a log nobody watches are the same thing: the user saw an
     // ordinary bounce and could not tell an infrastructure fault from a
@@ -543,14 +555,20 @@ export async function updateSession(request: NextRequest) {
   // refusal state 1 of D-34-08 and is not a capability question at all. No
   // capability is read on this branch, and none should be.
   //
-  // ── `/door` is the fifth, added by Phase 39, and it is not optional ─────────
+  // ── `/door` is one of the four, added by Phase 39, and it is not optional ──
+  //
+  // *(It was «the fifth» until 2026-09-22 and the number had gone stale twice in
+  // opposite directions: two prefixes came off with their pages in phase 51
+  // (MEM-01, MEM-02) and the account page's new address went on in the same
+  // phase. The count is re-read from the constant, not remembered — the list is
+  // in `src/lib/routes/next-redirect.ts` and it is where a reader must go.)*
   //
   // This list decides only whether an **unauthenticated** caller is bounced to
   // `/login` with `?redirect=`, and it reads no capability. Without `/door` on
   // it, a door phone whose session expired in a pocket is not bounced at all: it
-  // meets the page guard, which sends it to `/dashboard`, and `/dashboard` then
+  // meets the page guard, which sends it to the account page, and that page then
   // bounces it to login — so the person working the door signs in and arrives at
-  // the **dashboard**, in the dark, with a queue.
+  // **their own account**, in the dark, with a queue.
   //
   // ── Blocker **D7** — CLOSED on 2026-08-26, and it took BOTH halves ─────────
   //
@@ -640,9 +658,9 @@ export async function updateSession(request: NextRequest) {
         // `null` is the fourth case and carries no parameter at all — the
         // ordinary refusal this file has always produced. Three causes, none
         // collapsed (D-34-08 state 2); `unavailable` is added by
-        // `bounceToDashboard` itself and outranks both of these, which is why it
+        // `bounceToAccount` itself and outranks both of these, which is why it
         // is not decided here.
-        return bounceToDashboard(
+        return bounceToAccount(
           entry.assignmentOpenable ? assignmentBounceCause() : null
         );
       }
@@ -665,7 +683,7 @@ export async function updateSession(request: NextRequest) {
       // judged by it. `/membership-card` and `/attendance` ARE in it, and are
       // now judged through the same lookup as everything else — they are there
       // precisely because calling them table-scoped would have been a lie.
-      return bounceToDashboard();
+      return bounceToAccount();
     }
   }
 

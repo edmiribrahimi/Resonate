@@ -249,10 +249,24 @@ export default function AppNav({
           // La voce Account porta `/login` quando non c'e' sessione (D-50-13):
           // e' un indirizzo come un altro e cade nel ramo generale, che
           // evidenzia la scheda mentre si e' sulla pagina d'accesso.
-          const isActive =
-            item.href === "/dashboard"
-              ? pathname === "/dashboard" || pathname.startsWith("/dashboard")
-              : pathname.startsWith(item.href);
+          //
+          // ── E ORA IL RAMO GENERALE E' L'UNICO (fase 51, D-51-09b) ─────────
+          //
+          // Qui stava un ternario per l'indirizzo dell'account, e diceva
+          // `pathname === X || pathname.startsWith(X)` — cioe' **la stessa cosa
+          // due volte**: il primo termine e' un caso del secondo, quindi il
+          // ramo speciale calcolava esattamente il ramo generale. Era gia'
+          // ridondante prima che la pagina si spostasse; spostandola sarebbe
+          // diventato anche un ramo su un indirizzo che la barra non disegna
+          // piu', cioe' un ramo irraggiungibile che suggerisce al prossimo
+          // lettore che ci sia una ragione per averlo.
+          //
+          // **E un secondo confronto sul vecchio indirizzo non serve**, benche'
+          // il vecchio risponda ancora: il 308 cambia il `pathname` del browser
+          // **prima** che questa pagina renda, quindi quando questo codice gira
+          // il percorso e' gia' quello nuovo. Aggiungerlo sarebbe una seconda
+          // verita' che diverge alla prima volta che una delle due si muove.
+          const isActive = pathname.startsWith(item.href);
 
           return (
             <Link
