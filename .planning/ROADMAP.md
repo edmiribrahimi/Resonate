@@ -452,7 +452,7 @@ Plans:
 > resta quella di sempre: rifiutare un ospite valido e' peggio che ammetterne uno
 > doppio.
 
-**Plans:** 11/15 plans executed
+**Plans:** 12/15 plans executed
 
 Plans:
 **Wave 1**
@@ -477,7 +477,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 51-11-PLAN.md — il registro diventa `account_acts` nel codice, e i banchi smettono di seminare il codice socio
+- [x] 51-11-PLAN.md — il registro diventa `account_acts` nel codice, e i banchi smettono di seminare il codice socio
 
 **Wave 5** *(blocked on Wave 4)*
 
