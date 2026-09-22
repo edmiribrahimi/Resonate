@@ -6,11 +6,15 @@
  * Il piano `43-01` ha sondato una violazione di CHECK attraverso il client JS e
  * ha osservato che `error.details` contiene **la riga per intero**:
  *
- *     Failing row contains (<uuid>, <indirizzo>, <full_name>, <membership_code>, …)
+ *     Failing row contains (<uuid>, <indirizzo>, <full_name>, …)
  *
- * `membership_code` **e' l'unica credenziale d'ingresso** — il roster della
- * porta non filtra ne' per ruolo ne' per stato (`api/membership/list`). Un
- * codice finito in un log e' una credenziale fuori dalla porta.
+ * **La regola non dipende da quale colonna sia la piu' grave, e conviene
+ * saperlo perche' quella colonna e' cambiata.** Fino alla fase 51 l'esempio
+ * finiva su un codice socio e ne faceva la ragione: era una credenziale della
+ * porta, e una credenziale finita in un log e' una chiave fuori dalla porta.
+ * Quella colonna esce col piano 51-12 — e la riga rifiutata continua a portare
+ * l'indirizzo e il nome di una persona, che in un log destinato a finire in uno
+ * screenshot bastano da soli.
  *
  * ── Perche' un helper e non una regola a memoria ─────────────────────────────
  *

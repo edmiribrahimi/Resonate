@@ -93,8 +93,10 @@
  * `details` is not in it, and its absence is the mechanism rather than a
  * convention: on a CHECK or constraint violation PostgREST returns **the whole
  * rejected row** in `error.details`, and a `profiles` or `tickets` row carries
- * `membership_code`. A membership code is the door credential, and a log on
- * this project reaches a screenshot. Roughly twenty sites in this repository
+ * somebody's address and name. A log on this project reaches a screenshot.
+ * (Until phase 51 this sentence named the door credential the row also carried;
+ * that column goes with plan 51-12, and the rule never rested on it — the row
+ * is a person's data with or without it.) Roughly twenty sites in this repository
  * already pass a whole error object to `console.error`
  * (`.planning/todos/pending/postgrest-details-leaks-the-row.md`); this phase
  * opens several files that would otherwise become the twenty-first.

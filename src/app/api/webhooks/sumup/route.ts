@@ -236,7 +236,7 @@ export async function POST(request: Request) {
           // Render email HTML
           const html = await render(
             TicketConfirmationEmail({
-              memberName: profile.full_name || "Member",
+              memberName: profile.full_name || "Attendee",
               eventTitle: event.title,
               eventDate: formattedDate,
               eventTime,

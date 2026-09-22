@@ -141,10 +141,12 @@ function doorAuthorisation(
  * the door **is a refusal** — the staff sees no night to open and nobody gets
  * in. `checkin-offline.md` names the false refusal, the one that happens in
  * front of a queue, as the worse of the two failures, and this repository has
- * already made the same call for the twin case: `membership/list/route.ts:45-52`
- * admits on `membership_code` alone and reads neither role nor status,
- * deliberately, because *"adding a status test would create a NEW way to refuse
- * somebody at the door"*.
+ * already made the same call for the twin case, and wrote down why: the roster
+ * the door used to load admitted on its own credential alone and read neither
+ * role nor status, deliberately, because *"adding a status test would create a
+ * NEW way to refuse somebody at the door"*. **That route and that credential
+ * are gone** (plans 51-04 and 51-05); the precedent is kept here for the RULE
+ * it settled, which outlived the code that first applied it.
  *
  * So the rule here, and it is a rule and not a preference:
  *
