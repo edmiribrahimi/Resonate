@@ -21,13 +21,26 @@ declare const self: WorkerGlobalScope & typeof globalThis;
  * `maxAgeSeconds: 86400`, `networkTimeoutSeconds: 10`), so on a weak signal the
  * attendee fetch resolves from a day-old payload while `navigator.onLine` is
  * still `true`, and the scanner writes that stale list over the good local one.
- * And `/api/membership/list` returns the whole member roster — every full name
- * and membership code — which must not be left at rest in a browser cache
- * bucket on a staff phone we do not control.
  *
- * Order matters: Serwist takes the first matching route, so these rules must be
- * spread before the inherited ones, or the inherited `/api/*` rule keeps
- * winning.
+ * There were FOUR rules here until phase 51. The other two covered the member
+ * roster and the door's second credential, and this paragraph used to justify
+ * them by what the roster carried — every full name and membership code, which
+ * must not be left at rest in a cache bucket on a staff phone we do not
+ * control. Both routes were deleted with the member surfaces (MEM-03), and the
+ * justification went with them rather than being left behind to describe a
+ * route that no longer answers.
+ *
+ * What still travels to a staff phone is the night's own list, served by the
+ * attendance route below: it carries names, and no membership code, because
+ * none is minted any more. Its rule is kept for the staleness reason above —
+ * the roster reason left with the roster.
+ *
+ * Order matters, and it matters MORE now than it did with four rules: Serwist
+ * takes the first matching route, so these rules must be spread before the
+ * inherited ones, or the inherited `/api/*` rule keeps winning. Delete the
+ * `/api/tickets/attendance` rule below and the door's list starts resolving
+ * from a day-old `NetworkFirst` copy while the badge still says «Online» —
+ * which is the whole defect this array exists to prevent.
  */
 const doorRuntimeCaching: RuntimeCaching[] = [
   {
@@ -36,14 +49,6 @@ const doorRuntimeCaching: RuntimeCaching[] = [
   },
   {
     matcher: ({ url, sameOrigin }) => sameOrigin && url.pathname === "/api/tickets/checkin",
-    handler: new NetworkOnly(),
-  },
-  {
-    matcher: ({ url, sameOrigin }) => sameOrigin && url.pathname === "/api/membership/list",
-    handler: new NetworkOnly(),
-  },
-  {
-    matcher: ({ url, sameOrigin }) => sameOrigin && url.pathname === "/api/membership/verify",
     handler: new NetworkOnly(),
   },
   /**
@@ -68,7 +73,7 @@ const doorRuntimeCaching: RuntimeCaching[] = [
    * who must not have it. There is no rollback for that one
    * (`venue-secrecy.md`, gate *cache e pre-render*).
    *
-   * Matching is on the PATH, not on `Content-Type`, exactly like the four door
+   * Matching is on the PATH, not on `Content-Type`, exactly like the two door
    * rules above: the three forms differ by header and query string, not by
    * pathname, so a content-type filter would catch one of the three and leave
    * two.
@@ -89,7 +94,7 @@ const doorRuntimeCaching: RuntimeCaching[] = [
    * being smoothed over. This is T-37-27 in the plan's threat register,
    * disposition ACCEPT. The door is untouched by it: the scanner's offline
    * store is IndexedDB (`src/lib/offline/`), it does not live under `/events/`,
-   * and the four rules above are unchanged.
+   * and the two rules above are unchanged.
    *
    * Collateral, and it is deliberate: `/events/<slug>/menu` sits under the same
    * prefix and loses its cached copy too. That page shows drink prices and the
