@@ -7,7 +7,7 @@ import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle } from "@/components/ui/Typography";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Chip";
-import type { MembershipActRow } from "@/types/database";
+import type { AccountActRow } from "@/types/database";
 
 /**
  * The membership register, read.
@@ -219,7 +219,7 @@ export default async function MembershipRegisterPage() {
   // by a grep, which is why the name is not written out even in this comment.
   const supabase = await createClient();
 
-  let rows: MembershipActRow[] = [];
+  let rows: AccountActRow[] = [];
   let readError: string | null = null;
 
   const { data, error } = await supabase
@@ -247,7 +247,7 @@ export default async function MembershipRegisterPage() {
     readError =
       "The register could not be read. This is a failure, not a quiet season — the list below is empty because nothing was loaded, not because nothing happened.";
   } else {
-    rows = (data ?? []) as unknown as MembershipActRow[];
+    rows = (data ?? []) as unknown as AccountActRow[];
   }
 
   // Display names for the subjects and the actors.
@@ -308,7 +308,7 @@ export default async function MembershipRegisterPage() {
    * not store one, and this page does not fetch one — an audit surface is the
    * kind of thing that ends up in a screenshot.
    */
-  function subjectOf(row: MembershipActRow) {
+  function subjectOf(row: AccountActRow) {
     const name = row.subject_id ? names[row.subject_id] : "";
     return {
       code: row.subject_label,
@@ -326,7 +326,7 @@ export default async function MembershipRegisterPage() {
    * the table carries a kind beside the actor instead of merely making the
    * actor nullable.
    */
-  function actorOf(row: MembershipActRow) {
+  function actorOf(row: AccountActRow) {
     if (row.actor_kind === "system") {
       return {
         label: "Automatic reconciliation",

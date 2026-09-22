@@ -10,13 +10,27 @@
  * ── The two sides are edited in ONE commit ───────────────────────────────────
  *
  * Both unions below are mirrored by SQL `CHECK` constraints on
- * `public.membership_acts`
+ * `public.account_acts`
  * (`supabase/migrations/20260808002000_membership_register.sql`, section 2 —
- * and, for `MembershipAct`, the CURRENT constraint is the one re-declared by
+ * and, for `AccountAct`, the CURRENT constraint is the one re-declared by
  * `supabase/migrations/20260809002000_assignment_acts.sql`, section 1, which
  * dropped the seven-value form and added the nine-value one).
  * They were written once here and copied there. **Editing either side means
  * editing both, in the same commit.**
+ *
+ * ── IL RINOMINO DELLA FASE 51 NON HA ROTTO LO SPECCHIO ───────────────────────
+ *
+ * Questo modulo viveva in `src/lib/membership/acts.ts` e i due tipi si
+ * chiamavano `MembershipAct` e `MembershipActorKind`; la tabella si chiamava
+ * `public.membership_acts` e la funzione che la scrive
+ * `record_membership_act` (D-51-08). Cambia **il nome**, non l'insieme: il
+ * `CHECK` che specchia i dieci valori qui sotto cambia la **tabella** su cui
+ * vive — `ALTER TABLE … RENAME TO account_acts`, piano 51-12 — e **non cambia
+ * un solo letterale**. Scritto qui perche' la regola dell'unico commit sopra
+ * non venga letta come violata: un commit che rinomina non e' un commit che
+ * modifica un insieme, e chi trovasse i due nomi diversi fra codice e schema
+ * sta guardando la finestra fra il piano 51-11 (questo file) e il piano 51-12
+ * (la migration), che e' dichiarata e dura quanto quei due passi.
  *
  * Why that rule is stated rather than assumed: a divergence between the table
  * and the code does not fail loudly. Adding `'suspended'` here and not there
@@ -32,7 +46,7 @@
  * half, and nothing at all compares the two. No Supabase client in this
  * repository is parameterised with `Database`
  * (`src/lib/supabase/client.ts:4`, `server.ts:7`, `middleware.ts:15`,
- * `service.ts:4`), so the `.rpc("record_membership_act", …)` call that writes
+ * `service.ts:4`), so the `.rpc("record_account_act", …)` call that writes
  * these values is untyped end to end.
  */
 
@@ -40,7 +54,7 @@
  * What was done to an account's role or status, or to what it may do on one
  * night.
  *
- * **Dieci valori**, mirrored by the `act` CHECK on `public.membership_acts`
+ * **Dieci valori**, mirrored by the `act` CHECK on `public.account_acts`
  * (widened from seven by
  * `supabase/migrations/20260809002000_assignment_acts.sql`, section 1, and da
  * nove a dieci da `20260921120000_drop_status_and_referral.sql`).
@@ -50,9 +64,17 @@
  * `deleted` e' l'atto della fase 50 (D-50-16): togliere l'accesso a qualcuno
  * significa cancellare il suo account, e una cancellazione lascia la sua riga.
  * E' l'unico atto il cui soggetto **non esiste piu'** quando lo si legge:
- * `membership_acts.subject_id` va a `NULL` per costruzione
- * (`ON DELETE SET NULL`), e cio' che resta a nominarlo e' `subject_label`, il
- * codice di membership — mai un indirizzo e mai un nome.
+ * `account_acts.subject_id` va a `NULL` per costruzione
+ * (`ON DELETE SET NULL`), e cio' che resta a nominarlo e' `subject_label` —
+ * mai un indirizzo e mai un nome.
+ *
+ * **Cosa porta `subject_label` dipende da quando la riga e' stata scritta**, e
+ * la pagina del registro lo mostra e basta: le righe storiche portano il codice
+ * socio gia' emesso, le righe nuove le **prime 8 cifre dell'identificativo del
+ * soggetto** (D-51-15, scritto dalla funzione SQL nella stessa migration che
+ * toglie la colonna — piano 51-12). Nessuna riga si riscrive: il registro e'
+ * append-only, e due etichette diverse su due stagioni diverse sono la storia,
+ * non un'incoerenza.
  *
  * `approved`, `rejected`, `deactivated` e `reactivated` **restano nell'unione e
  * nessuno li scrive piu'**: l'asse dello stato che muovevano e' uscito dallo
@@ -74,7 +96,7 @@
  * An assignment moves neither the role nor the status axis, and a reader should
  * expect to see that as `role_before === role_after` and
  * `status_before === status_after` — **not** as nulls. Measured against a
- * container: `public.record_membership_act` computes the after-values as
+ * container: `public.record_account_act` computes the after-values as
  * `coalesce(argument, before)`, so passing null for both axes writes the
  * subject's current role and status on each side rather than leaving the
  * columns empty. The useful consequence is that the `assigned` act preserves
@@ -83,17 +105,17 @@
  * revoked.
  *
  * They are also the only two written by a function other than
- * `public.record_membership_act` directly: `public.record_party_assignment_act`
+ * `public.record_account_act` directly: `public.record_party_assignment_act`
  * delegates to it, in the same transaction as the row it is recording, so a
  * mutation cannot succeed while its record fails.
  *
  * A door override still does NOT enter here: it stays in `door_scan_events`.
  * D-18 was REWRITTEN rather than widened when the two values above arrived, and
  * the criterion is in
- * `COMMENT ON COLUMN public.membership_acts.party_id` — **admitting a person is
+ * `COMMENT ON COLUMN public.account_acts.party_id` — **admitting a person is
  * not granting a power.** An override admits; an assignment grants.
  */
-export type MembershipAct =
+export type AccountAct =
   | "created"
   | "approved"
   | "rejected"
@@ -114,4 +136,4 @@ export type MembershipAct =
  * combinations: a `'user'` act with no actor, and a `'system'` act that carries
  * one.
  */
-export type MembershipActorKind = "user" | "system";
+export type AccountActorKind = "user" | "system";

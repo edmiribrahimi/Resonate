@@ -6,7 +6,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { getAccessContext } from "@/lib/capabilities/server";
 import type { AccessContextResult } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
-import type { MembershipAct } from "@/lib/membership/acts";
+import type { AccountAct } from "@/lib/account/acts";
 import { render } from "@react-email/render";
 import { sendEmail } from "@/lib/email";
 // Tre import sono usciti da questa riga con la fase 50: `MemberApprovedEmail`,
@@ -795,7 +795,7 @@ async function recordAct(
   serviceClient: ServiceClient,
   params: {
     subjectId: string;
-    act: MembershipAct;
+    act: AccountAct;
     actorId: string;
     /** `null` means *leave this axis alone* — the function coalesces. */
     role?: string | null;
@@ -1097,7 +1097,7 @@ export async function updateMemberRole(
       return { ok: false, failure: "nothing_to_do", detail: "role_unchanged" };
     }
 
-    const act: MembershipAct =
+    const act: AccountAct =
       ROLE_RANK[newRole] > (ROLE_RANK[currentRole as WritableRole] ?? 0)
         ? "promoted"
         : "demoted";

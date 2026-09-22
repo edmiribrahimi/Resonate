@@ -28,9 +28,9 @@ import type {
 } from "@/lib/email-delivery/categories";
 // The third import, same inverted direction. The register's two vocabularies are
 // shared by a SQL `CHECK`, a stored procedure's arguments and every TypeScript
-// caller, so they are defined once in `@/lib/membership/acts`, which imports
+// caller, so they are defined once in `@/lib/account/acts`, which imports
 // nothing, and are read from here.
-import type { MembershipAct, MembershipActorKind } from "@/lib/membership/acts";
+import type { AccountAct, AccountActorKind } from "@/lib/account/acts";
 // The fourth import, same inverted direction and the same reason as the three
 // above. The production calendar's vocabularies are each shared by a SQL `CHECK`,
 // an importer and every TypeScript caller, so they are defined once in
@@ -182,7 +182,7 @@ export interface Event {
  * `format_di` compiles, runs, and returns `undefined` — on a surface, with
  * nothing logged, in a repository with no error tracking (`meta-gates.md`).
  *
- * The sentence is not new — `MembershipActRow`, `EventMediaRow` and
+ * The sentence is not new — `AccountActRow`, `EventMediaRow` and
  * `Attendance.entry_role` each carry their own copy, for their own columns. It
  * is repeated a fourth time because it is the reason **every later plan in this
  * phase verifies its queries by RUNNING them and not by compiling them**, and a
@@ -932,9 +932,9 @@ export interface DoorScanEvent {
  *
  * ── What IS enforced, on each side separately ────────────────────────────────
  *
- * `act` and `actor_kind` are the two unions of `@/lib/membership/acts`, imported
+ * `act` and `actor_kind` are the two unions of `@/lib/account/acts`, imported
  * rather than re-declared, and mirrored by SQL `CHECK` constraints on
- * `public.membership_acts`. `npm run build` holds the TypeScript half; the
+ * `public.account_acts`. `npm run build` holds the TypeScript half; the
  * database refuses a row that disagrees with the SQL half. Nothing compares the
  * two, which is why that module states the one-commit rule.
  *
@@ -956,28 +956,34 @@ export interface DoorScanEvent {
  * Le righe storiche che dicono `approved` o `rejected` **restano leggibili**, e
  * devono restarlo: il registro e' `append-only`, e la sua ragione di esistere e'
  * che una decisione presa su una persona si possa rileggere anni dopo. Dalle
- * righe nuove i due campi arrivano nulli — `record_membership_act` accetta e
+ * righe nuove i due campi arrivano nulli — `record_account_act` accetta e
  * ignora il parametro, per non cambiare firma durante la finestra di deploy.
  *
  * **Chi fra sei mesi cerchera' residui di quell'asse li trovera' qui: sono
  * storia, non debito.**
  *
- * `subject_label` is a MEMBERSHIP CODE. Never an address, never a full name —
- * this repository is public and a register row reaches artefacts.
+ * `subject_label` non e' MAI un indirizzo e non e' MAI un nome — questo
+ * repository e' pubblico e una riga di registro finisce in un artefatto. Cosa
+ * porta, invece, dipende da QUANDO la riga e' stata scritta: le righe storiche
+ * portano il codice socio che la colonna `profiles.membership_code` emetteva,
+ * le righe nuove le **prime 8 cifre di `subject_id`** (D-51-15), scritte dalla
+ * funzione SQL nella stessa migration che toglie quella colonna e rinomina la
+ * tabella (piano 51-12). Due etichette su due stagioni sono la storia di un
+ * registro append-only, non un'incoerenza da sanare: nessuna riga si riscrive.
  */
-export interface MembershipActRow {
+export interface AccountActRow {
   id: string;
-  act: MembershipAct;
+  act: AccountAct;
   /** NULL once the account is deleted. The act outlives its subject. */
   subject_id: string | null;
-  /** The subject's membership code, denormalised so the row survives them. */
+  /** L'etichetta durevole del soggetto, denormalizzata perche' la riga gli sopravviva. */
   subject_label: string;
   /** NULL for a `system` act, and only then — the table refuses the other three combinations. */
   actor_id: string | null;
-  actor_kind: MembershipActorKind;
+  actor_kind: AccountActorKind;
   /**
    * `string | null` because the COLUMNS are nullable, not because any writer
-   * produces a null: `public.record_membership_act` computes all four itself and
+   * produces a null: `public.record_account_act` computes all four itself and
    * **no act has ever left one empty** (measured against a container —
    * `deferred-items.md`, voce 6, still open and out of phase).
    *
@@ -985,7 +991,7 @@ export interface MembershipActRow {
    * as a NULL. The NULL semantics documented at
    * `20260808002000_membership_register.sql:244-246` describes an intention the
    * writer never carried out; a reader who waits for a null waits for a value
-   * that does not come. See {@link MembershipActRow.party_id} for the case where
+   * that does not come. See {@link AccountActRow.party_id} for the case where
    * this matters most.
    */
   role_before: string | null;
@@ -1001,7 +1007,7 @@ export interface MembershipActRow {
    * ── The four register columns on those two acts, MEASURED ──────────────────
    *
    * **They do NOT stay NULL, and the difference is the whole point.**
-   * `public.record_membership_act` computes the after-values itself, as
+   * `public.record_account_act` computes the after-values itself, as
    * `coalesce(argument, before)`
    * (`20260808002000_membership_register.sql:459-460`), so an assignment act —
    * which passes NULL for both axes precisely so the writer skips its
@@ -1021,7 +1027,7 @@ export interface MembershipActRow {
    * `supabase/migrations/20260809002000_assignment_acts.sql:423-430` — *«on an
    * assignment act all four come out NON-NULL and equal … Measured against a
    * container; the opposite was written here first, and was wrong»* — and
-   * `src/lib/membership/acts.ts:55-67`, which draws the useful consequence: the
+   * `src/lib/account/acts.ts:96-105`, which draws the useful consequence: the
    * `assigned` act preserves the role its holder carried at the grant, the one
    * fact `party_assignments.assignee_role` is nulled out of when the assignment
    * is retired.
@@ -1131,9 +1137,9 @@ export interface VenueRevealActRow {
   /** Who did it. `ON DELETE SET NULL`: someone who later leaves does not un-perform their acts. */
   actor_id: string | null;
   /**
-   * The person's full name, and the divergence from `MembershipActRow` is
+   * The person's full name, and the divergence from `AccountActRow` is
    * deliberate (D-37-18). There the subject is a person being JUDGED and the
-   * label is a membership code; here the subject is a person who ACTED on a
+   * label names the row without naming them; here the subject is a person who ACTED on a
    * staff surface, and accountability is the whole point — *revealed by
    * ORG-0042* answers nobody's question at 19:00 on a Friday.
    *
@@ -1163,7 +1169,7 @@ export interface VenueRevealActRow {
  * stated instant — and, if it was taken away, when and by whom. **A revocation
  * updates this row; it never deletes it.**
  *
- * ── The honest limit, the same one `MembershipActRow` carries ────────────────
+ * ── The honest limit, the same one `AccountActRow` carries ────────────────
  *
  * None of the four Supabase clients is parameterised, so this interface
  * DOCUMENTS the shape and does not make a query against it type-checked. The

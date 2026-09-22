@@ -71,7 +71,7 @@ export const DOOR_HTTP = {
  * `20260805120000_door_scan_events.sql` is deliberately absent from this
  * phase's diff.
  *
- * The same shape `MembershipAct` already carries (`src/lib/membership/acts.ts`),
+ * The same shape `AccountAct` already carries (`src/lib/account/acts.ts`),
  * where `approved`, `rejected`, `deactivated` and `reactivated` stay in the
  * union because existing rows are named by them. A union that could not name a
  * row that exists makes unreadable exactly the history it was kept for.
