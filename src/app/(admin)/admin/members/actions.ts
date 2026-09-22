@@ -75,16 +75,19 @@ async function sendAccountInvitation(
 ) {
   const html = await render(
     AccountInvitationEmail({
-      memberName: fullName || "ciao",
+      memberName: fullName || "Hello",
       setPasswordUrl,
     })
   );
   await sendEmail({
     to: email,
-    // Italian, like the body — declared debt for phase 51, see the template's docblock.
+    // English, like the body and like the surface that created the account:
+    // `comms-analytics.md`, gate *una lingua sola per percorso*. The subject and
+    // the template moved in the same commit — two halves of one message in two
+    // languages for even one deploy reads as a different sender.
     // The sender is `RESEND_FROM_EMAIL`, resolved inside `sendEmail`, so this
     // goes out from `noreply@` like every other transactional message.
-    subject: "Il tuo account re:sonate è pronto",
+    subject: "Your re:sonate account is ready",
     html,
     category: "account_invitation",
   });
@@ -115,10 +118,13 @@ async function sendAccountInvitation(
 // ── The one field of a PostgREST error that may be propagated ────────────────
 //
 // Measured in plan 43-01, finding 1: on a CHECK violation against
-// `public.profiles`, `error.details` reads
-// `Failing row contains (<uuid>, <address>, <full_name>, <membership_code>, …)`
-// — the WHOLE row, including the membership code, which
-// `src/app/api/membership/list/route.ts` shows is the door's only credential.
+// `public.profiles`, `error.details` reads `Failing row contains (…)` — the
+// WHOLE row, field by field, and among those fields the person's address.
+//
+// The measurement was taken when that row also carried the door's credential.
+// The credential leaves the table with plan 51-12; the address does not, and
+// neither does the name. **So the rule below does not depend on which columns
+// the row has** — it is about a field that returns the row itself.
 // So, in this file:
 //
 //   * `error.code`    — the category, and the only field that crosses the wire;
@@ -309,17 +315,20 @@ export type DeleteAccountFailure =
 /**
  * The failure branch, shared by every action in this file.
  *
- * `membershipCode` is optional and only ONE path sets it: `createAccount`'s
- * two invitation failures, where the account exists and already works at the
- * door while the message does not exist. It rides on the failure rather than on
- * a success because it is not a success — and an operator told "the invitation
- * failed" without the code has been told half of what happened.
+ * ── Il campo che portava il codice socio e' uscito (D-51-02) ────────────────
+ *
+ * C'era un terzo campo opzionale, e lo riempiva un percorso solo: le due
+ * mancate spedizioni dell'invito di `createAccount`, dove l'account esiste e la
+ * mail no. Serviva perche' quel codice era la credenziale della porta e un
+ * operatore poteva far entrare la persona lo stesso. **La porta non lo verifica
+ * piu'**, quindi non c'e' piu' niente che un operatore possa farne: cio' che
+ * resta da dire e' che l'account esiste e il messaggio no, ed e' la causa
+ * stessa a dirlo.
  */
 type FailureBranch<F extends string> = {
   ok: false;
   failure: F;
   detail: string;
-  membershipCode?: string | null;
 };
 
 /** A tagged outcome, parameterised by the vocabulary of failures it can carry. */
@@ -883,15 +892,21 @@ type SubjectRefusal = { ok: false; failure: MemberActFailure; detail: string };
 /**
  * Rules 1 and 2, in ONE read, before any act in this group writes.
  *
- * Restituisce il RUOLO corrente del soggetto e il suo CODICE DI MEMBERSHIP.
+ * Restituisce il RUOLO corrente del soggetto, e **solo quello**.
  *
  * Il ruolo serve a `updateMemberRole`, che da li' calcola `promoted` o
- * `demoted` invece di riceverlo come letterale. Il codice serve a
- * `deleteAccount`: e' l'etichetta con cui il soggetto sopravvive nel registro
- * (`membership_acts.subject_label`), e va letto **prima** della cancellazione,
- * perche' dopo non c'e' piu' nessuna riga da cui leggerlo. Una lettura sola per
- * tutti e due, che e' la regola che questa funzione ha sempre tenuto: una
- * seconda lettura sarebbe una seconda verita'.
+ * `demoted` invece di riceverlo come letterale.
+ *
+ * ── Il codice socio non si legge piu' qui, e non si sostituisce (D-51-02) ────
+ *
+ * Restituiva anche il codice del soggetto, perche' era l'etichetta con cui una
+ * persona cancellata sopravvive nel registro degli atti, e andava letto
+ * **prima** della cancellazione. La colonna esce nel piano 51-12, e l'etichetta
+ * la calcola da se' la funzione SQL — le prime otto cifre dell'identificativo
+ * del soggetto (D-51-15). **Non si duplica qui**: due punti che calcolano la
+ * stessa etichetta sono due verita' che prima o poi divergono, ed e'
+ * esattamente cio' che la regola di questa funzione — una lettura sola — esiste
+ * per evitare.
  *
  * ── `status` non si legge piu', e non e' una svista ──────────────────────────
  *
@@ -915,9 +930,7 @@ async function assertSubjectActionable(
     /** The `detail` a self-aimed act carries — one value per act, never shared. */
     selfDetail: string;
   }
-): Promise<
-  { ok: true; role: string; membershipCode: string | null } | SubjectRefusal
-> {
+): Promise<{ ok: true; role: string } | SubjectRefusal> {
   // Rule 2, first and without a round trip: an act aimed at its own author is
   // refused before the database is asked anything about anybody.
   if (memberId === ctx.userId) {
@@ -926,7 +939,7 @@ async function assertSubjectActionable(
 
   const { data: subject, error } = await serviceClient
     .from("profiles")
-    .select("role, membership_code")
+    .select("role")
     .eq("id", memberId)
     .maybeSingle();
 
@@ -942,11 +955,7 @@ async function assertSubjectActionable(
     return { ok: false, failure: "forbidden", detail: "subject_is_master" };
   }
 
-  return {
-    ok: true,
-    role,
-    membershipCode: subject.membership_code ?? null,
-  };
+  return { ok: true, role };
 }
 
 // --- Role changes: master OR organizer, within the ceiling ---
@@ -1365,13 +1374,14 @@ export type CreateAccountData = {
   memberId: string;
   actId: string | null;
   /**
-   * The door's credential, minted by the trigger.
+   * ── Il codice della porta non torna piu' da qui (D-51-02) ─────────────────
    *
-   * `null` only if it could not be read back — which does not undo the
-   * creation, so it is reported as a success carrying an absence rather than as
-   * a failure. The surface says so; the table below it holds the code anyway.
+   * C'era un terzo campo: la credenziale coniata dal trigger, riletta e
+   * restituita perche' la superficie la mostrasse. La porta non la verifica
+   * piu' e la colonna cade nel piano 51-12; cio' che la superficie annuncia
+   * dopo una creazione e' il ruolo e il nome, che sono cio' che l'operatore ha
+   * appena deciso.
    */
-  membershipCode: string | null;
   role: WritableRole;
 };
 
@@ -1664,31 +1674,17 @@ export async function createAccount(input: {
         return { ...recorded, failure: asCreateFailure(recorded.failure) };
       }
 
-      // ── 4. The credential, read back ────────────────────────────────────
+      // ── 4. The credential, read back — NON ESISTE PIU' (D-51-02) ────────
       //
-      // Needed by the surface: an operator whose invitation failed still has to
-      // be able to admit this person. A failed read does not undo anything, so
-      // it is logged with its own category and carried as an absence rather
-      // than raised as a failure.
-      let membershipCode: string | null = null;
-      const { data: profile, error: codeError } = await serviceClient
-        .from("profiles")
-        .select("membership_code")
-        .eq("id", memberId)
-        .maybeSingle();
-
-      if (codeError) {
-        console.error(
-          `[members.code_unreadable] createAccount: subject=${memberId} ` +
-            `code=${codeError.code ?? "unknown"}`
-        );
-      } else {
-        membershipCode = profile?.membership_code ?? null;
-      }
-
-      // The account exists and is admissible from here on. Every failure below
-      // says so, and carries the code.
-      const codeCarried = { membershipCode };
+      // Qui c'era una quinta lettura: il codice socio appena coniato, riletto
+      // dal profilo e portato dentro ogni fallimento sottostante, perche' un
+      // operatore la cui mail non era partita potesse far entrare la persona
+      // lo stesso. **La porta non verifica piu' quel codice**, e la sua colonna
+      // cade nel piano 51-12: la lettura esce **prima** del `DROP COLUMN`, o
+      // sarebbe un `42703` su ogni creazione di account.
+      //
+      // Cio' che l'operatore deve sapere quando l'invito non parte resta, ed e'
+      // nella causa che riceve: l'account **esiste** e il messaggio no.
 
       // ── 5. The link ─────────────────────────────────────────────────────
       //
@@ -1710,7 +1706,6 @@ export async function createAccount(input: {
           ok: false,
           failure: "invitation_link_failed",
           detail: link.detail,
-          ...codeCarried,
         };
       }
 
@@ -1735,7 +1730,6 @@ export async function createAccount(input: {
           ok: false,
           failure: "invitation_send_failed",
           detail: "send_failed",
-          ...codeCarried,
         };
       }
 
@@ -1743,7 +1737,7 @@ export async function createAccount(input: {
 
       return {
         ok: true,
-        data: { memberId, actId: recorded.data.actId, membershipCode, role },
+        data: { memberId, actId: recorded.data.actId, role },
       };
     }
   );
@@ -1788,8 +1782,8 @@ export async function createAccount(input: {
 // ── Cosa questa funzione NON fa ──────────────────────────────────────────────
 //
 // Non tocca lo schema, non cambia nessuna cascata, non cancella righe in
-// nessuna tabella per conto proprio, e non tocca `membership_code`: e' la
-// credenziale della porta, e la toglie la fase 51.
+// nessuna tabella per conto proprio, e non legge piu' il codice socio: la
+// colonna la toglie il piano 51-12 e questo file ha gia' smesso di chiederla.
 
 /**
  * Un insieme di tracce, con il nome da mostrare e la causa che porta.
@@ -1986,8 +1980,12 @@ export type DeleteAccountData = {
   memberId: string;
   /** L'id della riga di registro scritta PRIMA della cancellazione. */
   actId: string | null;
-  /** Il codice che il soggetto aveva, e con cui sopravvive nel registro. */
-  membershipCode: string | null;
+  /*
+   * Qui c'era il codice con cui il soggetto sopravviveva nel registro. **Lo
+   * calcola la funzione SQL adesso** (D-51-15): l'etichetta di una persona
+   * cancellata non si costruisce lato applicazione, o ci sarebbero due modi di
+   * chiamare la stessa persona in due posti che devono concordare.
+   */
 };
 
 export type DeleteAccountResult = ActResult<
@@ -2172,7 +2170,6 @@ export async function deleteAccount(
         data: {
           memberId: subjectId,
           actId: recorded.data.actId,
-          membershipCode: subject.membershipCode,
         },
       };
     }

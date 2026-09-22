@@ -99,10 +99,16 @@ export default async function MembersPage() {
   }
 
   // Gli account, con il solo asse rimasto: il ruolo.
+  //
+  // Il codice socio non si chiede piu' (D-51-02): la sua colonna cade nel piano
+  // 51-12, e una pagina che la chiedesse dopo il `DROP COLUMN` riceverebbe un
+  // `42703` — cioe' il ramo d'errore qui sotto, su ogni caricamento. Il codice
+  // smette di essere letto **prima** che la colonna sparisca: e' il verso del
+  // deploy, lo stesso che D-50-24 ha dichiarato per `status`.
   const supabase = await createClient();
   const { data: rawMembers, error } = await supabase
     .from("profiles")
-    .select("id, email, full_name, role, membership_code, created_at")
+    .select("id, email, full_name, role, created_at")
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -139,7 +145,6 @@ export default async function MembersPage() {
     email: m.email,
     full_name: m.full_name,
     role: m.role as UserRole,
-    membership_code: m.membership_code,
     created_at: m.created_at,
   }));
 

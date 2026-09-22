@@ -29,8 +29,14 @@ import { Input, Select } from "@/components/ui/Input";
  * sentence, and two of them have copy that had to be got right rather than
  * merely written.
  *
- * The interface is English; the message the member receives is Italian. Two
- * languages by recipient, not by accident (`comms-analytics.md`).
+ * ── Una lingua sola per percorso ────────────────────────────────────────────
+ *
+ * Questa riga diceva *«l'interfaccia e' in inglese; il messaggio che il membro
+ * riceve e' in italiano — due lingue per destinatario, non per caso»*. Era la
+ * regola fino al 2026-09-21, e non lo e' piu': `comms-analytics.md` 1.23.0 ha
+ * sostituito il gate *template in italiano* con *una lingua sola per percorso*.
+ * L'invito che parte da questo modulo e' in **inglese**, come il modulo, e
+ * l'oggetto con lui.
  */
 
 /** The client-only twelfth case: the action never returned, so there is no tag. */
@@ -39,15 +45,17 @@ type NoticeKind = CreateAccountFailure | "transport_unavailable";
 /**
  * One notice per cause, and each says what state the world is in.
  *
- * `showsCode` marks the three causes where **the account exists and already
- * works at the door** and only the message failed. Those show the membership
- * code, because an operator whose invitation failed still has to be able to
- * admit this person tonight.
+ * ── `showsCode` e' uscito, e con lui la ragione per cui esisteva (D-51-02) ───
+ *
+ * Marcava le tre cause in cui l'account esiste e solo la mail e' mancata, e
+ * faceva mostrare il **codice socio**: la porta ammetteva su quel codice, quindi
+ * un operatore rimasto senza invito poteva far entrare la persona lo stesso.
+ * Quella strada non esiste piu' e la colonna cade nel piano 51-12. Le tre cause
+ * restano distinte — dicono ancora **cosa e' successo e cosa non fare** — e non
+ * portano piu' una credenziale accanto a un nome, che e' anche una cosa in meno
+ * che finisce in uno screenshot.
  */
-const NOTICES: Record<
-  NoticeKind,
-  { title: string; body: string; showsCode?: boolean }
-> = {
+const NOTICES: Record<NoticeKind, { title: string; body: string }> = {
   capabilities_unavailable: {
     title: "Permission lookup failed — this is not a refusal",
     body:
@@ -58,8 +66,9 @@ const NOTICES: Record<
   forbidden: {
     title: "You do not hold the capability to create accounts",
     body:
-      "Creating an account is an approval, so it is gated by the same capability " +
-      "as approving one. Nothing was created and nothing was sent.",
+      "Creating an account is a way into this community that does not pass the " +
+      "till, so it is gated by the capability that manages accounts. Nothing " +
+      "was created and nothing was sent.",
   },
   invalid_input: {
     title: "The server refused the details",
@@ -81,27 +90,27 @@ const NOTICES: Record<
     body:
       "Nothing was created and — this is the point — no second invitation was " +
       "sent. A message cannot be recalled, so creating the same address twice " +
-      "must not mail them twice. If the person exists but cannot sign in, send " +
-      "them a password reset instead of creating them again.",
+      "must not mail them twice. If the person exists but cannot sign in, that " +
+      "is a password to reset, not an account to create again.",
   },
   profile_missing: {
     title: "The account was created in Auth, but its profile was not written",
     body:
-      "The sign-in record exists and the member profile does not, which means " +
-      "the database trigger that mints the membership code did not run. This " +
-      "person is NOT approved, has no membership code, and will not be admitted " +
-      "at the door. No message was sent. Do not retry with the same address — " +
-      "it will be refused as already existing. Report this: it is a database " +
-      "fault, not a form error.",
+      "The sign-in record exists and the profile row does not, which means the " +
+      "database trigger that writes it did not run. This person has no role, " +
+      "no account to sign in to, and nothing on this product knows them. No " +
+      "message was sent. Do not retry with the same address — it will be " +
+      "refused as already existing. Report this: it is a database fault, not a " +
+      "form error.",
   },
   constraint_refused: {
-    title: "The database refused the approval — not this screen",
+    title: "The database refused the write — not this screen",
     body:
-      "A staff role must belong to an approved account, and the database " +
-      "enforces that rather than trusting any screen. The write was refused, so " +
-      "the person is not approved and no message was sent. The sign-in record " +
-      "may still exist, so retrying the same address will be refused as already " +
-      "existing.",
+      "A constraint on the profiles table refused the row: the live one is the " +
+      "check on the role, which admits four values and nothing else. The " +
+      "database enforces it rather than trusting any screen, so no profile was " +
+      "written and no message was sent. The sign-in record may still exist, so " +
+      "retrying the same address will be refused as already existing.",
   },
   write_failed: {
     title: "The write failed",
@@ -111,36 +120,31 @@ const NOTICES: Record<
       "address — if a retry says the address already exists, that is why.",
   },
   invitation_link_failed: {
-    title: "The account exists and works at the door — the invitation does not",
+    title: "The account exists — the invitation does not",
     body:
-      "This person is created, approved, and already admissible at the entrance " +
-      "with the code below; they simply have no message yet, because the " +
-      "set-password link could not be generated. Do NOT create them again — a " +
-      "second attempt will be refused as an existing address, which is the right " +
-      "refusal but the wrong conversation. Send them a password reset from the " +
-      "sign-in page instead, or try the invitation again later.",
-    showsCode: true,
+      "This person is created and holds the role you chose; they simply have " +
+      "no message yet, because the set-password link could not be generated. " +
+      "Do NOT create them again — a second attempt will be refused as an " +
+      "existing address, which is the right refusal but the wrong " +
+      "conversation. Tell them the account is there, and try the invitation " +
+      "again later.",
   },
   invitation_link_misaimed: {
-    title:
-      "The account exists and works at the door — the link pointed somewhere else",
+    title: "The account exists — the link pointed somewhere else",
     body:
       "A link was generated, but the authentication service did not honour the " +
       "target it was asked for and would have landed this person on a page with " +
       "no password field. It was therefore NOT sent — a message that cannot do " +
-      "what it says is worse than no message. The account is created, approved " +
-      "and admissible with the code below. This is a configuration fault: the " +
-      "site's callback address is missing from the auth redirect allow-list.",
-    showsCode: true,
+      "what it says is worse than no message. The account is created and holds " +
+      "the role you chose. This is a configuration fault: the site's callback " +
+      "address is missing from the auth redirect allow-list.",
   },
   invitation_send_failed: {
-    title: "The account exists and works at the door — the message did not leave",
+    title: "The account exists — the message did not leave",
     body:
       "The link was built correctly; the mail provider refused or did not answer, " +
-      "so nothing arrived. The account is created, approved and admissible with " +
-      "the code below. Do NOT create them again. The link can be re-sent — a " +
-      "password reset from the sign-in page reaches the same surface.",
-    showsCode: true,
+      "so nothing arrived. The account is created and holds the role you chose. " +
+      "Do NOT create them again. The invitation can be tried again later.",
   },
   transport_unavailable: {
     title: "The server did not answer",
@@ -180,7 +184,6 @@ const ROLE_OPTIONS = [
 type RoleValue = (typeof ROLE_OPTIONS)[number]["value"];
 
 type Success = {
-  membershipCode: string | null;
   role: RoleValue;
   name: string;
 };
@@ -199,7 +202,6 @@ export default function CreateAccountForm() {
   const [failure, setFailure] = useState<{
     kind: NoticeKind;
     detail?: string;
-    membershipCode?: string | null;
   } | null>(null);
   const [success, setSuccess] = useState<Success | null>(null);
 
@@ -221,7 +223,10 @@ export default function CreateAccountForm() {
       return;
     }
     if (!trimmedName) {
-      setInputError("A full name is required — the door shows it.");
+      setInputError(
+        "A full name is required — it is how this account is named everywhere " +
+          "it appears."
+      );
       return;
     }
     setInputError(null);
@@ -238,13 +243,11 @@ export default function CreateAccountForm() {
           setFailure({
             kind: result.failure,
             detail: result.detail,
-            membershipCode: result.membershipCode,
           });
           return;
         }
 
         setSuccess({
-          membershipCode: result.data.membershipCode,
           role: result.data.role as RoleValue,
           name: trimmedName,
         });
@@ -261,13 +264,16 @@ export default function CreateAccountForm() {
   if (!open) {
     // The SECONDARY rung, and that is a decision rather than a downgrade.
     //
-    // Creating an account here **is an approval**: the sentence below says so,
-    // and the person skips the pending queue entirely.
-    // `community-membership.md`'s gate *nessuna corsia grigia* is that every
-    // way into this community which bypasses the ordinary approval path is an
-    // exception to be counted and attributed — never the most attractive
-    // button on the page. The accent fill belongs to the primary action of a
-    // surface, and the primary object of this surface is the member list.
+    // Creating an account here is **a way in that does not pass the till**:
+    // nobody signs up any more, so every account either comes from a ticket, an
+    // invitation, or this button. `community-membership.md`'s gate *nessuna
+    // corsia grigia* is that such a way in is an exception to be counted and
+    // attributed — never the most attractive button on the page. *(The gate
+    // used to read «bypasses the ordinary approval path»; the approval path
+    // left with phase 50, and the same gate now points at the till. It is the
+    // same thing seen from the other side.)* The accent fill belongs to the
+    // primary action of a surface, and the primary object of this surface is
+    // the account list.
     return (
       <Button
         variant="secondary"
@@ -287,9 +293,8 @@ export default function CreateAccountForm() {
         Create an account
       </h2>
       <p className="mb-4 text-xs text-muted">
-        Creating an account approves it. The person is admitted to the community
-        without going through the pending queue, and the act is recorded with
-        your name against it.
+        Creating an account is a way into this community that does not pass the
+        till. The act is recorded with your name and the time against it.
       </p>
 
       {/* An input complaint is `role="alert"` and takes the critical ink —
@@ -303,33 +308,17 @@ export default function CreateAccountForm() {
         </p>
       )}
 
-      {failure && (
-        <Notice
-          kind={failure.kind}
-          detail={failure.detail}
-          membershipCode={failure.membershipCode}
-        />
-      )}
+      {failure && <Notice kind={failure.kind} detail={failure.detail} />}
 
       {success && (
         <div role="status" className="mb-4">
           <p className="text-sm font-semibold text-sem-done">
-            {success.name} was created as {success.role}, approved, and invited.
+            {success.name} was created as {success.role}, and invited.
           </p>
           <p className="mt-1 text-xs text-muted">
             The invitation carries a link to set a password — never a password.
-            They are already admissible at the door, before they open it.
+            The act is recorded with your name against it.
           </p>
-          {success.membershipCode ? (
-            <p className="mt-2 font-mono text-xs text-ink">
-              Membership code: {success.membershipCode}
-            </p>
-          ) : (
-            <p className="mt-2 text-xs text-muted">
-              The membership code could not be read back after creation. The
-              account is fine — find the code on their row in the table below.
-            </p>
-          )}
         </div>
       )}
 
@@ -363,15 +352,19 @@ export default function CreateAccountForm() {
           this: the sentence stays visible AND becomes programmatically
           associated with the control, which it never was.
 
-          The reason is measured rather than cautious. A door phone with no
-          signal refuses a membership code its downloaded roster does not know
-          (`ScannerClient.tsx`, `membershipOffline`), because a membership QR
-          carries no signature at all and admitting an unknown one offline would
-          be an unbounded hole rather than a bounded one. So an account created
-          after that phone downloaded its list WILL be refused at that door with
-          the radio off. This is not engineered around: the runbook answer is to
-          check the person in from the list rather than to re-scan, and the
-          honest way to avoid the situation is to create the account earlier.
+          The reason is structural rather than cautious, and it survives every
+          change to what the door reads: a phone that has already gone offline
+          works from the list it downloaded, and an account created afterwards
+          is not in it. So an account created while the door is already running
+          with no signal is not known at that door, whatever it is asked to
+          recognise. This is not engineered around — the honest answer is to
+          create the account earlier.
+
+          *(The sentence here used to name the credential the door checked and
+          the offline branch that refused it. Both belong to the door, both are
+          moving in this phase, and a hint on this form that describes another
+          file's mechanism goes stale without anybody noticing. What is left is
+          the fact that does not depend on it.)*
         */}
         <Select
           id="create-account-role"
@@ -380,10 +373,8 @@ export default function CreateAccountForm() {
           onChange={(e) => setRole(e.target.value as RoleValue)}
           hint={
             "Create staff accounts before the night, not during it. A door " +
-            "phone that has already gone offline does not know an account " +
-            "created after it downloaded its list, and will refuse the code. " +
-            "If it happens, check the person in from the list instead of " +
-            "scanning again."
+            "phone that has already gone offline works from the list it " +
+            "downloaded, and does not know an account created after that."
           }
         >
           {/*
@@ -422,11 +413,9 @@ export default function CreateAccountForm() {
 function Notice({
   kind,
   detail,
-  membershipCode,
 }: {
   kind: NoticeKind;
   detail?: string;
-  membershipCode?: string | null;
 }) {
   const notice = NOTICES[kind];
 
@@ -441,18 +430,6 @@ function Notice({
     <div role="alert" className="mb-4">
       <p className="text-sm font-semibold text-sem-crit">{notice.title}</p>
       <p className="mt-1 text-xs text-muted">{notice.body}</p>
-      {notice.showsCode ? (
-        membershipCode ? (
-          <p className="mt-2 font-mono text-xs text-ink">
-            Membership code: {membershipCode}
-          </p>
-        ) : (
-          <p className="mt-2 text-xs text-muted">
-            The membership code could not be read back either — find it on their
-            row in the table below.
-          </p>
-        )
-      ) : null}
       {detail ? (
         <p className="mt-2 break-words font-mono text-xs text-muted">{detail}</p>
       ) : null}
