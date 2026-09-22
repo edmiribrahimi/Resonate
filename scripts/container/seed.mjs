@@ -494,7 +494,7 @@ export async function seedContainer(admin) {
       await admin.query(
         `insert into public.profiles (id, email, full_name, role)
          values ($1::uuid, $2, $3, $4)`,
-
+        [p.id, p.email, p.fullName, p.role]
       );
     }
 
@@ -518,7 +518,7 @@ export async function seedContainer(admin) {
       await admin.query(
         `insert into public.profiles (id, email, full_name, role)
          values ($1::uuid, $2, $3, $4)`,
-
+        [p.id, p.email, p.fullName, p.role]
       );
     }
   } finally {
