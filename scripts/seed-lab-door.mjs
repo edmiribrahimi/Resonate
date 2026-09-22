@@ -232,10 +232,13 @@ async function seed() {
   //
   // E NON NOMINA PIU' NEMMENO LA CREDENZIALE. Qui l'`insert` scriveva una
   // quarta colonna con un codice derivato dalla chiave della persona: esce con
-  // la colonna (D-51-02, piano 51-12). La differenza con `status` e' che qui
-  // la riga **non** vale prima e dopo — nominare una colonna che non c'e'
-  // significa `42703`, e questo banco e' scritto per lo schema che il
-  // laboratorio avra'.
+  // la colonna (D-51-02, piano 51-12). **La differenza con `status` e' che qui
+  // la riga NON vale prima e dopo**, e nei due versi fallisce in due modi
+  // diversi: quella colonna e' `text UNIQUE NOT NULL` **senza default**
+  // (`schema.sql:58`), quindi ometterla oggi da' `23502`, e nominarla dopo la
+  // migration darebbe `42703`. Non esiste una forma che vada bene a entrambi
+  // gli schemi: questo banco e' scritto per lo schema che il laboratorio
+  // avra', e prima di quella migration non gira.
   for (const a of ACCOUNTS) {
     const { id } = ids.accounts[a.key];
     await sql(`

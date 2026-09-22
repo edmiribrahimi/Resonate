@@ -1578,10 +1578,12 @@ export const PROBE_PAYLOADS = {
   //
   // La quarta colonna era la credenziale che ogni profilo portava, con la sua
   // sentinella a forma di codice: **esce con la colonna** (D-51-02, piano
-  // 51-12). Un `insert` che nomina una colonna inesistente riceverebbe `42703`
-  // invece del `42501` che questa cella deve misurare — cioe' un rifiuto per
-  // la ragione sbagliata, che e' il modo in cui un banco mente senza
-  // fallire.
+  // 51-12). Tenerla significherebbe `42703` dopo la migration invece del
+  // `42501` che questa cella deve misurare — un rifiuto per la ragione
+  // sbagliata, che e' il modo in cui un banco mente senza fallire. Toglierla
+  // ha lo stesso effetto **prima** della migration, con `23502`, perche' la
+  // colonna e' `NOT NULL` senza default: e' la finestra dichiarata di questa
+  // fase, non una forma che si possa scrivere giusta per entrambi gli schemi.
   profiles: {
     insert: {
       columns: ['id', 'email', 'full_name'],
