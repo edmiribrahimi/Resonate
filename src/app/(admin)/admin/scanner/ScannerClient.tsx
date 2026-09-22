@@ -10,12 +10,9 @@ import {
 import {
   attendeeKey,
   mergeAttendees,
-  cacheMembers,
   findAttendee,
   findBySubject,
-  findMember,
   checkInLocally,
-  checkInMemberLocally,
   markCheckedInLocally,
   // `undoCheckInLocally` — the function that DELETES the queue entry — is
   // deliberately not imported any more. It still exists in the store, and the
@@ -30,7 +27,6 @@ import {
   getBlockedCount,
   getUndoneLocallyCount,
   getFailedCheckins,
-  rosterPredatesRole,
   THIS_DEVICE_LABEL,
   type CachedDoorAuth,
   type FailedCheckin,
@@ -65,10 +61,6 @@ import type {
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Ticket token: uuid.64-hex-chars (HMAC signature)
 const TICKET_TOKEN_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[0-9a-f]{64}$/i;
-// Membership QR: URL containing code=RSN-
-const MEMBERSHIP_PATTERN = /code=RSN-/i;
-// Bare membership code: RSN-XXXXXX
-const BARE_MEMBERSHIP_PATTERN = /^RSN-[A-Z0-9]{6,10}$/i;
 
 /**
  * The four refusals, one sentence each — never a shared "Invalid".
@@ -192,8 +184,13 @@ function ticketIdFromToken(token: string): string {
  * `isDoorOutcome` is deliberately narrow — it checks the discriminant and stops
  * (src/lib/door/outcome.ts:153-163) — so every other field is unverified data.
  * Reading them off the raw body rather than off the narrowed type keeps that
- * honest: `/api/membership/verify` really can answer `at: null` and `by: null`
- * where the union promises strings.
+ * honest: a door route really can answer `at: null` or `by: null` where the
+ * union promises strings, and the narrowed type would let that pass unread.
+ *
+ * *(The example named here used to be the membership verification route. It
+ * leaves the product in this phase — MEM-03 — and a comment that cites a route
+ * nobody can call is dated documentation, so the property is stated instead of
+ * the address.)*
  */
 function readString(body: unknown, key: string): string | null {
   if (typeof body !== "object" || body === null) return null;
@@ -244,22 +241,15 @@ function failureSentence(reason: string): string {
 /**
  * How a failed entry is described on screen.
  *
- * The store's record key is `partyId:subjectType:subjectId`, and for a
- * membership entry that subject id **is the membership code** — a credential.
- * Rendering the raw key would put it on a screen and in a screenshot, so this
- * shows the kind, the moment it was scanned, and a short id only where the id
- * is not itself a way in (T-31-11-04). No email and no membership code appears.
+ * The store's record key is `partyId:subjectType:subjectId`. Rendering the raw
+ * key would put it on a screen and in a screenshot, so this shows the kind, the
+ * moment it was scanned, and a short id — which for the two kinds that remain is
+ * an opaque row id and not itself a way in (T-31-11-04). No email appears.
  */
 function failedEntryLabel(entry: FailedCheckin): string {
-  const kind =
-    entry.type === "membership"
-      ? "Membership"
-      : entry.type === "guest"
-        ? "Guest list"
-        : "Ticket";
+  const kind = entry.type === "guest" ? "Guest list" : "Ticket";
   const when = formatClock(entry.scannedAt);
-  const shortId =
-    entry.type === "membership" ? null : entry.subjectId.slice(0, 8);
+  const shortId = entry.subjectId.slice(0, 8);
   return [kind, shortId, when ? `scanned ${when}` : null]
     .filter(Boolean)
     .join(" · ");
@@ -495,7 +485,7 @@ interface AttendanceEvent {
 
 interface ScanRecord {
   id: string;
-  type: "ticket" | "membership" | "guest";
+  type: "ticket" | "guest";
   name: string;
   ticketType?: string;
   /**
@@ -660,23 +650,6 @@ export default function ScannerClient() {
    */
   const deviceIdRef = useRef<string | null>(null);
 
-  /**
-   * Whether the roster on this device was cached before members carried a role.
-   *
-   * Set by the version-4 upgrade, read once on open, and held in a ref so it can
-   * be consulted inside `fetchAttendance` without adding a dependency to it.
-   *
-   * **It is not a reason to refuse anybody and is never shown as one.** All it
-   * does is make the roster refresh this screen already performs run on a
-   * search-filtered fetch too, until one refresh has come back carrying roles —
-   * so a device that upgrades mid-season does not spend the night queueing
-   * admissions with no marker while believing it knows.
-   *
-   * Defaults to `false`, which is the behaviour this screen had before this
-   * plan: if the flag cannot be read, nothing is forced and nothing is lost.
-   */
-  const rosterPredatesRoleRef = useRef(false);
-
   const refreshQueueCounts = useCallback(async () => {
     try {
       const [pending, failed, blocked, undone] = await Promise.all([
@@ -779,20 +752,6 @@ export default function ScannerClient() {
         // is stated here rather than discovered later: rows written by this
         // device can then never be classified `two_devices`.
         console.error("scanner:device_id_unavailable", error);
-      });
-
-    rosterPredatesRole()
-      .then((predates) => {
-        rosterPredatesRoleRef.current = predates;
-      })
-      .catch((error) => {
-        // Its own category, and no banner. The consequence of not knowing is
-        // that the roster refresh keeps the behaviour it had before this plan —
-        // it still runs on every unfiltered fetch — so nothing at the door
-        // changes and nobody is refused. Showing a line about a marker the
-        // operator cannot act on, while people wait, would be noise on the one
-        // screen that must stay readable.
-        console.error("scanner:roster_role_flag_unreadable", error);
       });
 
     // The counters already refreshed on a 5 s interval regardless of
@@ -1275,59 +1234,15 @@ export default function ScannerClient() {
         }
       }
 
-      // The roster refresh, through the call it has always used — one fetch
-      // site, not a second one. What changed is only **when** it is allowed to
-      // run: a device whose roster predates the role field refreshes on a
-      // search-filtered fetch too, instead of waiting for the next unfiltered
-      // one. Until that refresh lands, every membership admission this device
-      // queues carries no marker, and the marker cannot be reconstructed later —
-      // it is what the roster said at the door, and only the door was there.
+      // ── The roster download is gone, and nothing replaced it here ──────────
       //
-      // Nothing here can refuse anybody: the outcome of this block is a cache
-      // and, on failure, the banner that already existed.
-      if (eventData && (!search || rosterPredatesRoleRef.current)) {
-        // `cacheMembers` is **not** fire-and-forget any more, and that is a
-        // decision with a reason: its failure does have a consequence for a
-        // scan. Offline, an unknown membership code is refused (see
-        // `membershipOffline`), so a stale roster turns a member who joined
-        // recently into a red screen in front of a queue. A failure that can
-        // produce a false refusal has to reach the person who can work around
-        // it.
-        try {
-          const membersRes = await fetch("/api/membership/list");
-          if (!membersRes.ok) {
-            throw new Error(`HTTP ${membersRes.status}`);
-          }
-          const membersBody = await membersRes.json();
-          if (!Array.isArray(membersBody?.members)) {
-            throw new Error("no members array in payload");
-          }
-          await cacheMembers(membersBody.members);
-        } catch (error) {
-          console.error("scanner:member_roster_failed", error);
-          notices.push({
-            key: "members",
-            tone: "error",
-            text: "The member list on this device was NOT refreshed. With the radio off, a member who joined recently may not be recognised — check them in from the list rather than refusing them.",
-          });
-        }
-
-        // Re-read rather than assume. `cacheMembers` clears the flag only when
-        // the payload actually carried a role, so a roster served by a
-        // deployment older than the field leaves it set — and the ref has to say
-        // the same thing the store says, or the next fetch would stop forcing a
-        // refresh the device still needs. Deliberately outside the try above: a
-        // failure to read the flag is not a failure to refresh the roster, and
-        // must not raise the banner that says it was.
-        if (rosterPredatesRoleRef.current) {
-          try {
-            rosterPredatesRoleRef.current = await rosterPredatesRole();
-          } catch (error) {
-            console.error("scanner:roster_role_flag_unreadable", error);
-          }
-        }
-      }
-
+      // This is where the member roster used to be fetched and cached, with its
+      // own sticky banner when the refresh failed. MEM-03: nobody holds a member
+      // card any more, so there is no roster to resolve a scan against and no
+      // second fetch on this path. What survives below is the one line that
+      // records **how old the attendee list is** — the door still runs on that
+      // list with the radio off, and plan 51-07 derives the guest-list staleness
+      // warning from it (D-51-10) instead of from a notice that could stay lit.
       setCacheNotices(notices);
 
       // ── The age of the list, recorded HERE and nowhere else ────────────────
@@ -1825,18 +1740,19 @@ export default function ScannerClient() {
       }
 
       try {
+        // `attendanceId` is gone from this shape with the membership branch it
+        // addressed: the undo route's third arm — the one that deleted a row of
+        // `public.attendances` — leaves with it (plan 51-02, task 3). The two
+        // arms staff actually use, ticket and guest list, are untouched.
         const body: {
           ticketId?: string;
           guestListEntryId?: string;
-          attendanceId?: string;
           partyId?: string;
           deviceId?: string;
         } =
           record.type === "guest"
             ? { guestListEntryId: record.id }
-            : record.type === "membership"
-              ? { attendanceId: record.id }
-              : { ticketId: record.id };
+            : { ticketId: record.id };
 
         // `door_scan_events.party_id` is NOT NULL and an Event Pass carries no
         // party of its own (`party_id IS NULL` is a real, sold product), so the
@@ -2240,186 +2156,6 @@ export default function ScannerClient() {
     }
   }
 
-  /** A membership code, with the radio on. */
-  async function membershipOnline(
-    membershipCode: string,
-    partyId: string
-  ): Promise<"handled" | "network_failed"> {
-    let res: Response;
-    try {
-      res = await fetch("/api/membership/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code: membershipCode,
-          partyId,
-          deviceId: deviceIdRef.current ?? undefined,
-          source: "online",
-        }),
-      });
-    } catch {
-      return "network_failed";
-    }
-
-    let parsed: unknown = null;
-    try {
-      parsed = await res.json();
-    } catch {
-      parsed = null;
-    }
-
-    if (res.status === 401 || res.status === 403 || res.status >= 500) {
-      reportServerFault(res.status, parsed, membershipCode, "membership");
-      return "handled";
-    }
-
-    if (!isDoorOutcome(parsed)) {
-      reportServerFault(res.status, parsed, membershipCode, "membership");
-      return "handled";
-    }
-
-    // This route's `subject` carries no label; the display name is the legacy
-    // `member_name`, which is additive for one release.
-    const memberName = readString(parsed, "member_name") ?? "Member";
-
-    switch (parsed.outcome) {
-      case "recorded": {
-        showFlash("success", memberName, "Member");
-        addScanRecord({
-          // The undo addresses the attendance row, not the member.
-          id: readString(parsed, "attendance_id") ?? membershipCode,
-          type: "membership",
-          name: memberName,
-          status: "success",
-          timestamp: Date.now(),
-          canUndo: readString(parsed, "attendance_id") !== null,
-        });
-        return "handled";
-      }
-
-      case "already_recorded": {
-        const fact = recordedFact(readString(parsed, "at"), readOperatorLabel(parsed));
-        showFlash("already_recorded", memberName, fact);
-        addScanRecord({
-          id: membershipCode,
-          type: "membership",
-          name: memberName,
-          status: "already_recorded",
-          reason: fact,
-          timestamp: Date.now(),
-          canUndo: false,
-        });
-        return "handled";
-      }
-
-      case "not_valid": {
-        const sentence = notValidSentence(parsed);
-        showFlash("error", sentence);
-        addScanRecord({
-          id: membershipCode,
-          type: "membership",
-          name: "Unknown",
-          status: "error",
-          reason: sentence,
-          timestamp: Date.now(),
-          canUndo: false,
-        });
-        return "handled";
-      }
-    }
-  }
-
-  /**
-   * A membership code, from the roster this device downloaded.
-   *
-   * **A code the roster does not know is refused here, and a ticket in the same
-   * position is admitted.** The two are not inconsistent. A ticket token is
-   * HMAC-signed, so an uncached one still had to be a `uuid.64-hex` string and
-   * the server re-checks the signature on sync — a bounded window. A membership
-   * QR carries no signature at all (checkin-store.ts:29-32), so admitting an
-   * unknown one offline would be an unbounded hole rather than a bounded one,
-   * with nothing on the far side able to catch it.
-   *
-   * **The missing signature is what decides this, and it is unchanged.** This
-   * block used to lean on a second reason — that the code space came from
-   * `Math.random()` (`src/utils/qr.ts:49`, defect QR-01). That function was dead
-   * code and is gone; codes minted since migration
-   * `20260905130000_membership_code_crypto.sql` come from a CSPRNG at 2^50, and
-   * the four issued before it were deliberately not regenerated (D-49-01). So
-   * the roster carries both kinds, and the refusal below would be right even if
-   * it carried only the strong kind: an unsigned string offline cannot be
-   * checked against anything.
-   *
-   * The cost is a real false refusal for a member who joined after the roster was
-   * downloaded — which is why a failed roster refresh is now a banner on this
-   * screen, and why the door runbook's answer is to check that person in from
-   * the list rather than to re-scan.
-   */
-  async function membershipOffline(membershipCode: string, partyId: string) {
-    try {
-      const member = await findMember(membershipCode);
-      if (!member) {
-        refuse(
-          "unknown_code",
-          membershipCode,
-          "membership",
-          "Not in the member list on this device — check them in from the list instead"
-        );
-        return;
-      }
-
-      // The role travels with the entry from the moment the scan is taken, so
-      // what reaches `attendances.entry_role` is what the roster said **at the
-      // door** and not what the profile says hours later on sync. `member.role`
-      // is `undefined` on a device whose roster predates the field: the
-      // admission queues exactly the same, without a marker, and the door sees
-      // no difference — this line changes what is recorded, never who gets in.
-      const result = await checkInMemberLocally(
-        partyId,
-        membershipCode,
-        member.role
-      );
-      if (result.alreadyRecorded) {
-        const fact = recordedFact(result.at, THIS_DEVICE_LABEL);
-        showFlash("already_recorded", member.fullName, fact);
-        addScanRecord({
-          id: membershipCode,
-          type: "membership",
-          name: member.fullName,
-          status: "already_recorded",
-          reason: fact,
-          timestamp: Date.now(),
-          canUndo: false,
-        });
-        return;
-      }
-
-      showFlash("success", member.fullName, "Member · Offline");
-      addScanRecord({
-        id: membershipCode,
-        type: "membership",
-        name: member.fullName,
-        status: "success",
-        timestamp: Date.now(),
-        canUndo: true,
-        localKey: result.key,
-      });
-      await refreshQueueCounts();
-    } catch (error) {
-      reportStoreFault(membershipCode, "membership", error);
-    }
-  }
-
-  /** The membership code inside a QR URL, or the bare code. */
-  function extractMembershipCode(code: string): string {
-    if (!MEMBERSHIP_PATTERN.test(code)) return code;
-    try {
-      return new URL(code).searchParams.get("code") || code;
-    } catch {
-      return code;
-    }
-  }
-
   const handleVerify = async (code: string) => {
     try {
       // A scan without a party has no meaning: the record key is party-scoped and
@@ -2445,19 +2181,17 @@ export default function ScannerClient() {
         return;
       }
 
-      if (MEMBERSHIP_PATTERN.test(code) || BARE_MEMBERSHIP_PATTERN.test(code)) {
-        const membershipCode = extractMembershipCode(code);
-        if (!navigator.onLine) {
-          await membershipOffline(membershipCode, selectedPartyId);
-          return;
-        }
-        const result = await membershipOnline(membershipCode, selectedPartyId);
-        if (result === "network_failed") {
-          await membershipOffline(membershipCode, selectedPartyId);
-        }
-        return;
-      }
-
+      // ── D-51-01: a member code gets no branch and no sentence of its own ───
+      //
+      // A string shaped `RSN-…` used to be recognised here and sent down a
+      // membership branch. MEM-03 removed that branch, and the decision is that
+      // **nothing takes its place**: nobody is issued a card, so an old QR of
+      // that shape falls through to the refusal below and is refused exactly as
+      // an unknown code is. No dedicated message is written for it — the
+      // vocabulary of refusal stays `NOT_VALID_MESSAGE`, a total `Record` over
+      // `DoorNotValidReason`, and a new string here would be a sentence built
+      // for a case that can no longer happen.
+      //
       // Not shaped like anything this door issues. Local, and safe to refuse:
       // no valid holder can land here.
       refuse("unknown_code", code);
@@ -2998,8 +2732,8 @@ export default function ScannerClient() {
         )}
 
         {/* What the failed count actually counts. A number with no way to see
-            behind it is a number nobody trusts. No email and no membership code
-            is rendered here — see `failedEntryLabel`. */}
+            behind it is a number nobody trusts. No email is rendered here —
+            see `failedEntryLabel`. */}
         {failedEntries !== null && (
           <div className="mb-3 rounded-xl border border-sem-crit/30 bg-sem-crit/5 p-3">
             <p className="text-[10px] font-medium uppercase tracking-wider text-sem-crit mb-2">
