@@ -166,20 +166,29 @@ async function seed() {
   // (D-50-01), e un banco di prova che semina una colonna che non esiste si
   // ferma su un `42703` che nessuno collegherebbe alla fase che l'ha causato.
   //
-  // I due account `member` NON sono un duplicato. Sono i due soggetti opposti di
-  // `P-50-3`, e vanno seminati prima della prova invece di essere inventati
-  // durante:
+  // I due account di chi compra NON sono un duplicato. Sono i due soggetti
+  // opposti di `P-50-3`, e vanno seminati prima della prova invece di essere
+  // inventati durante:
   //
   //   `memberSpare` — nessun biglietto, nessuna traccia di lavoro: e' l'account
   //   su cui la cancellazione RIESCE;
   //   `member`      — porta il biglietto seminato piu' in basso in questo stesso
   //   file: e' l'account su cui la cancellazione RIFIUTA, e deve dire la causa
   //   invece di un errore generico (D-50-16).
+  //
+  // ── IL RUOLO E' `attendee` DAL 2026-09-22 (piano 51-08, D-51-06) ──────────
+  //
+  // Il `CHECK` su `public.profiles.role` non ammette piu' `member`: una semina
+  // che lo scrivesse si fermerebbe su un `23514`. **Le CHIAVI e gli INDIRIZZI
+  // restano quelli**, e la scelta e' deliberata: le due caselle esistono gia'
+  // sul laboratorio, questo file le RIUSA per indirizzo invece di ricrearle, e
+  // rinominarle conierebbe due account nuovi lasciando i vecchi orfani. Un
+  // indirizzo e' un identificatore, non una descrizione.
   const ACCOUNTS = [
     { key: "master", email: "master@lab.invalid", role: "master" },
     { key: "door", email: "door@lab.invalid", role: "staff" },
-    { key: "memberSpare", email: "member-spare@lab.invalid", role: "member" },
-    { key: "member", email: "member@lab.invalid", role: "member" },
+    { key: "memberSpare", email: "member-spare@lab.invalid", role: "attendee" },
+    { key: "member", email: "member@lab.invalid", role: "attendee" },
   ];
 
   // La cancellazione di un utente in GoTrue non e' immediatamente visibile: una

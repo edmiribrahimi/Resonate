@@ -228,8 +228,43 @@ const SRC_DIR = `${ROOT}/src`;
  * one mutation C of plan 43-02 performed in two steps. If a run at interval 1
  * reports a MATCH at seventeen, that is not relief: it means the migration was
  * applied out of order, and it is itself a finding.
+ *
+ * ── Da 17 a 15 il 2026-09-22, piano 51-08 (D-51-07) — ed e' una RIMOZIONE ────
+ *
+ * `membership.active` e `membership.card.view` escono dal catalogo, dall'oggetto
+ * `CAP` e da `capability-routes.ts` **nello stesso commit**: 17 − 2 = 15. Il
+ * MODELLO e' cambiato, in un piano, con le sue concessioni — non e' un numero
+ * spostato per far tornare un rosso.
+ *
+ * **Chi era rimasto indietro, e perche'.** La fase 50 (D-50-28) aveva cancellato
+ * le quattro concessioni di `membership.active` e lasciato la CHIAVE, proprio
+ * perche' questo confronto e' bidirezionale: toglierla da sola avrebbe reso
+ * questo gate rosso fino al piano che tocca il TypeScript. Questo e' quel piano.
+ *
+ * ⚠ E IL FATTO CHE QUESTA RIGA DEVE DIRE, PERCHE' NON E' «17 → 15».
+ * `membership.card.view` era concessa a tutti e quattro i ruoli, e per DUE di
+ * loro era l'**unica** concessione: `private.role_capabilities` passa da 32
+ * righe a 28, e le quattro che escono sono **l'intero patrimonio di `attendee`
+ * (gia' `member`) e l'intero patrimonio di `staff`**. Master resta a 16,
+ * organizer a 14, **gli altri due a ZERO**.
+ *
+ * Per `attendee` e' voluto: chi compra un biglietto non ha capacita' di lavoro
+ * (D-51-09). **Per `staff` no, e va guardato**:
+ * `20260808000500_staff_role.sql:88-94` dichiara che il modo di fallire contro
+ * cui quel file fu scritto e' *«una produzione che ammette un ruolo che non
+ * possiede alcuna capacita'»*, e dopo questa fase lo staff e' in quello stato
+ * **per riga di catalogo**. Non e' un difetto: cio' che lo fa lavorare alla
+ * porta non e' piu' il ruolo ma l'assegnazione alla serata
+ * (`live_assignment_capabilities`, `party_assignments`). E' un'asimmetria
+ * dichiarata, e si dichiara qui perche' questo e' il file che la conta.
+ *
+ * ⚠ ROSSO CONTRO LA PRODUZIONE, VERDE CONTRO IL LABORATORIO. Un intervallo solo,
+ * e ha un nome: la migration e' applicata al laboratorio dal piano 51-08 (versione
+ * `20260922145319`) e arriva in produzione con il piano **51-13**. Fino ad
+ * allora un run contro la produzione riporta 17 dove questo file dice 15, ed e'
+ * il gate che funziona. **Non si ripara editando questa costante.**
  */
-const EXPECTED_KEY_COUNT = 17;
+const EXPECTED_KEY_COUNT = 15;
 
 /**
  * ── The pre-registered grant declaration (phase decision D-02) ─────────────
@@ -292,24 +327,19 @@ const ROLE_GRANTS = {
     'staff.manage': 'GRANTED',
     'master.manage': 'GRANTED',
     'catalogue.manage': 'GRANTED',
-    // ── CANCELLATA DAL MODELLO IL 2026-09-21, e questa e' una REFUSAL vera ──
+    // ── `membership.active` NON E' PIU' UNA COPPIA, e la storia sta qui ─────
     //
-    // Senza il flag per concessione `membership.active` avrebbe voluto dire
-    // *«ha un profilo»* — cioe' qualunque account, compreso quello leggero di chi
-    // ha solo comprato un biglietto. I suoi due soli lettori di policy sono
-    // spariti nella stessa migration (`event_media_insert_member` riscritta per
-    // capability di lavoro, `rsvps_insert_approved` droppata), quindi
-    // `20260921120000_drop_status_and_referral.sql` ne ha cancellato le QUATTRO
-    // concessioni: nessun ruolo la tiene piu'.
+    // Il 2026-09-21 la fase 50 ne cancello' le QUATTRO concessioni: senza il
+    // flag per concessione la chiave avrebbe voluto dire *«ha un profilo»* —
+    // cioe' qualunque account, compreso quello leggero di chi ha solo comprato
+    // un biglietto — e i suoi due soli lettori di policy sparirono nella stessa
+    // migration. Restava la CHIAVE, e con lei quattro righe `REFUSED` qui,
+    // perche' i controlli 0, 1 e 3 confrontano le due direzioni e toglierla da
+    // sola avrebbe lasciato questo gate rosso (D-50-28).
     //
-    // **La CHIAVE resta nel catalogo**, e con lei queste quattro righe, perche'
-    // `CAP.MEMBERSHIP_ACTIVE` vive ancora in `src/lib/capabilities/keys.ts` e i
-    // controlli 0, 1 e 3 di questo script confrontano le due direzioni.
-    // Cancellare la riga di catalogo senza la costante lascerebbe questo gate
-    // rosso fino al piano che tocca il codice, e D-50-28 dice che un gate rosso
-    // lasciato indietro e' un gate che nessuno rilancia. Le due se ne vanno
-    // insieme, nel piano che smonta le superfici.
-    'membership.active': 'REFUSED',
+    // **Il 2026-09-22 le due se ne sono andate insieme** (piano 51-08, D-51-07):
+    // la riga di catalogo, la costante `CAP` e queste quattro coppie. Non c'e'
+    // piu' niente da rifiutare, perche' non c'e' piu' la domanda.
     'admin.access': 'GRANTED',
     'organizer.access': 'GRANTED',
     // ── D-06, and this paragraph is the point of the two lines below ──────
@@ -334,7 +364,10 @@ const ROLE_GRANTS = {
     // A reader who arrived here to remove the flag has now met the reason before
     // the value. Assertion 2 of side 5 fails on a flipped flag and names this.
     'door.operate': 'GRANTED',
-    'membership.card.view': 'GRANTED',
+    // `membership.card.view` stava qui. Usciva dal catalogo il 2026-09-22
+    // (piano 51-08, D-51-07) insieme alle due pagine che apriva, gia' tolte dal
+    // piano 51-04. Era concessa a tutti e quattro i ruoli: master perde una
+    // concessione su 16, `staff` e `attendee` perdono l'unica che avevano.
     // D-19, plan 43-07. `master.manage`'s own description names *"changing
     // another member's role or status"*, so reading the record of those changes
     // needs no further justification. Granted on the two roles that hold the
@@ -404,8 +437,6 @@ const ROLE_GRANTS = {
     // of events, artists and venues.
     'master.manage': 'REFUSED',
     'catalogue.manage': 'GRANTED',
-    // Cancellata dal modello il 2026-09-21 — vedi la nota sulla riga di `master`.
-    'membership.active': 'REFUSED',
     // Refused: the middleware rule for `/admin/*` other than the scanner is
     // `role = master`. An organizer reaches `/organizer/*`, not `/admin/*`.
     'admin.access': 'REFUSED',
@@ -414,7 +445,6 @@ const ROLE_GRANTS = {
     // that matters at the door: an organizer whose status is still `pending`
     // must be able to scan.
     'door.operate': 'GRANTED',
-    'membership.card.view': 'GRANTED',
     // D-19, plan 43-07. D-07 lets an organizer create and promote, and an actor
     // who cannot see the register cannot check their own work
     // (`community-membership.md`, gate *chi decide è tracciato*).
@@ -490,8 +520,6 @@ const ROLE_GRANTS = {
     // make `staff` the only role that cannot RSVP to a night. It does NOT weaken
     // D-03: `member` already holds this exact grant with this exact flag, so
     // `staff` is levelled up TO member, not up FROM it.
-    // Cancellata dal modello il 2026-09-21 — vedi la nota sulla riga di `master`.
-    'membership.active': 'REFUSED',
     // Refused (D-03). `/admin/*` other than the scanner is `role = master`.
     'admin.access': 'REFUSED',
     // Refused (D-03). `/organizer/*` is the organizer area; `staff` has no
@@ -507,12 +535,29 @@ const ROLE_GRANTS = {
     // is worse than the alternative. (The per-grant flag that used to carry
     // that reason is gone since 2026-09-21; the reason is not.)
     'door.operate': 'REFUSED',
-    // D-01 — THE ONE THING THE ROLE GRANTS. Entry through the membership card,
-    // permanently, including for someone who worked a single date. It carried
-    // the approval flag like every other role's card grant until 2026-09-21,
-    // when the column went; D-50-23 records what that widens — the key now
-    // means *any account* — and names the phase that closes it, the 51.
-    'membership.card.view': 'GRANTED',
+    // ── ⚠ DAL 2026-09-22 QUESTO RUOLO NON TIENE PIU' NULLA, E VA GUARDATO ───
+    //
+    // Qui stava `'membership.card.view': 'GRANTED'`, e la nota diceva *«D-01 —
+    // THE ONE THING THE ROLE GRANTS»*: ingresso dalla tessera, permanente, anche
+    // per chi aveva lavorato una sola data. Portava il flag di approvazione come
+    // ogni altra concessione di tessera fino al 2026-09-21, quando la colonna
+    // spari'; D-50-23 registro' cosa quello allargava — la chiave voleva dire
+    // *qualunque account* — e **nomino' la fase che lo chiude, la 51**. E' questa
+    // (piano 51-08, D-51-07).
+    //
+    // La conseguenza, misurata e non dedotta: `staff` passa da UNA concessione a
+    // ZERO. `20260808000500_staff_role.sql:88-94` dichiara che il modo di fallire
+    // contro cui quel file fu scritto e' *«una produzione che ammette un ruolo
+    // che non possiede alcuna capacita'»*, e per riga di catalogo lo staff e'
+    // ora esattamente li'.
+    //
+    // **Non e' un difetto, ed e' la stessa ragione della riga qui sopra.** Cio'
+    // che fa lavorare uno staff alla porta non e' piu' il ruolo ma
+    // l'assegnazione alla serata — `party_assignments`,
+    // `live_assignment_capabilities` in `my_access_context` — esattamente il
+    // motivo per cui `door.operate` e' `REFUSED`. Il ruolo dice chi sei, la
+    // serata dice cosa puoi stanotte. Chi aggiungera' un ruolo nuovo rilegga
+    // questo paragrafo prima di ricopiare il modello.
     // Refused (D-03, D-19). THE REGISTER HOLDS REJECTIONS, and reading a season
     // of them is not a night's work. Whatever a staff account may do on the
     // night it was assigned to comes from Phase 35 and expires with that night;
@@ -579,18 +624,30 @@ const ROLE_GRANTS = {
     // a negotiation made public, and a publication does not un-publish.
     'production.location.manage': 'REFUSED',
   },
-  member: {
+  // ── `member` SI CHIAMA `attendee` DAL 2026-09-22 (piano 51-08, D-51-06) ────
+  //
+  // Chi partecipa compra o e' invitato: non e' un socio, e chiamarlo cosi'
+  // produceva bug di accesso. Non `guest`, che alla porta e nella coda offline
+  // e' gia' l'invitato in lista; non `buyer`, sbagliato per chi entra da guest
+  // list senza pagare.
+  //
+  // La chiave di primo livello qui e' confrontata con il valore vivo di
+  // `public.profiles.role`: se restasse `member`, questo blocco descriverebbe un
+  // ruolo che il `CHECK` non ammette piu' e i controlli tornerebbero un ruolo
+  // mancante. Si muove nello stesso commit della migration, per costruzione.
+  //
+  // **E dopo questo commit il blocco non ha piu' alcuna concessione**: era
+  // `membership.card.view`, e basta. Vedi la nota nel blocco `staff`, che
+  // arriva a zero per la stessa riga ma per una ragione diversa.
+  attendee: {
     'staff.manage': 'REFUSED',
     'master.manage': 'REFUSED',
     'catalogue.manage': 'REFUSED',
-    // Cancellata dal modello il 2026-09-21 — vedi la nota sulla riga di `master`.
-    'membership.active': 'REFUSED',
     'admin.access': 'REFUSED',
     'organizer.access': 'REFUSED',
-    // Refused, and this is the pair mutation A injects: a `member` with a
+    // Refused, and this is the pair mutation A injects: an `attendee` with a
     // `door.operate` row works the door. Nothing else in the model would say no.
     'door.operate': 'REFUSED',
-    'membership.card.view': 'GRANTED',
     // Refused (D-19), and this is the refusal that decides what `rejected` MEANS.
     // A member holding this key would read the register — including their own
     // rejection row — which turns `rejected` from a state into a communication.
@@ -599,11 +656,13 @@ const ROLE_GRANTS = {
     // table. There is deliberately no own-row policy either, so this refusal is
     // not routed around by `attendances_select_own`'s precedent.
     'register.read': 'REFUSED',
-    // Plan 35-03. Nothing grants any of the three. A member holding
+    // Plan 35-03. Nothing grants any of the three. An `attendee` holding
     // `door.supervise` would reverse check-ins; `media.upload` is refused
-    // because the member-level contribution is `membership.active`, which they
-    // already hold — the two are different questions and this line is what keeps
-    // them separable.
+    // because it is the per-night WORK upload — the photographer uploading to
+    // the night they worked. La contribuzione di account con cui era stato
+    // nominato a contrasto, `membership.active`, e' uscita dal catalogo il
+    // 2026-09-22 (D-51-07): resta il rifiuto, e resta la ragione per cui questa
+    // riga e' separata da quella del lavoro per serata.
     'door.supervise': 'REFUSED',
     'media.upload': 'REFUSED',
     'party.manage': 'REFUSED',
@@ -631,6 +690,16 @@ const ROLE_GRANTS = {
 /**
  * The arithmetic, pre-registered beside the declaration it counts.
  *
+ * 60 pairs = 4 roles × 15 capabilities. La derivazione qui sotto arriva a
+ * 68/32/36, che e' lo stato del 2026-09-21: **si tiene com'e' e si sottrae in
+ * coda**, perche' riscriverla renderebbe irrintracciabile ogni migration che
+ * vi e' nominata. Il piano 51-08 (D-51-07) toglie due chiavi con
+ * `20260922120000_role_attendee_and_capability_keys.sql`, quindi
+ * **68 − 8 = 60 coppie**, **32 − 4 = 28 concessioni** (le quattro di
+ * `membership.card.view`) e **36 − 4 = 32 rifiuti** (i quattro di
+ * `membership.active`). Lo stesso file rinomina il ruolo `member` in
+ * `attendee`: le coppie sono le stesse, cambia il nome di chi le tiene.
+ *
  * 68 pairs = 4 roles × 17 capabilities. 32 grants: the sixteen the capability
  * model seeded (`20260807000000_capability_model.sql:386`, *"Sixteen grant
  * rows"*), plus the two `20260808000500_staff_role.sql` adds, plus the two
@@ -650,13 +719,13 @@ const ROLE_GRANTS = {
  * `membership.active` owes every role once its grants are revoked.
  *
  * ⚠ **RECOMPUTED FROM `ROLE_GRANTS`, NOT FROM THE SENTENCE ABOVE.** The three
- * values below were derived by walking the table — 4 roles × 17 keys, 32 values
- * that are not `REFUSED` and 36 that are — and the prose was written to match
+ * values below were derived by walking the table — 4 roles × 15 keys, 28 values
+ * that are not `REFUSED` and 32 that are — and the prose was written to match
  * the walk. If the two ever disagree, **the table is the fact and this paragraph
  * is the error**: a paragraph is where an off-by-one hides, and the arithmetic
  * side of this check exists to catch exactly that.
  *
- * The three numbers have now moved seven times, each because the MODEL changed,
+ * The three numbers have now moved eight times, each because the MODEL changed,
  * which is the one legitimate reason to touch them:
  *
  *   24/16/8  → 32/18/14   plan 43-05, a fourth ROLE
@@ -666,6 +735,7 @@ const ROLE_GRANTS = {
  *   52/28/24 → 56/30/26   plan 44-04, a fourteenth CAPABILITY (2026-08-15)
  *   56/30/26 → 68/36/32   plan 45-05, ONE capability SPLIT INTO FOUR (2026-08-17)
  *   68/36/32 → 68/32/36   plan 50-02, FOUR GRANTS REVOKED (2026-09-21)
+ *   68/32/36 → 60/28/32   plan 51-08, TWO CAPABILITIES REMOVED (2026-09-22)
  *
  * The sixth move is the first that is not an addition, and the shape is worth
  * naming: the grant total goes UP by six while the number of subjects entitled
@@ -685,21 +755,35 @@ const ROLE_GRANTS = {
  */
 // RICALCOLATI CAMMINANDO `ROLE_GRANTS`, non indovinati né dedotti dalla prosa.
 //
-// 68 = 4 ruoli × 17 chiavi, e **il totale non si muove**: la migration
-// `20260921120000_drop_status_and_referral.sql` cancella le QUATTRO CONCESSIONI
-// di `membership.active`, non la chiave — che resta nel catalogo finché
-// `CAP.MEMBERSHIP_ACTIVE` vive in `src/lib/capabilities/keys.ts`, perché i
-// controlli 0, 1 e 3 confrontano le due direzioni e toglierne una sola
-// lascerebbe questo gate rosso (D-50-28). Quindi 17 chiavi, ancora.
+// ── Storia del 2026-09-21 (piano 50-02), tenuta perché spiega da dove si parte
 //
-// Ciò che si muove sono gli altri due, e si muovono di quattro nei due versi
-// opposti: quattro concessioni diventano quattro rifiuti. 36 − 4 = 32 concessioni,
-// 32 + 4 = 36 rifiuti. È la settima mossa dell'elenco qui sopra, ed è la seconda
-// che non è un'aggiunta: il totale resta fermo mentre nessuno guadagna niente e
-// quattro ruoli perdono una chiave.
-const EXPECTED_PAIR_COUNT = 68;
-const EXPECTED_GRANT_COUNT = 32;
-const EXPECTED_REFUSAL_COUNT = 36;
+// 68 = 4 ruoli × 17 chiavi, e il totale non si mosse: la migration
+// `20260921120000_drop_status_and_referral.sql` cancellò le QUATTRO CONCESSIONI
+// di `membership.active`, non la chiave — che restò nel catalogo finché
+// `CAP.MEMBERSHIP_ACTIVE` vivesse in `src/lib/capabilities/keys.ts`, perché i
+// controlli 0, 1 e 3 confrontano le due direzioni e toglierne una sola avrebbe
+// lasciato questo gate rosso (D-50-28). Quattro concessioni diventarono quattro
+// rifiuti: 32 e 36.
+//
+// ── 2026-09-22, piano 51-08 (D-51-07): LE DUE CHIAVI ESCONO ─────────────────
+//
+// 60 = 4 ruoli × **15** chiavi. Stavolta il totale SI MUOVE, perché a uscire non
+// sono le concessioni ma le chiavi: `membership.active` (già senza concessioni,
+// quattro rifiuti) e `membership.card.view` (quattro concessioni). 68 − 8 = 60.
+//
+// Concessioni: 32 − 4 = **28**, e le quattro che escono sono tutte di
+// `membership.card.view`. Rifiuti: 36 − 4 = **32**, e i quattro che escono sono
+// tutti di `membership.active`. I due si muovono di quattro nello stesso verso,
+// ed è la firma di una rimozione di chiavi — non di una revoca, che li muove di
+// quattro in versi opposti come fece la settima mossa.
+//
+// ⚠ E LA RIGA CHE QUESTI NUMERI DEVONO PORTARE NON È «68 → 60». Delle quattro
+// concessioni che escono, DUE erano l'unica di un ruolo: dopo questo commit
+// `staff` e `attendee` non tengono **nulla**. Vedi il paragrafo di
+// `EXPECTED_KEY_COUNT` e le due note dentro `ROLE_GRANTS`.
+const EXPECTED_PAIR_COUNT = 60;
+const EXPECTED_GRANT_COUNT = 28;
+const EXPECTED_REFUSAL_COUNT = 32;
 
 /**
  * The two markers a pair carries in `ROLE_GRANTS`.
