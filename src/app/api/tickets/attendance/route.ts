@@ -1110,8 +1110,11 @@ async function bindNightToGuestEntry(
  * the name was tapped (`scannedAt`, the phone's clock — evidence, not
  * authority, with the accepted failure mode written out in
  * `judge-at-scan-time.ts`). Assigned then → recorded, attributed to that
- * account. Never assigned → the same `403` as before, `blocked`, counted on the
- * scanner's screen. Revoked after the tap → recorded and logged under its own
+ * account. Never assigned → `not_valid` / `no_assignment_at_scan` at
+ * `DOOR_HTTP.not_valid`, the answer `api/tickets/checkin/route.ts` gives for the
+ * same verdict, so the drain retires the entry to `failedCheckins` under its own
+ * name instead of holding it in `blocked` behind a sign-in that cannot grant an
+ * assignment nobody ever had. Revoked after the tap → recorded and logged under its own
  * category, because a presence that happened is not erased by a later
  * revocation. Question unanswerable → `503`, `retry`. The paragraph that stood
  * here until 2026-09-22 said this half could not be closed without changing the
@@ -1309,9 +1312,9 @@ export async function POST(request: Request) {
       // after the tap does not sanitise the report (ASSIGN-03), and one revoked
       // after it does not erase a presence that happened. The five arms map onto
       // the three buckets the drain already knows (`sync-manager.ts`): a
-      // resolved refusal keeps the 403 → `blocked`; a vanished session is 401 →
-      // `blocked`, which a sign-in genuinely clears; an unanswered question is
-      // 503 → `retry`.
+      // resolved refusal is `not_valid` / `no_assignment_at_scan` → `dead`,
+      // refused once and visible; a vanished session is 401 → `blocked`, which a
+      // sign-in genuinely clears; an unanswered question is 503 → `retry`.
       const judgement = await judgeAtScanTime(
         serviceClient,
         binding.night,
@@ -1333,8 +1336,49 @@ export async function POST(request: Request) {
           });
           operatorId = judgement.operatorId;
           break;
-        case "never_assigned":
-          return refuse(auth);
+        case "never_assigned": {
+          // ── The verdict both door routes now answer identically ──────────
+          //
+          // No assignment ever covered this account on that night at that
+          // moment. Until 2026-09-22 this arm answered `refuse(auth)` — a 403,
+          // which `sync-manager.ts` files under `blocked`. `blocked` does not
+          // burn an attempt and is only ever released by
+          // `retryBlockedAfterSignIn`, which resends the same body and receives
+          // the same 403: the entry sat in the queue for the rest of the season
+          // while the door read *"Sign in again to record 1 entry"*. That is
+          // the exact sentence this phase exists to remove, refused in writing
+          // by `sync-manager.ts` ("Not `blocked`. `blocked` waits for a new
+          // login, and no login returns an assignment nobody ever had").
+          //
+          // The answer is the one `api/tickets/checkin/route.ts` gives for the
+          // same verdict: `not_valid` with `no_assignment_at_scan`, at
+          // `DOOR_HTTP.not_valid`. `NOT_VALID_REASONS` in the drain is a total
+          // `Record`, so the entry is retired to `failedCheckins` **under its
+          // own name** — refused once, counted on the screen, readable by a
+          // person — instead of being held for a remedy that cannot arrive.
+          //
+          // What this route still does not do, stated rather than implied: it
+          // writes no `door_scan_events` row, so unlike the ticket route the
+          // refused report leaves no trace in the night's register. The queue
+          // entry in `failedCheckins` is the only evidence, and that is the
+          // debt `undo/route.ts` has been naming for two phases.
+          //
+          // The 403 stays where it belongs: on the live tap, below, where a
+          // person is standing at the door and a sign-in can genuinely be the
+          // answer.
+          const noAssignment: Extract<DoorOutcome, { outcome: "not_valid" }> = {
+            outcome: "not_valid",
+            reason: "no_assignment_at_scan",
+          };
+          console.warn("[attendance] guest queued report, never assigned", {
+            guestListEntryId,
+            partyId: binding.night,
+            scannedAt: queuedScannedAt,
+          });
+          return NextResponse.json(noAssignment, {
+            status: DOOR_HTTP.not_valid,
+          });
+        }
         case "unauthenticated":
           return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         case "unresolved":

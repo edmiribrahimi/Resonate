@@ -394,9 +394,14 @@ function targetFor(entry: PendingCheckin): Target {
       // What this path still carries **less** of, stated rather than papered
       // over: no device id, and the route persists none of these three, so a
       // guest-list admission still cannot be told apart afterwards as having
-      // arrived through the queue. A refused account's queued guest entry
-      // therefore keeps its 403 and stays in `blocked` — counted on the screen,
-      // and named in the route's docblock as the half this change does not close.
+      // arrived through the queue.
+      //
+      // What it no longer carries is the hold: since 2026-09-22 a queued guest
+      // report from an account that held no assignment at scan time is answered
+      // `not_valid` / `no_assignment_at_scan`, so it lands in `dead` under its
+      // own reason — the same row of the table the ticket route lands in for the
+      // same verdict. It used to keep its 403 and sit in `blocked` for the rest
+      // of the season, which is the half this comment used to declare open.
       return {
         url: "/api/tickets/attendance",
         body: {
