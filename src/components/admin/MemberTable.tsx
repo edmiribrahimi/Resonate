@@ -696,20 +696,30 @@ export default function MemberTable({
         bordo tratteggiato — abbastanza vicino da dire «questo non concede nulla
         in piu'», abbastanza distinto da trovarsi in una lista. Uno stile di
         bordo non puo' dire PERCHE', quindi lo dice questa frase, sulla superficie
-        dove gli account staff si creano e dove **il costo in posti si decide**.
+        dove gli account staff si creano.
 
-        `staff` concede esattamente una cosa (`ACCESS-MODEL-DECISIONS.md` §2), e
-        non e' un permesso di lavoro: e' stato misurato cella per cella e non
-        tiene nulla che un membro non abbia. Chi fa la porta stasera lo tiene
-        dall'assegnazione della serata, che scade con la serata — mai da questa
-        colonna.
+        **Fino al 2026-09-22 questa frase prometteva «free entry to every night,
+        permanently»**, e il meccanismo che la realizzava era la tessera. La
+        fase 51 lo ha cancellato — la tessera, la pagina che la mostrava e la
+        rotta che la verificava sono uscite coi piani 51-04 e 51-05, e
+        `src/lib/rbac/roles.ts:100-107` lo registra nello stesso commit; con
+        D-51-03, staff e organizer non vengono scansionati affatto. Una legenda
+        che continua a promettere un beneficio cancellato e' peggio di una
+        legenda assente: si legge **prima di promuovere qualcuno**, cioe' nel
+        momento in cui quel beneficio verrebbe soppesato.
+
+        Quindi oggi `staff` non concede nulla di suo. Chi fa la porta stasera lo
+        tiene dall'assegnazione della serata, che scade con la serata — mai da
+        questa colonna. Se l'ingresso gratuito deve tornare a essere una
+        promessa di prodotto, ha bisogno di un meccanismo, ed e' una decisione
+        del proprietario: non una frase da lasciare in piedi qui.
       */}
       <p className="mb-6 text-xs text-muted">
-        A <span className="font-semibold text-ink">staff</span> account can do
-        nothing an attendee cannot. What it holds is free entry to every night,
-        permanently and without expiry — a permanent free seat at a venue that
-        holds 150–300 people. Working the door or a gallery comes from the
-        night&apos;s own assignment and ends with the night.
+        A <span className="font-semibold text-ink">staff</span> account grants
+        nothing of its own — it can do nothing an attendee cannot, and it opens
+        no door on its own. Working the door or a gallery comes from the
+        night&apos;s own assignment, which an organizer makes and which ends
+        with the night.
       </p>
 
       {/* Filters.
