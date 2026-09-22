@@ -147,7 +147,7 @@ export default async function AccountPage({
   // WR-04 is closed on this surface and stays closed: every value below is
   // rendered, none is merely read.
   //
-  // `bounceToDashboard()` in `src/lib/supabase/middleware.ts` sets one of three
+  // `bounceToAccount()` in `src/lib/supabase/middleware.ts` sets one of three
   // values, decided by position, or no parameter at all. Each gets its own
   // sentence below, and the sentences say **what to do**, not only what
   // happened: the person reading one of them may be standing at a door at two

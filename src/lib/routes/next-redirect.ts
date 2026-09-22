@@ -28,14 +28,22 @@
  *
  * ── And what it is not ───────────────────────────────────────────────────────
  *
- * A destination filter, not an access control. Resolving to `/dashboard` says
+ * A destination filter, not an access control. Resolving to the default says
  * the value was not on the list; it says nothing about whether the person may
  * read what is there. That is the RLS, as always (`access-gating.md`, gate
  * *RLS-e'-il-confine*).
  */
 
-/** Where a `next` value that is not on the list below ends up. */
-export const DEFAULT_NEXT = "/dashboard";
+/**
+ * Where a `next` value that is not on the list below ends up.
+ *
+ * **Changed on 2026-09-22 (phase 51, D-51-09b), and it is a change of address
+ * rather than of policy.** The account page moved to `/account`; this constant
+ * follows it, because a default that names the old address would send every
+ * unrecognised value through a 308 before arriving anywhere — one redirect more
+ * than the flow needs, on the path taken by somebody who has just signed in.
+ */
+export const DEFAULT_NEXT = "/account";
 
 /**
  * The complete set of relative paths a `next` value may resolve to.
@@ -65,7 +73,11 @@ export const DEFAULT_NEXT = "/dashboard";
  *
  * ── What is on the list, and why each entry ──────────────────────────────────
  *
- *   /dashboard          the default, and where every unrecognised value lands
+ *   /account            the default, and where every unrecognised value lands
+ *   /dashboard          the address the account page USED to have, kept because
+ *                       it is still served — as a 308 towards the entry above,
+ *                       declared in `next.config.ts`. See the note at the
+ *                       pattern itself for why it stays
  *   /set-password       what plan 43-04 built and what Reset Password now aims at
  *   /events/<slug>      **nobody writes this one any more** — re-measured
  *                       2026-09-21, phase 50. The two surfaces this line used
@@ -88,6 +100,27 @@ export const DEFAULT_NEXT = "/dashboard";
  * that does not anchor both ends, re-opens what this list closes.
  */
 const NEXT_ALLOW_LIST: readonly RegExp[] = [
+  // ── Added 2026-09-22, phase 51, D-51-09b — and it IS an access decision ────
+  //
+  // The account page moved here from the address on the next line. Both are on
+  // this list at once, and that is not indecision:
+  //
+  //   - the **new** one has to be here because it is the default, and because
+  //     `PROTECTED_PREFIXES` below now carries it — a prefix whose pattern is
+  //     missing turns check [3/3] of `scripts/verify-routes.mjs` red;
+  //   - the **old** one stays because `next.config.ts` still serves it, as a
+  //     308 towards the new one. Somebody bounced off it while signed out
+  //     arrives at sign-in carrying it as their `?next=`, and refusing it would
+  //     land them on the default — which is the same page, reached by throwing
+  //     away what they had asked for. **Taking an entry off this list is as
+  //     much an access decision as adding one**, and here there is a surface on
+  //     the other end: the opposite of the case plan 51-04 recorded below,
+  //     where the addresses themselves had ceased to exist.
+  //
+  // Anchored at both ends, no `.*`, no charset to widen: it is one literal
+  // segment. A pattern loose enough to admit a suffix on an authenticated flow
+  // is how an open redirect comes back (`T-51-22`).
+  /^\/account$/,
   /^\/dashboard$/,
   /^\/set-password$/,
   /^\/events\/[a-z0-9-]{1,80}$/,
@@ -162,9 +195,15 @@ const NEXT_ALLOW_LIST: readonly RegExp[] = [
  * blocker D7: the middleware wrote a parameter name the reader did not read, and
  * nothing anywhere compared the two. `scripts/verify-routes.mjs` now asserts
  * that every prefix below resolves through {@link resolveNext} without being
- * substituted — so a **fourth** prefix added to this list without a matching
+ * substituted — so a **fifth** prefix added to this list without a matching
  * pattern above turns the gate red instead of silently sending that address's
- * callers to `/dashboard`.
+ * callers to the default.
+ *
+ * *(They became four on 2026-09-22: the account page's new address joined the
+ * one it moved from, phase 51, D-51-09b. The old one stays for the reason
+ * written beside its pattern above — it is still served, as a 308 — and this
+ * list is a **prefix** test, so both have to be here or an anonymous caller
+ * reaches one of them without being bounced at all.)*
  *
  * *(They were five until 2026-09-22: the member card's address and the
  * attendance history's came off with their pages in phase 51. The reasoning is
@@ -177,6 +216,7 @@ const NEXT_ALLOW_LIST: readonly RegExp[] = [
  * The order is the middleware's `startsWith` order and carries no meaning.
  */
 export const PROTECTED_PREFIXES = [
+  "/account",
   "/dashboard",
   "/admin",
   "/door",
