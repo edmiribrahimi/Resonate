@@ -56,11 +56,16 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-/** What the surface shows about a person: a name and the door's credential. Never an address. */
+/**
+ * What the surface shows about a person: a name, the role, and the identifier
+ * the row already carries. **Never an address**, and no longer the door's
+ * credential — that column is read by nobody here and falls in plan 51-12.
+ * `AssignmentsClient` shortens the identifier to eight digits, in the form
+ * D-51-15 chose, and says there why.
+ */
 type RosterEntry = {
   id: string;
   full_name: string;
-  membership_code: string;
   role: UserRole;
 };
 
@@ -160,7 +165,7 @@ export default async function AssignmentsPage({ params }: PageProps) {
   // Who may be assigned at all — D-A, held by the interface as well as by the
   // database.
   //
-  // The composite foreign key refuses a live assignment to a `member`
+  // The composite foreign key refuses a live assignment to an `attendee`
   // (`23503`), so offering one here would produce a refusal the interface could
   // have avoided. The filter is the affordance; the foreign key is the boundary,
   // and the two are not the same thing: a Server Action is a public endpoint,
@@ -168,7 +173,7 @@ export default async function AssignmentsPage({ params }: PageProps) {
   // round this list.
   const { data: roster, error: rosterError } = await serviceClient
     .from("profiles")
-    .select("id, full_name, membership_code, role")
+    .select("id, full_name, role")
     .in("role", ["master", "organizer", "staff"])
     .order("full_name", { ascending: true });
 

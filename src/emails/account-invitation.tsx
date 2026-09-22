@@ -22,17 +22,27 @@ import { EmailLayout, BRAND } from "./components/email-layout";
  * there forever, readable by anyone who ever reaches that mailbox, and nothing
  * in this system would notice.
  *
- * ── The copy is ITALIAN, and since 2026-09-21 that is DECLARED DEBT ──────────
+ * ── The copy is ENGLISH, and it was rewritten rather than translated ─────────
  *
- * This is the last Italian template in `src/emails/`. It was written under the
- * gate *template in italiano*, which `comms-analytics.md` 1.23.0 replaced with
- * *una lingua sola per percorso*: transactional mail is English, like the
- * product. It is NOT translated in that same change on purpose — its content is
- * stale beyond its language: it still promises a personal invitation (the
- * referral, removed by phase 50) and entry by name on the member list (the
- * door surface phase 51 owns and rewrites). Translating a sentence that will be
- * deleted is work twice; phase 51 rewrites this message whole, in English, with
- * the subject in `admin/members/actions.ts`.
+ * This was the last Italian template in `src/emails/`, kept in the old language
+ * on purpose by `comms-analytics.md` 1.23.0 — which replaced the gate *template
+ * in italiano* with *una lingua sola per percorso* — because its **content** was
+ * stale beyond its language and translating a sentence about to be deleted is
+ * work done twice. Phase 51 is that rewrite, and three claims went with it:
+ *
+ *   * the *personal invitation* — the referral, removed by phase 50;
+ *   * *at the door your name is enough* — entry by name off a member list. The
+ *     door does not read a roster of members any more, so promising it would
+ *     send somebody to a queue with nothing in their hand;
+ *   * *ask for a new link from the sign-in page with «forgot password»* — there
+ *     is no such control. `/login` offers no reset, and `ResetPasswordButton`
+ *     lives on `/account`, behind the very password this message exists to set.
+ *     A message that names a way out that does not exist is worse than one that
+ *     names none: the person looks for it.
+ *
+ * The subject line lives in `admin/members/actions.ts` and moved with this file,
+ * in the same commit — two halves of one message cannot be in two languages for
+ * even one deploy.
  *
  * ── The brand is written `re:sonate`, with a normal `e` ──────────────────────
  *
@@ -60,7 +70,7 @@ export function AccountInvitationEmail({
   setPasswordUrl,
 }: AccountInvitationEmailProps) {
   return (
-    <EmailLayout preview="Il tuo account re:sonate è pronto">
+    <EmailLayout preview="Your re:sonate account is ready">
       <Heading
         style={{
           color: BRAND.foreground,
@@ -70,7 +80,7 @@ export function AccountInvitationEmail({
           fontFamily: "'Orbitron', 'Arial', sans-serif",
         }}
       >
-        Ciao {memberName}, il tuo account è pronto
+        {memberName}, your re:sonate account is ready
       </Heading>
 
       <Text
@@ -82,25 +92,24 @@ export function AccountInvitationEmail({
           fontFamily: "'Arial', sans-serif",
         }}
       >
-        Abbiamo creato un account per te nella community re:sonate. Da qui puoi
-        vedere le serate, prenotare e portare chi vuoi con il tuo invito
-        personale.
+        An account has been created for you at re:sonate. Set a password below
+        and you can sign in.
       </Text>
 
       {/*
-        D-09, said out loud rather than left true-but-invisible.
+        What replaced D-09's sentence, and why it is not simply deleted.
 
-        A created account is admissible at the door from the moment the profile
-        row exists: neither the roster download nor the door lookup reads `role`
-        or `status` (43-RESEARCH § C.2, traced end to end). So the person is on
-        the list before they have ever signed in — and if nobody tells them
-        that, the sentence they read instead is "set a password to get in",
-        which is false and which turns a five-second welcome into a task.
+        The paragraph that stood here said *your entry is already active — at
+        the door your name is enough*, and it was TRUE when it was written: the
+        door's roster admitted a profile row regardless of role. It is not true
+        now. Saying nothing at all in its place would be the other half of the
+        same mistake, because the question it answered is still the one the
+        recipient has — *what does this get me?* — and an unanswered question
+        turns a welcome into a task.
 
-        What it deliberately does NOT say: *show your QR code at the door*. The
-        code is a real credential, but reaching it means opening the app, and
-        opening the app means having set this password. Promising a screen they
-        cannot open yet would be the same mistake in the other direction.
+        So it answers, with what is true: the account is where tickets live, and
+        a night is worked by whoever was assigned to it. Neither sentence
+        promises admission, and neither names a night, a date or a place.
       */}
       <Text
         style={{
@@ -111,9 +120,9 @@ export function AccountInvitationEmail({
           fontFamily: "'Arial', sans-serif",
         }}
       >
-        Il tuo ingresso è già attivo: sei tra i membri in lista
-        all&apos;entrata da subito, anche prima di impostare la password. Alla
-        porta basta il tuo nome.
+        The account does not admit anyone on its own. Whoever attends a night
+        carries a ticket, and your tickets live on your account; whoever works a
+        night is there because they were assigned to it.
       </Text>
 
       <Button
@@ -130,7 +139,7 @@ export function AccountInvitationEmail({
           fontFamily: "'Orbitron', 'Arial', sans-serif",
         }}
       >
-        Imposta la tua password
+        Set your password
       </Button>
 
       <Text
@@ -142,10 +151,9 @@ export function AccountInvitationEmail({
           fontFamily: "'Arial', sans-serif",
         }}
       >
-        Il link è personale e ha una durata limitata. Se è scaduto, puoi
-        chiederne uno nuovo dalla pagina di accesso, con &laquo;Password
-        dimenticata&raquo;: il tuo account resta quello, e il tuo ingresso
-        continua a funzionare nel frattempo.
+        The link is personal and does not last forever. If it has expired, ask
+        whoever created the account to send you a new one — the account itself
+        stays exactly as it is.
       </Text>
     </EmailLayout>
   );

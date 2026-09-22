@@ -52,9 +52,38 @@ type PartySummary = { id: string; title: string; date: string; time: string };
 type RosterEntry = {
   id: string;
   full_name: string;
-  membership_code: string;
   role: UserRole;
 };
+
+/**
+ * Il disambiguatore fra due omonimi, e il suo limite dichiarato.
+ *
+ * Accanto a ogni nome stavano le lettere del **codice socio**: era l'unico modo
+ * di distinguere due persone che si chiamano uguale quando si sceglie chi lavora
+ * una serata. Quel codice era una **credenziale della porta** — mostrarlo in una
+ * lista che sta su uno schermo aperto, e che finisce in uno screenshot, valeva
+ * quanto scriverlo su un foglio — e la sua colonna cade nel piano 51-12.
+ *
+ * Al suo posto le **prime 8 cifre dell'identificativo del profilo**, che e' la
+ * stessa forma scelta da D-51-15 per l'etichetta del registro degli atti: la
+ * stessa persona si disambigua allo stesso modo nei due posti, o il prodotto
+ * avrebbe due nomi brevi per lei e nessuno dei due sarebbe riconoscibile.
+ *
+ * **Il limite, scritto invece che scoperto.** Non e' una credenziale: non apre
+ * niente e non ammette nessuno. Non e' un dato personale: non dice ne' il nome
+ * ne' l'indirizzo. E **non sopravvive alla cancellazione del soggetto** — il
+ * codice di prima restava nel registro anche dopo, questo e' un puntatore a una
+ * riga che puo' non esserci piu'. Serve a **distinguere due presenti**, mai a
+ * ricordare un assente.
+ *
+ * Nessuna lettura in piu': l'identificativo e' gia' nella riga che la pagina
+ * seleziona, perche' e' la chiave con cui l'assegnazione si scrive.
+ */
+const SHORT_ID_LENGTH = 8;
+
+function shortId(id: string) {
+  return id.slice(0, SHORT_ID_LENGTH);
+}
 
 type LiveAssignment = {
   party_id: string;
@@ -280,7 +309,7 @@ export default function AssignmentsClient({
                           </p>
                           <p className="text-xs text-muted">
                             {CAPABILITY_LABELS[assignment.capability]}
-                            {person ? ` · ${person.membership_code}` : null}
+                            {person ? ` · ${shortId(person.id)}` : null}
                           </p>
                         </div>
                         {/*
@@ -358,7 +387,7 @@ export default function AssignmentsClient({
                   {roster.map((person) => (
                     <option key={person.id} value={person.id}>
                       {person.full_name} ({person.role}) &middot;{" "}
-                      {person.membership_code}
+                      {shortId(person.id)}
                     </option>
                   ))}
                 </Select>
