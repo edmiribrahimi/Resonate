@@ -564,7 +564,7 @@ async function collectRecipients(
     userId: string | null
   ): Recipient => {
     const existing = emailMap.get(email) || {
-      name: fullName || "Member",
+      name: fullName || "Attendee",
       userId,
       ticketIds: [],
       rsvpIds: [],
