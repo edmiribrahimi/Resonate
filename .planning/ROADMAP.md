@@ -521,7 +521,7 @@ Plans:
 > che non stia gia' vedendo. E il calcolo va fatto **prima** del filtro per
 > format, o selezionandone uno spariscono tutti gli altri.
 
-**Plans:** 10/17 plans executed
+**Plans:** 12/17 plans executed
 
 Plans:
 **Wave 1**
@@ -545,8 +545,8 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 52-11-PLAN.md — via la colonna Work; la striscia degli strumenti appesa e alfabetica (NAV-04)
-- [ ] 52-12-PLAN.md — firma sulla pagina della serata e in moderazione; `registerMedia`/`deleteMedia` per chiave; sezione Gallery sotto `gallery.view`
+- [x] 52-11-PLAN.md — via la colonna Work; la striscia degli strumenti appesa e alfabetica (NAV-04)
+- [x] 52-12-PLAN.md — firma sulla pagina della serata e in moderazione; `registerMedia`/`deleteMedia` per chiave; sezione Gallery sotto `gallery.view`
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
