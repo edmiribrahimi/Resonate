@@ -744,3 +744,61 @@ organizer 14 · staff 1 — 31**; 0 righe di media, 0 oggetti; bucket
 - La porta sul telefono dello staff prende il foglio nuovo al primo
   aggiornamento del service worker: chi l'aveva aperta prima delle 18:28:33Z la
   ricarica una volta.
+
+## L'atto 2 (piano 52-16) — 2026-09-23, fra le 18:42Z e le 18:44Z
+
+`52-AUTHORISATION-MEDIA.md`, scritta alle 18:40Z prima della domanda;
+risposta del proprietario **`entrambe`**, registrata alle **18:42:23Z**;
+**ESAURITA alle 18:43:33Z**.
+
+### La differenza dall'atteso, per prima
+
+Nessuna. L'atteso, scritto nell'atto prima della domanda, era: *zero soggetti,
+gli strumenti diranno «niente da fare», usciranno 0 senza scrivere e senza
+spendere il permesso*. E' andata cosi'. L'unico scarto e' d'invocazione: il
+primo `--dry-run` di `restrip-event-media` e' stato lanciato senza
+`--env-file=.env.local` ed e' uscito **2** (rifiuto, nessuna lettura); rilanciato
+nella forma del suo docblock.
+
+### I numeri — contati prima (18:38:21Z) e riconfermati dagli strumenti
+
+| Popolazione | Blocco concesso | Contato dagli strumenti | Seconda fonte |
+|---|---|---|---|
+| **R** — oggetti di righe `rejected` (oggetto + riga) | 0 | **0** | PostgREST: rejected **0** |
+| **O** — orfani oltre 60 minuti | 0 | **0** | Storage: `event-media` **0** oggetti |
+| in volo (meno di 60 minuti) — mai toccati | — | **0** | — |
+| **P** — foto con `created_at` < `2026-09-23T18:29:09Z` | 0 | **0** | PostgREST: righe pre-soglia **0** |
+| **V** — video pre-soglia, contati e non trattati | 0 | **0** | PostgREST: righe pre-soglia **0** |
+| righe di `event_media` in tutto | — | 0 / 0 (approvate / in attesa) | PostgREST **0** |
+| `event-media-quarantine` | — | — | Storage **0** |
+
+La soglia e' quella dell'atto (§0.1): `20260809006000` **non e' registrata** in
+produzione, e lo strumento lo ha detto e ha usato la soglia passata.
+
+### Le corse, con le ore
+
+| Corsa | UTC | Uscita | Esito |
+|---|---|---|---|
+| `purge-media-orphans --dry-run` | 18:42:45Z → 18:42:47Z | **0** | R 0 · O 0 · in volo 0; concessi = contati; rejected Management API 0 · PostgREST 0; *zero soggetti*, nessuna istantanea |
+| `purge-media-orphans --apply` | 18:42:51Z → 18:42:53Z | **0** | identico; **nessuna scrittura** |
+| `restrip-event-media --dry-run` (senza `--env-file`) | 18:43Z | **2** | rifiuto d'invocazione, nessuna lettura |
+| `restrip-event-media --dry-run` | 18:43:12Z → 18:43:13Z | **0** | foto 0 · video 0 · altro 0 · senza `storage_path` 0 |
+| `restrip-event-media --apply` | 18:43:19Z → 18:43:20Z | **0** | identico; **nessuna scrittura** |
+| riconteggio proprio, PostgREST + Storage, sola lettura | 18:43:29Z | — | righe 0 · pre-soglia 0 · rejected 0 · `event-media` 0 · quarantena 0 |
+
+**Istantanee create: nessuna** (15 file d'istantanea nella radice prima e dopo,
+gli stessi nomi, tutti del laboratorio). **P foto riscritte = 0 · V video non
+trattati = 0 · R = 0 · O = 0 · righe cancellate 0.**
+
+### Cosa vuol dire
+
+- **D-52-30** (moderazione = rimozione) e **D-52-31** (EXIF prima della
+  pubblicazione) sono **veri in produzione oggi per assenza di soggetto**: non
+  c'e' una foto rifiutata con oggetto, non c'e' un orfano, non c'e' una foto
+  caricata prima dello stripper. Da M2 in poi ogni oggetto nasce gia' spogliato.
+- I due blocchi restano `granted: yes · spent: no`: gli strumenti spendono solo
+  quando scrivono. L'atto e' esaurito per data (`granted_on` = oggi).
+- Residuo in cache: **zero per costruzione** (0 oggetti oggi e dal censimento
+  delle 13:08Z).
+- Le istantanee del laboratorio (piani 52-09, 52-10) restano sul disco: si
+  cancellano nel passo datato del piano **52-17**.

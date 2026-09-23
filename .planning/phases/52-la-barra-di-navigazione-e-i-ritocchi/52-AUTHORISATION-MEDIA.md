@@ -9,7 +9,9 @@ granted_by: il proprietario
 granted_at: "2026-09-23T18:42:23Z — risposta scelta dal proprietario con lo strumento di domanda dell'orchestratore; registrata qui a quest'ora dell'orologio di questa macchina, prima di qualunque lancio"
 answer: entrambe
 scope: "(a) purge-media-orphans --dry-run poi --apply, R 0 · O 0; (b) restrip-event-media --dry-run poi --apply con --before 2026-09-23T18:29:09Z, P 0 · V 0 — in quest'ordine, oggi, una volta"
-status: CONCESSA
+spent: "no — nessuno dei due strumenti ha avuto un soggetto (vedi §4)"
+status: ESAURITA
+exhausted: "2026-09-23T18:43:33Z — (a) e (b) eseguiti, dry-run e apply, uscita 0, zero soggetti"
 counted_at: "2026-09-23T18:38:21Z → 18:38:28Z"
 numbers: "R 0 · O 0 · in volo 0 · P 0 · V 0"
 ---
@@ -256,12 +258,23 @@ qualunque lancio. Concede (a) poi (b), oggi, una volta.
 
 ## 3. Registro d'uso
 
-*(vuoto — nessuno strumento e' stato lanciato contro la produzione.)*
+Concessione registrata alle **18:42:23Z**; ogni lancio sotto e' successivo.
+Bersaglio di tutte le corse: la produzione (`--project <PRODUCTION_REF>`),
+`--authorised` questo file, `--dated 2026-09-23`.
 
-| # | Passo | Eseguito (UTC) | Referto dello strumento | Riconteggio da fonte diversa | Esito |
-|---|---|---|---|---|---|
-| (a) | `purge-media-orphans` `--dry-run` · `--apply` | — | — | — | — |
-| (b) | `restrip-event-media` `--dry-run` · `--apply` | — | — | — | — |
+| # | Corsa | Eseguito (UTC) | Uscita | Referto dello strumento | Riconteggio da fonte diversa | Esito |
+|---|---|---|---|---|---|---|
+| (a)1 | `purge-media-orphans --dry-run` | 18:42:45.755Z → 18:42:47.131Z | **0** | oggetti nel bucket 0 · **R 0** · **O 0** · in volo 0 · rejected senza `storage_path` 0 · rejected senza oggetto 0 · approvate / in attesa 0 / 0 · concessi R 0 · O 0 = contati; Management API letto alle 18:42:46.705Z | righe rejected: Management API 0 · PostgREST 0 | *«ZERO SOGGETTI … Una decisione senza soggetti non si esegue»*; nessuna istantanea; blocco **non consumato** |
+| (a)2 | `purge-media-orphans --apply` | 18:42:51.997Z → 18:42:53.076Z | **0** | identico: R 0 · O 0 · in volo 0; concessi = contati; letto alle 18:42:53.039Z | righe rejected: Management API 0 · PostgREST 0 | zero soggetti; **nessuna scrittura**, nessuna istantanea; blocco **non consumato** |
+| (b)0 | `restrip-event-media --dry-run`, lanciato **senza** `--env-file` | 18:43Z | **2** | *RIFIUTO* d'invocazione: variabili assenti. **Nessuna lettura** | — | rifiuto prima di ogni lettura; rilanciato nella forma che il docblock dello strumento prescrive per la produzione (`node --env-file=.env.local …`). Non e' «una seconda corsa dopo una scrittura»: non c'era stata ne' lettura ne' scrittura |
+| (b)1 | `restrip-event-media --dry-run` | 18:43:12.556Z → 18:43:13.081Z | **0** | history: `20260809006000` **non registrata** → usata la soglia passata `2026-09-23T18:29:09Z`; pre-soglia: **foto 0 · video 0** · altro tipo 0 · senza `storage_path` 0 | vedi (b)2 | *«ZERO FOTO pre-soglia … NON e' stato consumato»* |
+| (b)2 | `restrip-event-media --apply` | 18:43:19.842Z → 18:43:20.445Z | **0** | identico: **P 0** foto · **V 0** video non trattati · altro 0 | 18:43:29.775Z, PostgREST con la chiave di servizio e API Storage, lettura propria perche' lo strumento a zero foto non riconta: righe di `event_media` **0**, pre-soglia **0**, rejected **0**; elenco di `event-media` **0**, di `event-media-quarantine` **0** | zero soggetti; **nessuna scrittura**, nessuna istantanea; blocco **non consumato** |
+
+**Istantanee create da questo atto: nessuna.** Le istantanee nella radice del
+repo erano **15** prima della prima corsa e sono **15** dopo l'ultima, con gli
+stessi nomi (sono quelle del laboratorio, piani 52-09 e 52-10). **Foto riscritte
+P = 0; video non trattati V = 0; oggetti rimossi R = 0 · O = 0; righe cancellate
+0.** Nessuna scrittura in produzione da parte di questo atto.
 
 Nel registro vanno **solo** numeri, categorie, ore UTC e i **nomi** dei file
 d'istantanea — mai il loro contenuto, mai un nome d'oggetto, un path, un URL o
@@ -271,4 +284,21 @@ un id.
 
 ## 4. Chiusura
 
-*(vuota — il documento non e' ancora stato concesso.)*
+# ⚠ ESAURITA — 2026-09-23T18:43:33Z
+
+(a) e (b) concessi (`entrambe`, 18:42:23Z) ed **eseguiti** nell'ordine, dry-run
+poi apply, uscita 0 su tutte e quattro le corse; zero soggetti da due fonti.
+
+**Perche' i blocchi dicono ancora `spent: no`.** Gli strumenti consumano il
+blocco **solo quando scrivono**, e con R = O = P = 0 non hanno scritto: il campo
+e' rimasto come l'hanno lasciato, e **non e' stato toccato a mano** — scrivere
+`spent: yes` al loro posto sarebbe attestare un atto che non e' avvenuto.
+L'atto e' esaurito comunque **per data**: `granted_on: 2026-09-23` coincide
+solo con `--dated 2026-09-23`, e uno strumento lanciato un altro giorno rifiuta
+(uscita 2, nessuna lettura). Un nuovo atto richiede un nuovo documento e una
+nuova domanda.
+
+D-52-30 e D-52-31 sono veri in produzione oggi **per assenza di soggetto**:
+nessuna foto rifiutata con oggetto, nessun orfano, nessuna foto pre-soglia.
+
+Da qui in poi questo documento non autorizza piu' niente.
