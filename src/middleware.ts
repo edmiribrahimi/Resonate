@@ -36,8 +36,10 @@ import {
  * hosting routes of several server actions — a matcher edit can silently remove
  * proxy coverage from one. The door's `/api/tickets/checkin` passes through this
  * middleware on every scan, and `src/lib/supabase/middleware.ts:136-140` counts
- * that round trip. And `/membership-card` and `/attendance` are still judged
- * downstream and sit outside the collapsed tree.
+ * that round trip. *(A third reason used to be that two member-only pages were
+ * judged downstream and sat outside the collapsed tree; phase 51 deleted both
+ * on 2026-09-22 and they answer 404, so the matcher is now identical for the
+ * first two reasons alone.)*
  *
  * ── And the filename is deliberately unchanged ────────────────────────────────
  *

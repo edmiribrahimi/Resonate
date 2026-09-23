@@ -65,8 +65,9 @@ export type ScanTimeJudgement =
  *
  * `scannedAt` is **the phone's clock**. The lexicon is this repository's own —
  * `src/lib/offline/checkin-store.ts:135-136`, *"Device clock at the read.
- * Evidence, not authority"*, and `src/app/api/membership/verify/route.ts:412*
- * says the same thing in its own words. A device whose clock is wrong can
+ * Evidence, not authority"* (the membership verification route said the same
+ * in its own words, until phase 51 deleted it on 2026-09-22). A device whose
+ * clock is wrong can
  * therefore make an assignment look live when it was not, or dead when it was.
  *
  * **That is accepted, deliberately, and here is the whole of the reasoning.**

@@ -352,19 +352,20 @@ export default function CreateAccountForm() {
           this: the sentence stays visible AND becomes programmatically
           associated with the control, which it never was.
 
-          The reason is structural rather than cautious, and it survives every
-          change to what the door reads: a phone that has already gone offline
-          works from the list it downloaded, and an account created afterwards
-          is not in it. So an account created while the door is already running
-          with no signal is not known at that door, whatever it is asked to
-          recognise. This is not engineered around — the honest answer is to
+          The reason is structural rather than cautious: a work account is
+          useful at the door only once it has signed in on a phone and been
+          assigned to the night, and both of those need signal. An account
+          created while the door is already running with no signal cannot do
+          either. This is not engineered around — the honest answer is to
           create the account earlier.
 
-          *(The sentence here used to name the credential the door checked and
-          the offline branch that refused it. Both belong to the door, both are
-          moving in this phase, and a hint on this form that describes another
-          file's mechanism goes stale without anybody noticing. What is left is
-          the fact that does not depend on it.)*
+          *(Until 2026-09-22 the sentence said the door "works from the list it
+          downloaded, and does not know an account created after that". That
+          was true while staff were subjects of the downloaded roster; since
+          phase 51 (D-51-03) staff and organizers are not scanned, so the list
+          no longer carries them and that reason stopped being the real one —
+          phase 51 review, IN-04. The advice survived because a different
+          reason holds it up.)*
         */}
         <Select
           id="create-account-role"
@@ -372,9 +373,9 @@ export default function CreateAccountForm() {
           value={role}
           onChange={(e) => setRole(e.target.value as RoleValue)}
           hint={
-            "Create staff accounts before the night, not during it. A door " +
-            "phone that has already gone offline works from the list it " +
-            "downloaded, and does not know an account created after that."
+            "Create staff accounts before the night, not during it. The " +
+            "account has to sign in and be assigned to the night on a phone " +
+            "with signal — neither happens at a door that has gone offline."
           }
         >
           {/*

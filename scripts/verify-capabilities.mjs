@@ -1462,14 +1462,22 @@ async function run(target, targetLabel) {
   // applied — so each mutation below was confirmed applied, by `git status
   // --porcelain` or `git diff --stat`, BEFORE its result was read:
   //
-  //   A  a scratch migration inserting ('member','door.operate',false) —
-  //      the widening. Container only. Exit 1, naming member × door.operate.
+  //   A  a scratch migration inserting a grant the declaration does not carry
+  //      — the widening. Container only. Exit 1, naming the pair.
   //   B  a scratch migration deleting ('organizer','door.operate') — the loss
   //      that shows up at the door. Container only. Exit 1, naming the pair.
-  //   C  the member × door.operate entry removed from ROLE_GRANTS. Exit 1 from
-  //      the arithmetic guard; with the two totals lowered to match — the shape
-  //      of somebody making the check agree with the edit — exit 1 again, this
+  //   C  one declared pair removed from ROLE_GRANTS. Exit 1 from the
+  //      arithmetic guard; with the two totals lowered to match — the shape of
+  //      somebody making the check agree with the edit — exit 1 again, this
   //      time from assertion 4, naming the pair as UNACCOUNTED.
+  //
+  //   The rows written in 2026-08-08 are not repeatable as written (phase 51
+  //   review, IN-03): they inserted the role value that phase 51 renamed on
+  //   2026-09-22, which `role_capabilities_role_check` now refuses (23514),
+  //   with a third column that phase 50 dropped on 2026-09-21 (42703). Whoever
+  //   re-runs the mutation writes ('attendee','door.operate') — two columns —
+  //   and reads the red that this check raises, not the one the database
+  //   raises first.
   //
   // Both targets were 5/5 green before any mutation and after every revert, and
   // no scratch migration survived the task. The messages are quoted verbatim in

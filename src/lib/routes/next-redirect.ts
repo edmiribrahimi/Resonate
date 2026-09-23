@@ -200,10 +200,13 @@ const NEXT_ALLOW_LIST: readonly RegExp[] = [
  * callers to the default.
  *
  * *(They became four on 2026-09-22: the account page's new address joined the
- * one it moved from, phase 51, D-51-09b. The old one stays for the reason
- * written beside its pattern above — it is still served, as a 308 — and this
- * list is a **prefix** test, so both have to be here or an anonymous caller
- * reaches one of them without being bounced at all.)*
+ * one it moved from, phase 51, D-51-09b. The old one stays because its pattern
+ * above stays — it is still a valid `next`, served as a 308 — and
+ * `verify-routes.mjs` [3/3] holds this list and that allow-list to each other.
+ * It is NOT here to bounce anybody: `next.config.ts`'s `redirects()` run
+ * before the middleware, so an anonymous caller on the old address receives
+ * the 308 first and meets the bouncer on the new one. This note used to say
+ * the opposite — phase 51 review, IN-05.)*
  *
  * *(They were five until 2026-09-22: the member card's address and the
  * attendance history's came off with their pages in phase 51. The reasoning is
