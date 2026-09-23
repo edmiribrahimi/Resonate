@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "Completato 52-14-PLAN.md — corsa sul laboratorio; tre difetti aperti, 52-15 bloccato fino al piano di chiusura"
-last_updated: "2026-09-23T17:45:00.000Z"
+stopped_at: "Completato 52-18-PLAN.md — difetti 2 e 3 chiusi e provati sul laboratorio; resta il difetto 1 (52-19), poi 52-15"
+last_updated: "2026-09-23T17:55:00.000Z"
 last_activity: 2026-09-23
 progress:
   total_phases: 12
   completed_phases: 5
   total_plans: 73
-  completed_plans: 61
+  completed_plans: 62
   percent: 42
 ---
 
@@ -35,8 +35,10 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 52 (la-barra-di-navigazione-e-i-ritocchi) — EXECUTING
-Plan: 14 of 17 completati — **52-15 BLOCCATO** fino a un piano di chiusura
-Next: `/gsd:plan-phase 52 --gaps` — il piano di chiusura dei tre difetti trovati dalla corsa di 52-14, con la ri-misura sul simulatore; **poi** 52-15 (atto in produzione).
+Plan: 15 of 19 completati (52-01..14 e 52-18) — **52-15 BLOCCATO** fino alla chiusura di 52-19
+Next: 52-19 (difetto 1: campi a 16 px contro lo zoom di Safari, ri-misura e deploy sul lab); **poi** 52-15 (atto in produzione).
+
+**52-18 chiuso il 2026-09-23 (17:49Z sul laboratorio).** Difetto 2: `ROLE_LABEL: Record<UserRole, string>` in `account/page.tsx` — lo staff legge «Staff» e «Staff since …», zero «Attendee»; master «Admin», attendee «Attendee». Difetto 3: etichetta `address_refused` dai codici `validation_failed` / `email_address_invalid` — il punto finale produce «That address was refused as not valid», log `[members.address_refused] … code=validation_failed status=400` senza indirizzo, account 11 prima e 11 dopo. Commit `9aa3c4f1`, `b227f054`.
 
 **La corsa sul laboratorio (52-14), 2026-09-23 16:13Z → 17:15Z.** Quattro fonti, in ordine di autorita': il proprietario a mano sul suo iPhone 17 Pro (iOS 26.7), lo stesso telefono pilotato, un iPhone simulato (iOS 27.0), Chrome headless. P-52-A..E e G passano (passi non percorsi dichiarati: P-52-D 2 e 5, P-52-E 6, il video di P-52-G, la sonda 7; tablet e `Escape` solo in Chrome). P-52-F resta **aperta**. **Tre difetti — la fase non va in produzione con questi aperti:** (1) **Critical per la porta** — Safari zooma a 1,1436 al tocco su ogni campo da 14 px (`src/components/ui/Input.tsx:103`) e lo zoom resta dopo il blur: alla porta si perdono «QR Scan» e Alerts; correzione provata 16 px sui campi a larghezza di telefono, non `maximum-scale` (D-41-08); (2) la pagina Account di uno `staff` dice «Attendee» (`account/page.tsx:254-259`); (3) `validation_failed` dell'Auth mostrato come «The write failed» in `CreateAccountForm.tsx`. Login (D-52-28): **`resta`**, registrato a nome del proprietario, `allinea` riaperta se la ri-misura dopo il fix mostra «Sign In» coperto. Esiti in `52-ESITI.md`.
 
@@ -405,6 +407,7 @@ Progress: [██████████] 100%
 
 Fixed by the project owner before planning — not re-opened at plan time:
 
+- [Fase 52, 2026-09-23]: 52-18 — un indirizzo malformato si riconosce dalla risposta dell'autenticazione (`validation_failed` / `email_address_invalid` → `address_refused`), **non** con un secondo validatore sul punto finale: l'autenticazione resta l'autorita' sull'indirizzo.
 - [Fase 52, 2026-09-23]: **D-52-28 — il login resta com'e' (`resta`).** Risposta letterale del proprietario: *«se sono sulla pagina di login, e clicco sul campo mail o password, non deve avvenire lo zoom (come accade ora). non so quale delle due scelte sia»*. Scelta registrata a suo nome da chi coordinava la corsa: il suo requisito e' il difetto 1 (zoom), che nessuna delle due opzioni tocca. `FOCUS_ROOT` e il digest di `verify:conversion` restano; `allinea` si riapre se la ri-misura dopo il fix mostra «Sign In» coperto con il fuoco sulla password.
 - [Fase 52, 2026-09-23]: la correzione dello zoom di Safari e' **16 px sui campi a larghezza di telefono**, mai `maximum-scale` o `user-scalable=no` (D-41-08 vieta di bloccare lo zoom).
 - Live freshness uses a **push channel**, not polling — mandatory full reload on every reconnection, infrequent safety reload underneath (Phase 38)

@@ -521,7 +521,7 @@ Plans:
 > che non stia gia' vedendo. E il calcolo va fatto **prima** del filtro per
 > format, o selezionandone uno spariscono tutti gli altri.
 
-**Plans:** 14/19 plans executed
+**Plans:** 15/19 plans executed
 
 Plans:
 **Wave 1**
@@ -558,7 +558,7 @@ Plans:
 
 **Wave 7** *(blocked on Wave 6 completion)* — chiusura delle lacune della corsa
 
-- [ ] 52-18-PLAN.md — difetti 2 e 3: lo `staff` su Account legge «Staff»; un indirizzo rifiutato dall'autenticazione ha la sua frase (`address_refused`), non «The write failed»
+- [x] 52-18-PLAN.md — difetti 2 e 3: lo `staff` su Account legge «Staff»; un indirizzo rifiutato dall'autenticazione ha la sua frase (`address_refused`), non «The write failed»
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
