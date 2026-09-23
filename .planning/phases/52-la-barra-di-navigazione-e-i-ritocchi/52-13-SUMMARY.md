@@ -36,7 +36,7 @@ decisions:
   - "M2 rilegge anche event-images (deve restare public = true): la migration chiude UN bucket e lo dimostra"
   - "verify-refusal riceve --section=<nome>: sul laboratorio 10 tabelle production_* su 11 sono vuote, quindi il run completo e' REFUSED per costruzione; il gruppo gallery ha cosi' un esito proprio, e il run completo resta dichiarato"
   - "La sonda 6 misura la coppia di policy (remove dell'oggetto, delete della riga) con la sessione organizer su un media di prova seminato dallo script: la server action non si invoca da uno script"
-  - "La sonda 1 si fa in due letture: con parametro unico misura l'origine (bucket chiuso gia' a M2+28 s); senza misura cio' che riceve chi ha l'URL (cache fino a 3600 s)"
+  - "La sonda 1 si fa in due letture: con parametro unico misura l'origine (bucket chiuso gia' a M2+28 s); senza misura cio' che riceve chi ha l'URL (cache del bordo CDN: misurata oltre 3600 s)"
 metrics:
   duration: "~40 min di lavoro + attesa della finestra di cache"
   completed: 2026-09-23
