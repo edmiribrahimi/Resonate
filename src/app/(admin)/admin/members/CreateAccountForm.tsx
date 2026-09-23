@@ -39,7 +39,7 @@ import { Input, Select } from "@/components/ui/Input";
  * l'oggetto con lui.
  */
 
-/** The client-only twelfth case: the action never returned, so there is no tag. */
+/** The client-only thirteenth case: the action never returned, so there is no tag. */
 type NoticeKind = CreateAccountFailure | "transport_unavailable";
 
 /**
@@ -76,6 +76,14 @@ const NOTICES: Record<NoticeKind, { title: string; body: string }> = {
       "The address, the name or the role did not pass the server's own check — " +
       "which runs again on the server because this form is not the boundary. " +
       "Nothing was created.",
+  },
+  address_refused: {
+    title: "That address was refused as not valid",
+    body:
+      "The auth service refused the address exactly as it was typed — the usual " +
+      "cause is a trailing dot or space left by the phone keyboard. No account " +
+      "was created and no message was sent. Correct the address and try again: " +
+      "retrying is safe, because there is nothing to clean up.",
   },
   app_url_missing: {
     title: "The site address is not configured — nothing was created",

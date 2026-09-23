@@ -1334,9 +1334,12 @@ export async function revokeAssignmentsAndDemote(
 /**
  * What can go wrong, one word each. There is no shared "action failed".
  *
- * Eleven causes rather than a tidy three, because a person reading a notice has
+ * Twelve causes rather than a tidy three, because a person reading a notice has
  * to know **what state the world is in**, and these differ:
  *
+ *   * `address_refused` — the auth service, which is the authority on the
+ *     address, refused it as malformed. Nothing was created and nothing was
+ *     sent: the remedy is to correct the address, not to retry it as is.
  *   * `already_exists` — nothing was created. Also the idempotency key
  *     (`comms-analytics.md`, *una mail non si richiama*): a second attempt on
  *     the same address must not send a second invitation, and it does not,
@@ -1359,6 +1362,7 @@ export type CreateAccountFailure =
   | "capabilities_unavailable"
   | "forbidden"
   | "invalid_input"
+  | "address_refused"
   | "app_url_missing"
   | "already_exists"
   | "profile_missing"
@@ -1592,6 +1596,19 @@ export async function createAccount(input: {
             failure: "already_exists",
             detail: "email_exists",
           };
+        }
+        // Indirizzo malformato: sono i due codici che GoTrue usa per un
+        // indirizzo che non accetta. Il primo l'ha osservato il proprietario il
+        // 2026-09-23 con un punto finale lasciato dalla tastiera iOS (difetto 3
+        // di 52-ESITI.md); il secondo si riconosce per la stessa ragione per cui
+        // si riconoscono entrambe le etichette del duplicato. Nel log solo
+        // codice e status, mai l'indirizzo.
+        if (code === "validation_failed" || code === "email_address_invalid") {
+          console.error(
+            `[members.address_refused] createAccount: auth code=${code} ` +
+              `status=${authError?.status ?? "unknown"}`
+          );
+          return { ok: false, failure: "address_refused", detail: code };
         }
         // Never the error object and never its body: an auth error on this path
         // carries the address that was submitted.
