@@ -3,6 +3,82 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.26.0] - 2026-09-23
+
+### Changed — la persona smette di descrivere la gallery com'era prima della fase 52: `media-and-storage.md`, `access-gating.md`
+
+**Cosa e' cambiato.** `media-and-storage.md` si carica **da solo** sulle
+superfici media — gallery, pagina della serata, moderazione — e su quattro punti
+descriveva un prodotto che dal 2026-09-23 non c'e' piu'. Ogni riga e' stata
+**riscritta rileggendo il codice**, con la data accanto e la frase di prima
+riportata:
+
+- *I due confini* — diceva bucket `event-media` pubblico, letto con
+  `getPublicUrl`, e un rifiutato scaricabile da chi ne indovina il path. Oggi il
+  bucket e' **privato** (`20260923180100_gallery_close_data.sql:165-167`), le
+  righe approvate si leggono con `gallery.view` (`:133-141`), l'oggetto si
+  firma con il client della sessione (`src/lib/media/sign-event-media.ts`) e la
+  policy sull'oggetto chiede la riga. `event-images`, `venue-photos`,
+  `artist-photos` restano pubblici. Aggiunto il residuo che la chiusura non
+  richiama: la cache della CDN, misurata sul laboratorio a 62 minuti (`52-13`),
+  zero per costruzione in produzione.
+- *Una foto porta piu' di quello che mostra* — diceva «nessuna sanitizzazione
+  dei metadati esiste nel codice». Lo stripper esiste dalla fase 35
+  (`src/lib/media/finalize.ts:294`); il limite vero, **il video**, e' scritto
+  con la sua riga; le foto pre-stripper da ripassare in produzione erano **0**
+  (D-52-31).
+- Gate *moderazione = rimozione* — un rifiutato non si raggiunge piu' per
+  indirizzo ne' per firma da chi tiene solo `gallery.view`; rifiutati e orfani
+  si tolgono per chiave (D-52-30, **0 e 0** in produzione). **E resta scritto
+  cio' che non e' chiuso**: `deleteMedia` non ha chiamanti, il rifiuto
+  dall'interfaccia cambia solo la riga.
+- Gate *chi carica ha titolo* — diceva «utente **approvato** con un
+  biglietto». Lo stato non esiste dal 2026-09-21; `may-upload.ts` ammette
+  `staff.manage` o l'assegnazione `media.upload` su quella serata, e nient'altro.
+
+`access-gating.md`, gate *coerenza navigazione/permessi*: citava `NAV_ITEMS`,
+che la fase 52 ha tolto (ora `getNavigation`, `roles.ts:615`), e guadagna un
+capoverso su **`/gallery` sotto `gallery.view`** — voce di mappa con
+`alsoGatesTables`, prefisso protetto, guardia in pagina — e sul fatto che
+**riaprirla al pubblico e' anche una migration** (D-52-14).
+
+**Cosa lo ha fatto scattare.** NAV-07 e D-52-25: la ricerca di fase
+(`52-RESEARCH.md` §I.5) aveva misurato che il cancello di NAV-02 decideva dove
+si va e non cosa si legge; la fase ha chiuso righe, oggetti e bucket, e il
+modulo che governa proprio quei file continuava a dire il contrario. E' il caso
+che `meta-gates.md` chiama *una riga che descrive male il prodotto, peggio di
+una riga assente*. Il riferimento a `NAV_ITEMS` era segnalato da `52-07`.
+
+**Scenario di carico e scatto.** File:
+`src/app/(admin)/admin/(work)/events/[id]/media/page.tsx`. Moduli attesi:
+`media-and-storage.md` (`src/app/**/media/**`), `access-gating.md`
+(`src/app/(admin)/**`), `nextjs-architecture.md`, piu' `CLAUDE.md` e
+`meta-gates.md`. Modifica-tipo che deve far scattare i gate: un ritorno a
+`getPublicUrl` o all'`url` della riga come fallback quando la firma fallisce —
+*I due confini* dice che un path non apre nulla senza firma, e che la firma
+nasce solo dalla riga. Secondo scenario: `src/lib/rbac/roles.ts` che rimette
+Gallery in barra per tutti — carica `access-gating.md`, che dice che senza la
+migration la pagina resta vuota e con la migration si riaprono foto di serate
+segrete.
+
+**Context budget, rimisurato dal controllo E dopo le modifiche.** Nessun
+`paths:` toccato, ma due file del caso peggiore sono cresciuti:
+
+| | file | byte | token | margine |
+|---|---|---|---|---|
+| caso peggiore, prima | `src/app/(admin)/admin/scanner/DoorSurface.tsx` | 48.888 | 13.580 | 1.420 |
+| caso peggiore, dopo | `src/app/(admin)/admin/scanner/DoorSurface.tsx` | 49.724 | **13.812** | 1.188 |
+| pagina di moderazione, prima | `…/events/[id]/media/page.tsx` | 44.882 | 12.467 | 2.533 |
+| pagina di moderazione, dopo | `…/events/[id]/media/page.tsx` | 47.807 | **13.280** | 1.720 |
+
+`access-gating.md` 8.330 → 9.166 byte, `media-and-storage.md` 5.058 → 7.147.
+Il caso peggiore non cambia file. **Il margine sulla porta scende a 1.188
+token**: la prossima prosa in `access-gating.md` va pesata.
+
+**Verifica.** `npm run verify:persona` rilanciato **dopo** le modifiche: 7/7.
+Copre coerenza e budget, non la correttezza dei gate: le righe sono state
+rilette sul codice una per una, ed e' quella la verifica di cio' che dicono.
+
 ## [1.25.0] - 2026-09-23
 
 ### Changed — la persona smette di chiamare `member` un ruolo che il database rifiuta, e di descrivere una credenziale cancellata: `CLAUDE.md`, `access-gating.md`, `checkin-offline.md`, `community-membership.md`
