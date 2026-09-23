@@ -12,7 +12,8 @@ sezione «Management Tools» della pagina Account e la colonna «Work»; il canc
 vero sulla gallery (chiave `gallery.view` nel catalogo, riga nella mappa delle
 rotte, guardia in cima alla pagina); la barra degli strumenti appesa da
 telefono dentro uno strumento; il numero `staff` della pagina membri senza
-filtro; i chip dei format ricavati dalle serate visibili. Piu' i due ritocchi
+filtro; i chip dei format ricavati dalle serate visibili. Piu' NAV-07, aggiunto il 2026-09-23 dopo la ricerca: la gallery chiude anche i
+dati (RLS, bucket privato, URL firmati). Piu' i due ritocchi
 alla porta chiesti dal proprietario durante la fase 51: cronologia e avvisi in
 due linguette, e il viewport che si ridimensiona sotto la tastiera.
 
@@ -141,6 +142,41 @@ documento, non la tabella.
   dove la pagina fissa un'altezza. **Prova manuale su iPhone** (Safari) su
   login, porta con la tastiera aperta e un form pubblico, scritta passo per
   passo; nessun test automatico esiste.
+
+### Decisioni prese dopo la ricerca (2026-09-23, domande aperte da `52-RESEARCH.md`)
+- **D-52-24 — TASK spento compare anche al master**, non solo a organizer e
+  staff: il master tiene tutto e la sua barra mostra la forma finale.
+- **D-52-25 — NAV-07: la gallery chiude anche i dati.** La ricerca ha misurato
+  che il cancello di NAV-02 decide dove si va e non cosa si legge: un
+  `attendee` legge via API le righe approvate di `event_media` e il bucket
+  delle foto e' pubblico. **Decisione del proprietario: si stringe in questa
+  fase** — policy di lettura su `event_media` legata a `gallery.view`, bucket
+  privato, immagini servite con URL firmati (il pattern esiste gia' in
+  `src/app/(admin)/admin/visual/actions.ts`, `createSignedUrls`), censimento e
+  conversione dei link pubblici gia' emessi (mail, pagine). Proposta una fase
+  52.1 separata; scelto «dentro la 52, come NAV-07». **E' Critical**: RLS e
+  media, `access-gating.md` + `media-and-storage.md`; migration sul lab prima,
+  produzione sotto atto datato; niente foto di una serata segreta puo' essere
+  raggiungibile da un URL non firmato.
+- **D-52-26 — Le cinque linguette stanno in una riga, con etichette corte**:
+  All · Out · In · Recent · Alerts, numero accanto; le posizioni non cambiano
+  mai durante la serata.
+- **D-52-27 — La striscia degli strumenti da telefono e la colonna espansa su
+  desktop seguono l'ordine alfabetico del pannello**: una lista sola, un ordine
+  solo (`STAFF_TABS` si ordina per etichetta al momento del rendering, non si
+  riordina la dichiarazione).
+- **D-52-28 — Il viewport iOS, con l'aspettativa scritta.** `interactive-widget=
+  resizes-content` va nel meta viewport (Next 16 lo tipizza, aiuta Android, e'
+  innocuo) **ma Safari iOS non lo implementa ancora** (WebKit lo ha nel sorgente
+  da agosto 2026, non in una release — ricerca §H): sull'iPhone del
+  proprietario il ridimensionamento sotto la tastiera e' **atteso assente**, e
+  la prova manuale lo dichiara prima di essere percorsa. Quello che DEVE
+  funzionare sull'iPhone sono le misure di layout: l'avviso della guest list
+  sopra la ricerca, il campo di ricerca che al fuoco sale in cima, la barra che
+  si nasconde con `:has(:focus)` sotto `pointer: coarse` (D-52-06). Il login
+  **non monta la barra**: D-52-06 non lo riguarda; `FOCUS_ROOT` di `PageShell`
+  (digest custodito da `verify:conversion`) **non si tocca** prima di aver
+  provato il login com'e' sull'iPhone — si decide sul risultato.
 
 ### Claude's Discretion
 - L'ordine dei chip (catalogo `sort_order`, come oggi, o prima apparizione) e

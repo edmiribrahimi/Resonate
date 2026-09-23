@@ -501,6 +501,7 @@ Plans:
 | **NAV-04** | Da telefono, dentro uno strumento di management, la barra degli strumenti resta **appesa in alto**. |
 | **NAV-05** | Nella pagina membri il numero `staff` **non e' piu' un link con filtro**: si comporta come le altre tre cifre (`MemberTable.tsx:1109`). |
 | **NAV-06** | Nella pagina eventi compaiono **solo i format che hanno almeno una serata** — passata o futura — visibile a chi guarda. |
+| **NAV-07** | La gallery chiude **anche i dati**, non solo l'indirizzo: le righe approvate di `event_media` si leggono solo con `gallery.view` (RLS), il bucket delle foto diventa **privato** e le immagini si servono con **URL firmati**; i link pubblici gia' emessi vengono censiti e convertiti. *(Aggiunto il 2026-09-23, decisione del proprietario dopo la ricerca: «il middleware e' UX, la RLS e' sicurezza» — un cancello sull'indirizzo senza un cancello sui dati non chiude niente.)* |
 
 > **NAV-02 non e' una sola modifica ma tre, e la prima da sola non protegge
 > niente.** Oggi `/gallery` **non e' nella mappa delle rotte affatto**: nascondere

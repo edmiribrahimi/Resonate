@@ -678,6 +678,13 @@ does not exist on this machine, though GSD's own generated text uses it.
 
 ### Roadmap Evolution
 
+- **2026-09-23 — Fase 52: aggiunto NAV-07** (la gallery chiude anche i dati:
+  RLS su `event_media` per `gallery.view`, bucket privato, URL firmati, censimento
+  dei link gia' emessi). Decisione del proprietario dopo la ricerca, che aveva
+  misurato che il cancello di NAV-02 decide dove si va e non cosa si legge.
+  Proposta la fase separata 52.1; scelto «dentro la 52». La fase diventa
+  Critical per intero (dati dei media, RLS).
+
 - **2026-09-23 — Fase 52 modificata** (edit in place, campi: NAV-01, NAV-02):
   la barra passa da sette voci a **quattro** — Events · Check-in · TASK ·
   Management — Home esce, Gallery e Account entrano nel pannello Management,
