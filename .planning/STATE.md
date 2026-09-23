@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
-status: ready_to_plan
-stopped_at: "Fase 52 chiusa il 2026-09-23 (19/19, VERIFICATION passed, review 0 critical / 8 warning / 8 info). Prossima: 52.1, chiusura del debito dichiarato dalla 52; poi la 53"
-last_updated: 2026-09-23T19:27:28.453Z
+status: planning
+stopped_at: "Completato 52-17-PLAN.md — verifica approvata alle 19:13:29Z; fase 52 eseguita 19/19, resta verifica e chiusura"
+last_updated: "2026-09-23T19:29:58.020Z"
 last_activity: 2026-09-23
 progress:
-  total_phases: 12
+  total_phases: 13
   completed_phases: 6
-  total_plans: 73
-  completed_plans: 66
-  percent: 50
+  total_plans: 75
+  completed_plans: 79
+  percent: 46
 ---
 
 # State: Resonate
@@ -739,3 +739,5 @@ does not exist on this machine, though GSD's own generated text uses it.
     significa la stessa **costruzione**, mai lo stesso **contenuto**. I mockup
     contengono nomi di sede, line-up e date; `docs/` e `.firecrawl/` sono in
     `.gitignore` apposta e il controllo F di `verify:persona` lo verifica.
+
+- Phase 52.1 inserted after Phase 52: Chiusura del debito della fase 52: la tabella del debito di 52-VERIFICATION.md piu' gli 8 WR e le 8 IN di 52-REVIEW.md, DBT-01..10 (decisione del proprietario: «chiudiamo tutto il debito») (URGENT)

@@ -81,6 +81,7 @@ per assecondare una decisione presa dopo che e' stata citata.
 - [x] **50** — Via le iscrizioni (`REG`) — chiusa il 2026-09-21: 12 piani, VERIFICATION passed, produzione aggiornata
 - [x] **51** — Via le superfici da socio, e la porta (`MEM`) — chiusa il 2026-09-23: VERIFICATION passed, spinta e dispiegata
 - [x] **52** — La barra di navigazione e i ritocchi (`NAV`) — chiusa il 2026-09-23: 19 piani, VERIFICATION passed (approvata dal proprietario), in produzione dal 18:28:33Z; debito dichiarato → fase 52.1
+- [ ] **52.1** — Chiusura del debito della fase 52 (`DBT`) — **inserita il 2026-09-23**: il debito di `52-VERIFICATION.md` e gli avvisi di `52-REVIEW.md`, dieci requisiti DBT-01..10
 - [ ] **53** — TASK (`TASK`)
 - [ ] **54** — Location, alla pari con il tracker (`LOC`)
 - [ ] **55** — Visual, una pagina per format (`VIS`)
@@ -575,6 +576,45 @@ Plans:
 **Wave 11** *(blocked on Wave 10 completion)*
 
 - [x] 52-17-PLAN.md — persona (media-and-storage, access-gating), sonda di cache dopo la finestra, `52-VERIFICATION.md` (checkpoint)
+
+### Phase 52.1: Chiusura del debito della fase 52 (INSERTED)
+
+**Inserita il 2026-09-23, decisione del proprietario:** *«basta che chiudiamo tutto il
+debito»*. Il perimetro e' **la tabella «Il debito che questa fase lascia» di
+`52-VERIFICATION.md`** piu' **gli 8 WR e le 8 IN di `52-REVIEW.md`**. Non e' una
+fase di feature: ogni voce chiude una cosa che la 52 ha dichiarato aperta, e la
+VERIFICATION della 52.1 cita voce per voce dove e' stata chiusa — o, per le tre
+voci non chiudibili per costruzione, dove e' scritto perche'.
+
+**Goal:** la fase 52 non lascia debito che una fase possa chiudere. Chi rifiuta una
+foto la toglie davvero; nessun secondo scrittore sul bucket resta fuori dai gate; i
+video di una serata a sede segreta non portano coordinate; i passi di procedura
+saltati sono percorsi; gli avvisi della review sono chiusi.
+
+| ID | Requisito |
+|---|---|
+| **DBT-01** | **Moderazione = rimozione, per intero (Critical).** Un rifiuto in moderazione toglie **l'oggetto** dal bucket, per chiave, oltre a segnare la riga: `deleteMedia` (`events/[slug]/actions.ts`) acquista il suo chiamante nell'interfaccia di moderazione, con istantanea di soli metadati e riconteggio da fonte diversa (`ai-engineering.md`). Dopo, ne' chi ha caricato ne' chi modera puo' piu' firmare un rifiuto. Provato sul laboratorio prima della produzione; la produzione oggi ha 0 media. |
+| **DBT-02** | **Nessun secondo scrittore fuori dai gate.** Il controllo A di `verify:media-strip` cammina anche `scripts/`, con `restrip-event-media.mjs` dichiarato come unico scrittore ammesso e verificato per l'ordine «spoglia, poi scrivi» — oppure lo script viene ritirato ora che non ha soggetti. Una delle due, decisa e scritta. |
+| **DBT-03** | **I video non portano coordinate.** Decisione del proprietario fra due strade: uno stripper per i metadati video (atom `udta`/GPS) nel percorso di finalize, oppure **il rifiuto dei video sulle serate a sede segreta** finche' uno stripper non esiste. In entrambi i casi il comportamento e' esplicito all'utente che carica, mai silenzioso. |
+| **DBT-04** | **I passi di procedura non percorsi sono percorsi**, sul laboratorio: P-52-D 2 e 5, **P-52-E 6 (l'annullamento alla porta con un QR vero, da telefono)**, P-52-G video e sonda 7, e i passi da tablet (P-52-A 9-11, P-52-C 4) su un tablet vero o su un simulatore iPad dichiarato tale. Esiti datati in `52-ESITI.md` o in un `52.1-ESITI.md`. |
+| **DBT-05** | **La porta non tace senza rete.** L'avviso della guest list e il pallino di Alerts si accendono **quando cade la radio**, non quando scade il timeout del canale realtime (oggi ~40 s in Chrome, ~2 minuti sul telefono). Misura prima/dopo sul telefono, non solo in Chrome (`checkin-offline.md`). |
+| **DBT-06** | **Le 8 WR della review sono chiuse** (`52-REVIEW.md`): WR-01 lettura dell'evento in moderazione che scarta `error`; WR-02 `force-dynamic` sulla gallery; WR-03 `uploaded_by` serializzato al client senza consumatori; WR-04 stato «could not be loaded» legato all'id di riga invece che all'URL firmato; WR-05 `aria-live` degli avvisi solo con il tab Alerts attivo; WR-06 `seed-lab-media.mjs` ramo (c) rotto dopo M2; WR-07 corpi d'errore del Management API stampati (fino a 300 byte) in due script; WR-08 istantanea dei byte scritta prima del bivio `--dry-run`. |
+| **DBT-07** | **Le 8 IN della review sono chiuse o dichiarate**, insieme alla ricognizione lessicale che la 52 aveva rimandato alla 57: commenti «public bucket» (`finalize.ts`, `finalize/route.ts`, `may-upload.ts`, `MediaReviewGrid.tsx`), `getVisibleNavItems` (`server.ts`, `middleware.ts`), «of the seventeen keys» in `verify-capabilities.mjs`, «M2 drops the column». |
+| **DBT-08** | **La cache ha una procedura.** Per la prossima volta che un bucket pubblico **con contenuto** viene chiuso: come si invalida il bordo della CDN (o, se non si puo', quanto si aspetta e cosa si dice), provato sul laboratorio con un oggetto in cache, con i tempi. Sta in `media-and-storage.md`, gate *cache e contenuto rimosso*. |
+| **DBT-09** | **Le copie locali hanno una fine.** Le sei `.env.attendances-snapshot.*` della fase 51 ancora sul disco: decisione del proprietario (cancellare per nome o tenere fino a una data scritta), registrata come per le istantanee della 52 (`legal-compliance.md`). |
+| **DBT-10** | **Cio' che non si chiude si dichiara, una volta sola:** NAV-07 decide chi vede una foto, non cosa c'e' dentro (criterio di moderazione, non confine tecnico); D-52-28 `resta` (decisione del proprietario); l'UDID di simulatore nel testo di `52-19-PLAN.md` (dichiarato, non riscritto). La VERIFICATION della 52.1 le cita come chiuse per dichiarazione, con il rimando. |
+
+**Depends on:** Phase 52
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 52.1 to break down)
+
+> **Ordine dentro la fase:** DBT-01 e DBT-03 sono decisioni/feature Critical
+> (media, sede segreta) e vogliono la domanda al proprietario prima del codice
+> (`meta-gates.md`, «misura due volte»); DBT-06/07 sono ritocchi; DBT-04/05
+> vogliono un telefono e il laboratorio. Nessuna scrittura in produzione senza
+> un atto datato, come per la 52.
 
 ### Phase 53: TASK
 
