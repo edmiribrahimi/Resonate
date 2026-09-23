@@ -3,9 +3,9 @@ phase: 52-la-barra-di-navigazione-e-i-ritocchi
 document: le procedure manuali della fase 52
 written: 2026-09-23
 written_by: piano 52-02, task 1
-walked: —
+walked: 2026-09-23
 procedures: 7
-status: SCRITTA, NON PERCORSA — gli esiti vanno in `52-ESITI.md`
+status: PERCORSA sul laboratorio il 2026-09-23 (iPhone 17 Pro iOS 26.7 a mano e pilotato, iPhone simulato iOS 27.0, Chrome headless) — tre difetti aperti, esiti in `52-ESITI.md`
 requirements: [NAV-01, NAV-02, NAV-03, NAV-04, NAV-05, NAV-06, NAV-07]
 ---
 
@@ -291,22 +291,22 @@ ha percorso. Qui restano solo i sette riquadri, e restano aperti finche'
 qualcuno non percorre.
 
 > **`P-52-A`** — la barra e il pannello, per soggetto, da telefono e da tablet.
-> `Result: pending`
+> `Result: passed` — passi 1-8 su iPhone (il proprietario a mano per lo `staff` non assegnato e l'`organizer`, il simulatore per gli altri); `Escape` e i passi 9-11 **solo in Chrome a 1024 px, nessun tablet vero**. Accanto al passo 8, difetto 2 (Account di uno staff dice «Attendee»). Dettaglio in `52-ESITI.md`.
 
 > **`P-52-B`** — il cancello della gallery, dopo M2.
-> `Result: pending`
+> `Result: passed` — sette passi su sette su iPhone; il passo 4 con lo `staff` non assegnato creato dall'app, a mano dal proprietario.
 
 > **`P-52-C`** — la striscia degli strumenti appesa.
-> `Result: pending`
+> `Result: passed` — passi 1-3 su iPhone; passo 4 **solo in Chrome a 1024 px**.
 
 > **`P-52-D`** — i chip dei format e la cifra staff.
-> `Result: pending`
+> `Result: passed, con due passi non percorsi` — 1, 3, 4, 6, 7 passano; **2 e 5 non percorsi**: il banco non ha un format con sola bozza ne' un momento senza serate visibili, e non si fabbricano.
 
 > **`P-52-E`** — la porta in cinque linguette, radio accesa e spenta.
-> `Result: pending`
+> `Result: passed, con un passo non percorso` — 1-5, 7, 8 passano sul telefono del proprietario, radio accesa e modalita' aereo vera; **6 non percorso** (QR e annullamento da Recent: nessuna fotocamera nelle corse pilotate, e il proprietario non l'ha fatto).
 
 > **`P-52-F`** — la tastiera: quattro misure separate, la quarta atteso assente; il login com'e'.
-> `Result: pending`
+> `Result: open — difetto 1` — le misure 1-3 passano su iPhone, la 4 **atteso assente — osservato assente** (iOS 26.7 e 27.0), il login e' misurato e deciso (`resta`, D-52-28); ma **Safari zooma al tocco su ogni campo da 14 px** e lo zoom resta: la procedura si richiude con la ri-misura dopo la correzione.
 
 > **`P-52-G`** — i media chiusi: otto sonde, la prima ripetuta dopo la finestra di cache.
-> `Result: pending`
+> `Result: passed per le immagini, video non percorso` — sonda 5: immagini in gallery e in moderazione (con `master`) passano; **video non percorso** (nessun video sul banco); sonda 7 non percorsa (nessun caricamento nella corsa); sonde 1-4, 6, 8 del piano 52-13.
