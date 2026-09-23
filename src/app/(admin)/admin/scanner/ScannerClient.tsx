@@ -359,14 +359,38 @@ function formatListAge(ageMs: number): string {
  * admitting a duplicate is a number in a report (`checkin-offline.md`), so a
  * warning that only described a risk would read, at 02:00, as permission to
  * refuse.
+ *
+ * ── Three sentences, not two — decided by the owner on 2026-09-23 ──────────
+ *
+ * The code review of phase 51 (WR-04) measured that with the radio off this
+ * element lit the instant the channel dropped, over a list downloaded seconds
+ * earlier, and said «NOT refreshed (updated 3s ago)» — a contradiction in six
+ * words. Two readings were on the table: tie the element to the list's age
+ * only, or keep it lit for the whole of the offline stretch. **The owner chose
+ * the second**: with the radio off the sentence is true for as long as the
+ * radio is off, and the door is the one screen where an instruction about not
+ * refusing people earns its space. What changed is the wording — a list that
+ * cannot refresh is not a list that was not refreshed — so the middle sentence
+ * below exists for that case and says what is actually happening.
  */
-function guestListWarningText(ageMs: number | null): string {
+function guestListWarningText(
+  ageMs: number | null,
+  channelIsLive: boolean
+): string {
   if (ageMs === null) {
     return (
       "The guest list has NOT been downloaded on this device for tonight. " +
       "With the radio off nobody can be found by name here — do not refuse a " +
       "guest on the strength of this screen; let them in and sort it out in " +
       "the night's review."
+    );
+  }
+  if (!channelIsLive) {
+    return (
+      `The guest list on this device cannot refresh while the radio is off (${formatListAge(ageMs)}). ` +
+      "A guest added to the list since then will not be found by name — do not " +
+      "refuse them on the strength of this screen; let them in and sort it out " +
+      "in the night's review."
     );
   }
   return (
@@ -2429,11 +2453,11 @@ export default function ScannerClient() {
           guestListEntryId,
           { token: null, name: rowName }
         );
-        const localKey = attendeeKey(
-          partyId,
-          "guest_list_entry" satisfies DoorSubjectType,
-          guestListEntryId
-        );
+        // The key the store filed the entry under — the same string the
+        // ticket branch reads back, and the one an offline undo will look for.
+        // Rebuilding it here with `attendeeKey` was a second spelling of the
+        // same fact (phase 51 review, IN-07).
+        const localKey = result.key;
 
         if (result.alreadyRecorded) {
           // Not a refusal, and not a second admission: the first queued entry
@@ -2518,13 +2542,46 @@ export default function ScannerClient() {
       return;
     }
 
+    // The `try` covers the request and nothing after it. The `catch` below
+    // queues a local admission, so a throw from `showFlash`, `addScanRecord` or
+    // `fetchAttendance` after a write the server had already accepted would
+    // queue a duplicate — contained by the drain's 409 → `done`, but a path the
+    // sentence on the catch did not admit to (phase 51 review, IN-06).
+    let res: Response;
     try {
-      const res = await fetch("/api/tickets/attendance", {
+      res = await fetch("/api/tickets/attendance", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ guestListEntryId }),
       });
+    } catch (error) {
+      // ── The radio said it was on, and it was not ────────────────────────────
+      //
+      // The only cause this arm covers is the request never reaching a server —
+      // and since the `try` was narrowed to the `fetch` alone, the only cause
+      // that can reach it. What changed with plan 51-15 is the answer. It used
+      // to show *«Connection error — The guest was not checked in»* and stop
+      // there, which at 02:00 is a valid invitee sent away because a bar of
+      // signal lied — and `navigator.onLine` lying is the **ordinary** case at
+      // a door, not the exotic one. So this takes the same offline branch as a
+      // declared airplane mode: admit, queue, drain when the signal really
+      // returns.
+      //
+      // Its own category, and deliberately not the old
+      // `scanner:guest_checkin_unreachable`: the two events must stay apart in
+      // the log. An admission taken with the radio **declared** off is silent
+      // here, exactly as a scanned ticket's is; an admission taken because a
+      // live-looking network failed is a fact about the venue's signal that
+      // whoever reads the console afterwards needs to be able to count
+      // (`meta-gates.md`, zero silent failures). Renaming rather than keeping
+      // both avoids two console lines for one event, which is how a category
+      // stops meaning anything.
+      console.error("scanner:guest_checkin_queued_after_unreachable", error);
+      await queueGuestLocally(selectedPartyId);
+      return;
+    }
 
+    {
       let parsed: unknown = null;
       try {
         parsed = await res.json();
@@ -2570,28 +2627,6 @@ export default function ScannerClient() {
       }
 
       reportServerFault(res.status, parsed, guestListEntryId, "guest");
-    } catch (error) {
-      // ── The radio said it was on, and it was not ────────────────────────────
-      //
-      // The only cause this arm covers is still the same one: the request never
-      // reached a server. What changed is the answer. It used to show
-      // *«Connection error — The guest was not checked in»* and stop there,
-      // which at 02:00 is a valid invitee sent away because a bar of signal
-      // lied — and `navigator.onLine` lying is the **ordinary** case at a door,
-      // not the exotic one. So this takes the same offline branch as a declared
-      // airplane mode: admit, queue, drain when the signal really returns.
-      //
-      // Its own category, and deliberately not the old
-      // `scanner:guest_checkin_unreachable`: the two events must stay apart in
-      // the log. An admission taken with the radio **declared** off is silent
-      // here, exactly as a scanned ticket's is; an admission taken because a
-      // live-looking network failed is a fact about the venue's signal that
-      // whoever reads the console afterwards needs to be able to count
-      // (`meta-gates.md`, zero silent failures). Renaming rather than keeping
-      // both avoids two console lines for one event, which is how a category
-      // stops meaning anything.
-      console.error("scanner:guest_checkin_queued_after_unreachable", error);
-      await queueGuestLocally(selectedPartyId);
     }
   };
 
@@ -3346,6 +3381,11 @@ export default function ScannerClient() {
           They also switch on at different moments, so one element would have to
           carry two conditions and would end up lying about one of them.
 
+          With the radio off this one stays lit for the whole offline stretch —
+          an owner's decision (2026-09-23, WR-04), recorded over
+          `guestListWarningText`, which is also where the wording for that case
+          lives.
+
           It is **not** in `cacheNotices`, for the reason written over that array
           above: every early return of `fetchAttendance` replaces it wholesale,
           which is exactly the moment this sentence is the only thing saying the
@@ -3358,7 +3398,7 @@ export default function ScannerClient() {
             role="status"
             aria-live="polite"
           >
-            {guestListWarningText(listAgeMs)}
+            {guestListWarningText(listAgeMs, channelLive)}
           </div>
         )}
 
