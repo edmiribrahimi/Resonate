@@ -147,7 +147,7 @@ assegnato: ritirato con la sua ragione, non piu' «trattenuto»), **WR-02**
 > **Riletto il 2026-09-23.** Di quanto segue resta aperta solo la ricognizione
 > lessicale completa della fase 57. **WR-05** ha la sua migration di solo
 > `COMMENT` (`20260923120000_role_capabilities_comment.sql`), applicata sul
-> laboratorio lo stesso giorno; in produzione con un atto datato. **WR-04** e' stato deciso dal
+> laboratorio e in produzione lo stesso giorno (`51-AUTHORISATION-COMMENT.md`). **WR-04** e' stato deciso dal
 > proprietario (sempre acceso offline, frase corretta — `514c497`); **WR-03**
 > chiuso con `7c6c859` — non serviva una colonna: il flag viaggia nella risposta
 > e il drain gia' lo leggeva; **WR-06** con `c730b1d`; **WR-08** con `778af39`;

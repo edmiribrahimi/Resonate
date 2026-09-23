@@ -86,7 +86,9 @@ evidence: 51-ESITI.md (due corse di `P-51-1` PERCORSE + l'atto di produzione), 5
 > `@react-email/components`, come gli altri link delle mail. **WR-05** ha la
 > sua migration di solo `COMMENT`, `20260923120000_role_capabilities_comment.sql`,
 > **applicata sul laboratorio** (versione `20260923105525`, commento riletto
-> dal catalogo con 15 e 13); **in produzione aspetta un atto datato**.
+> dal catalogo con 15 e 13) **e in produzione** sotto `51-AUTHORISATION-COMMENT.md`
+> (ESAURITA): versione `20260923110143` alle 11:01:44Z, commento riletto,
+> concessioni 28 prima e dopo.
 >
 > **Il debito della code review, riletto.** Chiusi il 2026-09-23 con un commit
 > ciascuno: **WR-03** (`7c6c859`, il flag di revoca viaggia nella risposta guest

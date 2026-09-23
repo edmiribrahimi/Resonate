@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: Phase 51 complete — 15/15 plans, in produzione dal 2026-09-22 19:13Z; il 2026-09-23 chiuso il debito del review (resta WR-05), deciso WR-04, lanciato verify:refusal, pulito il lab; VERIFICATION passed; WR-05 applicato sul lab, in produzione con atto datato; commit NON ancora spinti
+stopped_at: Phase 51 complete — 15/15 plans, in produzione dal 2026-09-22 19:13Z; il 2026-09-23 chiuso il debito del review (resta WR-05), deciso WR-04, lanciato verify:refusal, pulito il lab; VERIFICATION passed; WR-05 applicato su lab e produzione; push autorizzato il 2026-09-23
 last_updated: "2026-09-23T10:50:00.000Z"
 last_activity: 2026-09-23
 progress:
@@ -50,8 +50,8 @@ biglietto «1 di 2» riportato a non scansionato); la riga guest `63ebd88f-…`
 **osservata** su Chrome headless contro il lab (non su telefono, dichiarato);
 i due gate rossi ereditati dalla 50 **chiusi** — `npm run verify` e'
 **VERIFY_OK, 24 gate**; **WR-05** ha la migration di solo `COMMENT`
-`20260923120000_role_capabilities_comment.sql`, applicata sul laboratorio,
-**in produzione con un atto datato**. `51-VERIFICATION.md` e' `passed`.
+`20260923120000_role_capabilities_comment.sql`, applicata sul laboratorio **e in
+produzione** (versione `20260923110143`, `51-AUTHORISATION-COMMENT.md` ESAURITA). `51-VERIFICATION.md` e' `passed`.
 `npm run build` exit 0, `verify:persona` 7/7.
 
 **Cosa e' in produzione — DEPLOYATO il 2026-09-07.** Le sei migration erano
