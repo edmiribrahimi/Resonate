@@ -9,8 +9,10 @@ granted_by: il proprietario
 granted_at: "2026-09-23 ~18:22Z (20:22 locali), come riferita dall'orchestratore; registrata qui alle 18:21:29Z dell'orologio di questa macchina"
 scope: "(a) M1 `20260923180000_gallery_view_and_media_paths.sql` dall'endpoint migrations, con rilettura read_only; (b) `git push origin main` e deploy Vercel di produzione atteso READY; (c) M2 `20260923180100_gallery_close_data.sql` dall'endpoint migrations, con rilettura read_only; (d) `verify:capabilities` e `verify:refusal --section=gallery` contro la produzione; (e) la sonda anonima su un oggetto approvato, se ne esiste uno — in quest'ordine, oggi, una volta"
 answer: tutto
-spent: no
-status: CONCESSA, NON USATA — atto fermo al passo (a), nessuna scrittura in produzione
+reapproved: "2026-09-23T18:25Z — «approvo m1, push, m2 e push finale. vai», dopo il diniego dell'ambiente al primo tentativo"
+spent: yes
+status: ESAURITA
+exhausted: "2026-09-23T18:29Z — chiuso il passo (d); (e) dichiarato senza soggetto"
 ---
 
 # Autorizzazione a scrivere in produzione — 2026-09-23, M1 → deploy → M2
@@ -212,6 +214,42 @@ nient'altro: il «Fuori perimetro» del §1 resta tale per intero.
 
 ## 3. Registro d'uso
 
+Il primo tentativo e' fermo al passo (a) per un diniego dell'ambiente (§3.0 e
+nota in coda al §4, commit `f671144b`). Il proprietario ha poi riapprovato alla
+lettera, alle **18:25Z**: **«approvo m1, push, m2 e push finale. vai»** — lo
+stesso perimetro del §1, nessun passo in piu'; il «push finale» e' quello della
+sola documentazione di questo atto. L'atto e' stato eseguito dall'orchestratore
+nella sessione principale; ore e numeri qui sotto sono quelli delle sue letture.
+
+| # | Passo | Eseguito (UTC) | Riletto dal catalogo (`read_only`) | Esito |
+|---|---|---|---|---|
+| prima | lettura di partenza | prima di (a) | ultima versione `20260923110143`; **15** chiavi; **28** concessioni; **0** righe di media; **0** oggetti; `event-media` pubblico | coincide con il §0 |
+| (a) | M1, `gallery_view_and_media_paths`, `POST …/database/migrations` | **18:26:37.820Z → 18:26:38.564Z**, HTTP 200; versione coniata **`20260923182638`** | alle **18:27:09Z**: **16** chiavi, `gallery.view` presente, **31** concessioni, `gallery.view` a **master, organizer, staff** (attendee no); `storage_path` nullable **si'**, `url` nullable **si'**; `CHECK` e indice unico presenti; **0** righe, **0** oggetti; bucket `event-images` pubblico, `event-media` pubblico, `event-media-quarantine` privato | **ESEGUITO** |
+| (b) | `git push origin main` · deploy di produzione · richieste anonime | push alle **18:27:10Z**, `65e9cc57..f671144b`, **94 commit** (i 91 del §1 piu' i tre di documentazione di questo piano). Deploy Vercel `dpl_Dy9VYqPygXJiojRYrAf23jKvdDy1`, sha `f671144b`: creato 18:27:15Z, `BUILDING` alle 18:28:16Z e 18:28:31Z, **`READY` alle 18:28:33Z** (API Vercel v6). Prime richieste anonime su `www.resonatemotion.com` alle **18:28:47Z**: `/events` **200**; `/gallery` **307** → `/login?next=%2Fgallery`; `/door` **307** → `/login?next=%2Fdoor`; `/login` **200** | — | **ESEGUITO** |
+| (c) | M2, `gallery_close_data`, `POST …/database/migrations`, solo dopo `READY` | rilettura di guardia alle **18:29:08Z**: **0** righe, **0** oggetti — il residuo della CDN e' zero per costruzione (§1.1). M2: **18:29:08.085Z → 18:29:08.464Z**, HTTP 200; versione coniata **`20260923182908`** | subito dopo: `storage_path` **NOT NULL**; bucket `event-media` **privato**, `event-images` pubblico, `event-media-quarantine` privato; policy SELECT su `event_media`: `event_media_select_admin`, `event_media_select_gallery`, `event_media_select_own` — **«Anyone can view event media» non c'e' piu'**; policy su `storage.objects` per `event-media`: le due DELETE (`authenticated`) e `event_media_objects_select_by_row` (SELECT, `authenticated`) | **ESEGUITO** |
+| (d) | `verify:capabilities` · `verify:refusal --section=gallery` contro la produzione, una corsa ciascuno | `verify:capabilities` alle **18:29:08Z**: exit **0**, `TS 16 · DB 16 · POLICY 12 · SRC 16 · GRANT 31`, controlli 0–5 tutti verdi — **da rosso a verde**. `verify:refusal --section=gallery` alle **18:29:09Z**, una corsa sola (conia e revoca due sessioni): **RIFIUTATO**, come il §1 aveva scritto prima — con 0 media la risposta autorizzata e quella negata coincidono e la riga positiva tace. **Non rilanciato** | — | **ESEGUITO**; il rifiuto e' l'esito previsto, non un difetto |
+| (e) | sonda anonima su un oggetto approvato | **non eseguita: senza soggetto** — 0 oggetti e 0 righe approvate alle 18:29:08Z | — | dichiarata non eseguibile, come il §1 prevedeva |
+
+**Precondizioni del §1.2 sulla punta spinta** (riletto dal repo dopo l'atto):
+`65e9cc57..f671144b` porta **0** file sotto `docs/`, `.firecrawl/` o `.env*`;
+fra `1665af30`, dove il build e' stato misurato (18:22:46Z, exit 0), e
+`f671144b` cambia un solo file, `52-AUTHORISATION.md` — il build misurato vale
+per il codice spinto.
+
+**Riletto dopo l'atto**, in sola lettura, alle **18:30:56Z** (ora del database):
+ultime versioni `20260923182908 gallery_close_data` · `20260923182638
+gallery_view_and_media_paths` · `20260923110143`; **16** chiavi; concessioni
+**master 16 · organizer 14 · staff 1 — 31**; `storage_path` NOT NULL; 0 righe,
+0 oggetti; `event-media` privato. `verify:capabilities` rilanciato alle
+18:30:54Z: **5/5 verde**, exit 0.
+
+Nulla fuori dal §1: nessuna rimozione per chiave, nessuna ri-spogliatura,
+`purge-media-orphans` non lanciato, nessuna invalidazione della CDN, nessuna
+seconda corsa di `verify:refusal`, nessun push diverso da `main` →
+`origin/main`.
+
+### 3.0 Il primo tentativo, alle ~18:23Z — storia, non cancellata
+
 | # | Passo | Eseguito (UTC) | Riletto dal catalogo (`read_only`) | Esito |
 |---|---|---|---|---|
 | (a) | M1, `gallery_view_and_media_paths` | **non eseguito** — tentato alle ~18:23Z, la chiamata e' stata **negata dal livello dei permessi dell'ambiente di esecuzione** prima di partire | `read_only` alle 18:22:24Z (prima) e **18:23:46Z** (dopo): ultima versione `20260923110143`, **15** chiavi, **28** concessioni, `storage_path` assente — **invariato** | **STOP**: nessuna scrittura avvenuta |
@@ -228,7 +266,21 @@ stato e' gia' `ESAURITA`.
 
 ## 4. Chiusura
 
-— *(vuota: l'autorizzazione non e' ancora concessa)*
+# ESAURITA — 2026-09-23T18:29Z
+
+Quattro passi eseguiti su cinque, nell'ordine del §1 — M1 alle 18:26:38Z, il
+deploy `READY` alle 18:28:33Z, M2 alle 18:29:08Z, i due gate alle 18:29:08–09Z —
+e il quinto dichiarato senza soggetto. Zero righe di dati toccate (la
+produzione non aveva media), una chiave, tre concessioni, due policy aggiunte,
+due tolte o sostituite, un bucket reso privato.
+
+**Resta aperto, e non e' di questo atto:** il criterio «`verify:refusal` verde»
+non e' raggiungibile con 0 media, come il §1 diceva prima della domanda; la
+prova che una riga approvata e' illeggibile senza `gallery.view` resta quella
+del laboratorio (52-13) piu' la rilettura del catalogo di (c). La rimozione per
+chiave e la ri-spogliatura sono l'atto del 52-16, con la sua domanda.
+
+> **Da qui in poi questo documento non autorizza piu' niente.**
 
 ### Nota d'uso — 2026-09-23, 18:24Z: l'atto e' fermo prima del primo passo
 
