@@ -678,6 +678,13 @@ does not exist on this machine, though GSD's own generated text uses it.
 
 ### Roadmap Evolution
 
+- **2026-09-23 — Fase 52 modificata** (edit in place, campi: NAV-01, NAV-02):
+  la barra passa da sette voci a **quattro** — Events · Check-in · TASK ·
+  Management — Home esce, Gallery e Account entrano nel pannello Management,
+  Account resta in barra per chi non ha Management. Decisione del proprietario
+  nella discussione di fase (`52-CONTEXT.md`, D-52-01..05). Numero e posizione
+  della fase invariati.
+
 - **2026-08-11 — Fasi 44 e 45 aggiunte alla v1.5** (decisione del proprietario), in
   esecuzione **dopo la 42**. Portano PROD-01 e PROD-02, promossi fuori da
   *Future Requirements*: erano differiti per una ragione dichiarata ciascuno —

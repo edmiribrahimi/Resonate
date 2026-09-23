@@ -495,8 +495,8 @@ Plans:
 
 | ID | Requisito |
 |---|---|
-| **NAV-01** | L'ordine della barra e': Home · Events · Gallery · Check-in · **TASK** · Account · **Management**. |
-| **NAV-02** | La gallery e' raggiungibile solo da chi ha `gallery.view` (admin, organizer, staff): **voce di barra, riga nella mappa delle rotte, e guardia in cima alla pagina**. |
+| **NAV-01** | La barra ha **quattro voci**, in quest'ordine: Events · Check-in · **TASK** · **Management**. Home non esiste (`/` resta il redirect a `/events`). Gallery e Account vivono **dentro** Management; chi non ha Management (`attendee`, anonimo) vede Events · Account. TASK e' **disegnata ma spenta** finche' la fase 53 non la costruisce. *(Riscritto il 2026-09-23, decisione del proprietario, D-52-01..05 in `52-CONTEXT.md`; diceva «Home · Events · Gallery · Check-in · TASK · Account · Management».)* |
+| **NAV-02** | La gallery e' raggiungibile solo da chi ha `gallery.view` (admin, organizer, staff): **voce nel pannello Management, riga nella mappa delle rotte, e guardia in cima alla pagina**. |
 | **NAV-03** | Management e' un **pannello che scende**, con le voci in **ordine alfabetico**, e sparisce dalla pagina Account. |
 | **NAV-04** | Da telefono, dentro uno strumento di management, la barra degli strumenti resta **appesa in alto**. |
 | **NAV-05** | Nella pagina membri il numero `staff` **non e' piu' un link con filtro**: si comporta come le altre tre cifre (`MemberTable.tsx:1109`). |
