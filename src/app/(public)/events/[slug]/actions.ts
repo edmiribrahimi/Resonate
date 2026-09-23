@@ -150,6 +150,23 @@ export async function validateMediaUpload(eventId: string, partyId: string) {
  * one `/api/media/finalize` is built to make rare. The window between a
  * successful publish and this insert is named in `35-20-SUMMARY.md`,
  * constatazione 3.
+ *
+ * ── The row carries the KEY, and no address (phase 52, NAV-07, D-52-25) ──────
+ *
+ * Until 2026-09-23 this action built a public address —
+ * the bucket's public prefix followed by the key — and wrote it into `url`.
+ * From NAV-07 the bucket stops being public and no surface serves an address
+ * that works without a session: the row carries `storage_path`, the key the
+ * finalize route returned, and an address is obtained ONLY by signing it
+ * (`src/lib/media/sign-event-media.ts`), under the reader's session and with
+ * an expiry. `url` is not written: M1 dropped its `NOT NULL`, and M2 (plan
+ * 52-13) drops the column. The key's shape is bound by the `CHECK`
+ * `event_media_storage_path_is_a_key`, which refuses a full address.
+ *
+ * ⚠ Deploy order, stated rather than defended in code: this insert names a
+ * column that exists only after M1. Plan 52-15 applies M1 to production
+ * BEFORE this code ships, so there is deliberately no fallback here that would
+ * write the public address again.
  */
 export async function registerMedia(
   eventId: string,
@@ -176,15 +193,13 @@ export async function registerMedia(
     throw new Error(MEDIA_UPLOAD_FORBIDDEN);
   }
 
-  const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/event-media/${storagePath}`;
-
   const { data, error } = await supabase
     .from("event_media")
     .insert({
       event_id: eventId,
       party_id: partyId,
       uploaded_by: user.id,
-      url: publicUrl,
+      storage_path: storagePath,
       type,
       file_size: fileSize,
       status: "pending",
@@ -284,9 +299,22 @@ export async function updateMediaStatus(
  * The ownership test stays first: it is the common case, it is a local
  * comparison, and it reads as the rule the function is expressing.
  *
- * Nothing about storage changed — same bucket, same path derivation, same
- * public-URL prefix. This function decides *who may delete*, not *what is
- * stored*.
+ * ── Object first, row after, and only after (phase 52, NAV-07) ──────────────
+ *
+ * The key is read from `storage_path`; nothing is cut out of an address any
+ * more. The order stays **object first, row second**, and it is not a
+ * preference: the object's DELETE policy asks for the row, so deleting the row
+ * first would leave an object nobody may remove.
+ *
+ * What changed is the failure. Until 2026-09-23 a failed object removal was
+ * logged and the function **carried on and deleted the row**. After NAV-07 an
+ * object without a row is unreachable by signature — but it is NOT removed:
+ * the bytes of a photograph that was taken down stay in the bucket, and nothing
+ * shows it. That is a removal which does not remove (`media-and-storage.md`,
+ * gate *moderazione = rimozione*). So now a failed removal, or a row with no
+ * key at all, **throws with its own category and leaves the row in place**:
+ * the moderator sees the error and tries again, and the row keeps pointing at
+ * the object that still has to go.
  */
 export async function deleteMedia(mediaId: string) {
   const supabase = await createClient();
@@ -296,10 +324,10 @@ export async function deleteMedia(mediaId: string) {
     throw new Error("Not authenticated");
   }
 
-  // Fetch the media record to get uploaded_by and URL
+  // Fetch the media record: who uploaded it, and the object's key.
   const { data: media, error: mediaError } = await supabase
     .from("event_media")
-    .select("uploaded_by, url")
+    .select("uploaded_by, storage_path")
     .eq("id", mediaId)
     .single();
 
@@ -315,22 +343,48 @@ export async function deleteMedia(mediaId: string) {
     throw new Error("forbidden.staff_manage_required");
   }
 
-  // Extract storage path from the public URL
-  // URL format: {SUPABASE_URL}/storage/v1/object/public/event-media/{path}
-  const bucketPrefix = "/storage/v1/object/public/event-media/";
-  const urlObj = new URL(media.url);
-  const storagePath = urlObj.pathname.split(bucketPrefix)[1];
+  // A row with no key exists only in the window between this code's deploy and
+  // M2 (which backfills again and sets the column NOT NULL). Without a key there
+  // is no object to remove by name, and deleting the row would forget the only
+  // pointer to bytes that may still be in the bucket. Refuse, with a category,
+  // and keep the row. The log carries the row's identifier, never a key.
+  if (typeof media.storage_path !== "string" || media.storage_path === "") {
+    console.error(
+      `[media.storage_path_missing] media_id=${mediaId} message=row has no storage key; row kept, object not removed`
+    );
+    throw new Error("media.storage_path_missing");
+  }
 
-  if (storagePath) {
-    // Delete from Supabase Storage
-    const { error: storageError } = await supabase.storage
-      .from("event-media")
-      .remove([storagePath]);
+  // Delete from Supabase Storage, through the caller's session: the object's
+  // DELETE policy is the boundary, not this function.
+  const { data: removed, error: storageError } = await supabase.storage
+    .from("event-media")
+    .remove([media.storage_path]);
 
-    if (storageError) {
-      console.error(`[media.storage_delete_failed] ${redactDbError(storageError)}`);
-      // Continue to delete the DB record even if storage deletion fails
-    }
+  if (storageError) {
+    // Until 2026-09-23 this branch logged and carried on to delete the row.
+    // After NAV-07 a row deleted with its object still alive is a rejection
+    // that does not remove (`media-and-storage.md`, *moderazione =
+    // rimozione*): the row stays, the moderator sees this error and retries.
+    console.error(
+      `[media.storage_delete_failed] media_id=${mediaId} ${redactDbError(storageError)}`
+    );
+    throw new Error("media.storage_delete_failed");
+  }
+
+  // No error is not the same as removed. Storage answers a DELETE the object
+  // policy did not admit — or a key with no object behind it — with an EMPTY
+  // list and no error. Treating that as success is exactly the silent branch
+  // the paragraph above closes, entered by another door. So the row goes only
+  // when Storage names the object as removed; otherwise its own category, and
+  // the row stays. The cost is declared: a row whose object is already gone
+  // can no longer be deleted through this action, and that is visible (it
+  // throws), whereas the opposite mistake would not be.
+  if (!Array.isArray(removed) || removed.length === 0) {
+    console.error(
+      `[media.storage_delete_unconfirmed] media_id=${mediaId} message=storage removed no object (policy refused or object absent); row kept`
+    );
+    throw new Error("media.storage_delete_unconfirmed");
   }
 
   // Delete the event_media record
