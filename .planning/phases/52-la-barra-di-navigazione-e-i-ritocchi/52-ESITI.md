@@ -653,3 +653,19 @@ campo mail o password, non deve avvenire lo zoom»* — **e' soddisfatto sul
 simulatore iOS 27.0**. Resta da confermare **sul suo iPhone** (iOS 26.7), sul
 laboratorio, dopo il deploy qui sotto: la porta, offline, prende il foglio nuovo
 solo quando il service worker si aggiorna.
+
+### Il laboratorio al commit della correzione
+
+- **Push** `git push origin main:lab` alle **18:07:33Z**, `7a79353e..93cfbcc4`
+  (avanzamento veloce). Solo il ramo `lab`: `origin/main` e' `65e9cc5` prima e
+  dopo — la produzione non e' stata toccata.
+- **Deploy** del ramo `lab`, sha `93cfbcc`: creato alle 18:07:38Z, **`READY` alle
+  18:08:54Z** (API Vercel), alias `lab.resonatemotion.com` presente. Il foglio di
+  stile servito dal laboratorio contiene la rete a 16 px.
+- **Controllo esterno, anonimo:** `/gallery` → `location: /login?next=%2Fgallery`;
+  `/login` → 200.
+- **Al proprietario:** riprovare sul suo iPhone, su `lab.resonatemotion.com`, il
+  tocco su email e password del login e sulla ricerca della porta — la pagina non
+  deve ingrandirsi, e alla porta «QR Scan» e Alerts devono restare nello schermo.
+  Se la porta era gia' aperta sul telefono, ricaricarla una volta: il service
+  worker prende il foglio nuovo al suo aggiornamento.
