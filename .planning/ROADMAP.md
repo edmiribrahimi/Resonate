@@ -79,8 +79,8 @@ per assecondare una decisione presa dopo che e' stata citata.
 - [ ] **48** — Il catalogo dei format dice la verita' (`CAT`)
 - [ ] **49** — Comprare senza account (`BUY`)
 - [x] **50** — Via le iscrizioni (`REG`) — chiusa il 2026-09-21: 12 piani, VERIFICATION passed, produzione aggiornata
-- [ ] **51** — Via le superfici da socio, e la porta (`MEM`)
-- [ ] **52** — La barra di navigazione e i ritocchi (`NAV`)
+- [x] **51** — Via le superfici da socio, e la porta (`MEM`) — chiusa il 2026-09-23: VERIFICATION passed, spinta e dispiegata
+- [x] **52** — La barra di navigazione e i ritocchi (`NAV`) — chiusa il 2026-09-23: 19 piani, VERIFICATION passed (approvata dal proprietario), in produzione dal 18:28:33Z; debito dichiarato → fase 52.1
 - [ ] **53** — TASK (`TASK`)
 - [ ] **54** — Location, alla pari con il tracker (`LOC`)
 - [ ] **55** — Visual, una pagina per format (`VIS`)

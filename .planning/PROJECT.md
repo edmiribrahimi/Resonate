@@ -30,6 +30,8 @@ permanente** — il criterio 3 della fase 42 (`DEF-42-04`). Il registro sta in
 deploy della fase 39 vale: si spedisce in un giorno **senza serata**, e la prima
 richiesta la fa chi spedisce.
 
+**v1.6 «Piattaforma, non community», in corso (2026-09-23).** Fasi 47–52 eseguite; la 52 — barra a quattro voci, gallery chiusa anche nei dati (`gallery.view`, bucket privato, URL firmati) — e' chiusa e in produzione dal 2026-09-23 con verifica `passed` approvata dal proprietario. Il suo debito dichiarato apre la fase 52.1. Restano 53–58. La riscrittura di questo documento e' `DOC-01`, fase 57.
+
 **Next Milestone:** da definire — `/gsd:new-milestone`
 
 > **La direzione e' gia' decisa dal proprietario il 2026-08-14, e aspetta un
@@ -218,4 +220,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-05 — milestone v1.5 started*
+*Last updated: 2026-09-23 — fase 52 chiusa, v1.6 in corso*
