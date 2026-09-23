@@ -160,18 +160,18 @@ positive_control() {
 
 THE POSITIVE CONTROL — the part that makes a green from this probe mean anything
 
-  1. Comment out the three strip lines:
+  1. Comment out the three strip lines — FIND THEM, do not trust a number:
 
-         src/lib/supabase/middleware.ts:697   requestHeaders.delete("x-user-role");
-         src/lib/supabase/middleware.ts:698   requestHeaders.delete("x-user-status");
-         src/lib/supabase/middleware.ts:699   requestHeaders.delete("x-user-id");
+         grep -n 'requestHeaders.delete("x-user-' src/lib/supabase/middleware.ts
 
-     RE-MEASURED 2026-09-22, phase 51. These said 210-212, which is where they
-     sat when this script was written; the file has grown since. GREP FOR THE
-     THREE STATEMENTS RATHER THAN TRUSTING THE NUMBERS — a line number in a
-     procedure is the part that rots first, and commenting out three lines that
-     are not the strip produces a probe that stays quiet for the wrong reason,
-     which is a false negative wearing a green.
+     Exactly three hits, one each for x-user-role, x-user-status and x-user-id.
+     This block used to print line numbers and claim they were re-measured;
+     they were wrong by eighteen lines on the day they were written (phase 51
+     review, WR-06). A line number in a procedure is the part that rots first,
+     and commenting out three lines that are not the strip produces a probe
+     that stays quiet for the wrong reason, which is a false negative wearing a
+     green. The grep cannot rot the same way: if it stops finding three, the
+     strip has moved or changed and the probe has to be re-read before it runs.
 
   2. ASSERT THE MUTATION IS APPLIED, BEFORE READING ANY RESULT:
 
@@ -433,7 +433,7 @@ if [ "$FORGED_HITS" -gt 0 ]; then
   echo "    WHERE: ${URL}"
   echo "           src/app/(public)/events/[slug]/menu/page.tsx:56  reads x-user-role"
   echo "           src/app/(public)/events/[slug]/menu/page.tsx:72  decides canManage from it"
-  echo "           src/lib/supabase/middleware.ts:697-699           should have stripped it"
+  echo "           src/lib/supabase/middleware.ts  (grep requestHeaders.delete)  should have stripped it"
   echo "    BODIES: ${ANON_OUT} (anonymous), ${FORGED_OUT} (forged)"
   echo ""
   echo "    If you are running the positive control, THIS IS THE EXPECTED RESULT and"
