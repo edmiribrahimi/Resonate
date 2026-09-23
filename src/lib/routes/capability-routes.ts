@@ -156,9 +156,16 @@ type Binding =
        */
       assignmentOpenable?: true;
       /**
-       * True when the key ALSO gates rows. **Nine of the seventeen do**,
-       * RE-COUNTED by reading this file on 2026-08-17 rather than by adding to
-       * the number that was printed here.
+       * True when the key ALSO gates rows. **Ten of the sixteen do**,
+       * RE-COUNTED by reading this file on 2026-09-23 (phase 52, plan 52-06)
+       * rather than by adding to the number that was printed here: the nine
+       * counted on 2026-08-17 — `door.operate`, `register.read`,
+       * `staff.manage`, `party.manage`, `catalogue.manage` and the four
+       * production section keys — are still the nine flagged entries after
+       * phase 51 took two keys out (neither carried the flag), and
+       * `gallery.view` is the tenth. *(This line said «nine of the seventeen»
+       * from 2026-08-17 to 2026-09-23; the denominator was fifteen for the last
+       * day of that stretch, and nobody re-counted.)*
        *
        * The denominator moved and the numerator did not, which is exactly the
        * case a reader would get wrong by arithmetic: phase 45 splits
@@ -196,11 +203,12 @@ type Binding =
     };
 
 /**
- * The seventeen keys, each accounted for.
+ * The sixteen keys, each accounted for (seventeen until phase 51 removed two,
+ * sixteen again since phase 52 added `gallery.view`).
  *
  * `as const satisfies` and not a type annotation, and the difference is the
- * whole second half of CAP-02: `satisfies` keeps the totality error (an
- * eighteenth key with no entry fails the build — it fired four times at once in
+ * whole second half of CAP-02: `satisfies` keeps the totality error (a key
+ * added to `CAP` with no entry fails the build — it fired four times at once in
  * plan 45-05, for the four section keys), while `as const` keeps each
  * `routes` array a tuple of string LITERALS instead of widening it to
  * `RoutePattern[]`. Without `as const` the union of listed routes widens to
@@ -890,6 +898,59 @@ export const CAPABILITY_ROUTES = {
    */
   [CAP.PRODUCTION_VISUAL_MANAGE]: {
     routes: ["/admin/visual"],
+    alsoGatesTables: true,
+  },
+
+  /**
+   * The gallery — phase 52, D-52-12 / D-52-13 / D-52-14.
+   *
+   * ── The question this key answers ────────────────────────────────────────────
+   *
+   * *May this subject see the photos and videos of the nights?* `master`,
+   * `organizer` and `staff` hold it by role; `attendee` does not. An `attendee`
+   * who types the address receives the same standard refusal the middleware
+   * gives on `/admin` (D-52-13) — no 404, no special case.
+   *
+   * ── `alsoGatesTables: true`, and it is NOT optional here ────────────────────
+   *
+   * From NAV-07 (D-52-25) the key gates ROWS: M2,
+   * `20260923180100_gallery_close_data.sql` (plan 52-13), binds the read of
+   * `event_media` to it and makes the bucket private, while M1,
+   * `20260923180000_gallery_view_and_media_paths.sql`, already lets an object be
+   * read only through a row the reader can see. The flag is optional on this
+   * branch, so omitting it would have produced no error — just a declaration
+   * that lies by omission (D-34-11). **No `assignmentOpenable`**: seeing the
+   * archive is not a night's work, and no per-night assignment carries this key.
+   *
+   * ── PER RIAPRIRLA AL PUBBLICO (D-52-14) — cinque passi, e uno e' SQL ─────────
+   *
+   * Il giorno in cui ci sara' qualcosa da pubblicare:
+   *   1. togliere questa voce;
+   *   2. togliere la guardia in cima a `src/app/(public)/gallery/page.tsx`;
+   *   3. togliere `"/gallery"` da `PROTECTED_PREFIXES` e il suo pattern da
+   *      `NEXT_ALLOW_LIST` in `src/lib/routes/next-redirect.ts`;
+   *   4. rimettere la voce in barra per tutti;
+   *   5. **e — da NAV-07 — scrivere UNA MIGRATION**: la policy
+   *      `event_media_select_gallery` e il bucket privato non si riaprono dal
+   *      codice. Togliere le prime quattro righe e non la quinta produce una
+   *      pagina pubblica **vuota**: la RLS continua a rifiutare le righe a chi
+   *      non tiene la chiave, e nessun errore lo dice.
+   * La chiave resta nel catalogo, innocua.
+   *
+   * ⚠ E riaprire i DATI e' una decisione, non una pulizia: rende di nuovo
+   * raggiungibili foto di serate con la sede segreta (`venue-secrecy.md`). Si
+   * pubblica cio' che si e' scelto di pubblicare — le approvate — mai il bucket.
+   *
+   * ── The middleware is UX. The RLS is the boundary. ──────────────────────────
+   *
+   * This entry stops somebody arriving on `/gallery`; it stops nobody reading an
+   * `event_media` row or fetching an object. Until M2 is applied, a session
+   * without the key still reads the approved rows through the API and the
+   * objects through the public bucket — the address is gated, the data is not
+   * yet. That window is NAV-07's, declared in M1's header, and it closes with M2.
+   */
+  [CAP.GALLERY_VIEW]: {
+    routes: ["/gallery"],
     alsoGatesTables: true,
   },
 } as const satisfies Record<CapabilityKey, Binding>;

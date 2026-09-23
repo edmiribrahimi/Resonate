@@ -1267,13 +1267,25 @@ export const PROBE_PAYLOADS = {
   // `'<uuid>'::uuid` — the literal quotes AND the cast are part of the
   // substitution. So the placeholder is written BARE here, exactly as every
   // other entry in this table writes it.
+  //
+  // ── `storage_path`, from plan 52-06 (NAV-07) ──────────────────────────────
+  //
+  // `20260923180000_gallery_view_and_media_paths.sql` adds the object key, and
+  // M2 (`20260923180100`, plan 52-13) makes it obligatory. The probe carries it
+  // NOW so that the day M2 lands the insert cell still measures the POLICY and
+  // not a `23502` on a missing column — a refusal for the wrong reason, which
+  // is the Pitfall 14 shape. The value is a key, not a URL: it starts with
+  // neither `/` nor a scheme, so it satisfies `event_media_storage_path_is_a_key`.
+  // The unique index on the column does not bite across personas: every probe
+  // ends in `rollback;`.
   event_media: {
     insert: {
-      columns: ['event_id', 'party_id', 'url', 'type', 'uploaded_by'],
+      columns: ['event_id', 'party_id', 'url', 'storage_path', 'type', 'uploaded_by'],
       values: [
         '(select private.party_event_id({{event_parties}}))',
         '{{event_parties}}',
         `'https://example.invalid/rls-baseline-probe'`,
+        `'rls-baseline-probe/probe.jpg'`,
         `'photo'`,
         'auth.uid()',
       ],

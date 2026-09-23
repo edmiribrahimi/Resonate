@@ -465,7 +465,22 @@ export interface EventMediaRow {
   party_id: string | null;
   /** `null` once the uploading account is deleted — the column is nullable. */
   uploaded_by: string | null;
+  /**
+   * ⚠ Divergenza TEMPORANEA e dichiarata: dal piano 52-06 la colonna e'
+   * nullable nello schema (`20260923180000_gallery_view_and_media_paths.sql`
+   * sezione 4), ma il tipo resta `string` finche' il codice la legge per
+   * mostrare le immagini. La chiude il piano 52-13, che passa alle URL firmate
+   * da `storage_path`. Oggi ogni riga ha `url`: il codice in produzione lo
+   * scrive ancora.
+   */
   url: string;
+  /**
+   * The object's key in the `event-media` bucket — what a signed URL is minted
+   * from (NAV-07, D-52-25). Nullable until M2 (`20260923180100_gallery_close_data.sql`,
+   * plan 52-13) re-runs the backfill and makes it obligatory. Never a full URL:
+   * `event_media_storage_path_is_a_key` refuses one.
+   */
+  storage_path: string | null;
   type: "photo" | "video";
   caption: string | null;
   status: "pending" | "approved" | "rejected";
