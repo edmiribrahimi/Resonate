@@ -127,6 +127,16 @@ import type { UserRole } from "@/types/database";
  * — it is stated at length above each flag — and a visual conversion is not
  * where a product decides what it tells somebody it has just refused.
  */
+
+// L'etichetta del ruolo e' esaustiva per tipo: un quinto ruolo senza voce e' un
+// errore di build, non un'altra ricaduta silenziosa su «Attendee» (difetto 2 di 52-ESITI.md).
+const ROLE_LABEL: Record<UserRole, string> = {
+  master: "Admin",
+  organizer: "Organizer",
+  staff: "Staff",
+  attendee: "Attendee",
+};
+
 export default async function AccountPage({
   searchParams,
 }: {
@@ -229,8 +239,6 @@ export default async function AccountPage({
 
   if (!user) redirect("/login");
 
-  const fullName = user.user_metadata?.full_name || "Attendee";
-
   const { data: profile } = await supabase
     .from("profiles")
     // Il codice socio e' uscito da questa `select` (D-51-02): dopo il piano
@@ -243,7 +251,7 @@ export default async function AccountPage({
     .single();
 
   const userEmail = user.email ?? "";
-  const attendeeSince = profile?.created_at
+  const accountSince = profile?.created_at
     ? (() => {
         const d = new Date(profile.created_at);
         const M = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -251,12 +259,8 @@ export default async function AccountPage({
       })()
     : null;
 
-  const roleLabel =
-    profile?.role === "master"
-      ? "Admin"
-      : profile?.role === "organizer"
-        ? "Organizer"
-        : "Attendee";
+  const roleLabel = ROLE_LABEL[(profile?.role as UserRole | null | undefined) ?? "attendee"];
+  const fullName = user.user_metadata?.full_name || roleLabel;
 
   // Fetch user's tickets (only for attendees — admin/organizer don't buy tickets)
   //
@@ -487,8 +491,8 @@ export default async function AccountPage({
                 <Badge className="mt-2 shrink-0">{roleLabel}</Badge>
               </div>
               <p className="mt-1 text-sm text-muted truncate">{userEmail}</p>
-              {attendeeSince && (
-                <p className="text-xs text-muted/60">Attendee since {attendeeSince}</p>
+              {accountSince && (
+                <p className="text-xs text-muted/60">{roleLabel} since {accountSince}</p>
               )}
             </header>
           </AnimatedSection>
