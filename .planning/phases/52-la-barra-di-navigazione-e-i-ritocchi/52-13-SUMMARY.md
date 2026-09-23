@@ -15,7 +15,7 @@ provides:
 affects:
   - "52-14: sonda 5 (proprietario) e sonda 7 (--check-new-upload dopo un caricamento vero)"
   - "52-15: in produzione lo stesso ordine M1 → deploy READY → M2, sotto atto datato; verify:capabilities e verify:refusal (gruppo gallery) restano rossi/rifiutati in produzione fino ad allora"
-  - "52-17: il residuo della cache CDN (fino a 3600 s dopo M2) va nel VERIFICATION con i tempi misurati qui"
+  - "52-17: il residuo della cache CDN va nel VERIFICATION: >= 62 min dopo M2, non 3600 s; invalidazione aperta"
 tech-stack:
   added: []
   patterns:
@@ -51,9 +51,11 @@ toglie «Anyone can view event media», rende privato il bucket `event-media` e
 rende obbligatoria `storage_path` dopo un secondo backfill. Sul laboratorio e'
 stata applicata **dopo** il deploy `READY` del codice che firma: M1 (52-06),
 poi il deploy, poi M2. Le sonde di P-52-G misurano il confine per ruolo.
-L'origine e' chiusa gia' 28 s dopo M2. Un oggetto di una serata segreta
-restava servito dalla cache CDN; la seconda corsa dopo la finestra e'
-registrata in fondo.
+L'origine e' chiusa gia' 28 s dopo M2. **La cache della CDN no:** una foto di
+una serata segreta risponde ancora 200 senza firma **62 minuti dopo M2**, oltre
+la finestra di 3600 s che il piano supponeva. I byte in cache sono quelli
+spogliati (niente EXIF, niente GPS). «Chiuso» quindi non si puo' dire, e
+l'ipotesi A10 cade: vedi la seconda corsa in fondo.
 
 ## Task
 
@@ -234,10 +236,11 @@ bersaglio era il laboratorio: lo provano DB 16 e GRANT 31.
 - **Cio' che riceve chi ha l'URL**: a M2+28 s e a M2+60 s un oggetto su tre, di
   una serata segreta, risponde ancora 200 dalla CDN (`HIT`). Scade al piu' tardi
   a M2+3600 s (**15:28:18Z**).
-- **La seconda corsa** e' programmata a 15:29:48Z (finestra + 90 s), in sola
-  lettura (`--skip-write`). Esito: sezione seguente.
-- **Per 52-15:** in produzione il residuo e' zero per costruzione (zero media,
-  52-01). La regola resta: si dichiara «chiuso» solo dopo la seconda lettura.
+- **La seconda corsa**, 15:29:47Z (finestra + 90 s): **l'oggetto e' ancora in
+  cache.** La finestra non e' di 3600 s. Vedi la sezione seguente.
+- **Per 52-15:** in produzione il residuo e' zero solo se nessun oggetto viene
+  letto per indirizzo pubblico prima di M2. La regola resta: si dichiara
+  «chiuso» solo dopo una seconda lettura che lo dica.
   Cio' che e' stato scaricato o copiato mentre il bucket era pubblico non
   rientra (`venue-secrecy.md`).
 
@@ -277,14 +280,58 @@ Nessuno.
 | Flag | File | Descrizione |
 |---|---|---|
 | threat_flag: lab-write | scripts/probe-event-media-lab.mjs | scrive e cancella un oggetto e una riga di prova su `event-media` del laboratorio (sonda 6), col service role per il seme e la sessione organizer per la rimozione. Pulizia in `finally`; rifiuta la produzione prima di ogni rete |
-| threat_flag: cdn-residual | (misura) | un oggetto di serata segreta servito dalla CDN fino a 3600 s dopo M2 (T-52-63/T-52-67): misurato, e dichiarato «chiuso» solo dopo la seconda corsa |
+| threat_flag: cdn-residual | (misura) | un oggetto di serata segreta servito senza firma dal bordo CDN **62 min dopo M2** (T-52-63/T-52-67): la finestra supposta di 3600 s non tiene. Aperto: invalidazione da decidere e provare, vincolo per 52-15 |
 
 ## Sonda 1, seconda corsa — dopo la finestra
 
-Programmata alle 15:29:48Z (M2 + 3600 s + 90 s), in sola lettura. **Esito: da
-registrare qui con un commit separato.** Finche' questa sezione non porta
-numeri, NAV-07 sul laboratorio e' chiusa **all'origine**, e **non ancora** per
-chi aveva un URL in cache.
+`probe-event-media-lab.mjs --skip-write`, **15:29:47Z → 15:30:05Z**, 3690 s
+dopo M2, **exit 1**.
+
+| # | Osservato | Esito |
+|---|---|---|
+| 1b (origine) | 400×3 | conforme |
+| 1a (indirizzo cosi' com'e') | **200×1** 400×2 · il 200 e' **di una serata segreta** · `cf-cache-status` HIT×1 BYPASS×2 | **NON CONFORME** |
+| 2, 3 (attendee e anonimo), 4a, 4b, 8 | come nella prima corsa: 0 righe · 0 URL · 0 URL · pending 0 URL · approvate 3/3 firmate e 200×3 · firma a 5 s 200 poi 400 | conformi |
+| 6 | saltata apposta (`--skip-write`) | — |
+
+**L'oggetto, letto da solo alle 15:30:44Z e alle 15:31:00Z**, senza stampare
+chiave o URL:
+- risposta `200`, `cf-cache-status: HIT`;
+- `cache-control: public, max-age=3600`, **nessun header `age`**;
+- `last-modified: 13:44:29Z`;
+- **293 byte, nessun segmento EXIF, nessun tag GPS**: e' la versione spogliata
+  da 52-10, non l'originale.
+
+Gli altri due oggetti: `400`, `BYPASS`.
+
+**Cosa dice la misura.**
+- **A10 e' falsa per il bordo della CDN.** `max-age=3600` e' l'istruzione al
+  browser. La copia sul bordo e' servita **107 minuti dopo il suo
+  `last-modified` e 62 minuti dopo M2**, e nessuna intestazione dice quando
+  scadra'. Il bordo sembra tenere l'oggetto finche' l'oggetto non cambia, non
+  per un'ora.
+- **NAV-07 sul laboratorio: chiusa all'origine** (400 su ogni oggetto con
+  parametro unico, in tutte e tre le corse) e per ogni lettore con sessione
+  (sonde 2-4, 8). **Non e' chiusa per chi ha l'indirizzo pubblico di un oggetto
+  gia' in cache**: una foto di serata segreta resta scaricabile senza firma.
+  Senza metadati, ma scaricabile. Oggi quindi «chiuso», per il laboratorio,
+  **non si puo' dire.**
+- **Per 52-15, e questo cambia l'atto.** In produzione il residuo e' zero *solo
+  se nessun oggetto di `event-media` viene letto per indirizzo pubblico prima di
+  M2*. Oggi la produzione ha zero media (52-01). Ma ogni media caricato dal
+  codice vecchio fra M1 e il deploy, e aperto anche una sola volta, entra nella
+  cache del bordo e ci resta **dopo** M2. Serve una di due cose: nessun
+  caricamento in produzione fra M1 e M2, **oppure** un'invalidazione esplicita
+  degli oggetti letti in quella finestra, fatta come passo dell'atto.
+
+**Cosa NON e' stato fatto, e perche'.** Il rimedio probabile e' riscrivere o
+togliere e ricaricare l'oggetto, perche' la cache di Supabase si invalida
+quando l'oggetto cambia. Non l'ho applicato: tocca l'oggetto ri-spogliato del
+banco di 52-10 (`upsert`, la stessa ri-codifica non lossless che 52-10 ha
+descritto). E' una scelta sul banco, e sul metodo che 52-15 dovra' usare in
+produzione. Resta **aperta per l'orchestratore**, insieme all'ipotesi da
+verificare: una riscrittura svuota davvero il bordo? Va provato sul
+laboratorio, riletto con le stesse sonde, e solo dopo scritto in `P-52-G`.
 
 ## Self-Check: PASSED
 
