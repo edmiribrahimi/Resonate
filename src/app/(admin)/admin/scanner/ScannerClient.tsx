@@ -3220,6 +3220,52 @@ export default function ScannerClient() {
         )}
 
         {/*
+          ── D-51-10: the guest-list warning, derived like the staleness band ───
+
+          Moved here, ABOVE the search, on 2026-09-23 (D-52-21, D-52-28). It is
+          an instruction about whom to let in, not a piece of news, so it lives
+          in the header with the queue pills and never inside the Alerts tab:
+          hidden behind a tap it would cost a valid guest at the queue. And it
+          sits above the search rather than below it because nothing may stand
+          between the search, the tabs and the list. Wording, condition and
+          shape are unchanged (WR-04).
+
+          Same family, same reason for being derived, one difference that is the
+          point: this one also covers `listAgeMs === null`, the case the band
+          deliberately excludes. The band reports an age and offers a reload, so
+          it has nothing to say before there is an age. This one reports what the
+          missing or ageing list means **at the door** — a guest without a QR is
+          found by name or not at all — and that is most true precisely when no
+          list has been downloaded yet.
+
+          Two elements rather than one folded sentence, and not to be
+          "simplified" into the band: the band is a tappable action about the
+          list as a whole, this is a standing instruction about refusing people.
+          They also switch on at different moments, so one element would have to
+          carry two conditions and would end up lying about one of them.
+
+          With the radio off this one stays lit for the whole offline stretch —
+          an owner's decision (2026-09-23, WR-04), recorded over
+          `guestListWarningText`, which is also where the wording for that case
+          lives.
+
+          It is **not** in `cacheNotices`, for the reason written over that array
+          above: every early return of `fetchAttendance` replaces it wholesale,
+          which is exactly the moment this sentence is the only thing saying the
+          list cannot be trusted. That is the defect this replaces — see
+          `guestListWarningText`.
+        */}
+        {(listAgeMs === null || listIsStale) && (
+          <div
+            className="mb-4 rounded-xl border border-sem-warn/40 bg-sem-warn/10 px-3 py-2 text-xs leading-relaxed text-sem-warn"
+            role="status"
+            aria-live="polite"
+          >
+            {guestListWarningText(listAgeMs, channelLive)}
+          </div>
+        )}
+
+        {/*
           Progress bar for selected party — and, since D-38-10, the freshness
           display and the manual reload.
 
@@ -3297,13 +3343,30 @@ export default function ScannerClient() {
               d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
             />
           </svg>
+          {/*
+            On focus the field rises to just under the pinned bar, so with the
+            keyboard open the name and its "Check in" sit right below it
+            (D-52-28). Deferred one frame: on iOS the keyboard is still coming
+            up when focus fires (assumption A3). No viewport is read.
+
+            `scroll-mt-20` (80 px) is the pinned bar of 51-07, measured from its
+            markup: `pt-6` 24 + the title line 28 (`text-lg`) + the event
+            subtitle 16 (`text-xs`, shown when the party's title differs) +
+            `pb-3` 12 = 80. Without the subtitle the bar is 64 and the field
+            lands 16 px lower — still in view, never under the bar.
+          */}
           <input
             ref={searchRef}
             type="text"
             placeholder="Search by name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-xl border border-line bg-surface py-3 pl-10 pr-10 text-sm text-ink placeholder:text-muted/50 focus:border-accent focus:outline-none"
+            onFocus={() => {
+              requestAnimationFrame(() => {
+                searchRef.current?.scrollIntoView({ block: "start" });
+              });
+            }}
+            className="w-full scroll-mt-20 rounded-xl border border-line bg-surface py-3 pl-10 pr-10 text-sm text-ink placeholder:text-muted/50 focus:border-accent focus:outline-none"
           />
           {searchQuery && (
             <button
@@ -3401,44 +3464,6 @@ export default function ScannerClient() {
             aria-live="polite"
           >
             {cameraFault}
-          </div>
-        )}
-
-        {/*
-          ── D-51-10: the guest-list warning, derived like the band above it ────
-
-          Same family, same reason for being derived, one difference that is the
-          point: this one also covers `listAgeMs === null`, the case the band
-          deliberately excludes. The band reports an age and offers a reload, so
-          it has nothing to say before there is an age. This one reports what the
-          missing or ageing list means **at the door** — a guest without a QR is
-          found by name or not at all — and that is most true precisely when no
-          list has been downloaded yet.
-
-          Two elements rather than one folded sentence, and not to be
-          "simplified" into the band: the band is a tappable action about the
-          list as a whole, this is a standing instruction about refusing people.
-          They also switch on at different moments, so one element would have to
-          carry two conditions and would end up lying about one of them.
-
-          With the radio off this one stays lit for the whole offline stretch —
-          an owner's decision (2026-09-23, WR-04), recorded over
-          `guestListWarningText`, which is also where the wording for that case
-          lives.
-
-          It is **not** in `cacheNotices`, for the reason written over that array
-          above: every early return of `fetchAttendance` replaces it wholesale,
-          which is exactly the moment this sentence is the only thing saying the
-          list cannot be trusted. That is the defect this replaces — see
-          `guestListWarningText`.
-        */}
-        {(listAgeMs === null || listIsStale) && (
-          <div
-            className="mb-4 rounded-xl border border-sem-warn/40 bg-sem-warn/10 px-3 py-2 text-xs leading-relaxed text-sem-warn"
-            role="status"
-            aria-live="polite"
-          >
-            {guestListWarningText(listAgeMs, channelLive)}
           </div>
         )}
 
