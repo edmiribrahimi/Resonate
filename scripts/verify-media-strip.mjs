@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * verify-media-strip.mjs — one writer toward the public media bucket, and it
+ * verify-media-strip.mjs — one writer toward the gallery media bucket, and it
  * strips first.
  *
  * WHAT IT ASSERTS, in one sentence: **no file under `src/` writes into the
@@ -20,7 +20,7 @@
  *     RUNTIME property of a library on real bytes, and this script never
  *     executes anything. The proof is the manual procedure in
  *     `35-HUMAN-UAT.md`: a file with known GPS goes in, the object fetched back
- *     from the public bucket comes out without it. Nothing here can stand in
+ *     from the gallery bucket comes out without it. Nothing here can stand in
  *     for that.
  *   - It proves NOTHING about videos. This phase does not strip them: the video
  *     branch of the finalize route publishes the bytes as received, and refuses
@@ -42,13 +42,13 @@
  *      shared finalize module.
  *   B. In `src/lib/media/finalize.ts`, the LAST `stripImageMetadata(` sits above
  *      the FIRST write call.
- *   C. `src/components/media/MediaUpload.tsx` names the public bucket nowhere —
+ *   C. `src/components/media/MediaUpload.tsx` names the gallery bucket nowhere —
  *      it deposits into the quarantine bucket and calls the route.
  *   D. Row 15 exists, drops the member upload policy BY THE NAME THAT MIGRATION
  *      ACTUALLY CREATED, and no later migration recreates an INSERT policy for
  *      `authenticated` on that bucket.
  *   E. `sharp` is declared in `dependencies`.
- *   F. `src/lib/media/finalize.ts` names the public bucket NOWHERE: its
+ *   F. `src/lib/media/finalize.ts` names the gallery bucket NOWHERE: its
  *      destination is a required argument with no default.
  *
  * ── WHAT PLAN 45-17 CHANGED HERE, AND WHY IT WAS NOT OPTIONAL ───────────────
@@ -59,7 +59,7 @@
  * be reached by two copies of it. B measured line numbers inside the route; the
  * route no longer strips, so B would have reddened on a correct tree, and a gate
  * that fails on correct work is a gate somebody switches off. It measures the
- * module now. A gained {@link FINALIZE_CALL} so that a caller naming the public
+ * module now. A gained {@link FINALIZE_CALL} so that a caller naming the gallery
  * bucket on a line with no storage call is still caught, and F is new: it
  * asserts the module holds no destination of its own.
  *
@@ -122,7 +122,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC_DIR = `${ROOT}/src`;
 const MIGRATIONS_DIR = `${ROOT}/supabase/migrations`;
 
-/** The one file allowed to NAME the public bucket as a destination. An exact path. */
+/** The one file allowed to NAME the gallery bucket as a destination. An exact path. */
 export const FINALIZE_ROUTE = 'src/app/api/media/finalize/route.ts';
 
 /**
@@ -146,12 +146,12 @@ export const FINALIZE_ROUTE = 'src/app/api/media/finalize/route.ts';
  *
  * ── AND WHAT WOULD HAVE BEEN LOST SILENTLY IF ONLY B HAD MOVED ──────────────
  *
- * Check A finds a second writer by looking for the public bucket's name in the
+ * Check A finds a second writer by looking for the gallery bucket's name in the
  * same statement as a write call. After the extraction, a file could name the
- * public bucket and hand it to the shared module WITHOUT any `.upload(` on the
+ * gallery bucket and hand it to the shared module WITHOUT any `.upload(` on the
  * line — invisible to A, and a green about nothing in the other direction. So
- * the module's entry point is in {@link WRITE_CALLS}: naming the public bucket
- * in a call to it counts as writing to the public bucket, which is what it is.
+ * the module's entry point is in {@link WRITE_CALLS}: naming the gallery bucket
+ * in a call to it counts as writing to the gallery bucket, which is what it is.
  */
 export const STRIP_MODULE = 'src/lib/media/finalize.ts';
 
@@ -181,7 +181,18 @@ export const FINALIZE_CALL = 'finalizeStrippedUpload';
 /** The one component this phase rewrote, checked on its own by check C. */
 export const UPLOAD_COMPONENT = 'src/components/media/MediaUpload.tsx';
 
-/** The public bucket. Never matched as a bare substring — see the prefix trap. */
+/**
+ * The gallery bucket. Never matched as a bare substring — see the prefix trap.
+ *
+ * ⚠ The NAME says "public" and the bucket is not, since 2026-09-23 (NAV-07,
+ * D-52-25, `20260923180100_gallery_close_data.sql`): `event-media` is private,
+ * and an object is read only through a URL signed under a session that sees its
+ * row. Every sentence of this file that called it "the public bucket" was
+ * corrected that day. The constant keeps its name on purpose: it is exported and
+ * pinned by the checks that import it, and every check matches the QUOTED
+ * LITERAL, not the word — so the checks stay correct and only the prose had
+ * become false. Renaming it is a separate change with its own grep.
+ */
 export const PUBLIC_BUCKET = 'event-media';
 
 /** The private transit bucket. Present here only so the report can name it. */
@@ -278,7 +289,7 @@ function liveLines(relPath) {
 }
 
 /**
- * Does this line name the public bucket AS A BUCKET?
+ * Does this line name the gallery bucket AS A BUCKET?
  *
  * Quoted-literal match, so `event-media-quarantine` cannot satisfy it: after
  * `event-media` the quarantine spelling continues with `-`, never with the
@@ -293,7 +304,7 @@ export function namesPublicBucket(raw) {
   );
 }
 
-/** Every non-comment line of `relPath` that names the public bucket, in any role. */
+/** Every non-comment line of `relPath` that names the gallery bucket, in any role. */
 export function findPublicBucketLines(relPath) {
   const live = liveLines(relPath);
   const hits = [];
@@ -306,13 +317,13 @@ export function findPublicBucketLines(relPath) {
   return hits;
 }
 
-/** Does this line bind the public bucket literal to a name? */
+/** Does this line bind the gallery bucket literal to a name? */
 export function bindsPublicBucket(raw) {
   return new RegExp(`=\\s*(["'\`])${PUBLIC_BUCKET}\\1`).test(raw);
 }
 
 /**
- * Every non-comment line of `relPath` that **WRITES** to the public bucket.
+ * Every non-comment line of `relPath` that **WRITES** to the gallery bucket.
  *
  * NAMING IT IS NOT WRITING TO IT, and conflating the two is not pedantry: the
  * first version of this check flagged `deleteMedia`
@@ -385,8 +396,8 @@ const WRITE_CALLS = [
   '.move(',
   '.createSignedUploadUrl(',
   '.uploadToSignedUrl(',
-  // Plan 45-17. Handing the public bucket's name to the shared module IS
-  // writing to the public bucket; without this entry the extraction would have
+  // Plan 45-17. Handing the gallery bucket's name to the shared module IS
+  // writing to the gallery bucket; without this entry the extraction would have
   // opened a second path that names the bucket on a line carrying no storage
   // call at all. Proved by mutation like the four above.
   FINALIZE_CALL,
@@ -427,7 +438,7 @@ export function findPublicBucketWrites(relPath) {
       ── AND BACKWARD, WHICH THE FIRST VERSION OF THIS CHECK DID NOT DO ────────
 
       Measured during plan 45-17 with a probe file, and the probe is the reason
-      this loop exists: a file that hands the public bucket's name to the shared
+      this loop exists: a file that hands the gallery bucket's name to the shared
       finalize module writes the CALL FIRST and the destination several lines
       BELOW it —
 
@@ -438,7 +449,7 @@ export function findPublicBucketWrites(relPath) {
 
       — so a window that only ran forward from the bucket line saw the three
       remaining properties and no call at all. The probe passed check A while
-      publishing to the public bucket from a second file, which is precisely the
+      publishing to the gallery bucket from a second file, which is precisely the
       defect this check exists to catch, and it would have passed silently.
 
       The walk stops at a `;` going up, because that is a statement boundary: a
@@ -529,23 +540,23 @@ if (files.length === 0) {
 
 const failures = [];
 
-console.log('\nverify-media-strip — one writer toward the public bucket, and it strips first');
+console.log('\nverify-media-strip — one writer toward the gallery bucket, and it strips first');
 console.log(`  scanned ${files.length} file(s) under src/`);
 console.log(`  exemption (exactly one): ${FINALIZE_ROUTE}\n`);
 
-// ── A. nobody else names the public bucket ─────────────────────────────────
+// ── A. nobody else names the gallery bucket ─────────────────────────────────
 const strayHits = [];
 for (const rel of files) {
   if (rel === FINALIZE_ROUTE) continue;
   strayHits.push(...findPublicBucketWrites(rel));
 }
 if (strayHits.length === 0) {
-  console.log('  ✓ A  no file under src/ other than the finalize route writes to the public bucket');
+  console.log('  ✓ A  no file under src/ other than the finalize route writes to the gallery bucket');
 } else {
   console.log(`  ✗ A  ${strayHits.length} line(s) outside the finalize route write to "${PUBLIC_BUCKET}":`);
   for (const h of strayHits) console.log(`         ${h.path}:${h.line}: [${h.kind}] ${h.text}`);
   console.log(
-    `\n       Each is a SECOND path toward a public bucket. The metadata strip lives in\n` +
+    `\n       Each is a SECOND path toward the gallery bucket. The metadata strip lives in\n` +
       `       ${FINALIZE_ROUTE} and nowhere else, so bytes that reach\n` +
       `       "${PUBLIC_BUCKET}" by another route are published as received —\n` +
       '       GPS coordinates included. Deposit into\n' +
@@ -612,12 +623,12 @@ if (moduleStrip.length === 0) {
 // ── C. the upload component names only the quarantine bucket ───────────────
 const componentHits = findPublicBucketLines(UPLOAD_COMPONENT);
 if (componentHits.length === 0) {
-  console.log(`  ✓ C  ${UPLOAD_COMPONENT} names the public bucket nowhere`);
+  console.log(`  ✓ C  ${UPLOAD_COMPONENT} names the gallery bucket nowhere`);
 } else {
-  console.log(`  ✗ C  ${componentHits.length} line(s) in ${UPLOAD_COMPONENT} name the public bucket:`);
+  console.log(`  ✗ C  ${componentHits.length} line(s) in ${UPLOAD_COMPONENT} name the gallery bucket:`);
   for (const h of componentHits) console.log(`         ${h.path}:${h.line}: ${h.text}`);
   console.log(
-    '\n       The browser must not write to the public bucket. It deposits into\n' +
+    '\n       The browser must not write to the gallery bucket. It deposits into\n' +
       `       "${QUARANTINE_BUCKET}" and lets POST /api/media/finalize publish.\n` +
       '       (C overlaps A on purpose: this is the file the defect grew in, and a named\n' +
       '       check tells a reader where to look instead of making them scan a list.)\n'
@@ -638,7 +649,7 @@ const migrations = existsSync(MIGRATIONS_DIR)
 const dPart = [];
 
 if (!migrations.includes(ROW_15)) {
-  dPart.push(`${ROW_15} does not exist: nothing closes the browser's write on the public bucket.`);
+  dPart.push(`${ROW_15} does not exist: nothing closes the browser's write on the gallery bucket.`);
 } else {
   const row15 = readFileSync(`${MIGRATIONS_DIR}/${ROW_15}`, 'utf8');
   const dropped = [...row15.matchAll(/DROP\s+POLICY\s+(?:IF\s+EXISTS\s+)?"([^"]+)"\s+ON\s+storage\.objects/gi)]
@@ -655,7 +666,7 @@ if (!migrations.includes(ROW_15)) {
 
   if (createdInsertNames.length === 0) {
     dPart.push(
-      `${UPLOAD_POLICY_SOURCE} no longer creates an INSERT policy on the public bucket, so there ` +
+      `${UPLOAD_POLICY_SOURCE} no longer creates an INSERT policy on the gallery bucket, so there ` +
         'is nothing to compare row 15 against. Either the door was moved or this check is stale.'
     );
   } else {
@@ -663,7 +674,7 @@ if (!migrations.includes(ROW_15)) {
     if (unmatched.length > 0) {
       dPart.push(
         `${ROW_15} does not drop ${unmatched.map((n) => `"${n}"`).join(', ')} — the INSERT ` +
-          `policy ${UPLOAD_POLICY_SOURCE} creates on the public bucket. A DROP POLICY IF EXISTS ` +
+          `policy ${UPLOAD_POLICY_SOURCE} creates on the gallery bucket. A DROP POLICY IF EXISTS ` +
           'with a name that matches nothing applies cleanly and changes nothing.'
       );
     }
@@ -693,7 +704,7 @@ for (const file of migrations) {
 }
 if (laterReopens.length > 0) {
   dPart.push(
-    `these migration(s) recreate an INSERT policy for \`authenticated\` on the public bucket ` +
+    `these migration(s) recreate an INSERT policy for \`authenticated\` on the gallery bucket ` +
       `after row 15: ${laterReopens.join(', ')}. That reopens the door row 15 closed.`
   );
 }
@@ -704,12 +715,12 @@ if (dPart.length === 0) {
       `${UPLOAD_POLICY_SOURCE} created, and no later migration recreates it`
   );
 } else {
-  console.log('  ✗ D  the door toward the public bucket is not closed in the migrations:');
+  console.log('  ✗ D  the door toward the gallery bucket is not closed in the migrations:');
   for (const line of dPart) console.log(`         ${line}`);
   console.log(
     '\n       Reminder, and it is not a formality: even a green D means only that a FILE says\n' +
       '       so. Row 15 is applied BY HAND, after the deploy. Until somebody applies it, an\n' +
-      '       approved session can write to the public bucket from a browser and skip the\n' +
+      '       approved session can write to the gallery bucket from a browser and skip the\n' +
       '       strip entirely.\n'
   );
   failures.push('D');
@@ -738,16 +749,22 @@ if (pkg.dependencies && typeof pkg.dependencies.sharp === 'string') {
 // ── F. the shared module holds no destination of its own ───────────────────
 //
 // Plan 45-17. The module's destination is a REQUIRED ARGUMENT with no default,
-// and this check is the mechanical half of that sentence: the public bucket's
+// and this check is the mechanical half of that sentence: the gallery bucket's
 // name must not appear in that file in any role at all — not as a fallback, not
 // as a `??`, not as a constant "for the common case".
 //
-// Why it is the public bucket specifically and not "any bucket": a default that
+// Why it is the gallery bucket specifically and not "any bucket": a default that
 // pointed at the private archive would be a filing mistake, recoverable by
-// moving an object. A default that points at the public one PUBLISHES a
+// moving an object. A default that points at the gallery one PUBLISHES a
 // photograph nobody decided to publish, and in this domain an accidental
 // publication is read as an announcement. The two errors are not the same size,
 // so the check guards the one that does not come back.
+//
+// (2026-09-23, NAV-07: the gallery bucket is private now, and "publishes" means
+// something narrower — every holder of `gallery.view` can have the object signed
+// once its row is approved, and every row the moderation approves is shown. It
+// is still the destination whose bytes reach other people, which is why the
+// strip gates it, and why this check did not move.)
 const moduleBucketHits = findPublicBucketLines(STRIP_MODULE);
 
 if (moduleBucketHits.length === 0) {
@@ -756,7 +773,7 @@ if (moduleBucketHits.length === 0) {
   );
 } else {
   console.log(
-    `  ✗ F  ${moduleBucketHits.length} line(s) in ${STRIP_MODULE} name the public bucket:`
+    `  ✗ F  ${moduleBucketHits.length} line(s) in ${STRIP_MODULE} name the gallery bucket:`
   );
   for (const h of moduleBucketHits) console.log(`         ${h.path}:${h.line}: ${h.text}`);
   console.log(
