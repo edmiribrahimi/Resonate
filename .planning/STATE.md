@@ -4,7 +4,7 @@ milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
 stopped_at: Phase 51 complete — 15/15 plans, in produzione dal 2026-09-22 19:13Z; il 2026-09-23 chiuso il debito del review (resta WR-05), deciso WR-04, lanciato verify:refusal, pulito il lab; VERIFICATION passed; WR-05 su lab e produzione; spinto e READY il 2026-09-23 (dpl_HHHM4bG7…)
-last_updated: "2026-09-23T10:50:00.000Z"
+last_updated: "2026-09-23T11:55:00.000Z"
 last_activity: 2026-09-23
 progress:
   total_phases: 51
@@ -30,13 +30,13 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 52 — la barra di navigazione e i ritocchi (da discutere e pianificare)
+**Current Focus:** Phase 52 — la barra di navigazione e i ritocchi: contesto raccolto il 2026-09-23 (`52-CONTEXT.md`, 23 decisioni, due todo della porta dentro), da pianificare
 
 ## Current Position
 
 Phase: 51 (via-le-superfici-da-socio-e-la-porta) — COMPLETE il 2026-09-22
 Plan: 15 of 15 (14 pianificati + 51-15, chiusura di un buco misurato da P-51-1)
-Next: Phase 52 — nessun piano, nessun CONTEXT: parte da /gsd-discuss-phase 52
+Next: Phase 52 — CONTEXT scritto il 2026-09-23; **NAV-01 e' superato** (barra a quattro voci, Home fuori): riscrivere la riga con `/gsd-phase edit 52`, poi `/gsd-plan-phase 52`
 
 **Chiusura del debito, 2026-09-23.** Sei commit su `main` (`514c497..282d809`),
 **non ancora spinti**: WR-03, WR-04 (decisione del proprietario: avviso guest
