@@ -698,7 +698,7 @@ export const PRIMITIVE_COMPONENTS = [
   ['Checkbox', 'src/components/ui/Checkbox.tsx', 'a drawn box inside a hit area that is also the control name'],
   ['Switch', 'src/components/ui/Switch.tsx', 'a drawn track inside a hit area that is also the control name'],
   ['AppNav', 'src/components/layout/AppNav.tsx', 'the product navigation in both tiers'],
-  ['StaffNav', 'src/components/staff/StaffNav.tsx', 'the eight work tabs in two forms'],
+  ['StaffNav', 'src/components/staff/StaffNav.tsx', 'the work tabs as one pinned strip, alphabetical'],
 ];
 
 /**

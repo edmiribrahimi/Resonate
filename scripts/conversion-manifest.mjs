@@ -192,7 +192,7 @@ export const SPINE = [
   ],
   [
     "src/components/staff/StaffNav.tsx", "converted",
-    "the eight work tabs in two forms — mounted by the work layout, a surface of none",
+    "the work tabs as one pinned strip — mounted by the work layout; the column is AppNav's Management panel since phase 52",
   ],
 ];
 

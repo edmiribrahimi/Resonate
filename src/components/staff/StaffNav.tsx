@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { CapabilityKey } from "@/lib/capabilities/keys";
-import { visibleStaffTabs } from "@/lib/routes/staff-tabs";
+import { sortTabsByLabel, visibleStaffTabs } from "@/lib/routes/staff-tabs";
 import { Chip } from "@/components/ui/Chip";
-import { FOCUS_RING } from "@/components/ui/Button";
 
 /**
  * The staff tab bar. It draws what the viewer holds, and nothing else.
@@ -43,22 +42,21 @@ import { FOCUS_RING } from "@/components/ui/Button";
  * the same way: replaced by the capability the middleware asks, not translated
  * into a second rule.
  *
- * ── Two forms, and the number of tabs is the same in both ────────────────────
+ * ── One form: the phone strip. The column is `AppNav`'s Management panel ─────
  *
- * `strip` is the phone form: one line in flow that scrolls sideways. `column`
- * is the tablet-and-desktop form: the same tabs stacked inside `AppNav`'s side
- * column, under a `Work` heading, **with no horizontal scroll at any width
- * ≥ 768 px**. That last sentence is RESP-04, and it is what H41-6 measures.
- *
- * The two are **two trees, each removed at the other tier by `display`** — the
- * mechanism §8.8 uses for the dual-rendered table, and the one that takes the
- * hidden tree out of the accessibility tree entirely rather than leaving it
- * present and invisible. Neither tree is ever transformed into the other.
+ * Until 2026-09-23 this component had two forms, and the work layout mounted
+ * both: `strip` for the phone, and `column`, the same tabs stacked inside
+ * `AppNav`'s side column under a `Work` heading. Phase 52 removed the second
+ * (D-52-08, plan 52-11): from 768 px up the column carries **one** list, the
+ * Management panel, which starts open inside a tool — so RESP-04 (no horizontal
+ * scroll, no menu, on a work surface from tablet up) is now held by `AppNav`,
+ * not here. What is left is the strip: one line that scrolls sideways, removed
+ * from 768 px up by `display` (`md:hidden`), never by a viewport read.
  *
  * **The number of tabs does not change with width.** It is decided once, on the
  * server, by the capability set — never by a viewport. A tab filtered in
- * JavaScript at a width would give the paragraph above a second author, and it
- * would put a capability decision in a place the viewer can edit.
+ * JavaScript at a width would put a capability decision in a place the viewer
+ * can edit.
  *
  * ── The four defects this file carried, each named ───────────────────────────
  *
@@ -72,15 +70,11 @@ import { FOCUS_RING } from "@/components/ui/Button";
  *  4. a line token on a control boundary at **1.39 : 1** — now `--control` at
  *     **7.14 : 1**, §5.2.
  *
- * ── Why the selected tab looks different in the two forms ────────────────────
+ * ── The selected tab ──────────────────────────────────────────────────────────
  *
- * Stated so it is not read as an oversight. In the **strip** the selected tab is
- * an accent-filled chip, because a chip among chips has nothing else to
- * distinguish it. In the **column** it is an accent label with a 2 px leading
- * edge, because there it sits directly under `AppNav`'s own entries and must
- * read as one of them; a filled pill in that stack would say *button*, not
- * *current page*. Both carry `aria-current="page"`, so the state is never
- * carried by colour alone.
+ * An accent-filled chip, because a chip among chips has nothing else to
+ * distinguish it, and `aria-current="page"`, so the state is never carried by
+ * colour alone.
  */
 interface StaffNavProps {
   /**
@@ -90,55 +84,25 @@ interface StaffNavProps {
    * server/client boundary and must be serialisable, and a `Set` is not.
    */
   capabilities: readonly CapabilityKey[];
-  /**
-   * Which of the two trees this mount draws. Required rather than defaulted:
-   * the work layout mounts both, and a default would let a third caller acquire
-   * one silently.
-   */
-  form: "strip" | "column";
+  // ── La prop `form` e' uscita (fase 52, 52-11, D-52-08) ────────────────────
+  //
+  // Sceglieva fra la striscia e la colonna. La colonna e' diventata il pannello
+  // Management di `AppNav`, quindi resta un albero solo e nessuna scelta da
+  // fare: una prop a un valore sarebbe una domanda con una risposta sola.
 }
 
-/** The focus expression is imported, never respelled — `Button.tsx`, §5.4. */
-const COLUMN_ENTRY =
-  "relative flex min-h-11 items-center gap-3 rounded-xl px-4 text-sm " +
-  `transition-all active:scale-95 active:opacity-80 ${FOCUS_RING}`;
-
-export default function StaffNav({ capabilities, form }: StaffNavProps) {
+export default function StaffNav({ capabilities }: StaffNavProps) {
   const pathname = usePathname();
 
-  const visibleTabs = visibleStaffTabs(capabilities);
-
-  if (form === "column") {
-    return (
-      <nav
-        aria-label="Work surfaces"
-        className="hidden md:flex md:flex-col md:gap-1 md:overflow-visible"
-      >
-        {visibleTabs.map((tab) => {
-          const isActive = pathname.startsWith(tab.href);
-
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              aria-current={isActive ? "page" : undefined}
-              className={`${COLUMN_ENTRY} ${
-                isActive ? "text-accent" : "text-muted hover:text-ink"
-              }`}
-            >
-              {isActive && (
-                <span
-                  aria-hidden="true"
-                  className="absolute inset-y-1 start-0 w-0.5 rounded-full bg-accent"
-                />
-              )}
-              {tab.label}
-            </Link>
-          );
-        })}
-      </nav>
-    );
-  }
+  // ── One order: the panel's (D-52-27) ──────────────────────────────────────
+  //
+  // Alphabetical by label, computed at render time by the SAME function the
+  // Management panel uses (`sortTabsByLabel`, `staff-tabs.ts`). The declaration
+  // `STAFF_TABS` keeps its grouped order and is not re-sorted: the sort decides
+  // presentation only, it neither adds nor drops a tab — the set is still
+  // exactly what `visibleStaffTabs` returned for the capabilities the server
+  // resolved.
+  const visibleTabs = sortTabsByLabel(visibleStaffTabs(capabilities));
 
   return (
     <>
@@ -152,14 +116,41 @@ export default function StaffNav({ capabilities, form }: StaffNavProps) {
         .staff-nav-scroll { -ms-overflow-style: none; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
         .staff-nav-scroll::-webkit-scrollbar { display: none; }
       `}</style>
-      <nav aria-label="Work surfaces" className="mb-6 px-6 md:hidden">
+      {/*
+        ── Pinned while the tool scrolls — NAV-04, D-52-11, 2026-09-23 ─────────
+
+        `sticky top-0`: at the bottom of a long tool (Members, the sales list)
+        the strip is still there, so changing tool does not mean scrolling back
+        up. No ancestor sets an overflow, so sticky has something to stick to.
+        `z-10` is the rank of the door's fixed bar — no new rank.
+
+        OPAQUE, and deliberately without a backdrop blur: a blur on an element
+        that moves is the documented cause of the iOS defect reported on
+        2026-08-14 (see the painting note in `AppNav.tsx`). The line under it is
+        always on: without JavaScript nobody can know when the strip is stuck,
+        and at rest it is a hairline that bothers nothing.
+
+        `viewportFit` is NOT set to `cover` for this: with it, `top-0` would sit
+        under the status bar in standalone mode.
+      */}
+      <nav
+        aria-label="Work surfaces"
+        className="sticky top-0 z-10 mb-6 border-b border-line bg-ground px-6 py-2 md:hidden"
+      >
         {/*
           `-mx-6 px-6` bleeds the row to the gutter so the first and last chip
           sit on the page margin and a partial chip can show past it. The
           gutter is re-added on this element's own parent, so the strip does not
           depend on what it is mounted inside.
+
+          `min-h-11` on the row: the strip is never shorter than one 44 px chip,
+          which is the size that lives in the `Chip` primitive. It is written
+          here as well because it is the declaration `verify:touch-targets`
+          (exemption 2) asserts in this file: until 2026-09-23 the column form
+          carried it, and removing that form (D-52-08) took it away. Declared on
+          the row that really has that height, never on a decoy.
         */}
-        <div className="staff-nav-scroll -mx-6 flex gap-2 overflow-x-auto px-6">
+        <div className="staff-nav-scroll -mx-6 flex min-h-11 gap-2 overflow-x-auto px-6">
           {visibleTabs.map((tab) => (
             <Chip
               key={tab.href}
