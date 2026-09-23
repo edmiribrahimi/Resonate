@@ -521,7 +521,7 @@ Plans:
 > che non stia gia' vedendo. E il calcolo va fatto **prima** del filtro per
 > format, o selezionandone uno spariscono tutti gli altri.
 
-**Plans:** 12/17 plans executed
+**Plans:** 13/17 plans executed
 
 Plans:
 **Wave 1**
@@ -550,7 +550,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 52-13-PLAN.md — M2 scritta; deploy del ramo `lab`; M2 sul laboratorio; sonde, `verify:refusal` gruppo gallery, linea di base RLS
+- [x] 52-13-PLAN.md — M2 scritta; deploy del ramo `lab`; M2 sul laboratorio; sonde, `verify:refusal` gruppo gallery, linea di base RLS
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
