@@ -176,3 +176,115 @@ segreta, una approvata sulla serata segreta, una lasciata in attesa.
 La foto pre-stripper **riletta dal bucket** porta un EXIF di 354 byte con la
 sottodirectory GPS (tag `0x8825`): `sharp(buffer).metadata()`, dentro lo script.
 Una seconda corsa di `--apply` non ha creato nulla (idempotenza osservata).
+
+---
+
+## Corsa sul laboratorio (piano 52-14)
+
+### `PRE-LAB` — accertata il 2026-09-23, fra le 15:34:53Z e le 15:36:01Z
+
+**Letta prima che il proprietario apra il telefono.** Tutte le letture sono **in
+sola lettura** (`read_only: true` su ogni chiamata al catalogo) e sono andate
+**solo al laboratorio**: lo script, fuori dal repo, rifiuta il ref di produzione
+prima di qualunque rete. **Nessuna scrittura, ne' sul laboratorio ne' in
+produzione.** Il ref del laboratorio viene da `.env.lab.local` e non si scrive
+qui.
+
+#### La differenza dall'atteso, per prima
+
+1. **Manca lo `staff` non assegnato.** Sul laboratorio c'e' **un solo** profilo
+   `staff`, ed e' quello assegnato alla serata di prova. La riga «`staff` non
+   assegnato» di `P-52-A` non ha oggi chi la guardi. `PRE-LAB` dice come si
+   rimedia: **si crea dall'app, come in produzione** — e l'esito della creazione
+   si scrive qui, nella corsa, con l'ora. Questo piano non l'ha creato da
+   script: un account creato a mano da uno script non misurerebbe il percorso
+   del prodotto.
+2. **Il banco non ha un video** (gia' dichiarato da 52-13). Il passo video di
+   `P-52-G` ha un soggetto solo se il proprietario ne carica uno nella corsa —
+   lo stesso caricamento nuovo che fa da soggetto alla sonda 7
+   (`--check-new-upload`).
+3. **Il file del banco `.env.lab.seed.json` porta etichette di ruolo vecchie.**
+   Due voci dicono ancora `member`; il catalogo dice **`attendee`** per una e
+   **nessun profilo** per l'altra (l'account di scorta non esiste piu'). Vale il
+   catalogo: i ruoli sotto sono letti da `public.profiles`, non dal file.
+4. **L'`organizer` non e' nel file del banco.** Esiste sul laboratorio (uno), sul
+   dominio di posta del banco e con almeno un accesso gia' fatto: e' lo stesso
+   che le sonde di 52-13 hanno risolto per ruolo.
+
+#### Il laboratorio
+
+| Cosa | Letto | Quando (UTC) | Come |
+|---|---|---|---|
+| Stato del progetto di laboratorio | **`ACTIVE_HEALTHY`** | 15:34:53Z → 15:34:54Z | Management API, `GET /v1/projects/<ref del laboratorio>` |
+| Regione | `eu-west-1` | 15:34:54Z | stessa lettura |
+| `lab.resonatemotion.com/events` da anonimo | **HTTP 200** | 15:36:01Z | `curl`, host pubblico |
+| `lab.resonatemotion.com/gallery` da anonimo | **HTTP 307** → `/login?next=%2Fgallery` | 15:36:01Z | `curl -I` |
+
+Il laboratorio non era in pausa: nessun restore.
+
+#### Il codice contro cui si misura
+
+**`lab.resonatemotion.com` serve `7a79353`** (commit del 2026-09-23T16:03:13+02:00),
+ramo `lab`, dal dispiegamento `READY` creato alle **14:25:54Z** e pronto alle
+**14:27:35Z** — letto alle 15:35:53Z dall'alias stesso (API Vercel, senza
+`teamId`), non dalla punta del ramo in locale. `origin/lab` punta allo stesso
+commit. **Nessun dispiegamento del ramo `lab` dopo le 14:25:54Z**: l'elenco dei
+dispiegamenti letto alle 15:35:55Z ha quello come piu' recente.
+
+**Il `main` locale e' piu' avanti, per costruzione.** Fra `7a79353` e il `main`
+locale, fuori da `.planning/`, cambiano cinque file: la migration M2, tre
+script di verifica e `src/types/database.ts` (solo tipi). **Nessun file che il
+browser esegue.** Il laboratorio serve quindi il codice che la corsa deve
+misurare. `origin/main` e' ancora al commit precedente la fase: nulla e' andato
+in produzione.
+
+#### M2, riletta dal catalogo (`read_only`, 15:34:54Z → 15:34:59Z)
+
+| Lettura | Valore |
+|---|---|
+| history, ultime due | `20260923142818` `gallery_close_data` (M2), dopo `20260923133108` `gallery_view_and_media_paths` (M1) |
+| bucket `event-media` / `event-images` / `event-media-quarantine` | **`public = false`** / `true` / `false` |
+| SELECT su `event_media` | `event_media_select_gallery` (lega `gallery.view`), `select_own`, `select_admin`; **`event_media_select_approved` assente** |
+| policy su `storage.objects` per `'event-media'` | `event_media_objects_select_by_row` (SELECT, `{authenticated}`) e le due DELETE; **«Anyone can view event media» assente** |
+| `storage_path` / `url` | `NOT NULL` / nullable |
+
+#### I soggetti di prova, per ruolo (catalogo, 15:35:21Z → 15:35:46Z)
+
+| Soggetto | C'e'? | Da dove |
+|---|---|---|
+| anonimo | si' — finestra privata, nessuna sessione | — |
+| `attendee` | **si'** (6 profili `attendee` sul laboratorio; quello del banco e' uno di loro) | file del banco |
+| `staff` **non assegnato** | **NO** — 0 profili `staff` senza assegnazione viva | da creare dall'app nella corsa (sopra, punto 1) |
+| `staff` **assegnato** alla serata di prova | **si'** — assegnazione `door.operate`, ruolo alla porta `staff`, viva, non revocata, scade il 2026-10-21 | file del banco |
+| `organizer` | **si'** (1) | risolto per ruolo dal catalogo, non dal file |
+| `master` | **si'** (1) | file del banco |
+
+**La serata di prova** e' il 2026-09-28, 22:00 → 06:00, fra cinque giorni, con
+la sua assegnazione viva: la voce Check-in dipende dall'assegnazione viva, non
+dalla data della serata.
+
+#### Il banco dei media dopo 52-09 e M2 (catalogo, 15:35:22Z)
+
+| Lettura | Valore |
+|---|---|
+| righe di `event_media` | **4** |
+| approvate / in attesa / rifiutate | **3 / 1 / 0** |
+| righe di serate con sede segreta | **3** (2 approvate, 1 in attesa) |
+| foto / video | 4 / **0** |
+| righe senza `storage_path` | 0 |
+| oggetti nel bucket `event-media` | **4** |
+
+#### Un fatto che la corsa non misura, portato a 52-15
+
+La cache della CDN **non** e' scaduta a `max-age=3600`: una foto della serata
+segreta, gia' spogliata, rispondeva ancora 200 dal suo indirizzo pubblico **62
+minuti dopo M2**, mentre l'origine era chiusa 28 s dopo M2 (52-13). Sul
+laboratorio la gallery e' chiusa per ogni sessione, **non ancora per chi ha
+gia' in mano un indirizzo pubblico**. Non e' un passo per il telefono: e' un
+vincolo per l'atto in produzione.
+
+#### Da scrivere all'inizio della corsa
+
+- **La versione di iOS** del telefono (*Impostazioni → Generali → Info*): senza
+  il numero, «atteso assente» in `P-52-F` non e' confrontabile.
+- **La larghezza** del telefono e il tablet usati per `P-52-A`.
