@@ -689,7 +689,7 @@ function GuestRefundRequest({ signedToken }: { signedToken: string }) {
           <button
             type="button"
             onClick={() => setState({ phase: "idle" })}
-            className={`mt-1 text-xs underline underline-offset-4 ${FOCUS_RING}`}
+            className={`mt-1 inline-flex min-h-11 items-center text-xs underline underline-offset-4 ${FOCUS_RING}`}
           >
             Riprova
           </button>
@@ -720,7 +720,7 @@ function GuestRefundRequest({ signedToken }: { signedToken: string }) {
           esito.cause === "not_found";
         setState({ phase: "refused", message: esito.message, final: finale });
       }}
-      className={`mt-2 text-xs text-ink-2 underline underline-offset-4 disabled:opacity-50 ${FOCUS_RING}`}
+      className={`mt-2 inline-flex min-h-11 items-center text-xs text-ink-2 underline underline-offset-4 disabled:opacity-50 ${FOCUS_RING}`}
     >
       {state.phase === "sending" ? "Invio…" : "Non l'ho bevuto — chiedi il rimborso"}
     </button>

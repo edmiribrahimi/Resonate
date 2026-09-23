@@ -1043,7 +1043,12 @@ const GUEST_SURFACES = [
     "date, end_time, event_id, holder_label, id, name, party_id, quantity, slug, status, tier_id, time, title, user_id",
     5,
   ],
-  [CALLBACK_ACTIONS_REL, CALLBACK_ACTIONS, "id, status, ticket_id", 3],
+  // `sumup_checkout_id` joined on 2026-09-08 (phase 49, P-WH-4: the callback
+  // asks the provider whether it collected, instead of trusting the local
+  // `failed`). It is the provider's checkout identifier — an opaque reference
+  // into SumUp, printed nowhere, carrying no place. Weighed and admitted on
+  // 2026-09-23; the gate had been red on it since phase 50's verification.
+  [CALLBACK_ACTIONS_REL, CALLBACK_ACTIONS, "id, status, sumup_checkout_id, ticket_id", 3],
 ];
 
 for (const [rel, abs, expectedColumns, expectedSelects] of GUEST_SURFACES) {

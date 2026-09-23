@@ -130,9 +130,12 @@ export async function checkPaymentStatus(params: {
  *
  * ── Nessuna colonna di luogo, e nessun indirizzo di posta ───────────────────
  *
- * Si leggono `id` e `status`, e nient'altro. `D-49-04`: la credenziale di un
- * biglietto non diventa una chiave verso il posto dove si suona, e questo e' il
- * cammino che porta a quella credenziale.
+ * Si leggono `id`, `status` e `sumup_checkout_id`, e nient'altro. Il terzo e'
+ * il riferimento opaco del fornitore, serve a chiedergli se ha incassato (sotto)
+ * e non finisce su nessuna superficie; e' nell'allow-list positiva di
+ * `verify:venue-surfaces` (G2) dal 2026-09-23, pesato come non-luogo. `D-49-04`:
+ * la credenziale di un biglietto non diventa una chiave verso il posto dove si
+ * suona, e questo e' il cammino che porta a quella credenziale.
  */
 async function checkTicketOrderStatus(
   supabase: ReturnType<typeof getServiceClient>,

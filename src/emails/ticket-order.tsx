@@ -267,9 +267,25 @@ export function TicketOrderEmail({
               fontFamily: BODY_FONT,
             }}
           >
-            <a href={ticket.url} style={{ color: BRAND.accent }}>
+            {/* The house `Button` from @react-email/components, not a bare
+                `<a>`: the link is tapped on a phone, and a 12px line of text is
+                not a 44px target (`verify:touch-targets`, red since phase 50).
+                Same primitive as «Complete your account» below, drawn lighter
+                because it is one of N per order, not the one call to action. */}
+            <Button
+              href={ticket.url}
+              style={{
+                color: BRAND.accent,
+                fontWeight: "bold",
+                fontSize: "13px",
+                textDecoration: "underline",
+                display: "inline-block",
+                padding: "12px 16px",
+                fontFamily: BODY_FONT,
+              }}
+            >
               Open ticket {ticket.label}
-            </a>
+            </Button>
           </Text>
         </React.Fragment>
       ))}
