@@ -1276,7 +1276,7 @@ export const BELOW_FLOOR_BY_DECISION_ELEMENTS = [
  * THE DOOR'S TOUCH-TARGET DEBT — a number that can only go down
  * ──────────────────────────────────────────────────────────────────────────── */
 
-/** All fourteen live in one file, and naming it once keeps the list readable. */
+/** Every entry lives in one file, and naming it once keeps the list readable. */
 const SCANNER_CLIENT = 'src/app/(admin)/admin/scanner/ScannerClient.tsx';
 
 /**
@@ -1307,7 +1307,13 @@ export const DOOR_TARGET_DEBT_CEILING = {
 };
 
 /**
- * The fourteen elements on the door that do not declare the 44px minimum.
+ * The elements on the door that do not declare the 44px minimum — thirteen
+ * today, fourteen when they were measured.
+ *
+ * Paid on 2026-09-23, phase 52 (plan 52-05): the filter tabs. They are five now
+ * (All · Out · In · Recent · Alerts), each declares `min-h-11`, and their line
+ * left this list in the same commit — 14 → 13. The ceiling below it stays 14
+ * with its date: the debt goes under the ceiling freely, never over it.
  *
  * ── WHY A DEBT AND NOT A PAYMENT, written out ───────────────────────────────
  *
@@ -1349,8 +1355,8 @@ export const DOOR_TARGET_DEBT_CEILING = {
  *     paid and the line leaves in the same commit that paid it. This is the only
  *     exit an entry has, and it is the direction the ratchet turns;
  *   · the list growing past `DOOR_TARGET_DEBT_CEILING` REFUSES;
- *   · **and every other under-floor element still FAILS.** A fifteenth small
- *     target written onto this surface is not forgiven by the fourteen: it is a
+ *   · **and every other under-floor element still FAILS.** A new small
+ *     target written onto this surface is not forgiven by this list: it is a
  *     red on its own line, which is what stops this list becoming a fence with a
  *     number painted on it.
  *
@@ -1410,11 +1416,6 @@ export const DOOR_TARGET_DEBT = [
     SCANNER_CLIENT, 'button', 'setSearchQuery("")',
     'no padding, positioned — the box is the icon\'s',
     'the clear-search control, sitting inside the field above. Its box is the glyph, so it is small for the same structural reason as the back arrow',
-  ],
-  [
-    SCANNER_CLIENT, 'button', 'setActiveFilter(tab.key)',
-    'py-2, 12px body',
-    'the three filter tabs. Three adjacent small targets are worse than one, because the miss is not a no-op — it selects the neighbour, and the operator reads a filtered list believing it is another',
   ],
   [
     SCANNER_CLIENT, 'button', 'requestReload("band")',
@@ -2302,7 +2303,7 @@ for (const [path, tag, fragment, declares, note] of DOOR_TARGET_DEBT) {
         '       element now DECLARES the floor. The debt was paid and its line did not leave with\n' +
         '       the commit that paid it. Delete the entry rather than keeping it: a debt list that\n' +
         '       counts settled items is a number that overstates itself, and the next reader has no\n' +
-        '       way to tell which fourteen are real. Nothing was measured.'
+        '       way to tell which entries are real. Nothing was measured.'
     );
   }
 
@@ -2328,7 +2329,7 @@ for (const e of DOOR_DEBT_ENTRIES) {
 console.log(
   '\n    NOT an exemption: a DEBT, and it only goes down. An entry leaves when the element\n' +
     '    is enlarged, and an entry whose element already declares the floor REFUSES. A\n' +
-    '    FIFTEENTH small target on this surface is NOT forgiven by these fourteen — it\n' +
+    '    NEW small target on this surface is NOT forgiven by this list — it\n' +
     '    fails on its own line. The exit that is not available is lowering the gate: fix\n' +
     '    the ELEMENT, never this file. A target too small to hit, at a door, is a queue.\n'
 );
