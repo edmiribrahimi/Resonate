@@ -535,3 +535,63 @@ non chiede di piu'.
 login sul simulatore dopo la correzione del difetto 1**: se con i campi a 16 px,
 e il fuoco sulla password, «Sign In» risultasse coperto, la decisione si riapre
 e `allinea` si prende in un piano di chiusura, **prima** di 52-15.
+
+---
+
+## Chiusura delle lacune (piani 52-18 e 52-19) — 2026-09-23
+
+### Linea di base, prima della correzione
+
+- **Fonte.** Simulatore iPhone 17e, iOS 27.0, Safari, pilotato da Appium
+  (XCUITest, protocollo W3C). Il `click` su un elemento web e' un **tocco
+  nativo**: apre la tastiera e fa scattare lo zoom di Safari. L'app gira in
+  locale con `npm run dev:lab`, cioe' contro il **database del laboratorio**
+  (lo script rifiuta la produzione come prima riga). Account del banco:
+  anonimo per login e codice sconto, lo `staff` assegnato per la porta, il
+  `master` per il modulo Create account.
+- **Commit misurato:** `5eb41168` (il tree dopo 52-18, **senza** la correzione).
+- **Procedura, uguale per ogni campo:** si carica la pagina (lo zoom riparte da
+  1: «riposo»), tocco nativo sul campo, 1,5 s, misura; poi `blur()` del campo,
+  1,5 s, misura di nuovo («dopo il blur»). `scale` e' `visualViewport.scale`;
+  `fs` e' il `font-size` calcolato del campo.
+
+| Campo | Ora (UTC) | Riposo | Al tocco | Dopo il blur | `fs` |
+|---|---|---|---|---|---|
+| (a) `/login`, email | 17:54:11Z | 1 | **1,1436** (larghezza visibile 390 → 341) | **1,1436** | 14px |
+| (b) `/login`, password | 17:54:18Z | 1 | **1,1436** | **1,1436** | 14px |
+| (c) `/door`, «Search by name...» (serata «Lab Night») | 17:55:17Z | 1 | **1,1436** | **1,1436** | 14px |
+| (d) `/admin/members`, `select` del ruolo in Create account | 17:56:52Z (ripetuta alle 17:57:37Z con `nativeWebTap`) | 1 | 1 | 1 | 14px |
+| (e) pagina pubblica di una serata in vendita, codice sconto (anonimo) | 17:54:58Z | 1 | **1,1436** | **1,1436** | 14px |
+| (f) `/login`, email, **in orizzontale** | 17:54:34Z | 1 (larghezza 750) | **1,1427** (750 → 656) | **1,1427** | 14px |
+
+**Il difetto e' riprodotto** su (a), (b), (c) ed (e) con i numeri di 52-14 —
+1,1436, e lo zoom resta dopo il blur — quindi la sonda lo vede, e la misura dopo
+la correzione prova qualcosa. `scrollWidth` resta 390 in ogni stato: e' lo zoom
+di WebKit, non il layout.
+
+**Due differenze dall'atteso, per prima cosa:**
+
+- **(d) il `select` nativo non zooma, gia' a 14 px**, due volte, anche con
+  `nativeWebTap`: su iOS 27 il tocco su un `select` apre il menu a comparsa del
+  sistema e la pagina resta a scala 1. Il `select` e' comunque coperto dalla
+  correzione (stesso controllo del primitivo, e la rete CSS), ma per lui la
+  misura non puo' mostrare un prima/dopo: dice solo che **non peggiora**.
+- **(f) in orizzontale la larghezza e' 750 px, non sopra 768**: l'iPhone 17e
+  simulato resta **sotto il bordo `md`** anche ruotato. Il caso che giustifica la
+  rete CSS senza limite di larghezza (un telefono piu' largo di `md`) qui non si
+  presenta; la ragione resta valida per i telefoni piu' larghi.
+
+**La porta, a tastiera aperta (c):** Safari sposta l'area visibile di 24,5 px a
+destra; «QR Scan» e la linguetta Alerts finiscono a 342 px su una larghezza di
+layout riportata di 341, mentre i primi 24,5 px a sinistra della pagina escono
+di vista. E' lo stato che 52-14 aveva fotografato come «bordo destro tagliato».
+
+**P-52-F passo 5, prima della correzione (17:54:24Z, pagina zoomata a 1,1436):**
+con il fuoco sull'email, l'email e' in vista e password e «Sign In» sono coperti
+dalla tastiera; con il fuoco sulla password, Safari scorre e il rettangolo
+visibile (altezza 323 px, a partire da 200 px) contiene solo «Sign In» — email
+(92–136) e password (152–196) restano sopra, fuori vista. **Diverge da [3]**, che
+con il fuoco sulla password aveva visto tutti e tre in vista: la sonda legge i
+rettangoli 1,5 s dopo il tocco, a pagina zoomata, e sotto zoom l'area visibile e'
+piu' stretta e piu' bassa. Il dato che decide D-52-28 e' quello **dopo** la
+correzione, a scala 1.
