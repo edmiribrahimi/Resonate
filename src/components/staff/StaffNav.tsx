@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { CapabilityKey } from "@/lib/capabilities/keys";
-import { visibleStaffTabs } from "@/lib/routes/staff-tabs";
+import { sortTabsByLabel, visibleStaffTabs } from "@/lib/routes/staff-tabs";
 import { Chip } from "@/components/ui/Chip";
 
 /**
@@ -94,7 +94,15 @@ interface StaffNavProps {
 export default function StaffNav({ capabilities }: StaffNavProps) {
   const pathname = usePathname();
 
-  const visibleTabs = visibleStaffTabs(capabilities);
+  // ── One order: the panel's (D-52-27) ──────────────────────────────────────
+  //
+  // Alphabetical by label, computed at render time by the SAME function the
+  // Management panel uses (`sortTabsByLabel`, `staff-tabs.ts`). The declaration
+  // `STAFF_TABS` keeps its grouped order and is not re-sorted: the sort decides
+  // presentation only, it neither adds nor drops a tab — the set is still
+  // exactly what `visibleStaffTabs` returned for the capabilities the server
+  // resolved.
+  const visibleTabs = sortTabsByLabel(visibleStaffTabs(capabilities));
 
   return (
     <>
@@ -108,7 +116,27 @@ export default function StaffNav({ capabilities }: StaffNavProps) {
         .staff-nav-scroll { -ms-overflow-style: none; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
         .staff-nav-scroll::-webkit-scrollbar { display: none; }
       `}</style>
-      <nav aria-label="Work surfaces" className="mb-6 px-6 md:hidden">
+      {/*
+        ── Pinned while the tool scrolls — NAV-04, D-52-11, 2026-09-23 ─────────
+
+        `sticky top-0`: at the bottom of a long tool (Members, the sales list)
+        the strip is still there, so changing tool does not mean scrolling back
+        up. No ancestor sets an overflow, so sticky has something to stick to.
+        `z-10` is the rank of the door's fixed bar — no new rank.
+
+        OPAQUE, and deliberately without a backdrop blur: a blur on an element
+        that moves is the documented cause of the iOS defect reported on
+        2026-08-14 (see the painting note in `AppNav.tsx`). The line under it is
+        always on: without JavaScript nobody can know when the strip is stuck,
+        and at rest it is a hairline that bothers nothing.
+
+        `viewportFit` is NOT set to `cover` for this: with it, `top-0` would sit
+        under the status bar in standalone mode.
+      */}
+      <nav
+        aria-label="Work surfaces"
+        className="sticky top-0 z-10 mb-6 border-b border-line bg-ground px-6 py-2 md:hidden"
+      >
         {/*
           `-mx-6 px-6` bleeds the row to the gutter so the first and last chip
           sit on the page margin and a partial chip can show past it. The
