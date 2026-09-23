@@ -119,3 +119,60 @@ e' stato restituito o stampato. Lo stato del laboratorio e' stato letto prima
   non firmato, per il semplice fatto che non ne esistono. **Il bucket pero' e'
   pubblico su entrambi i progetti**: la prima foto caricata dopo oggi e prima di
   M2 nasce raggiungibile per URL. La finestra e' aperta finche' M2 non chiude.
+
+---
+
+## Il banco dei media sul laboratorio — seminato il 2026-09-23 (piano 52-01, task 3)
+
+**Solo laboratorio; zero scritture in produzione.** Quattro foto JPEG generate
+(colore pieno, nessuna persona, nessuna sede) caricate dall'**account master del
+banco** dal **percorso vero** — `MediaUpload` → quarantena →
+`POST /api/media/finalize` (quattro risposte 200 nel log del server) →
+`registerMedia` — due sulla serata non segreta e due sulla serata segreta del
+banco. Poi `scripts/seed-lab-media.mjs --dry-run` e `--apply`: un oggetto orfano e
+una foto pre-stripper con GPS in mare aperto, `approved`, sulla serata segreta,
+`created_at` anteriore alla soglia.
+
+### La differenza dall'atteso, per prima — la coda di moderazione e' vuota per costruzione
+
+La moderazione **non si e' potuta fare dalla superficie del prodotto**. La
+pagina `admin/events/[id]/media` mostrava **«2 Pending»** nel censimento in alto
+e, sotto, **«No pending media to review — Nothing has been uploaded for this
+event yet»**. Causa, misurata: la lettura della coda
+(`src/app/(admin)/admin/(work)/events/[id]/media/page.tsx:181-186`) incorpora
+`profiles!event_media_uploaded_by_fkey(full_name)`, ma quel vincolo punta a
+`auth.users`, non a `public.profiles` — letto da `pg_constraint`, **identico su
+laboratorio e produzione**. PostgREST risponde **400 `PGRST200`** («Could not
+find a relationship between 'event_media' and 'profiles'»), riprodotto con la
+chiave di servizio del laboratorio; la pagina non controlla `error` e disegna la
+coda vuota. **E' un fallimento silenzioso preesistente, anche in produzione**:
+nessun media caricato puo' essere approvato o rifiutato dall'interfaccia. Oggi
+non ha effetti osservabili solo perche' la produzione ha zero media. Non e'
+corretto da questo piano (fuori dai suoi file; la pagina e' del piano 52-12):
+**va corretto prima che la moderazione serva a qualcuno.**
+
+Le tre decisioni di moderazione sono state quindi applicate sul laboratorio
+**per chiave primaria**, con lo stesso effetto di `updateMediaStatus`
+(`src/app/(public)/events/[slug]/actions.ts:227-259`, un solo
+`update ... set status`): una approvata e una rifiutata sulla serata non
+segreta, una approvata sulla serata segreta, una lasciata in attesa.
+
+### Laboratorio, prima e dopo
+
+| Lettura | Prima (13:08:04Z) | Dopo (13:18:40Z) |
+|---|---|---|
+| righe di `event_media` | 0 | **5** |
+| `url` di altra forma | 0 | 0 |
+| approvate / in attesa / rifiutate | 0 / 0 / 0 | **3 / 1 / 1** |
+| righe di serate con `venue_secret` vero | 0 | **3** (2 approvate, 1 in attesa) |
+| foto / video | 0 / 0 | 5 / 0 |
+| foto anteriori alla soglia (di cui di serata segreta) | 0 (0) | **1 (1)** |
+| oggetti nel bucket | 0 | **6** |
+| oggetti orfani | 0 | **1** |
+| oggetti di righe `rejected` | 0 | **1** |
+| righe senza oggetto | 0 | 0 |
+| `public` del bucket | `true` | `true` |
+
+La foto pre-stripper **riletta dal bucket** porta un EXIF di 354 byte con la
+sottodirectory GPS (tag `0x8825`): `sharp(buffer).metadata()`, dentro lo script.
+Una seconda corsa di `--apply` non ha creato nulla (idempotenza osservata).
