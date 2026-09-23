@@ -16,8 +16,9 @@ import type { DoorNotValidReason } from "@/lib/door/outcome";
  *    from (`PendingCheckin.token`) and the route re-verifies it exactly as it
  *    does online (FIX-10).
  * 2. **The transport `ok` flag decided everything.** Five returns in
- *    `api/tickets/checkin/route.ts` and one in `api/membership/verify/route.ts`
- *    encoded failure at HTTP 200 before this phase, so that flag was `true` for
+ *    `api/tickets/checkin/route.ts` and one in the membership verification
+ *    route (deleted by phase 51 on 2026-09-22) encoded failure at HTTP 200
+ *    before this phase, so that flag was `true` for
  *    a conflict and the entry was deleted — the one piece of evidence that two
  *    people walked in on one ticket, destroyed at the moment it arrived
  *    (FIX-03). The **body** is authoritative here now, and the flag is never
@@ -245,12 +246,14 @@ function classifyResponse(
       case "already_recorded":
         // Dropping a conflict from the queue is safe **only** because
         // `api/tickets/checkin/route.ts` writes the `door_scan_events` row and
-        // then returns, in that order, from a single `respond()` — and
-        // `api/membership/verify/route.ts` does the same before its 409. If that
-        // ordering is ever reversed, FIX-03 breaks here and nowhere else will
-        // notice: the evidence that two people entered on one ticket would be
-        // acknowledged and then deleted, which is the defect this phase exists
-        // to fix.
+        // then returns, in that order, from a single `respond()`. (The
+        // membership verification route did the same before its 409, until
+        // phase 51 deleted it on 2026-09-22; the guest route writes
+        // `guest_list_entries` and answers its 409 from the row it read.) If
+        // that ordering is ever reversed, FIX-03 breaks here and nowhere else
+        // will notice: the evidence that two people entered on one ticket would
+        // be acknowledged and then deleted, which is the defect this phase
+        // exists to fix.
         return { bucket: "done", via: "already_recorded" };
       case "not_valid":
         // Permanent by construction: a bad signature, an unknown code, the
@@ -263,7 +266,14 @@ function classifyResponse(
   }
 
   if (legacySuccess?.(status, body)) {
-    return { bucket: "done", via: "legacy_success" };
+    // The guest route answers `success: true` rather than a door outcome, so
+    // its revoked-after-scan flag arrives here and not in the `recorded` case
+    // above. Same field, same `=== true`, same row of the table — a queued
+    // guest admission judged live at the tap and revoked since is filed as
+    // what it is, not as an ordinary success (phase 51 review, WR-03).
+    return saysAssignmentRevokedAfterScan(body)
+      ? { bucket: "done", via: "recorded_after_revocation" }
+      : { bucket: "done", via: "legacy_success" };
   }
 
   // A 400, a 404, or a body from a bundle that does not speak the contract. It

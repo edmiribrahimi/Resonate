@@ -107,8 +107,9 @@ interface DoorAuthorisation {
    * It is here so the device can **measure the drift of its own clock instead
    * of trusting it**: a phone twenty minutes fast at 02:00 must not expire a
    * verdict twenty minutes early. A device clock is evidence, never authority —
-   * `src/app/api/membership/verify/route.ts:412`, and the same lexicon in
-   * `checkin-store.ts:135-136`.
+   * the lexicon of `checkin-store.ts:135-136` (*"Device clock at the read.
+   * Evidence, not authority"*), first written for the membership verification
+   * route that phase 51 deleted on 2026-09-22.
    */
   resolvedAt: string;
 }
@@ -1272,6 +1273,9 @@ export async function POST(request: Request) {
    * spent recovering an id already in hand.
    */
   let operatorId: string;
+  // Set by the drain arm below when the assignment that covered the tap has
+  // been revoked since; travels in the response (WR-03).
+  let revokedAfterScan = false;
 
   if (auth.ok) {
     operatorId = auth.userId;
@@ -1329,11 +1333,19 @@ export async function POST(request: Request) {
           // `door_scan_events`. The admission is recorded — it happened while
           // the assignment was live — and the anomaly is logged with its own
           // category rather than hidden in either direction.
+          //
+          // The log line alone reaches nobody (no error tracking anywhere in
+          // this repository), so the fact also travels in the response as the
+          // same flag the ticket route sends: the drain files the entry under
+          // `recorded_after_revocation` instead of an ordinary success, and the
+          // phone — the one observer that exists — can tell the two apart
+          // (phase 51 review, WR-03).
           console.warn("[attendance] guest queued report after revocation", {
             guestListEntryId,
             partyId: binding.night,
             scannedAt: queuedScannedAt,
           });
+          revokedAfterScan = true;
           operatorId = judgement.operatorId;
           break;
         case "never_assigned": {
@@ -1547,6 +1559,10 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     success: true,
+    // Present only when true — `sync-manager.ts` reads it with `=== true` and
+    // treats an absent field as "not stated", so a `false` here would be a
+    // second way of spelling the same absence.
+    ...(revokedAfterScan ? { assignmentRevokedAfterScan: true } : {}),
     name: `${entry.first_name} ${entry.last_name}`,
     // The value that was WRITTEN, not the clock of this read: on a live tap the
     // two are the same instant, and on a drained report answering `now` would
