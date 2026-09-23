@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "Completato 52-19-PLAN.md — difetto 1 chiuso: campi a 16 px, Safari non zooma piu' (scala 1 misurata), laboratorio READY; resta 52-15"
-last_updated: "2026-09-23T18:10:07.281Z"
+stopped_at: "Completato 52-15-PLAN.md — fase 52 in produzione dal 2026-09-23 18:28:33Z (M1 → deploy f671144b → M2), verify:capabilities verde, autorizzazione ESAURITA; restano 52-16 e 52-17"
+last_updated: "2026-09-23T18:35:00Z"
 last_activity: 2026-09-23
 progress:
   total_phases: 12
   completed_phases: 5
   total_plans: 73
-  completed_plans: 63
+  completed_plans: 64
   percent: 42
 ---
 
@@ -35,8 +35,10 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 52 (la-barra-di-navigazione-e-i-ritocchi) — EXECUTING
-Plan: 16 of 19 completati (52-01..14, 52-18, 52-19) — **52-15 SBLOCCATO**
-Next: 52-15 (atto in produzione), meglio dopo la conferma del proprietario sul suo iPhone, su `lab.resonatemotion.com` (login e ricerca della porta non devono ingrandire la pagina).
+Plan: 17 of 19 completati (52-01..15, 52-18, 52-19)
+Next: 52-16 (atto 2: rimozione per chiave e ri-spogliatura — **oggi senza soggetto**, 0 media in produzione), poi 52-17 (persona e `52-VERIFICATION.md`).
+
+**52-15 chiuso: la fase 52 e' in produzione dal 2026-09-23 18:28:33Z.** Sotto `52-AUTHORISATION.md` («tutto», poi riapprovata alle 18:25Z con «approvo m1, push, m2 e push finale. vai» dopo un diniego dell'ambiente al primo tentativo), ora **ESAURITA**. **M1** alle 18:26:38Z, versione `20260923182638`: `gallery.view` a master, organizer, staff — 16 chiavi, 31 concessioni (16/14/1/0), `storage_path` sui media. **Push** `65e9cc57..f671144b` (94 commit) alle 18:27:10Z; deploy `dpl_Dy9VYqPygXJiojRYrAf23jKvdDy1` **`READY` alle 18:28:33Z**: barra nuova, porta a cinque linguette, `/gallery` chiusa ad anonimi e attendee, campi a 16 px. **M2** alle 18:29:08Z, versione `20260923182908`: `storage_path` NOT NULL, bucket `event-media` **privato**, «Anyone can view event media» tolta, `event_media_select_gallery`. **`verify:capabilities` verde** (5/5, era rosso alle 18:16Z); `verify:refusal --section=gallery` **RIFIUTATO su 0 media**, come scritto prima della domanda, una corsa sola. Sonda anonima senza soggetto. **Lo zoom e' chiuso anche sull'iPhone del proprietario** (iOS 26.7, tocchi nativi, scala 1 su email e password, 18:27Z). Esiti in `52-ESITI.md`.
 
 **52-19 chiuso il 2026-09-23 (laboratorio `READY` alle 18:08:54Z, sha `93cfbcc`).** Difetto 1: `CONTROL` di `Input.tsx`/`AutocompleteInput.tsx` a `text-base md:text-sm` e rete CSS fuori da `@layer` sotto `pointer: coarse` (`font-size: 1rem`) per i campi grezzi — la ricerca della porta. Sul simulatore iOS 27.0, stessa sonda: prima 1,1436 al tocco e dopo il blur su login, porta e codice sconto; dopo **scala 1** ovunque, «QR Scan» e Alerts dentro lo schermo. D-41-08 intatto (nessun blocco dello zoom); deroga datata in 41-UI-SPEC §7.4. P-52-F passo 5 a scala 1: con il fuoco sulla password «Sign In» e' sopra la tastiera, **D-52-28 `resta` confermato**. `origin/main` invariato (`65e9cc5`). Commit `493932d4`, `9b425f85`, `93cfbcc4`, `39dc0e55`, `c9f05970`.
 
@@ -409,6 +411,7 @@ Progress: [██████████] 100%
 
 Fixed by the project owner before planning — not re-opened at plan time:
 
+- [Fase 52, 2026-09-23]: 52-15 — `verify:refusal --section=gallery` RIFIUTATO su 0 media e' l'esito onesto previsto prima della domanda: non si seminano media in produzione per farlo diventare verde. Un diniego dell'ambiente non si aggira: l'atto riparte solo con una nuova approvazione del proprietario.
 - [Fase 52, 2026-09-23]: 52-18 — un indirizzo malformato si riconosce dalla risposta dell'autenticazione (`validation_failed` / `email_address_invalid` → `address_refused`), **non** con un secondo validatore sul punto finale: l'autenticazione resta l'autorita' sull'indirizzo.
 - [Fase 52, 2026-09-23]: **D-52-28 — il login resta com'e' (`resta`).** Risposta letterale del proprietario: *«se sono sulla pagina di login, e clicco sul campo mail o password, non deve avvenire lo zoom (come accade ora). non so quale delle due scelte sia»*. Scelta registrata a suo nome da chi coordinava la corsa: il suo requisito e' il difetto 1 (zoom), che nessuna delle due opzioni tocca. `FOCUS_ROOT` e il digest di `verify:conversion` restano; `allinea` si riapre se la ri-misura dopo il fix mostra «Sign In» coperto con il fuoco sulla password.
 - [Fase 52, 2026-09-23]: la correzione dello zoom di Safari e' **16 px sui campi a larghezza di telefono**, mai `maximum-scale` o `user-scalable=no` (D-41-08 vieta di bloccare lo zoom).
@@ -624,8 +627,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-09-23T18:10:07.277Z
-**Stopped at:** Completato 52-19-PLAN.md — resta 52-15 (atto in produzione)
+**Last session:** 2026-09-23T18:35:00Z
+**Stopped at:** Completato 52-15-PLAN.md — fase 52 in produzione dal 18:28:33Z; restano 52-16 (senza soggetto oggi) e 52-17
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 

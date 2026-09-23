@@ -521,7 +521,7 @@ Plans:
 > che non stia gia' vedendo. E il calcolo va fatto **prima** del filtro per
 > format, o selezionandone uno spariscono tutti gli altri.
 
-**Plans:** 16/19 plans executed
+**Plans:** 17/19 plans executed
 
 Plans:
 **Wave 1**
@@ -566,7 +566,7 @@ Plans:
 
 **Wave 9** *(blocked on Wave 8 completion)*
 
-- [ ] 52-15-PLAN.md — atto 1 in produzione: M1 → deploy → M2, sotto `52-AUTHORISATION.md` (checkpoint)
+- [x] 52-15-PLAN.md — atto 1 in produzione: M1 → deploy → M2, sotto `52-AUTHORISATION.md` (checkpoint) — in produzione dal 2026-09-23 18:28:33Z; M1 `20260923182638`, M2 `20260923182908`; `verify:capabilities` verde; autorizzazione ESAURITA
 
 **Wave 10** *(blocked on Wave 9 completion)*
 
