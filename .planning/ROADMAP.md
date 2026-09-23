@@ -81,7 +81,7 @@ per assecondare una decisione presa dopo che e' stata citata.
 - [x] **50** — Via le iscrizioni (`REG`) — chiusa il 2026-09-21: 12 piani, VERIFICATION passed, produzione aggiornata
 - [x] **51** — Via le superfici da socio, e la porta (`MEM`) — chiusa il 2026-09-23: VERIFICATION passed, spinta e dispiegata
 - [x] **52** — La barra di navigazione e i ritocchi (`NAV`) — chiusa il 2026-09-23: 19 piani, VERIFICATION passed (approvata dal proprietario), in produzione dal 18:28:33Z; debito dichiarato → fase 52.1
-- [ ] **52.1** — Chiusura del debito della fase 52 (`DBT`) — **inserita il 2026-09-23**: il debito di `52-VERIFICATION.md` e gli avvisi di `52-REVIEW.md`, dieci requisiti DBT-01..10
+- [ ] **52.1** — Chiusura del debito della fase 52 (`DBT`) — **inserita il 2026-09-23**: il debito di `52-VERIFICATION.md` e gli avvisi di `52-REVIEW.md`, undici requisiti DBT-01..11
 - [ ] **53** — TASK (`TASK`)
 - [ ] **54** — Location, alla pari con il tracker (`LOC`)
 - [ ] **55** — Visual, una pagina per format (`VIS`)
@@ -602,6 +602,7 @@ saltati sono percorsi; gli avvisi della review sono chiusi.
 | **DBT-07** | **Le 8 IN della review sono chiuse o dichiarate**, insieme alla ricognizione lessicale che la 52 aveva rimandato alla 57: commenti «public bucket» (`finalize.ts`, `finalize/route.ts`, `may-upload.ts`, `MediaReviewGrid.tsx`), `getVisibleNavItems` (`server.ts`, `middleware.ts`), «of the seventeen keys» in `verify-capabilities.mjs`, «M2 drops the column». |
 | **DBT-08** | **La cache ha una procedura.** Per la prossima volta che un bucket pubblico **con contenuto** viene chiuso: come si invalida il bordo della CDN (o, se non si puo', quanto si aspetta e cosa si dice), provato sul laboratorio con un oggetto in cache, con i tempi. Sta in `media-and-storage.md`, gate *cache e contenuto rimosso*. |
 | **DBT-09** | **Le copie locali hanno una fine.** Le sei `.env.attendances-snapshot.*` della fase 51 ancora sul disco: decisione del proprietario (cancellare per nome o tenere fino a una data scritta), registrata come per le istantanee della 52 (`legal-compliance.md`). |
+| **DBT-11** | **Chi carica da iPhone non trova un muro (Critical, media).** Una foto **HEIC** e un video **`.mov`** (QuickTime, spesso HEVC) si **accettano e si spogliano** — mai rifiutati — con lo stesso ordine «spoglia, poi scrivi» delle foto JPEG; l'uscita e' un formato che ogni browser legge (JPEG per le foto), la riga registra il tipo dell'oggetto scritto, `verify:media-strip` copre i nuovi tipi, e la prova per mutazione usa un `.heic` e un `.mov` veri con posizione attiva. *(Decisione del proprietario, 2026-09-23: «se un utente con iphone carica un heic, non deve venire rifiutato».)* |
 | **DBT-10** | **Cio' che non si chiude si dichiara, una volta sola:** NAV-07 decide chi vede una foto, non cosa c'e' dentro (criterio di moderazione, non confine tecnico); D-52-28 `resta` (decisione del proprietario); l'UDID di simulatore nel testo di `52-19-PLAN.md` (dichiarato, non riscritto). La VERIFICATION della 52.1 le cita come chiuse per dichiarazione, con il rimando. |
 
 **Depends on:** Phase 52
