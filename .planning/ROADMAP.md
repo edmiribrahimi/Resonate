@@ -521,7 +521,7 @@ Plans:
 > che non stia gia' vedendo. E il calcolo va fatto **prima** del filtro per
 > format, o selezionandone uno spariscono tutti gli altri.
 
-**Plans:** 13/17 plans executed
+**Plans:** 14/17 plans executed
 
 Plans:
 **Wave 1**
@@ -554,7 +554,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 52-14-PLAN.md — la corsa del proprietario sul laboratorio, su iPhone, e la decisione sul login (checkpoint)
+- [x] 52-14-PLAN.md — la corsa del proprietario sul laboratorio, su iPhone, e la decisione sul login (checkpoint) — tre difetti aperti (zoom di Safari sui campi, Critical per la porta): 52-15 non parte prima di un piano di chiusura
 
 **Wave 7** *(blocked on Wave 6 completion)*
 

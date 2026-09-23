@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: Phase 51 context gathered
-last_updated: "2026-09-23T13:05:16.680Z"
+stopped_at: "Completato 52-14-PLAN.md — corsa sul laboratorio; tre difetti aperti, 52-15 bloccato fino al piano di chiusura"
+last_updated: "2026-09-23T17:45:00.000Z"
 last_activity: 2026-09-23
 progress:
   total_phases: 12
   completed_phases: 5
   total_plans: 73
-  completed_plans: 60
+  completed_plans: 61
   percent: 42
 ---
 
@@ -35,8 +35,12 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 52 (la-barra-di-navigazione-e-i-ritocchi) — EXECUTING
-Plan: 1 of 17
-Next: `/gsd-execute-phase 52` — 17 piani, 9 onde. Onde 1-5 autonome (censimento media, procedure, NAV-05/06, porta a cinque linguette, M1 sul lab, barra e foglio, cancello e firma, script di rimozione e ri-spogliatura, colonna e striscia, M2 sul lab). Onde 6-9 con checkpoint del proprietario: corsa su iPhone (52-14), atto 1 in produzione M1 → deploy → M2 (52-15), atto 2 rimozione per chiave + ri-spogliatura (52-16), persona e VERIFICATION (52-17). **NAV-07 aggiunto il 2026-09-23** (la gallery chiude anche i dati): la fase e' Critical per intero.
+Plan: 14 of 17 completati — **52-15 BLOCCATO** fino a un piano di chiusura
+Next: `/gsd:plan-phase 52 --gaps` — il piano di chiusura dei tre difetti trovati dalla corsa di 52-14, con la ri-misura sul simulatore; **poi** 52-15 (atto in produzione).
+
+**La corsa sul laboratorio (52-14), 2026-09-23 16:13Z → 17:15Z.** Quattro fonti, in ordine di autorita': il proprietario a mano sul suo iPhone 17 Pro (iOS 26.7), lo stesso telefono pilotato, un iPhone simulato (iOS 27.0), Chrome headless. P-52-A..E e G passano (passi non percorsi dichiarati: P-52-D 2 e 5, P-52-E 6, il video di P-52-G, la sonda 7; tablet e `Escape` solo in Chrome). P-52-F resta **aperta**. **Tre difetti — la fase non va in produzione con questi aperti:** (1) **Critical per la porta** — Safari zooma a 1,1436 al tocco su ogni campo da 14 px (`src/components/ui/Input.tsx:103`) e lo zoom resta dopo il blur: alla porta si perdono «QR Scan» e Alerts; correzione provata 16 px sui campi a larghezza di telefono, non `maximum-scale` (D-41-08); (2) la pagina Account di uno `staff` dice «Attendee» (`account/page.tsx:254-259`); (3) `validation_failed` dell'Auth mostrato come «The write failed» in `CreateAccountForm.tsx`. Login (D-52-28): **`resta`**, registrato a nome del proprietario, `allinea` riaperta se la ri-misura dopo il fix mostra «Sign In» coperto. Esiti in `52-ESITI.md`.
+
+Piano originale: `/gsd-execute-phase 52` — 17 piani, 9 onde. Onde 1-5 autonome (censimento media, procedure, NAV-05/06, porta a cinque linguette, M1 sul lab, barra e foglio, cancello e firma, script di rimozione e ri-spogliatura, colonna e striscia, M2 sul lab). Onde 6-9 con checkpoint del proprietario: corsa su iPhone (52-14), atto 1 in produzione M1 → deploy → M2 (52-15), atto 2 rimozione per chiave + ri-spogliatura (52-16), persona e VERIFICATION (52-17). **NAV-07 aggiunto il 2026-09-23** (la gallery chiude anche i dati): la fase e' Critical per intero.
 
 **Chiusura del debito, 2026-09-23.** Sei commit su `main` (`514c497..282d809`),
 **non ancora spinti**: WR-03, WR-04 (decisione del proprietario: avviso guest
@@ -401,6 +405,8 @@ Progress: [██████████] 100%
 
 Fixed by the project owner before planning — not re-opened at plan time:
 
+- [Fase 52, 2026-09-23]: **D-52-28 — il login resta com'e' (`resta`).** Risposta letterale del proprietario: *«se sono sulla pagina di login, e clicco sul campo mail o password, non deve avvenire lo zoom (come accade ora). non so quale delle due scelte sia»*. Scelta registrata a suo nome da chi coordinava la corsa: il suo requisito e' il difetto 1 (zoom), che nessuna delle due opzioni tocca. `FOCUS_ROOT` e il digest di `verify:conversion` restano; `allinea` si riapre se la ri-misura dopo il fix mostra «Sign In» coperto con il fuoco sulla password.
+- [Fase 52, 2026-09-23]: la correzione dello zoom di Safari e' **16 px sui campi a larghezza di telefono**, mai `maximum-scale` o `user-scalable=no` (D-41-08 vieta di bloccare lo zoom).
 - Live freshness uses a **push channel**, not polling — mandatory full reload on every reconnection, infrequent safety reload underneath (Phase 38)
 - Undoing a check-in requires a **supervising capability** — door-only assignment cannot undo (Phase 35)
 - Venue reveal stays scheduled **plus** a manual path for master and organizer, confirmed and recorded (Phase 37)
@@ -516,6 +522,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 ## Blockers
 
 ()
+
+- **[Fase 52, 2026-09-23] 52-15 (atto in produzione) NON parte prima di un piano di chiusura.** La corsa di 52-14 ha trovato tre difetti: lo zoom di Safari sui campi da 14 px (Critical per la porta), l'etichetta «Attendee» sulla pagina Account di uno staff, `validation_failed` mostrato come «The write failed». Il piano di chiusura (`/gsd:plan-phase 52 --gaps`) corregge almeno il primo e lo ri-misura sul simulatore, insieme al login di D-52-28. Evidenza in `52-ESITI.md`, sezione *Difetti trovati dalla corsa*.
 
 - **[Fase 58, 2026-08-20 — RISOLTO] Lo specchio non aveva una sorgente registrata.** Il proprietario ha pubblicato i calendari e registrato i tre indirizzi **fuori dall'albero del repo**, in un file d'ambiente caricato dal profilo della shell. Conseguenza operativa da non riscoprire ogni volta: il gate 2 legge quella variabile **solo** da `process.env` e mai da `.env.local`, per costruzione — chi lancia la corsa a mano deve caricare l'ambiente **prima**, e una shell che non l'ha caricato riceve `missing_feed_source` con uscita `2`, che e' il comportamento corretto. Ne' l'indirizzo ne' il suo host compaiono nel repo, in un referto o in un log.
 
