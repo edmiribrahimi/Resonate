@@ -2,8 +2,8 @@
 phase: 52-la-barra-di-navigazione-e-i-ritocchi
 milestone: v1.6
 verified: 2026-09-23
-status: human_needed
-approval: "pending — checkpoint del piano 52-17, Task 3: il proprietario approva la verifica e decide delle istantanee locali"
+status: passed
+approval: "approvata — il proprietario, 2026-09-23T19:13:29Z (checkpoint del piano 52-17, Task 3; istantanee locali cancellate alla stessa ora)"
 requirements_total: 7
 requirements_closed: 7
 requirements_partial: 0
@@ -18,10 +18,12 @@ evidence: 52-ESITI.md (censimento, corsa sul laboratorio, chiusura delle lacune,
 
 # Fase 52 — Verifica
 
-> **Cosa significa `human_needed` qui.** I **sette requisiti sono chiusi** e
-> nessuna delle trentuno decisioni e' contraddetta. Lo stato resta
-> `human_needed` per una ragione sola: **l'approvazione del proprietario** al
-> checkpoint del piano 52-17, con la decisione sulle istantanee locali. I passi
+> **Cosa significa `passed` qui.** I **sette requisiti sono chiusi** e
+> nessuna delle trentuno decisioni e' contraddetta. Lo stato e' stato
+> `human_needed` fino all'**approvazione del proprietario** al checkpoint del
+> piano 52-17, arrivata il 2026-09-23 con la risposta letterale `approvata`
+> (registrata alle 19:13:29Z), insieme alla cancellazione delle istantanee
+> locali. I passi
 > di procedura non percorsi (cinque) e il debito sono **dichiarati** sotto, non
 > arrotondati: nessuno di loro contraddice un requisito, ma nessuno di loro e'
 > una prova.
@@ -346,9 +348,33 @@ Nella radice del repo stanno **15 file** d'istantanea, **tutti del laboratorio**
 (piani 52-09 e 52-10), ignorati da git: tre `.env.media-purge-snapshot.*.json`
 (soli metadati) e sei directory `.env.restrip-snapshot.*` (ciascuna con
 `0001.bin` e `index.json` — la foto sintetica del banco, colore pieno, GPS in
-mare aperto, nessuna persona). **Non sono ancora state cancellate**: la
-cancellazione aspetta la risposta del proprietario al checkpoint del piano
-52-17, e la sua data e ora si scriveranno qui.
+mare aperto, nessuna persona).
+
+**Cancellate il 2026-09-23 alle 19:13:29Z**, per decisione del proprietario al
+checkpoint del piano 52-17 — risposta letterale: **`approvata`**.
+
+Prima della cancellazione: **9 voci, 15 file**, ciascuna `git check-ignore`
+= ignorata, e **nessuna** istantanea mai tracciata
+(`git ls-files | grep -cE '^\.env\.(media-purge|restrip)-snapshot'` = 0; l'unico
+`.env.*` tracciato e' `.env.local.example`, il modello della fase 17, che non e'
+un'istantanea). Cancellate **per nome**, un `rm` (o `rm -r`) esplicito per voce,
+nessun glob:
+
+- `.env.media-purge-snapshot.2026-09-23T13-42-17-219Z.json`
+- `.env.media-purge-snapshot.2026-09-23T13-42-33-895Z.json`
+- `.env.media-purge-snapshot.2026-09-23T13-42-49-908Z.json`
+- `.env.restrip-snapshot.2026-09-23T13-43-56-370Z/`
+- `.env.restrip-snapshot.2026-09-23T13-44-26-994Z/`
+- `.env.restrip-snapshot.2026-09-23T13-46-41-494Z/`
+- `.env.restrip-snapshot.2026-09-23T13-46-48-699Z/`
+- `.env.restrip-snapshot.2026-09-23T13-47-44-018Z/`
+- `.env.restrip-snapshot.2026-09-23T13-47-55-626Z/`
+
+**Rilettura dopo:** `ls -d .env.media-purge-snapshot.* .env.restrip-snapshot.*`
+→ *no matches found*; `ls -d` sui singoli nomi → *No such file or directory*.
+`.env.local`, `.env.lab.local` e `.env.lab.seed.json` **intatti** (stesse
+dimensioni e date di prima). Le sei `.env.attendances-snapshot.*` della fase 51
+**non sono state toccate**: non erano nel perimetro di questa risposta.
 
 ## Stato, per requisito
 
@@ -362,5 +388,5 @@ cancellazione aspetta la risposta del proprietario al checkpoint del piano
 | **NAV-06** | **CHIUSO** | P-52-D passi 2 e 5 non percorsi |
 | **NAV-07** | **CHIUSO in produzione** | `verify:refusal` RIFIUTATO su 0 media; video e sonda 7 non percorsi; residuo di cache zero per costruzione, misurato oltre il `max-age` solo sul laboratorio; `deleteMedia` senza chiamanti |
 
-**Stato di fase: `human_needed`** — per l'approvazione del proprietario e la
-decisione sulle istantanee, non per un requisito.
+**Stato di fase: `passed`** — approvata dal proprietario il 2026-09-23
+(`approvata`, 19:13:29Z), istantanee locali cancellate alla stessa ora.
