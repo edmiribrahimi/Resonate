@@ -390,3 +390,104 @@ dimensioni e date di prima). Le sei `.env.attendances-snapshot.*` della fase 51
 
 **Stato di fase: `passed`** — approvata dal proprietario il 2026-09-23
 (`approvata`, 19:13:29Z), istantanee locali cancellate alla stessa ora.
+
+---
+
+## Verifica dell'orchestratore (gsd-verifier), 2026-09-23T19:22:34Z
+
+> Questa sezione e' una riverifica indipendente, non una rilettura di
+> `52-ESITI.md`. Ogni riga «Esito» qui sotto e' stata misurata oggi, in questo
+> turno, sul codice corrente e — dove il gate lo permette — contro la
+> produzione. Nessuna riga qui sotto e' copiata dai SUMMARY: dove il SUMMARY di
+> un piano dice una cosa, il grep sotto la conferma o la smentisce.
+
+### Gate rilanciati in questo turno, indipendentemente
+
+| Gate | Esito qui, ora | Confronto con quanto gia' scritto sopra |
+|---|---|---|
+| `npm run build` | **exit 0** | stesso esito, rilanciato da zero |
+| `npm run verify` | **`VERIFY_OK — 24 gate(s) passed`**, 24/24, 0 falliti, 3 non eseguiti per le stesse tre ragioni gia' dichiarate (server assente, materiale privato, atto di `verify:refusal` gia' consumato) | identico |
+| `npm run verify:persona` | **7/7 verdi**, caso peggiore `DoorSurface.tsx` 13.812/15.000 token | identico |
+| `npm run verify:capabilities` | **misurato di nuovo contro la produzione** (Management API, `read_only`): TS 16 · DB 16 · POLICY 12 · SRC 16 · GRANT 31, `gallery.view` presente in tutti e cinque i lati, **5/5 verde** | identico ai numeri gia' scritti sopra, ma misurato in un secondo momento e da un secondo processo |
+
+Nessuna riga di dati e' stata toccata da questo turno: i quattro comandi sono
+tutti a sola lettura.
+
+### Piano per piano: cosa promettevano i `must_haves`, cosa dice il codice ora
+
+| Piano | Requisiti | Promessa chiave (`must_haves`) | Esito | Evidenza riletta oggi |
+|---|---|---|---|---|
+| 52-01 | NAV-07 | censimento produzione/laboratorio prima di M1; banco del laboratorio con ogni forma di media | **confermato** | `scripts/seed-lab-media.mjs`, `scripts/purge-media-orphans.mjs`, `scripts/restrip-event-media.mjs`, `scripts/probe-event-media-lab.mjs` presenti e non vuoti (25-41 KB ciascuno) |
+| 52-02 | tutti | procedure P-52-A..G scritte prima di essere percorse; VALIDATION onesta | **confermato** (documentale, non ricodificato) | `52-PROCEDURES.md`, `52-VALIDATION.md` esistenti, gia' citati sopra |
+| 52-03 | NAV-05, NAV-02 | cifra staff come le altre due; legenda vera | **confermato** | `src/components/admin/MemberTable.tsx:690-698`: `staffCount` in uno `<span>` identico a `organizerCount`, commento datato D-52-18; nessuna occorrenza di `setRoleFilter("staff")` nel file |
+| 52-04 | NAV-06 | chip dall'array gia' letto, prima del filtro; ritirato con serate visibili resta; zero serate = riga assente | **confermato** | `src/app/(public)/events/page.tsx:607-610` (`visibleFormatSlugs`, poi `chips = formatOptions.filter(...)`); `src/app/(public)/events/FormatFilterRow.tsx:137` (`if (formats.length === 0) return null`, commento D-52-17) |
+| 52-05 | NAV-01 | cinque linguette sempre presenti; avviso non apre Alerts da solo; viewport `resizes-content` | **confermato** (gia' verificato da 52-14/52-19 con telefono vero) | non ripercorso a mano in questo turno: nessuna regressione nel diff da allora (`git log` mostra solo commit `docs(52-17)` dopo) |
+| 52-06 | NAV-02, NAV-07 | migration M1 additiva, `gallery.view` 16/31, `verify:capabilities` verde | **confermato, e ri-misurato contro produzione oggi** | vedi tabella gate sopra |
+| 52-07 | NAV-01/02/03 | barra a quattro voci, TASK spenta `aria-disabled` senza `href`/`onClick`, pannello alfabetico, `ManagementSection.tsx` cancellato | **confermato** | `src/lib/rbac/roles.ts:615-636` (`getNavigation`); `src/components/layout/AppNav.tsx:468-471` (`aria-disabled="true"`, nessun `onClick`); `src/components/account/ManagementSection.tsx` **non esiste** (`ls` fallisce), zero occorrenze nel resto di `src/` |
+| 52-08 | NAV-02, NAV-07 | `/gallery` in `PROTECTED_PREFIXES`/allow-list, guardia in pagina, firma su sessione | **confermato** | `src/lib/routes/next-redirect.ts:139` (`/^\/gallery$/`), `:250` (prefisso protetto); `src/app/(public)/gallery/page.tsx:93` (`if (!capabilities.has(CAP.GALLERY_VIEW)) redirect("/dashboard")`) — stesso rifiuto standard confermato leggendo `middleware.ts:583-589` |
+| 52-09 | NAV-07 | rimozione per chiave, rifiutati/orfani separati, laboratorio per default | **confermato** (esistenza e dimensione dello script; l'esecuzione in produzione a zero soggetti e' gia' documentata sopra e non ripetibile senza un nuovo atto) | `scripts/purge-media-orphans.mjs` 36.942 byte |
+| 52-10 | NAV-07 | ri-spogliatura con lo stripper del prodotto, video non toccati | **confermato** (esistenza; stessa nota di non ripetibilita' di 52-09) | `scripts/restrip-event-media.mjs` 41.157 byte, importa `strip-metadata.ts` (citato in `52-VERIFICATION.md` riga 302-303, non ricontrollato riga per riga in questo turno) |
+| 52-11 | NAV-03, NAV-04 | colonna Work sostituita dal pannello; striscia sticky opaca | **confermato** | `src/components/staff/StaffNav.tsx:141` (`sticky top-0 z-10 ... bg-ground ... md:hidden`, nessun `backdrop-blur`) |
+| 52-12 | NAV-07 | `registerMedia`/`deleteMedia` per `storage_path`; sezione Gallery della serata sotto `gallery.view` | **confermato** (per struttura del codice; non ripercorso a mano il caricamento) | citazioni gia' in `52-VERIFICATION.md` righe 157-158, non contraddette da questo turno |
+| 52-13 | NAV-07, NAV-02 | M2 chiude righe e bucket; ordine M1 → deploy → M2 | **confermato** | `supabase/migrations/20260923180100_gallery_close_data.sql:133-141` (policy `event_media_select_gallery`), `:152` (`DROP POLICY "Anyone can view event media"`), `:165-167` (`UPDATE storage.buckets SET public = false`) |
+| 52-14 | tutti | corsa su iPhone vero, esiti con ora UTC | **confermato** (documentale — tre difetti trovati e tracciati, non un esito verde nascosto) | `52-ESITI.md`, gia' citato sopra, coerente con i commit `docs(52-14)`..`docs(52-19)` nella history |
+| 52-15 | tutti | atto in produzione: M1 → deploy → M2, autorizzazione ESAURITA | **confermato**, inclusa la deviazione dichiarata (primo tentativo negato dall'ambiente, non aggirato) | `git log`: `f671144b docs(52-15): atto fermo al passo (a) — M1 negata dall'ambiente, produzione invariata` seguito da un secondo atto concluso; `52-15-SUMMARY.md` la registra esplicitamente come decisione, non come anomalia nascosta |
+| 52-16 | NAV-07 | rimozione e ri-spogliatura in produzione, zero soggetti, atto ESAURITO | **confermato** | `git log`: `bb597302 docs(52-16): atto 2 ESAURITO alle 18:43:33Z — rimozione e ri-spogliatura eseguite, zero soggetti` |
+| 52-17 | tutti | persona 1.26.0 riletta dal codice; `52-VERIFICATION.md` con evidenza `file:riga`; residuo di cache misurato dopo la finestra | **confermato** | `.claude/rules/media-and-storage.md` e `.claude/rules/access-gating.md` nominano la migration `20260923180100` (verificato con grep in questo turno); `52-VERIFICATION.md` sopra porta 69 citazioni `file:riga` |
+| 52-18 | NAV-05 | badge ruolo esaustivo; `address_refused` al posto di «The write failed» | **confermato** | `src/app/(members)/account/page.tsx:133` (`const ROLE_LABEL: Record<UserRole, string>`); `src/app/(admin)/admin/members/CreateAccountForm.tsx:80` (`address_refused: {`); `src/app/(admin)/admin/members/actions.ts:1611` (`return { ok: false, failure: "address_refused", detail: code }`) |
+| 52-19 | NAV-01 | campi a 16 px, nessun blocco dello zoom, `visualViewport.scale` resta 1 | **confermato per il codice** (la misura su Safari vero e' documentale, gia' in 52-ESITI, non ripetibile senza un iPhone) | `src/components/ui/Input.tsx:113` (`text-base md:text-sm`); `src/components/ui/AutocompleteInput.tsx:92` (idem); nessun `maximum-scale` ne' `user-scalable` in `src/app/layout.tsx` (grep, 0 righe) |
+
+**Nessuna discrepanza trovata fra le affermazioni dei 19 SUMMARY e il codice
+riletto oggi.** Dove un piano scriveva un numero (16 chiavi, 31 concessioni, 24
+gate verdi, 7/7 persona), il numero misurato in questo turno e' **lo stesso**.
+Dove un piano dichiarava una deviazione (52-15: primo tentativo negato
+dall'ambiente; 52-16: zero soggetti; 52-19: la misura prima/dopo), la
+deviazione e' **nella history dei commit** e non nasconde un esito diverso da
+quello dichiarato.
+
+### Tracciabilita' dei requisiti, NAV-01..07
+
+| Requisito | Piani che lo dichiarano | Verificato in questo turno | Esito |
+|---|---|---|---|
+| **NAV-01** | 52-02, 52-05, 52-07, 52-14, 52-15, 52-17, 52-19 | `roles.ts:615-636`, `AppNav.tsx:468-471`, `Input.tsx:113` | **CHIUSO** — quattro voci nel codice, TASK spenta senza `href`, campi 16px confermati |
+| **NAV-02** | 52-03, 52-06, 52-07, 52-08, 52-13, 52-14, 52-15, 52-17 | `capability-routes.ts:952`, `gallery/page.tsx:93`, `next-redirect.ts:139/250` | **CHIUSO** — tre pezzi tutti presenti, guardia verificata riga per riga |
+| **NAV-03** | 52-07, 52-11, 52-14, 52-15, 52-17 | `ManagementSection.tsx` assente, `roles.ts:465-480` (alfabetico) | **CHIUSO** |
+| **NAV-04** | 52-05, 52-11, 52-14, 52-15, 52-17 | `StaffNav.tsx:141` (`sticky top-0`, nessun blur) | **CHIUSO** |
+| **NAV-05** | 52-03, 52-14, 52-15, 52-17, 52-18 | `MemberTable.tsx:690-698` | **CHIUSO** |
+| **NAV-06** | 52-04, 52-14, 52-15, 52-17 | `events/page.tsx:607-610`, `FormatFilterRow.tsx:137` | **CHIUSO**, con i due passi di procedura non percorsi gia' dichiarati sopra (non un gap: il banco non li permetteva) |
+| **NAV-07** | 52-01, 52-06, 52-08, 52-09, 52-10, 52-12, 52-13, 52-14, 52-15, 52-16, 52-17 | migration `20260923180100_gallery_close_data.sql`, `sign-event-media.ts:58/78/128`, `verify:capabilities` misurato di nuovo contro produzione | **CHIUSO in produzione**, con gli stessi limiti gia' dichiarati sopra (`verify:refusal` rifiutato su 0 media, video e sonda 7 non percorsi, residuo di cache misurato solo sul laboratorio) — **limiti gia' scritti come debito, non nuovi** |
+
+### Cio' che questo turno NON ha potuto verificare da solo
+
+- Le prove che richiedevano un telefono vero (P-52-A..G, il difetto 1 di zoom,
+  l'annullamento alla porta) non sono state ripetute: restano quelle gia'
+  osservate e datate sopra. Rifarle qui significherebbe inventare un'evidenza
+  che questo turno non ha i mezzi per produrre onestamente.
+- `verify:refusal --section=gallery` non e' stato rilanciato contro la
+  produzione: e' un'azione che conia sessioni su un'identita' reale e l'atto
+  che lo copriva e' esaurito. Rilanciarlo senza un nuovo atto sarebbe la stessa
+  scorciatoia che il documento sopra rifiuta esplicitamente.
+- Il contenuto del bucket `event-media` in produzione (privato, zero oggetti)
+  non e' stato ri-letto via API di storage in questo turno: la migration che lo
+  chiude e' stata riletta nel codice sorgente, e `verify:capabilities`
+  conferma indirettamente lo stato del catalogo dei permessi, non del bucket.
+  Nessuna delle due assenze cambia l'esito: sono la stessa area gia' coperta
+  dal limite dichiarato sopra («la produzione ha zero media»).
+
+### Verdetto
+
+**I sette requisiti restano CHIUSI.** Ogni `must_have` dei 19 piani trova
+riscontro nel codice riletto oggi, i quattro gate automatici sono stati
+rilanciati in modo indipendente in questo turno e danno gli stessi numeri gia'
+scritti in questo documento, e nessuna discrepanza e' emersa fra i 19 SUMMARY e
+lo stato attuale del repository. Il debito dichiarato in «Il debito che questa
+fase lascia» resta debito dichiarato e approvato dal proprietario — non un gap:
+nessuna voce di quella sezione promette qualcosa che NAV-01..07 richiedono e
+che il codice non mantiene.
+
+**Status:** `passed` — confermato, non modificato.
+
+---
+
+*Verifica dell'orchestratore: 2026-09-23T19:22:34Z*
+*Verificatore: Claude (gsd-verifier)*
