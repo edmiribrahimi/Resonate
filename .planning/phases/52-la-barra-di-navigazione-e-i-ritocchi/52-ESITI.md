@@ -669,3 +669,78 @@ solo quando il service worker si aggiorna.
   deve ingrandirsi, e alla porta «QR Scan» e Alerts devono restare nello schermo.
   Se la porta era gia' aperta sul telefono, ricaricarla una volta: il service
   worker prende il foglio nuovo al suo aggiornamento.
+
+### Sull'iPhone del proprietario — 2026-09-23, 18:27Z
+
+Il telefono vero del proprietario, **iPhone 17 Pro, iOS 26.7**, dopo un riavvio,
+pilotato con Appium su `lab.resonatemotion.com/login` (laboratorio al commit
+`93cfbcc4`), con **tocchi nativi**, non eventi sintetici:
+
+| Momento | `visualViewport.scale` | Altezza visibile | Nota |
+|---|---|---|---|
+| tocco sul campo email | **1** | 457 px | tastiera aperta |
+| tocco sul campo password | **1** | 377 px | tastiera aperta |
+| dopo il blur | **1** | — | `scrollWidth` **402** = `innerWidth` 402: nessuno scorrimento orizzontale |
+
+**Il difetto 1 e' chiuso anche sul dispositivo reale**: la condizione rimasta
+aperta sopra — confermato sul simulatore iOS 27.0, da confermare sul suo iPhone —
+**e' soddisfatta**. Il requisito del proprietario, *«se sono sulla pagina di
+login, e clicco sul campo mail o password, non deve avvenire lo zoom»*, vale sul
+suo telefono.
+
+---
+
+## L'atto in produzione (piano 52-15) — 2026-09-23, fra le 18:26Z e le 18:29Z
+
+Sotto l'autorizzazione `52-AUTHORISATION.md` — concessa con **«tutto»**, ferma
+al primo tentativo per un diniego dell'ambiente, riapprovata alle 18:25Z con
+**«approvo m1, push, m2 e push finale. vai»** — e ora **ESAURITA**. Il registro
+passo per passo e' nel suo §3; qui l'esito.
+
+### La differenza dall'atteso, per prima
+
+**`verify:refusal --section=gallery` e' RIFIUTATO, non verde** — ed e' l'esito
+scritto nell'autorizzazione **prima** della domanda: la produzione ha **0 media**,
+quindi la lettura autorizzata e quella negata danno lo stesso zero e il
+controllo positivo non ha nulla da misurare. Il criterio «verde» del piano non
+e' raggiungibile senza seminare media in produzione, e seminare era fuori
+perimetro. La prova che una riga approvata e' illeggibile senza `gallery.view`
+resta quella del laboratorio (52-13: attendee 0, anon 0, master 4), piu' la
+rilettura del catalogo di produzione qui sotto. Il gate e' stato lanciato **una
+volta sola** (conia e revoca sessioni) e non e' stato rilanciato.
+
+### L'ordine, con le ore
+
+| Passo | UTC | Cosa |
+|---|---|---|
+| lettura di partenza | prima delle 18:26Z | `20260923110143`, 15 chiavi, 28 concessioni, 0 righe, 0 oggetti, `event-media` pubblico |
+| **M1** | 18:26:37.820Z → 18:26:38.564Z | HTTP 200, versione coniata **`20260923182638`** |
+| rilettura | 18:27:09Z | 16 chiavi, 31 concessioni, `gallery.view` a master, organizer, staff; `storage_path` e `url` nullable; `CHECK` e indice presenti |
+| **push** | 18:27:10Z | `65e9cc57..f671144b`, 94 commit |
+| **deploy** | creato 18:27:15Z, **`READY` 18:28:33Z** | `dpl_Dy9VYqPygXJiojRYrAf23jKvdDy1`, sha `f671144b` |
+| richieste anonime | 18:28:47Z | `/events` 200 · `/gallery` 307 → `/login?next=%2Fgallery` · `/door` 307 → `/login?next=%2Fdoor` · `/login` 200 |
+| guardia prima di M2 | 18:29:08Z | 0 righe, 0 oggetti: residuo CDN zero per costruzione |
+| **M2** | 18:29:08.085Z → 18:29:08.464Z | HTTP 200, versione coniata **`20260923182908`** |
+| rilettura | subito dopo | `storage_path` NOT NULL; `event-media` **privato**; «Anyone can view event media» tolta; `event_media_select_gallery` al posto di `_select_approved`; `event_media_objects_select_by_row` presente |
+| `verify:capabilities` | 18:29:08Z | exit 0, `TS 16 · DB 16 · POLICY 12 · SRC 16 · GRANT 31`, 5/5 — era rosso alle 18:16:10Z |
+| `verify:refusal --section=gallery` | 18:29:09Z | RIFIUTATO, su 0 media (sopra) |
+| sonda anonima (e) | — | non eseguita: senza soggetto |
+
+**Mai M2 prima del `READY`, mai il codice prima di M1**: lo scarto fra M1 e il
+push e' di 32 secondi, fra il `READY` e M2 di 35.
+
+### Riletto dopo, in sola lettura — 18:30:54Z → 18:30:56Z
+
+`verify:capabilities` **5/5 verde**, exit 0; catalogo: ultime versioni
+`20260923182908` · `20260923182638` · `20260923110143`; concessioni **master 16 ·
+organizer 14 · staff 1 — 31**; 0 righe di media, 0 oggetti; bucket
+`event-images` pubblico, `event-media` e `event-media-quarantine` privati.
+
+### Cosa resta, e di chi e'
+
+- **52-16** — la rimozione per chiave e la ri-spogliatura, con la loro domanda:
+  oggi **senza soggetto** (0 media in produzione).
+- **52-17** — la persona e il `52-VERIFICATION.md`.
+- La porta sul telefono dello staff prende il foglio nuovo al primo
+  aggiornamento del service worker: chi l'aveva aperta prima delle 18:28:33Z la
+  ricarica una volta.
