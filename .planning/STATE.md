@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "Completato 52-18-PLAN.md — difetti 2 e 3 chiusi e provati sul laboratorio; resta il difetto 1 (52-19), poi 52-15"
-last_updated: "2026-09-23T17:55:00.000Z"
+stopped_at: "Completato 52-19-PLAN.md — difetto 1 chiuso: campi a 16 px, Safari non zooma piu' (scala 1 misurata), laboratorio READY; resta 52-15"
+last_updated: "2026-09-23T18:10:07.281Z"
 last_activity: 2026-09-23
 progress:
   total_phases: 12
   completed_phases: 5
   total_plans: 73
-  completed_plans: 62
+  completed_plans: 63
   percent: 42
 ---
 
@@ -35,8 +35,10 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 52 (la-barra-di-navigazione-e-i-ritocchi) — EXECUTING
-Plan: 15 of 19 completati (52-01..14 e 52-18) — **52-15 BLOCCATO** fino alla chiusura di 52-19
-Next: 52-19 (difetto 1: campi a 16 px contro lo zoom di Safari, ri-misura e deploy sul lab); **poi** 52-15 (atto in produzione).
+Plan: 16 of 19 completati (52-01..14, 52-18, 52-19) — **52-15 SBLOCCATO**
+Next: 52-15 (atto in produzione), meglio dopo la conferma del proprietario sul suo iPhone, su `lab.resonatemotion.com` (login e ricerca della porta non devono ingrandire la pagina).
+
+**52-19 chiuso il 2026-09-23 (laboratorio `READY` alle 18:08:54Z, sha `93cfbcc`).** Difetto 1: `CONTROL` di `Input.tsx`/`AutocompleteInput.tsx` a `text-base md:text-sm` e rete CSS fuori da `@layer` sotto `pointer: coarse` (`font-size: 1rem`) per i campi grezzi — la ricerca della porta. Sul simulatore iOS 27.0, stessa sonda: prima 1,1436 al tocco e dopo il blur su login, porta e codice sconto; dopo **scala 1** ovunque, «QR Scan» e Alerts dentro lo schermo. D-41-08 intatto (nessun blocco dello zoom); deroga datata in 41-UI-SPEC §7.4. P-52-F passo 5 a scala 1: con il fuoco sulla password «Sign In» e' sopra la tastiera, **D-52-28 `resta` confermato**. `origin/main` invariato (`65e9cc5`). Commit `493932d4`, `9b425f85`, `93cfbcc4`, `39dc0e55`, `c9f05970`.
 
 **52-18 chiuso il 2026-09-23 (17:49Z sul laboratorio).** Difetto 2: `ROLE_LABEL: Record<UserRole, string>` in `account/page.tsx` — lo staff legge «Staff» e «Staff since …», zero «Attendee»; master «Admin», attendee «Attendee». Difetto 3: etichetta `address_refused` dai codici `validation_failed` / `email_address_invalid` — il punto finale produce «That address was refused as not valid», log `[members.address_refused] … code=validation_failed status=400` senza indirizzo, account 11 prima e 11 dopo. Commit `9aa3c4f1`, `b227f054`.
 
@@ -622,8 +624,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-09-21T20:54:20.539Z
-**Stopped at:** Phase 51 context gathered
+**Last session:** 2026-09-23T18:10:07.277Z
+**Stopped at:** Completato 52-19-PLAN.md — resta 52-15 (atto in produzione)
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 

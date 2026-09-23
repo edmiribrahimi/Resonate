@@ -521,7 +521,7 @@ Plans:
 > che non stia gia' vedendo. E il calcolo va fatto **prima** del filtro per
 > format, o selezionandone uno spariscono tutti gli altri.
 
-**Plans:** 15/19 plans executed
+**Plans:** 16/19 plans executed
 
 Plans:
 **Wave 1**
@@ -562,7 +562,7 @@ Plans:
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
-- [ ] 52-19-PLAN.md — difetto 1 (Critical, la porta): campi a 16 px sotto puntatore grossolano, niente blocco dello zoom (D-41-08), deroga datata in 41-UI-SPEC §7.4; misura prima/dopo su Safari simulato, P-52-F passo 5 rimisurato, laboratorio al commit della correzione
+- [x] 52-19-PLAN.md — difetto 1 (Critical, la porta): campi a 16 px sotto puntatore grossolano, niente blocco dello zoom (D-41-08), deroga datata in 41-UI-SPEC §7.4; misura prima/dopo su Safari simulato, P-52-F passo 5 rimisurato, laboratorio al commit della correzione
 
 **Wave 9** *(blocked on Wave 8 completion)*
 
