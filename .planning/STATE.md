@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: Phase 51 complete — 15/15 plans, in produzione dal 2026-09-22 19:13Z; il 2026-09-23 chiuso il debito del review (resta WR-05), deciso WR-04, lanciato verify:refusal, pulito il lab; VERIFICATION passed; WR-05 su lab e produzione; spinto e READY il 2026-09-23 (dpl_HHHM4bG7…)
-last_updated: "2026-09-23T14:30:00.000Z"
+stopped_at: Phase 51 context gathered
+last_updated: "2026-09-23T13:05:16.680Z"
 last_activity: 2026-09-23
 progress:
-  total_phases: 51
-  completed_phases: 50
-  total_plans: 387
-  completed_plans: 387
-  percent: 100
+  total_phases: 12
+  completed_phases: 5
+  total_plans: 73
+  completed_plans: 60
+  percent: 42
 ---
 
 # State: Resonate
@@ -30,12 +30,12 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 52 — la barra di navigazione e i ritocchi: PIANIFICATA il 2026-09-23 — 17 piani in 9 onde, checker VERIFICATION PASSED (2 avvertenze documentali), 31 decisioni e 7 requisiti coperti. Status: Ready to execute
+**Current Focus:** Phase 52 — la-barra-di-navigazione-e-i-ritocchi
 
 ## Current Position
 
-Phase: 51 (via-le-superfici-da-socio-e-la-porta) — COMPLETE il 2026-09-22
-Plan: 15 of 15 (14 pianificati + 51-15, chiusura di un buco misurato da P-51-1)
+Phase: 52 (la-barra-di-navigazione-e-i-ritocchi) — EXECUTING
+Plan: 1 of 17
 Next: `/gsd-execute-phase 52` — 17 piani, 9 onde. Onde 1-5 autonome (censimento media, procedure, NAV-05/06, porta a cinque linguette, M1 sul lab, barra e foglio, cancello e firma, script di rimozione e ri-spogliatura, colonna e striscia, M2 sul lab). Onde 6-9 con checkpoint del proprietario: corsa su iPhone (52-14), atto 1 in produzione M1 → deploy → M2 (52-15), atto 2 rimozione per chiave + ri-spogliatura (52-16), persona e VERIFICATION (52-17). **NAV-07 aggiunto il 2026-09-23** (la gallery chiude anche i dati): la fase e' Critical per intero.
 
 **Chiusura del debito, 2026-09-23.** Sei commit su `main` (`514c497..282d809`),
@@ -305,7 +305,7 @@ SUMMARY su quindici: la fase e' eseguita.** Il piano 37-13 ha chiuso l'onda 7 il
 sostituite, e undici voci `human_needed` consolidate nel suo SUMMARY. Le onde 8 e
 9 (piani 37-14 e 37-15) hanno chiuso i reperti del code review: CR-01, WR-01,
 WR-03, WR-05, WR-06, WR-07, WR-08 e la voce 4 di `deferred-items.md`.
-Status: Ready to execute
+Status: Executing Phase 52
 scritto «riportato come avvenuto, non misurato da me» — ed era la cosa giusta da
 scrivere dalla sua posizione. La misura pero' esiste, ed e' dell'orchestratore
 che gliel'aveva riportato:
@@ -386,7 +386,7 @@ Note:
         organizer/approved, organizer/pending seminato a mano, staff, member —
         ne chiude la maggior parte. La fase 36 costruisce superfici pubbliche
         sopra quel modello: il debito non e' suo, ma le sta sotto.
-Last activity: 2026-09-22
+Last activity: 2026-09-23
 
 **Phase 31: EXECUTED, NOT VERIFIED.** 13 of 13 plans, 61 commits on
 `gsd/phase-31-live-defects-at-the-door-and-the-bar`. One of its four blocking

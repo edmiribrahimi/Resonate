@@ -521,16 +521,16 @@ Plans:
 > che non stia gia' vedendo. E il calcolo va fatto **prima** del filtro per
 > format, o selezionandone uno spariscono tutti gli altri.
 
-**Plans:** 17 plans in 9 waves
+**Plans:** 5/17 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 52-01-PLAN.md — censimento di NAV-07 su laboratorio e produzione (solo numeri) e banco dei media sul laboratorio
-- [ ] 52-02-PLAN.md — procedure P-52-A..G scritte prima della corsa, VALIDATION onesta, note della UI-SPEC in 41 §10/§12
-- [ ] 52-03-PLAN.md — NAV-05: la cifra staff come le altre; la legenda staff vera dopo `gallery.view`
-- [ ] 52-04-PLAN.md — NAV-06: chip dalle serate visibili, prima del filtro; riga assente a zero
-- [ ] 52-05-PLAN.md — la porta a cinque linguette (Recent, Alerts), ricerca contigua alla lista, viewport con l'aspettativa iOS scritta
+- [x] 52-01-PLAN.md — censimento di NAV-07 su laboratorio e produzione (solo numeri) e banco dei media sul laboratorio
+- [x] 52-02-PLAN.md — procedure P-52-A..G scritte prima della corsa, VALIDATION onesta, note della UI-SPEC in 41 §10/§12
+- [x] 52-03-PLAN.md — NAV-05: la cifra staff come le altre; la legenda staff vera dopo `gallery.view`
+- [x] 52-04-PLAN.md — NAV-06: chip dalle serate visibili, prima del filtro; riga assente a zero
+- [x] 52-05-PLAN.md — la porta a cinque linguette (Recent, Alerts), ricerca contigua alla lista, viewport con l'aspettativa iOS scritta
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
