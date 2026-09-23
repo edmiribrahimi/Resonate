@@ -191,16 +191,29 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
   //     chip row indistinguishable from a healthy one — the silent-failure
   //     shape `meta-gates.md` forbids, and this project has no error tracking,
   //     so nothing else would ever say so;
-  //   * the chip row must not vary with the data OR with the viewer. A staff
-  //     viewer's *results* include drafts; their *chips* do not. Two
-  //     construction paths become one at the first distracted edit, and the one
-  //     that survives is always the richer.
+  //   * the catalogue is the ONLY source of a chip's name, colour and order.
+  //
+  // REVERSED ON PURPOSE, 2026-09-23 (D-52-15). This block used to say *"the
+  // chip row must not vary with the data OR with the viewer"* (D-36-13,
+  // D-36-16). It now varies with both — a chip exists only for a format with at
+  // least one night, past or upcoming, VISIBLE TO WHOEVER IS LOOKING — and the
+  // reason that is safe is the whole rule: the row is derived from the array of
+  // nights RLS already returned to this viewer (`visibleFormatSlugs`, below,
+  // computed BEFORE the format filter), never from a second read. So the row
+  // varies with the viewer but can never show them anything the list under it
+  // is not already showing them. A staff viewer whose results include a draft
+  // sees that draft's chip, because they already see the draft; an anonymous
+  // viewer cannot, because RLS never handed it over. What stays forbidden is
+  // the other construction path — any *"does this format have anything?"* read.
   //
   // `listed` and `retired_at` are two different facts (D-36-17): `listed` says
   // a person decided this may be seen, `retired_at` says no new night may be
-  // assigned to it. A forward-looking surface wants both. Note that RLS only
-  // asks the first — `formats_select_listed` renders as `(listed = true)` — so
-  // the `retired_at` filter is this page's, not the database's.
+  // assigned to it. Only the first gates this read. Retired means NO NEW NIGHTS,
+  // not that the old ones disappear (D-52-16, 2026-09-23): a retired format
+  // whose nights are still visible keeps its chip, and one with none drops out
+  // on its own, because the chips are the catalogue INTERSECTED with the nights.
+  // RLS asks `listed` too — `formats_select_listed` renders as `(listed =
+  // true)` — so an unlisted format has no chip even if a night carries it.
   //
   // No count, no join to the nights, no aggregate. A count is the one channel
   // that reveals an unannounced night WITHOUT SHOWING ANYTHING, so no visual
@@ -209,7 +222,6 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
     .from("formats")
     .select("id, slug, name, color")
     .eq("listed", true)
-    .is("retired_at", null)
     .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
 
@@ -221,22 +233,32 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
 
   const formatOptions: FormatOption[] = formatRows ?? [];
 
-  // The filter, validated by MEMBERSHIP OF THE ACTIVE CATALOGUE — an allow-list
-  // drawn from the data, which is the narrowest form of validation available
-  // here. Unknown, retired, unlisted, repeated or absent all resolve the same
-  // way: no filter, the complete list, `All` current.
+  // The filter, validated by MEMBERSHIP OF THE CHIP ROW — an allow-list drawn
+  // from the data, which is the narrowest form of validation available here.
+  // Since D-52-15 the chip row is the catalogue intersected with the formats of
+  // the nights this viewer can see, so a format with no visible night resolves
+  // exactly like an unknown one: unknown, retired, unlisted, repeated, absent or
+  // without visible nights all resolve the same way — no filter, the complete
+  // list, `All` current. The reason is that no chip may ever be selected that
+  // is not in the row: a selected-but-invisible format would be a chip the row
+  // itself refused to draw.
   //
   // AND NO REDIRECT, deliberately. If an unknown slug redirected and a known
   // one did not, the redirect itself would answer *"is this a real format?"*
-  // one probe at a time. Uniform behaviour gives no oracle.
+  // one probe at a time. Uniform behaviour gives no oracle — and with the chips
+  // drawn from visible nights, it gives no *"does this format have a hidden
+  // night?"* oracle either.
   //
   // Resolved to the ROW rather than to the slug, because two children need two
   // different halves of it: the chip row compares the slug, and a filtered
   // empty state reads the name back to the visitor. One lookup, one answer —
   // two lookups would be two places for the allow-list to drift apart.
-  const activeFormatOption =
-    formatOptions.find((f) => f.slug === formatParam) ?? null;
-  const activeFormat = activeFormatOption?.slug ?? null;
+  //
+  // Declared here and RESOLVED INSIDE THE TRY, right after the nights are read
+  // and before they are filtered: the allow-list needs the array. If the read
+  // fails, both stay empty — no chip, no filter.
+  let chips: FormatOption[] = [];
+  let activeFormatOption: FormatOption | null = null;
 
   let upcoming: EventCard[] = [];
   let past: EventCard[] = [];
@@ -576,13 +598,26 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
 
     const allEvents = (events ?? []).map(transformEvent);
 
+    // THE CHIPS, FROM THE ARRAY (D-52-15), computed HERE — after the read and
+    // BEFORE the format filter below — so selecting a chip never makes the
+    // others disappear. Only the SLUG is taken from the nights: name, colour
+    // and order come from the catalogue, because `CardFormat.name` may be a
+    // series' public name, and a series may carry the name of a venue. No
+    // query, no count: a Set over rows this viewer was already given.
+    const visibleFormatSlugs = new Set(
+      allEvents.flatMap((e) => e.formats.map((f) => f.slug))
+    );
+    chips = formatOptions.filter((f) => visibleFormatSlugs.has(f.slug));
+    activeFormatOption = chips.find((f) => f.slug === formatParam) ?? null;
+    const activeSlug = activeFormatOption?.slug ?? null;
+
     // The filter is applied ON THE ARRAY ALREADY RENDERED, never as a second
     // query. A separate *"does this format have anything?"* read is exactly the
     // shape that would see a draft and turn it into a visible difference —
     // FMT-06 failing in the one place nobody would look for it. Whatever the
     // reader above was refused, this line cannot un-refuse.
-    const shownEvents = activeFormat
-      ? allEvents.filter((e) => e.formats.some((f) => f.slug === activeFormat))
+    const shownEvents = activeSlug
+      ? allEvents.filter((e) => e.formats.some((f) => f.slug === activeSlug))
       : allEvents;
 
     // An event is upcoming if its end_date >= today
@@ -593,10 +628,15 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
       .filter((e) => e.end_date < today)
       .sort((a, b) => b.start_date.localeCompare(a.start_date));
   } catch {
-    // Graceful fallback: render empty state if DB unavailable
+    // Graceful fallback: render empty state if DB unavailable. No nights means
+    // no chips and no active filter (D-52-17: the row is then not mounted).
     upcoming = [];
     past = [];
+    chips = [];
+    activeFormatOption = null;
   }
+
+  const activeFormat = activeFormatOption?.slug ?? null;
 
   // Outside the catch on purpose — inside it, this throw would be caught by the
   // very block whose behaviour it exists to refuse.
@@ -660,7 +700,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
               container it would translate with the panels. */}
           <AnimatedSection delay={0.05}>
             <FormatFilterRow
-              formats={formatOptions}
+              formats={chips}
               activeFormat={activeFormat}
               activeTab={activeTab}
             />
