@@ -527,6 +527,116 @@ input[type="time"] {
 }
 
 /*
+ * The Management sheet's entrance — 52-UI-SPEC.md §B.2, D-52-07.
+ *
+ * 160ms ease-out, applied from AppNav as an arbitrary animate utility — the
+ * same form ScanFlash uses for flash-in above. The panel rises one rem and fades in; the
+ * scrim only fades, over the same 160ms. Both call sites also carry
+ * motion-reduce:animate-none, because MotionConfig does not reach a CSS
+ * keyframe (41-UI-SPEC.md §12).
+ *
+ * THERE IS NO EXIT ANIMATION, and that is the decision rather than an
+ * omission: closing must never delay the next tap, and at the door the next
+ * tap is a guest.
+ */
+@keyframes management-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes management-scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/*
+ * The bar leaves while a field has focus — D-52-06, 52-UI-SPEC.md §A.5.
+ *
+ * WHY. With the keyboard up, a bar fixed to the bottom edge rides above the
+ * keyboard and eats the rows the reader is typing into — the guest list at the
+ * door, the search above it, the Check in button under the thumb. So while a
+ * text-entry control has focus the bar is not drawn, and it comes back on
+ * blur. No movement either way: a second animation over the system's own
+ * keyboard animation is noise.
+ *
+ * HOW, AND WHAT IT DOES NOT DO.
+ *   - CSS only. No viewport is read in JavaScript, and nothing in AppNav knows
+ *     this rule exists (41-UI-SPEC.md §0 rule 6, verify:no-viewport-read). The
+ *     two forms are told apart by the data-nav-form attribute AppNav writes,
+ *     not by a width measured in script.
+ *   - Only under a COARSE primary pointer, i.e. a phone or a tablet held in
+ *     the hand. A laptop with a touch screen reports a fine primary pointer and
+ *     keeps its bar: the wrong answer there costs a bar that stays, never a bar
+ *     that vanishes under a mouse. This is not the sizing rule further down —
+ *     that one is written once and only ever SHRINKS a target; this one decides
+ *     whether the bar is painted while typing, a different question.
+ *   - The responsive form hides only below 48rem, the md tier edge: from md up
+ *     it is the column at the leading edge, and removing it would shift the
+ *     page sideways under the reader's cursor. The phone form (the door) is a
+ *     bar at every width, so it hides at every width.
+ *   - The Management sheet and its scrim (data-nav-sheet) hide with it. No
+ *     field lives inside the sheet, so this is a defence, not a use case.
+ *   - The block-end clearance (the navigation inset variable above) is NOT
+ *     zeroed: the page keeps its bottom padding and does not jump while the
+ *     reader types.
+ *   - Checkboxes, radios, buttons, submits and hidden inputs raise no keyboard
+ *     and are excluded.
+ *
+ * TO BE PROVED ON THE PHONE (assumption A2, procedure P-52-F): :has() is
+ * supported by current iOS Safari, but support is not behaviour — that the
+ * bar leaves and returns on the owner's iPhone is observed, not inferred from
+ * this file. The login page does not mount the bar, so this rule does not
+ * concern it.
+ */
+@media (pointer: coarse) {
+  body:has(
+      :is(
+          input:not(
+              [type="checkbox"],
+              [type="radio"],
+              [type="button"],
+              [type="submit"],
+              [type="hidden"]
+            ),
+          textarea,
+          select
+        ):focus
+    )
+    :is([data-nav-form="phone"], [data-nav-sheet]) {
+    display: none;
+  }
+}
+
+@media (pointer: coarse) and (width < 48rem) {
+  body:has(
+      :is(
+          input:not(
+              [type="checkbox"],
+              [type="radio"],
+              [type="button"],
+              [type="submit"],
+              [type="hidden"]
+            ),
+          textarea,
+          select
+        ):focus
+    )
+    [data-nav-form="responsive"] {
+    display: none;
+  }
+}
+
+/*
  * SunSet's gradient — its ONE application route (40-UI-SPEC.md §7 clause 2).
  *
  * No component composes the stops itself: a surface either uses this name or
