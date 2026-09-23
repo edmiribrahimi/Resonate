@@ -1,9 +1,16 @@
+import { redirect } from "next/navigation";
+
 import { createClient } from "@/lib/supabase/server";
 import AppNav from "@/components/layout/AppNav";
 import AnimatedSection from "@/components/motion/AnimatedSection";
 import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle } from "@/components/ui/Typography";
+import { CAP } from "@/lib/capabilities/keys";
 import { getAccessContext } from "@/lib/capabilities/server";
+import {
+  EVENT_MEDIA_SIGNATURE_SECONDS,
+  signEventMedia,
+} from "@/lib/media/sign-event-media";
 import GalleryClient from "./GalleryClient";
 import type { UserRole } from "@/types/database";
 
@@ -25,38 +32,98 @@ import type { UserRole } from "@/types/database";
  * mount the bar-locked wrapper — and every route that mounts no navigation —
  * cannot inherit a column they do not have.
  *
- * **The read is untouched, byte for byte.** Not as a courtesy — as the
- * requirement. This surface renders event media, so what it fetches, how it
+ * **The read was untouched, byte for byte, until phase 52** — and what changed
+ * then is one column, named below. Not as a courtesy — as the requirement. This surface renders event media, so what it fetches, how it
  * filters, how it orders and how much it takes are the difference between a
  * gallery and a disclosure. `venue_reveal_sent` is monotone: a layout change
  * that surfaced one more field, un-truncated one more string or rendered one
  * more group could show a place before its night reveals it, and there is no
  * un-revealing. The filter below is on the **moderation state of the row**, not
  * on the viewer, and it is the same filter it was.
+ *
+ * ── Phase 52: the gallery is a tool now (NAV-02, D-52-13) ────────────────────
+ *
+ * Until phase 52 this page had no guard of its own and its tab was drawn to
+ * everyone. **This is the phase that builds the gate**: the entry moved into the
+ * Management panel under `gallery.view`, an anonymous caller is bounced to
+ * sign-in with a way back, and the page asks the key itself before reading
+ * anything. The note on reopening it sits beside the guard, below.
+ *
+ * ── Phase 52: keys, not addresses (NAV-07, D-52-25) ──────────────────────────
+ *
+ * The read selects `storage_path` and **never `url`**: `url` is a public
+ * address on a bucket that M2 makes private, and drawing it would keep the
+ * side channel open for as long as the bucket stays public. Each key is signed
+ * through the viewer's own session (`src/lib/media/sign-event-media.ts`), so
+ * the object policy — a SELECT admitted only when the row is visible to that
+ * session — decides, and not this page. What reaches the client components is
+ * `id → signed address`, never a key. Same rows, same filter, same order, same
+ * cap: the only difference is the column and what is done with it.
  */
 export default async function GalleryPage() {
-  // Role comes from the session, not from a request header, and gates nothing
-  // here — the media query below filters on `status = "approved"`, which is the
-  // moderation state of the ROW and never was the viewer's, and is unchanged.
-  // The value goes to the navigation, a "use client" component.
+  // ── The gate — phase 52, NAV-02, D-52-13 ───────────────────────────────────
   //
-  // An approval status used to be read beside it, for the navigation only. Phase
-  // 50 removed the axis. **The Gallery tab is now drawn to everyone**, which is
-  // a visibility change and not an access one: this page has never had a guard
-  // of its own and anybody who knows the address already arrives (`NAV-02`,
-  // phase 52, builds the real gate).
+  // This is the phase that builds it. The Gallery entry is no longer drawn to
+  // everyone: it sits in the Management panel under `gallery.view`, and this
+  // address is gated in three pieces that give the same verdict because they
+  // read the same key — the capability-route map entry (plan 52-06), the
+  // `/gallery` prefix in `PROTECTED_PREFIXES` with its `?next=` pattern
+  // (`src/lib/routes/next-redirect.ts`), and the guard below.
+  //
+  // The guard sits BEFORE the client is created and before any read. The
+  // middleware and the page give the same verdict because they read the same
+  // entry (D-34-09), and a page that stops asking is a page protected by a
+  // redirect alone. Neither is the security boundary: the row policy on
+  // `event_media` and, after M2, the object policy on the bucket are.
+  //
+  // ⚠ **For whoever reopens the gallery to the public (D-52-14).** Reopening is
+  // not one line. It means removing this guard, the map entry, the prefix and
+  // its pattern — and, since NAV-07, **a migration too**: the row policy
+  // `event_media_select_gallery` (written by M2, plan 52-13) and the bucket,
+  // which is private from M2 on and serves pictures only through a signature
+  // minted under a session. The key
+  // `gallery.view` stays either way. A reopening that removed the four code
+  // pieces and not the migration would ship a public page that draws nothing.
+  //
+  // Role and the live-assignment set are read here for the navigation only,
+  // which is a "use client" component; they gate nothing on this page.
   const { role, capabilities, liveAssignmentCapabilities } =
     await getAccessContext();
 
+  if (!capabilities.has(CAP.GALLERY_VIEW)) {
+    redirect("/dashboard");
+  }
+
   const supabase = await createClient();
 
-  // Fetch approved media with event info, most recent first
-  const { data: media } = await supabase
+  // Fetch approved media with event info, most recent first. The KEY, never
+  // the public address — see the docblock.
+  const { data: media, error: readError } = await supabase
     .from("event_media")
-    .select("id, url, type, event_id, events(id, title, date, slug)")
+    .select("id, storage_path, type, event_id, events(id, title, date, slug)")
     .eq("status", "approved")
     .order("created_at", { ascending: false })
     .limit(200);
+
+  if (readError) {
+    // Its own category and its own sentence: a gallery that could not be read
+    // is not an empty gallery, and must not wear the empty state's face.
+    console.error(
+      `[gallery.read_failed] code=${readError.code ?? "unknown"} message=${readError.message}`
+    );
+  }
+
+  const rows = (media ?? []) as unknown as {
+    id: string;
+    storage_path: string | null;
+    type: string;
+    events: { id: string; title: string; date: string; slug: string } | null;
+  }[];
+
+  // Only rows this session already received are signed — the signer takes
+  // rows, not paths, and signs under the same session's policy.
+  const signatures = await signEventMedia(rows, EVENT_MEDIA_SIGNATURE_SECONDS);
+  const signedUrls = signatures.ok ? signatures.urls : {};
 
   // Group by event, preserving order of most recent media
   const groupMap = new Map<string, {
@@ -67,8 +134,8 @@ export default async function GalleryPage() {
     items: { id: string; url: string; type: "photo" | "video" }[];
   }>();
 
-  for (const m of media ?? []) {
-    const ev = m.events as unknown as { id: string; title: string; date: string; slug: string } | null;
+  for (const m of rows) {
+    const ev = m.events;
     if (!ev) continue;
 
     let group = groupMap.get(ev.id);
@@ -82,9 +149,12 @@ export default async function GalleryPage() {
       };
       groupMap.set(ev.id, group);
     }
+    // A row without a signature stays in the list with an empty address: the
+    // grid draws it as "could not be loaded" instead of dropping it, so a hole
+    // is visible as a hole.
     group.items.push({
       id: m.id,
-      url: m.url,
+      url: signedUrls[m.id] ?? "",
       type: m.type as "photo" | "video",
     });
   }
@@ -122,9 +192,43 @@ export default async function GalleryPage() {
             </header>
           </AnimatedSection>
 
-          <AnimatedSection delay={0.1}>
-            <GalleryClient groups={groups} />
-          </AnimatedSection>
+          {/*
+            Two failures, two sentences. A failed read means what is below
+            cannot be trusted to be complete; a failed signature means the
+            entries are there and only the pictures are missing. Neither is the
+            empty state.
+          */}
+          {readError ? (
+            <div
+              role="alert"
+              className="mb-4 rounded-2xl border border-sem-crit/40 bg-sem-crit/10 p-4"
+            >
+              <p className="text-sm text-sem-crit">
+                The gallery could not be read. Reload the page; nothing has been
+                removed.
+              </p>
+            </div>
+          ) : !signatures.ok ? (
+            <div
+              role="alert"
+              className="mb-4 rounded-2xl border border-sem-crit/40 bg-sem-crit/10 p-4"
+            >
+              <p className="text-sm text-sem-crit">
+                The pictures could not be signed for, so none is drawn below.
+                Reload the page; nothing has been removed.
+              </p>
+            </div>
+          ) : null}
+
+          {/*
+            After a failed read the empty state is not drawn: "No photos or
+            videos yet" would be a false sentence under the alert above.
+          */}
+          {readError ? null : (
+            <AnimatedSection delay={0.1}>
+              <GalleryClient groups={groups} />
+            </AnimatedSection>
+          )}
         </PageShell>
       </div>
 

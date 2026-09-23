@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, useState } from "react";
 import { IconButton } from "@/components/ui/Button";
 
 /**
@@ -48,6 +48,17 @@ interface LightboxProps {
 
 export default function Lightbox({ item, onClose }: LightboxProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+
+  /*
+    Zero silent failures (phase 52, NAV-07). After NAV-07 an address expires —
+    the gallery signs for an hour — and a video left open past that, or a row
+    whose signature failed, would otherwise be a black viewer with nothing in
+    it. There is no error tracking (`meta-gates.md`): the sentence is the only
+    effect that reaches anybody. Keyed by the address that failed, so opening a
+    different item starts clean without an effect to reset it.
+  */
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const loadFailed = item !== null && (item.url === "" || failedUrl === item.url);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -99,11 +110,16 @@ export default function Lightbox({ item, onClose }: LightboxProps) {
             </svg>
           </IconButton>
 
-          {item.type === "photo" ? (
+          {loadFailed ? (
+            <p className="px-6 text-center text-sm text-muted">
+              This image could not be loaded. Reload the page.
+            </p>
+          ) : item.type === "photo" ? (
             <img
               src={item.url}
               alt=""
               className="max-h-full max-w-full object-contain"
+              onError={() => setFailedUrl(item.url)}
             />
           ) : (
             <video
@@ -111,6 +127,7 @@ export default function Lightbox({ item, onClose }: LightboxProps) {
               controls
               autoPlay
               className="max-h-full max-w-full"
+              onError={() => setFailedUrl(item.url)}
             />
           )}
         </div>
