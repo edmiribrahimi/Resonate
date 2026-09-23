@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: planning
-stopped_at: "Completato 52-17-PLAN.md — verifica approvata alle 19:13:29Z; fase 52 eseguita 19/19, resta verifica e chiusura"
+stopped_at: "PAUSA il 2026-09-23 alle 20:40Z per budget di token (80% della settimana). Fase 52 chiusa (passed). Fase 52.1 riscritta: VIA LA GALLERY (DBT-13) e cover dal server in 4:5 (DBT-14); resta da fare l'addendum di ricerca (sezioni A e B, richiesto ma interrotto), poi /gsd-plan-phase 52.1. Domani: creazione della serata 003 dal proprietario — la cover oggi si carica in 16:9 o quadrata (la pagina ritaglia a 320 px)."
 last_updated: "2026-09-23T19:29:58.020Z"
 last_activity: 2026-09-23
 progress:
@@ -34,9 +34,9 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 ## Current Position
 
-Phase: 52.1 (chiusura del debito della fase 52) — da inserire in roadmap e da discutere
+Phase: 52.1 (chiusura del debito della fase 52, riscritta: via la gallery) — in roadmap, CONTEXT con D-52.1-01..19, RESEARCH parziale (le sezioni «via la gallery» e «cover dal server» NON ancora scritte), PATTERNS e VALIDATION del perimetro vecchio
 Plan: nessuno ancora
-Next: /gsd-discuss-phase 52.1 — il perimetro e' il debito di `52-VERIFICATION.md` («Il debito che questa fase lascia») piu' gli 8 WR e le 8 IN di `52-REVIEW.md`. La fase 52 e' COMPLETA in ROADMAP dal 2026-09-23.
+Next: quando il budget lo permette, `/gsd-plan-phase 52.1 --research` con il perimetro di ROADMAP (DBT-04/05/06/07/09/10/13/14) — la richiesta di addendum e' scritta per intero nella conversazione del 2026-09-23 (sezioni A «via la gallery: inventario e ordine» e B «la cover passa dal server»). Nulla della 52.1 blocca la creazione della serata 003.
 
 **52-17 chiuso: verifica approvata dal proprietario (`approvata`, 2026-09-23T19:13:29Z).** Persona 1.26.0 (`media-and-storage`, `access-gating` rilette dal codice, con data; `verify:persona` 7/7 dopo; caso peggiore `DoorSurface.tsx` 13.812/15.000, moderazione 13.280). Sonda di cache dopo la finestra **senza soggetto** in produzione (18:48:05Z, 0 righe, 0 oggetti): residuo zero per costruzione, l'unico misurato e' del laboratorio. `52-VERIFICATION.md` `status: passed`: NAV-01..07 chiusi, D-52-01..31 senza contraddizioni. Le 9 istantanee locali del laboratorio (15 file) cancellate per nome alle 19:13:29Z; le 6 `.env.attendances-snapshot.*` della fase 51 restano, fuori perimetro. Commit `a33e40ec`, `25248cc0`, `d7531634`, `5798e07a`. Nulla spinto.
 
