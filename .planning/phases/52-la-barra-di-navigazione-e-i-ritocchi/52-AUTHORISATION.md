@@ -10,7 +10,7 @@ granted_at: "2026-09-23 ~18:22Z (20:22 locali), come riferita dall'orchestratore
 scope: "(a) M1 `20260923180000_gallery_view_and_media_paths.sql` dall'endpoint migrations, con rilettura read_only; (b) `git push origin main` e deploy Vercel di produzione atteso READY; (c) M2 `20260923180100_gallery_close_data.sql` dall'endpoint migrations, con rilettura read_only; (d) `verify:capabilities` e `verify:refusal --section=gallery` contro la produzione; (e) la sonda anonima su un oggetto approvato, se ne esiste uno — in quest'ordine, oggi, una volta"
 answer: tutto
 spent: no
-status: CONCESSA, IN USO
+status: CONCESSA, NON USATA — atto fermo al passo (a), nessuna scrittura in produzione
 ---
 
 # Autorizzazione a scrivere in produzione — 2026-09-23, M1 → deploy → M2
@@ -214,11 +214,11 @@ nient'altro: il «Fuori perimetro» del §1 resta tale per intero.
 
 | # | Passo | Eseguito (UTC) | Riletto dal catalogo (`read_only`) | Esito |
 |---|---|---|---|---|
-| (a) | M1, `gallery_view_and_media_paths` | — | — | — |
-| (b) | precondizioni · push di `main` · deploy `READY` · `curl` anonimo | — | — | — |
-| (c) | M2, `gallery_close_data` | — | — | — |
-| (d) | `verify:capabilities` · `verify:refusal --section=gallery` | — | — | — |
-| (e) | sonda anonima su un oggetto approvato | — | — | — |
+| (a) | M1, `gallery_view_and_media_paths` | **non eseguito** — tentato alle ~18:23Z, la chiamata e' stata **negata dal livello dei permessi dell'ambiente di esecuzione** prima di partire | `read_only` alle 18:22:24Z (prima) e **18:23:46Z** (dopo): ultima versione `20260923110143`, **15** chiavi, **28** concessioni, `storage_path` assente — **invariato** | **STOP**: nessuna scrittura avvenuta |
+| (b) | precondizioni · push di `main` · deploy `READY` · `curl` anonimo | **non eseguito** (l'atto e' fermo ad (a)); `npm run build` sulla punta misurato gia' alle 18:22:46Z: exit 0 | — | `origin/main` resta `65e9cc5` |
+| (c) | M2, `gallery_close_data` | **non eseguito** (vincolo d'ordine: mai senza (a) e (b)) | — | — |
+| (d) | `verify:capabilities` · `verify:refusal --section=gallery` | **non eseguito** | — | — |
+| (e) | sonda anonima su un oggetto approvato | **non eseguito** (e comunque senza soggetto: 0 oggetti alle 18:22:24Z) | — | — |
 
 Lo strumento che applica legge **questo documento** prima di partire e rifiuta
 se `granted` non e' `yes`, se `granted_date` non e' la data di oggi o se lo
@@ -229,3 +229,18 @@ stato e' gia' `ESAURITA`.
 ## 4. Chiusura
 
 — *(vuota: l'autorizzazione non e' ancora concessa)*
+
+### Nota d'uso — 2026-09-23, 18:24Z: l'atto e' fermo prima del primo passo
+
+La concessione e' registrata (commit `2a057939`, prima di ogni scrittura). Al
+passo (a) lo strumento dell'atto — script fuori dal repo che legge questo
+documento e rifiuta se `granted` non e' `yes`, se la data non e' oggi o se e'
+esaurito — e' stato lanciato, e **l'ambiente di esecuzione ha negato il comando
+prima che partisse**. Nessuna chiamata di scrittura e' arrivata alla produzione:
+la rilettura `read_only` delle 18:23:46Z coincide con quella delle 18:22:24Z.
+
+Non ho aggirato il diniego: il permesso dell'ambiente e' un confine distinto
+dalla risposta del proprietario, e una risposta riferita da un altro agente non
+lo sostituisce. **Il perimetro non e' stato speso**: `spent: no`. La concessione
+e' datata **2026-09-23** e vale solo oggi; se l'atto riparte domani, si
+richiede e si rileggono i numeri del giorno.
