@@ -81,6 +81,16 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // La tastiera ridimensiona il layout invece di coprirlo (D-52-23, D-52-28,
+  // P-52-F). Vale su Android — Chrome 108+, Firefox 132+. **Safari iOS lo
+  // ignora** al 2026-09: WebKit ce l'ha nel sorgente da agosto 2026, non in una
+  // release. Quindi sull'iPhone questa riga non fa nulla, e cio' che tiene la
+  // porta leggibile sotto la tastiera sono le misure di layout della porta
+  // (ricerca contigua alla lista, ricerca portata in cima al fuoco), non questa.
+  // Di proposito NON si dichiara l'adattamento alla safe area con `cover`: in
+  // standalone la barra fissa della porta e la striscia appesa finirebbero
+  // sotto la barra di stato.
+  interactiveWidget: "resizes-content",
   // QUI NON SI BLOCCA LA SCALA. D-41-08, 40-REVIEW.md WR-16: due chiavi che
   // impedivano di ingrandire la pagina a due dita stavano in questo blocco e
   // sono state tolte. **I loro nomi non sono scritti qui, e l'omissione e'

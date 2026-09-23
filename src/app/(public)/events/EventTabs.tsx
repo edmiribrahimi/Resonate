@@ -579,10 +579,11 @@ export default function EventTabs({
             transition: dragX === 0 ? "transform 300ms ease-out" : "none",
           }}
         >
-          <div className="w-1/2 shrink-0 min-w-0 px-6 pb-4" style={{ minHeight: "60vh" }}>
+          {/* `dvh`, not `vh` — D-52-23: the product's last `vh` height. */}
+          <div className="w-1/2 shrink-0 min-w-0 px-6 pb-4" style={{ minHeight: "60dvh" }}>
             <EventList events={upcoming} isPast={false} activeFormat={activeFormat} />
           </div>
-          <div className="w-1/2 shrink-0 min-w-0 px-6 pb-4" style={{ minHeight: "60vh" }}>
+          <div className="w-1/2 shrink-0 min-w-0 px-6 pb-4" style={{ minHeight: "60dvh" }}>
             <EventList events={past} isPast={true} activeFormat={activeFormat} />
           </div>
         </div>
