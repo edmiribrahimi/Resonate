@@ -72,6 +72,10 @@ file vanno sequenziati, non parallelizzati (`ai-engineering.md`, gate
 
 ---
 
+> **CHIUSA il 2026-09-23** — commit `482c450` (IN-02 del review): il commento
+> di `src/middleware.ts` dice ora che i due indirizzi sono stati cancellati e
+> rispondono 404, e che il matcher resta identico per le prime due ragioni.
+
 ## D-51-12-A — `PROBE_PAYLOADS` copre 24 tabelle RLS su 40, e non e' colpa di questa fase
 
 **Trovata dal piano 51-12, 2026-09-22.**
@@ -139,6 +143,15 @@ nel banco del container), **WR-01** (rapporto guest in coda da account mai
 assegnato: ritirato con la sua ragione, non piu' «trattenuto»), **WR-02**
 (`checked_in_at` = `scannedAt` per un rapporto in coda), **WR-07**, **WR-09**,
 **WR-10**. Restano aperti, e stanno qui perche' nessun piano li possiede:
+
+> **Riletto il 2026-09-23.** Di quanto segue restano aperti **solo WR-05** e la
+> ricognizione lessicale completa della fase 57. **WR-04** e' stato deciso dal
+> proprietario (sempre acceso offline, frase corretta — `514c497`); **WR-03**
+> chiuso con `7c6c859` — non serviva una colonna: il flag viaggia nella risposta
+> e il drain gia' lo leggeva; **WR-06** con `c730b1d`; **WR-08** con `778af39`;
+> le **sette note** con `778af39` (IN-01), `482c450` (IN-02..05) e `514c497`
+> (IN-06, IN-07). Le voci sotto restano come registrazione della misura del
+> 2026-09-22.
 
 - **WR-04 — l'avviso della guest list si accende appena la radio e' spenta**
   (`listIsStale = !channelLive || …`). Dice il vero, ma la procedura chiedeva

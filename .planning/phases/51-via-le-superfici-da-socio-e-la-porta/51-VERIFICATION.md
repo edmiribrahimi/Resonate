@@ -10,14 +10,70 @@ requirements_contradicted: 0
 decisions_total: 16
 decisions_contradicted: 0
 procedure_expectations_contradicted: 1
-gates_red: 3
-manual_steps_open: 2
-lab_cleanup_owed: 1
+gates_red: 2
+manual_steps_open: 1
+lab_cleanup_owed: 0
+reopened: 2026-09-23
 environment: produzione (`c61760f`, due migration applicate il 2026-09-22) + laboratorio permanente (`.planning/v1.6-LAB-DESIGN.md`), dove sono state percorse le due corse della porta
 evidence: 51-ESITI.md (due corse di `P-51-1` PERCORSE + l'atto di produzione), 51-AUTHORISATION.md (ESAURITA), 51-CATALOG.md, i quindici SUMMARY, deferred-items.md
 ---
 
 # Fase 51 — Verifica
+
+> ## Riletto il 2026-09-23 — tre delle quattro cose aperte sono chiuse
+>
+> Le tre voci che tenevano questo documento a `human_needed` erano **due
+> decisioni e un atto**. Il 2026-09-23 il proprietario ha deciso la prima e
+> autorizzato il terzo; la seconda resta aperta ed e' l'unica ragione per cui lo
+> stato non cambia.
+>
+> 1. **L'avviso della guest list a radio spenta — DECISO.** Resta acceso per
+>    tutta la durata del lavoro offline; cambia la frase, che era falsa («NOT
+>    refreshed (updated 3s ago)») e ora dice *«cannot refresh while the radio is
+>    off»*. Commit `514c497`, decisione registrata sopra `guestListWarningText`.
+>    La riga della tabella dei gate qui sotto e la sezione *La domanda aperta*
+>    restano come sono: descrivono la misura del 2026-09-22, e il documento non
+>    si riscrive al posto della riga originale.
+> 2. **La riga di console del passo 9 — ANCORA NON OSSERVATA.** Serve un Web
+>    Inspector collegato al telefono; nessuno e' tornato alla porta. E' la voce
+>    `manual_steps_open: 1`.
+> 3. **`verify:refusal` — LANCIATO, sotto `51-AUTHORISATION-REFUSAL.md`**
+>    (2026-09-23, ESAURITA): 11 righe, **8 con la coppia che regge, 3 RIFIUTATE**
+>    perche' le tre tabelle sono vuote e il controllo positivo e' muto; **due
+>    sessioni coniate e revocate, revoca riletta**. Uscita 2 per costruzione,
+>    che e' l'esito onesto e non un rosso: `gates_red` scende a **2**, i due
+>    preesistenti che la fase 52 possiede.
+>
+> **La pulizia dovuta e' FATTA, con una smentita.** Sul laboratorio, il
+> 2026-09-23 alle 10:41:18Z, per chiave primaria dalla lista catturata in sola
+> lettura due minuti prima: **19 righe** di `door_scan_events` della
+> riproduzione con fotocamera finta cancellate (1 `recorded`/`online` + **18**
+> `already_recorded` — non 19 come `51-ESITI.md` diceva: 19 era il totale della
+> riproduzione, riletto dal catalogo), e il biglietto «1 di 2» riportato a **non
+> scansionato** (`checked_in = false`, ora e operatore a `NULL`). Riletto da una
+> **fonte diversa** — PostgREST con la chiave di servizio del laboratorio, non il
+> Management API con cui si e' scritto: sulla serata restano **2 righe**,
+> entrambe `recorded` / `offline_sync` (quella di `P-50-8` e quella del
+> proprietario); `door_scan_events` in tutto **23 → 4**. **La riga di guest list
+> `63ebd88f-…` NON C'ERA PIU'**: la lettura del 2026-09-23 alle 10:39:24Z trova
+> **una sola** riga in `guest_list_entries`, del 2026-09-21, `ticket_issued`, che
+> non e' lei. Chi l'abbia cancellata non risulta da nessun registro di questa
+> fase; la cancellazione dovuta **non aveva soggetto** e non e' stata eseguita.
+> Gli altri residui dichiarati (l'account di prova della fase 50, l'account
+> `@lab.invalid` del piano 51-12) restano, per scelta del proprietario: sono
+> evidenza citata dai SUMMARY.
+>
+> **Il debito della code review, riletto.** Chiusi il 2026-09-23 con un commit
+> ciascuno: **WR-03** (`7c6c859`, il flag di revoca viaggia nella risposta guest
+> e il drain lo archivia come `recorded_after_revocation`), **WR-04**
+> (`514c497`), **WR-06** (`c730b1d`), **WR-08** e **IN-01** (`778af39`),
+> **IN-02..05** (`482c450`), **IN-06** e **IN-07** (dentro `514c497`). Resta
+> **WR-05** — il `COMMENT` della migration applicata dice 16/14 per 15/13 — che
+> si corregge con una migration di solo `COMMENT` quando ce ne sara' una da
+> applicare comunque. E la persona: `CLAUDE.md`, `access-gating.md`,
+> `checkin-offline.md` e `community-membership.md` non descrivono piu' il codice
+> socio come vivo ne' `member` come ruolo (**1.25.0**, `282d809`); la
+> ricognizione lessicale completa resta alla fase 57.
 
 > **Cosa significa `human_needed` qui, e cosa NON significa.**
 >

@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: Phase 51 complete — 15/15 plans, in produzione dal 2026-09-22 19:13Z; VERIFICATION human_needed (passo 2, avviso guest list)
-last_updated: "2026-09-22T21:05:00.000Z"
-last_activity: 2026-09-22
+stopped_at: Phase 51 complete — 15/15 plans, in produzione dal 2026-09-22 19:13Z; il 2026-09-23 chiuso il debito del review (resta WR-05), deciso WR-04, lanciato verify:refusal, pulito il lab; VERIFICATION human_needed solo per la riga di console del passo 9; sei commit NON ancora spinti
+last_updated: "2026-09-23T10:50:00.000Z"
+last_activity: 2026-09-23
 progress:
   total_phases: 51
   completed_phases: 50
@@ -37,6 +37,19 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 Phase: 51 (via-le-superfici-da-socio-e-la-porta) — COMPLETE il 2026-09-22
 Plan: 15 of 15 (14 pianificati + 51-15, chiusura di un buco misurato da P-51-1)
 Next: Phase 52 — nessun piano, nessun CONTEXT: parte da /gsd-discuss-phase 52
+
+**Chiusura del debito, 2026-09-23.** Sei commit su `main` (`514c497..282d809`),
+**non ancora spinti**: WR-03, WR-04 (decisione del proprietario: avviso guest
+list sempre acceso offline, frase corretta), WR-06, WR-08, le sette note del
+review, e la persona a **1.25.0** (`member` → `attendee`, codice socio non piu'
+descritto come vivo). `verify:refusal` lanciato sotto
+`51-AUTHORISATION-REFUSAL.md` (ESAURITA): 8/11 coppie reggono, 3 RIFIUTATE su
+tabelle vuote. Laboratorio pulito per chiave (19 righe di scansioni finte, il
+biglietto «1 di 2» riportato a non scansionato); la riga guest `63ebd88f-…`
+**non c'era piu'**. Restano: **WR-05** (un `COMMENT`, con la prossima
+migration), la riga di console del passo 9 (serve un telefono con Web
+Inspector), i due gate rossi della 52 (`verify:venue-surfaces` G2,
+`verify:touch-targets`). `npm run build` exit 0, `verify:persona` 7/7.
 
 **Cosa e' in produzione — DEPLOYATO il 2026-09-07.** Le sei migration erano
 applicate dal 2026-09-06; il codice le ha raggiunte il giorno dopo: 55 commit
