@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "Completato 52-16-PLAN.md — atto 2 ESAURITO a zero soggetti alle 18:43:33Z; resta 52-17"
-last_updated: "2026-09-23T18:45:24.496Z"
+stopped_at: "Completato 52-17-PLAN.md — verifica approvata alle 19:13:29Z; fase 52 eseguita 19/19, resta verifica e chiusura della fase"
+last_updated: "2026-09-23T19:14:55.434Z"
 last_activity: 2026-09-23
 progress:
   total_phases: 12
   completed_phases: 5
   total_plans: 73
-  completed_plans: 65
+  completed_plans: 66
   percent: 42
 ---
 
@@ -35,8 +35,10 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 52 (la-barra-di-navigazione-e-i-ritocchi) — EXECUTING
-Plan: 18 of 19 completati (52-01..16, 52-18, 52-19)
-Next: 52-17 (persona e `52-VERIFICATION.md`; cancellazione datata delle istantanee del laboratorio).
+Plan: 19 of 19 completati (52-01..19) — esecuzione della fase terminata
+Next: verifica e chiusura della fase 52 (passo dell'orchestratore; la fase NON e' ancora segnata completa in ROADMAP).
+
+**52-17 chiuso: verifica approvata dal proprietario (`approvata`, 2026-09-23T19:13:29Z).** Persona 1.26.0 (`media-and-storage`, `access-gating` rilette dal codice, con data; `verify:persona` 7/7 dopo; caso peggiore `DoorSurface.tsx` 13.812/15.000, moderazione 13.280). Sonda di cache dopo la finestra **senza soggetto** in produzione (18:48:05Z, 0 righe, 0 oggetti): residuo zero per costruzione, l'unico misurato e' del laboratorio. `52-VERIFICATION.md` `status: passed`: NAV-01..07 chiusi, D-52-01..31 senza contraddizioni. Le 9 istantanee locali del laboratorio (15 file) cancellate per nome alle 19:13:29Z; le 6 `.env.attendances-snapshot.*` della fase 51 restano, fuori perimetro. Commit `a33e40ec`, `25248cc0`, `d7531634`, `5798e07a`. Nulla spinto.
 
 **52-16 chiuso: l'atto 2 e' ESAURITO alle 18:43:33Z, a zero soggetti.** Il proprietario ha concesso `entrambe` alle 18:42:23Z; `purge-media-orphans` e `restrip-event-media`, `--dry-run` poi `--apply` contro la produzione, uscita 0 su tutte e quattro le corse: **R 0 · O 0 · in volo 0 · P 0 · V 0**, riconfermati da PostgREST e Storage alle 18:43:29Z. Nessuna scrittura, nessuna istantanea. I blocchi restano `granted: yes · spent: no` (gli strumenti spendono solo quando scrivono); l'atto e' esaurito per data. D-52-30 e D-52-31 sono veri in produzione per assenza di soggetto. La verify automatica del Task 3 non passa per costruzione in questo caso: dichiarato come deviazione nel SUMMARY.
 
@@ -630,8 +632,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-09-23T18:45:00.896Z
-**Stopped at:** Completato 52-16-PLAN.md — atto 2 ESAURITO a zero soggetti alle 18:43:33Z; resta 52-17
+**Last session:** 2026-09-23T19:14:55.430Z
+**Stopped at:** Completato 52-17-PLAN.md — verifica approvata alle 19:13:29Z; fase 52 eseguita 19/19, resta verifica e chiusura
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 

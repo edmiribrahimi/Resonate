@@ -521,7 +521,7 @@ Plans:
 > che non stia gia' vedendo. E il calcolo va fatto **prima** del filtro per
 > format, o selezionandone uno spariscono tutti gli altri.
 
-**Plans:** 18/19 plans executed
+**Plans:** 19/19 plans complete
 
 Plans:
 **Wave 1**
@@ -574,7 +574,7 @@ Plans:
 
 **Wave 11** *(blocked on Wave 10 completion)*
 
-- [ ] 52-17-PLAN.md — persona (media-and-storage, access-gating), sonda di cache dopo la finestra, `52-VERIFICATION.md` (checkpoint)
+- [x] 52-17-PLAN.md — persona (media-and-storage, access-gating), sonda di cache dopo la finestra, `52-VERIFICATION.md` (checkpoint)
 
 ### Phase 53: TASK
 
