@@ -13,8 +13,6 @@ import LogoutButton from "@/components/auth/LogoutButton";
 import ResetPasswordButton from "@/components/auth/ResetPasswordButton";
 import ChangeEmailButton from "@/components/auth/ChangeEmailButton";
 import CollapsibleSection from "@/components/account/CollapsibleSection";
-import ManagementSection from "@/components/account/ManagementSection";
-import { visibleStaffTabs } from "@/lib/routes/staff-tabs";
 import PostHogIdentify from "@/components/analytics/PostHogIdentify";
 import type { UserRole } from "@/types/database";
 
@@ -59,9 +57,15 @@ import type { UserRole } from "@/types/database";
  * dove si e' comprato e dove si e' al momento di bere; questa pagina non era
  * l'unica strada verso di lui e non era nemmeno la piu' breve.
  *
- * `ManagementSection` **resta**, e resta di proposito: la toglie NAV-03 nella
- * fase 52, e anticiparla qui allargherebbe questa fase di una decisione che non
- * e' sua.
+ * **La sezione degli strumenti di gestione non c'e' piu'.** La fase 51 la lasciava qui
+ * di proposito, dicendo che l'avrebbe tolta NAV-03 nella fase 52: **NAV-03 l'ha
+ * tolta il 2026-09-23, fase 52** (piano 52-07), e il componente che la
+ * disegnava e' stato cancellato con lei. Le stesse voci — piu' Gallery e questa
+ * pagina — stanno nel **pannello Management della barra** (`AppNav`, D-52-09),
+ * costruito da `getNavigation` in `src/lib/rbac/roles.ts` sullo stesso
+ * `visibleStaffTabs`. Management vive in un posto solo; una seconda lista qui
+ * sarebbe il secondo autore di un menu, cioe' come un menu comincia a
+ * divergere.
  *
  * ── What changed, and the one thing that deliberately did not ────────────────
  *
@@ -85,8 +89,10 @@ import type { UserRole } from "@/types/database";
  * product promises them. The navigation receives **the same four props, in the
  * same order**, that the phone-locked wrapper received — the server still
  * decides which entries exist and CSS still decides only how they sit. **No
- * capability check is touched** by the conversion: `getAccessContext()` and
- * `visibleStaffTabs()` are byte-identical to what the conversion found.
+ * capability check is touched** by the conversion: `getAccessContext()` is
+ * byte-identical to what the conversion found. (So was the tab filter this page
+ * called for its management-tools section, until NAV-03 removed the section in
+ * phase 52; the filter now runs inside the navigation, on the same keys.)
  *
  * ── The third predicate this paragraph used to name is gone (phase 50) ───────
  *
@@ -417,34 +423,23 @@ export default async function AccountPage({
 
   // Role and the resolved capability set, from the SESSION. Only the
   // source changed; l'approvazione che stava fra i due e' uscita con l'asse
-  // (fase 50), e il suo ultimo lettore era la barra. `capabilities` is read for one thing only — deciding which
-  // management links this page may draw — and it crosses to the client as an
-  // array, because a `Set` is not serialisable across the boundary.
+  // (fase 50), e il suo ultimo lettore era la barra. `capabilities` is read for
+  // one thing only — the navigation's props — and it crosses to the client as
+  // an array, because a `Set` is not serialisable across the boundary. (Until
+  // phase 52 it was also read to decide whether this page drew its Management
+  // Tools section; NAV-03 moved those links into the bar's panel.)
   const { capabilities, role, liveAssignmentCapabilities } =
     await getAccessContext();
-  const managementCapabilities = [...capabilities];
 
-  // ── The role predicate this line used to hold is gone (STAFF-03)
+  // ── Qui stava il predicato della sezione degli strumenti ────────────────
   //
-  // It read `role === "master" || role === "organizer"`, and the comment that
-  // stood here said phase 34 would rewrite the whole family at once against four
-  // roles. This is that rewrite. The question is no longer *which role is this*
-  // but *would the section draw anything* — answered by the same declaration the
-  // middleware reads, so the affordance and the refusal cannot disagree.
-  //
-  // The set of accounts is unchanged, and it was checked rather than assumed
-  // against `20260807000000_capability_model.sql:407-412`: `master` holds
-  // `admin.access` and `organizer.access`, `organizer` holds `organizer.access`,
-  // and no other role holds either. The fourth role — `staff` — holds neither,
-  // so it still sees nothing here, and it now does so because the model says so
-  // rather than because a literal happens to omit it.
-  //
-  // Both expressions still KEEP THEIR FORM in the sense that matters: neither
-  // redirects and neither narrows a query. They decide what this page RENDERS.
-  // Hiding this section is not what protects `/admin/*` — the middleware and each
-  // page's own guard do that.
-  const canReachManagementTools =
-    visibleStaffTabs(managementCapabilities).length > 0;
+  // Chiedeva *la sezione disegnerebbe qualcosa?* sullo stesso filtro delle tab
+  // che legge il middleware (STAFF-03, fase 34), e prima ancora era un
+  // confronto a mano sul ruolo. **La sezione e' uscita con NAV-03 (fase 52,
+  // 2026-09-23)** e il predicato con lei: la stessa domanda la pone ora
+  // `getNavigation`, per decidere se in barra compare Management o Account
+  // (D-52-04). Nascondere quella sezione non ha mai protetto `/admin/*`: lo
+  // fanno il middleware e la guardia di ogni pagina, e sui dati la RLS.
 
   return (
     <>
@@ -671,7 +666,8 @@ export default async function AccountPage({
 
                     La sezione chiusa e' **quella che la casa ha gia'**,
                     `components/account/CollapsibleSection.tsx`, la stessa che
-                    tiene Management Tools qui sotto: annuncia lo stato con
+                    fino alla fase 52 teneva la sezione degli strumenti di
+                    gestione qui sotto (uscita con NAV-03): annuncia lo stato con
                     `aria-expanded`, dichiara il pavimento dei 44 px sul
                     controllo e importa l'anello di fuoco. Non ne e' stata
                     scritta una seconda, perche' una seconda diverge dalla
@@ -679,8 +675,8 @@ export default async function AccountPage({
 
                     `defaultOpen` **non e' passato**, e il valore di default del
                     componente e' *chiusa*: e' il verso che D-51-09 chiede.
-                    Management Tools lo passa esplicitamente perche' li' il
-                    verso e' l'opposto.
+                    La sezione degli strumenti lo passava esplicitamente perche'
+                    li' il verso era l'opposto.
                   */}
                   {!hasAnyTicket ? (
                     <Card>
@@ -783,14 +779,9 @@ export default async function AccountPage({
                   </div>
                 </div>
 
-                {/* Management Tools — the surfaces this account's capabilities
-                    open, and only those. The cast that stood here, narrowing `role`
-                    to a two-member union, is deleted: a cast is how a new role value
-                    gets laundered into an old union without anything saying so, and
-                    Phase 43 recorded seventeen of them doing exactly that. */}
-                {canReachManagementTools && (
-                  <ManagementSection capabilities={managementCapabilities} />
-                )}
+                {/* La sezione degli strumenti di gestione stava qui, sotto Settings. E'
+                    uscita con NAV-03 (fase 52, 2026-09-23): le sue voci sono nel
+                    pannello Management della barra. */}
             </>
           </AnimatedSection>
         </PageShell>
