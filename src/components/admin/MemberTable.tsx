@@ -119,10 +119,16 @@ function RoleBadge({ role }: { role: UserRole }) {
   //
   //   * `staff` NON deve prendere in prestito il vocabolario cromatico del
   //     potere. Misurato cella per cella nel piano 43-08 su 21 tabelle × 3
-  //     verbi: `staff` non concede **nulla** che un `attendee` non abbia gia', e
-  //     non porta alcuna riga `door.operate`. Il viola e il blu dicono «questo
-  //     account puo' di piu'»; per `staff` sarebbe una bugia detta
-  //     dall'interfaccia prima che qualcuno legga una parola.
+  //     verbi, `staff` non concedeva allora **nulla** che un `attendee` non
+  //     avesse gia'. **Dal 2026-09-23, fase 52 (D-52-12), tiene UNA chiave per
+  //     ruolo: `gallery.view`** — la prima concessione per ruolo mai data a
+  //     `staff`, che apre la gallery e nient'altro. Resta vero cio' che conta
+  //     per il colore: **nessun potere operativo**, nessuna riga `door.operate`
+  //     per ruolo — la porta viene dall'assegnazione della serata. Il viola e
+  //     il blu dicono «questo account puo' di piu'»; per `staff` sarebbe una
+  //     bugia detta dall'interfaccia prima che qualcuno legga una parola. Il
+  //     tratteggio resta, e ora dice «non concede potere operativo», non piu'
+  //     «non concede nulla».
   //   * `staff` deve restare TROVABILE a colpo d'occhio. Non piu' per il posto
   //     gratuito permanente — quello e' uscito con la tessera nella fase 51,
   //     vedi la legenda sotto la tabella — ma perche' chi conta gli account di
@@ -716,11 +722,24 @@ export default function MemberTable({
         questa colonna. Se l'ingresso gratuito deve tornare a essere una
         promessa di prodotto, ha bisogno di un meccanismo, ed e' una decisione
         del proprietario: non una frase da lasciare in piedi qui.
+
+        **2026-09-23, fase 52 — la frase sopra e' diventata falsa, e questa e'
+        la sua correzione.** D-52-12 concede `gallery.view` a `staff` **per
+        ruolo** (migration del piano 52-06): e' la prima concessione per ruolo
+        mai data a `staff`. Da quel giorno «grants nothing of its own» e «a
+        gallery comes from the night's own assignment» erano due falsi, letti
+        esattamente nel momento sbagliato — prima di promuovere qualcuno. E la
+        gallery non e' una vetrina innocua: con D-52-25 ci stanno anche le foto
+        di serate in sede segreta, quindi chi promuove deve sapere che le
+        consegna. La porta invece resta dove stava: nessuna riga `door.operate`
+        per ruolo, solo l'assegnazione della serata. Questa legenda spedisce
+        **nello stesso deploy** della migration (atto del piano 52-15), perche'
+        non esista un momento in cui la produzione ne mostri una falsa.
       */}
       <p className="mb-6 text-xs text-muted">
-        A <span className="font-semibold text-ink">staff</span> account grants
-        nothing of its own — it can do nothing an attendee cannot, and it opens
-        no door on its own. Working the door or a gallery comes from the
+        A <span className="font-semibold text-ink">staff</span> account opens
+        the gallery — photos and videos from the nights — and nothing else of
+        its own. It opens no door on its own: working the door comes from the
         night&apos;s own assignment, which an organizer makes and which ends
         with the night.
       </p>
