@@ -226,12 +226,41 @@ const SECTION_TARGETS = [
     note: "FIVE arms on one table: one per section, each asking that section's own key, plus the brand-wide arm written with IS NULL because section = 'x' on a null column is NULL and would have made the register's most general entries invisible to everybody with no error anywhere",
     tables: ["production_open_question"],
   },
+  {
+    section: "gallery",
+    note:
+      "not a production section — the photographs and videos of the nights (NAV-07, D-52-25, added 2026-09-23 by plan 52-13). " +
+      "Since 20260923180100_gallery_close_data.sql one SELECT arm asks gallery.view on approved rows (event_media_select_gallery); " +
+      "the uploader's own arm (select_own) and the staff.manage arm (select_admin) stay and are not what this measures. " +
+      "master reads rows — through BOTH the gallery arm and the staff.manage arm, so the control is every row and not only the approved ones; " +
+      "attendee and anon read zero. On a database with no event_media row the positive control is silent and the instrument refuses instead of passing — " +
+      "and against production it does exactly that until media exist there (plan 52-15 applies the closure; zero rows were counted by plan 52-01)",
+    tables: ["event_media"],
+  },
 ];
 
+/**
+ * `--section=<name>` restricts the run to ONE declared section (added
+ * 2026-09-23, plan 52-13). Why it exists: on the laboratory ten of the eleven
+ * production tables are empty, so a full run is REFUSED (exit 2) by
+ * construction — the honest outcome, and it stays the outcome of a full run.
+ * The flag lets one group carry its own verdict without hiding the others: the
+ * header says which section was selected, and an unknown name refuses.
+ */
+const SECTION_FLAG = process.argv.find((arg) => arg.startsWith("--section="));
+const SELECTED_SECTION = SECTION_FLAG ? SECTION_FLAG.slice("--section=".length) : null;
+if (SELECTED_SECTION !== null && !SECTION_TARGETS.some((entry) => entry.section === SELECTED_SECTION)) {
+  refuse(
+    `--section=${SELECTED_SECTION} names no declared section. Declared: ` +
+      SECTION_TARGETS.map((entry) => `"${entry.section}"`).join(", ") +
+      ". Nothing was measured."
+  );
+}
+
 /** Every table this run will touch, flattened once. */
-const ALL_TARGET_TABLES = SECTION_TARGETS.flatMap((entry) =>
-  entry.tables.map((table) => ({ section: entry.section, table }))
-);
+const ALL_TARGET_TABLES = SECTION_TARGETS.filter(
+  (entry) => SELECTED_SECTION === null || entry.section === SELECTED_SECTION
+).flatMap((entry) => entry.tables.map((table) => ({ section: entry.section, table })));
 
 /* ────────────────────────────────────────────────────────────────────────────
  * The dry form — prints the contract and mints nothing
@@ -250,6 +279,9 @@ function printContract() {
   console.log("               holding none of their keys.");
   console.log("");
   console.log("  0 = the pair held  ·  1 = FAILED  ·  2 = REFUSED, and nothing was measured.");
+  if (SELECTED_SECTION !== null) {
+    console.log(`  ⚠ ONE SECTION ONLY: --section=${SELECTED_SECTION}. The other sections were not measured by this run.`);
+  }
   console.log("  A refusal is not a failure, and a 2 on an empty table is the honest outcome.");
   console.log("");
   console.log("  ── the declared targets ───────────────────────────────────────────────");
