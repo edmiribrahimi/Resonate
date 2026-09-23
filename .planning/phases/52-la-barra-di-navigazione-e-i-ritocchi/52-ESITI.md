@@ -595,3 +595,61 @@ con il fuoco sulla password aveva visto tutti e tre in vista: la sonda legge i
 rettangoli 1,5 s dopo il tocco, a pagina zoomata, e sotto zoom l'area visibile e'
 piu' stretta e piu' bassa. Il dato che decide D-52-28 e' quello **dopo** la
 correzione, a scala 1.
+
+### Dopo la correzione
+
+- **Stessa sonda, stesse capabilities, stessi sei campi, stesso ordine**, sul
+  commit `9b425f85` (primitivo a `text-base md:text-sm` e rete CSS sotto
+  `pointer: coarse`), servito da `npm run dev:lab`.
+- **Una corsa scartata, e perche' conta.** Il primo giro dopo la correzione
+  (18:01–18:02Z) ha trovato i campi del primitivo a 16 px e scala 1, ma la
+  **ricerca della porta ancora a 14 px e 1,1436**: il dev server serviva il foglio
+  di stile **vecchio** dalla sua cache (Turbopack), senza la rete. Svuotata la
+  cache di sviluppo e riavviato il server, il foglio servito contiene la regola, e
+  la corsa buona e' quella qui sotto. Il giro scartato prova per caso una cosa
+  utile: **il primitivo da solo non basta alla porta** — la ricerca non lo usa, e
+  senza la rete zooma come prima. La build di produzione contiene la regola
+  **fuori da ogni `@layer`** (controllato sul CSS compilato).
+
+| Campo | Prima (17:54–17:57Z) al tocco / dopo il blur | Ora (UTC) | Riposo | Al tocco | Dopo il blur | `fs` | `scrollWidth` = larghezza |
+|---|---|---|---|---|---|---|---|
+| (a) `/login`, email | 1,1436 / 1,1436 | 18:04:31Z | 1 | **1** | **1** | 16px | 390 = 390 |
+| (b) `/login`, password | 1,1436 / 1,1436 | 18:04:37Z | 1 | **1** | **1** | 16px | 390 = 390 |
+| (c) `/door`, «Search by name...» | 1,1436 / 1,1436 | 18:05:37Z | 1 | **1** | **1** | 16px | 390 = 390 |
+| (d) `select` del ruolo, Create account | 1 / 1 (non zoomava gia') | 18:05:58Z | 1 | 1 | 1 | 16px | 390 = 390 |
+| (e) codice sconto di una serata in vendita | 1,1436 / 1,1436 | 18:05:18Z | 1 | **1** | **1** | 16px | 390 = 390 |
+| (f) `/login`, email, in orizzontale | 1,1427 / 1,1427 | 18:04:54Z | 1 | **1** | **1** | 16px | 750 = 750 |
+
+**La porta, a tastiera aperta (c, 18:05:37Z):** area visibile larga 390 e non
+spostata (`offsetLeft` 0). «QR Scan» finisce a **366** e la linguetta Alerts a
+**366**, entrambe `<= 390`: dentro lo schermo. Il campo di ricerca resta dov'era
+(alto 126 px, largo 342, come prima), ma **cresce da 46 a 49 px di altezza**: la
+rete cambia solo la dimensione del testo, e l'interlinea di `text-sm` in
+Tailwind 4 e' un rapporto (1,25/0,875), quindi segue il testo. Tre pixel in piu'
+su un bersaglio che era gia' sopra i 44; le righe della lista scendono di tre
+pixel. Non e' stato compensato per non toccare l'interlinea di ogni altro campo.
+
+**P-52-F passo 5, rimisurato (18:04:44Z, scala 1, altezza visibile 369 px):**
+
+| Fuoco | Email | Password | «Sign In» |
+|---|---|---|---|
+| email | in vista (292–336) | coperta (352–396) | coperto (412–460) |
+| password | **sopra il bordo alto** (116–160, area visibile da 176) | in vista (176–220) | **in vista** (236–284) |
+
+Con il fuoco sulla password **«Sign In» e' sopra la tastiera**: la condizione che
+avrebbe riaperto D-52-28 **non si verifica**, e `resta` e' confermato. La
+differenza da [3]: l'email non e' coperta dalla tastiera ma scorsa **sopra** il
+bordo alto — Safari porta la password in cima all'area visibile. Il modulo
+intero (116–284, 168 px) starebbe nei 369 visibili; e' la scelta di scorrimento
+di Safari, non un taglio. Il passo che serve — scrivere la password e toccare
+«Sign In» senza chiudere la tastiera — e' possibile.
+
+**Difetti 2 e 3** chiusi da 52-18 e provati sul laboratorio: lo `staff` legge
+«Staff» su Account (17:48:38Z) e l'indirizzo col punto finale produce «That
+address was refused as not valid» (17:49:27Z) — vedi `52-18-SUMMARY.md`.
+
+**Il requisito del proprietario** — *«se sono sulla pagina di login, e clicco sul
+campo mail o password, non deve avvenire lo zoom»* — **e' soddisfatto sul
+simulatore iOS 27.0**. Resta da confermare **sul suo iPhone** (iOS 26.7), sul
+laboratorio, dopo il deploy qui sotto: la porta, offline, prende il foglio nuovo
+solo quando il service worker si aggiorna.
