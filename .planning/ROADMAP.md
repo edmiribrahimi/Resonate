@@ -521,7 +521,7 @@ Plans:
 > che non stia gia' vedendo. E il calcolo va fatto **prima** del filtro per
 > format, o selezionandone uno spariscono tutti gli altri.
 
-**Plans:** 5/17 plans executed
+**Plans:** 6/17 plans executed
 
 Plans:
 **Wave 1**
@@ -534,7 +534,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 52-06-PLAN.md — M1 additiva (`gallery.view`, `storage_path`, policy `EXISTS`) con catalogo TS e gate, applicata al laboratorio
+- [x] 52-06-PLAN.md — M1 additiva (`gallery.view`, `storage_path`, policy `EXISTS`) con catalogo TS e gate, applicata al laboratorio
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
