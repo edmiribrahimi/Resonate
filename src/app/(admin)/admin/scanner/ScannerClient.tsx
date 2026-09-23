@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import ScanFlash, { type ScanFlashType } from "@/components/scanner/ScanFlash";
+import { FOCUS_RING } from "@/components/ui/Button";
 import {
   vibrateSuccess,
   vibrateError,
@@ -412,7 +413,15 @@ function stalenessBandText(channelIsLive: boolean, ageMs: number): string {
     : `This device is not receiving live updates. The list is ${age} — tap to reload.`;
 }
 
-type FilterTab = "all" | "not_arrived" | "checked_in";
+/**
+ * The door's five tabs, in fixed positions for the whole night (D-52-19,
+ * D-52-26). The first three filter the attendee list; `recent` holds the last
+ * five scans and their undo (D-52-22); `alerts` holds the list and queue
+ * notices that are NEWS rather than an instruction about whom to let in
+ * (D-52-21). The instruction — the guest-list warning with the radio off —
+ * stays above the search, outside every tab.
+ */
+type FilterTab = "all" | "not_arrived" | "checked_in" | "recent" | "alerts";
 
 /**
  * A line that stays on the screen until the next successful refresh.
@@ -629,6 +638,11 @@ export default function ScannerClient() {
   const [attendance, setAttendance] = useState<AttendanceEvent | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterTab>("not_arrived");
+  // Alert keys already looked at, so the Alerts tab lights its dot only for
+  // something new. See the effect next to `FILTER_TABS` (D-52-20).
+  const [seenAlertKeys, setSeenAlertKeys] = useState<ReadonlySet<string>>(
+    () => new Set()
+  );
   const [showScanner, setShowScanner] = useState(false);
   const scannerRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -2752,10 +2766,74 @@ export default function ScannerClient() {
   const listIsStale =
     listAgeMs !== null && (!channelLive || listAgeMs > SAFETY_RELOAD_MS);
 
-  const FILTER_TABS: { key: FilterTab; label: string; count: number }[] = [
-    { key: "all", label: "All", count: totalAttendees },
-    { key: "not_arrived", label: "Not Arrived", count: totalNotArrived },
-    { key: "checked_in", label: "Checked In", count: totalCheckedIn },
+  /** A drift worth saying out loud. Shown, never acted on. */
+  const driftMinutes =
+    clockDriftMs !== null && Math.abs(clockDriftMs) >= CLOCK_DRIFT_WORTH_SAYING_MS
+      ? Math.round(clockDriftMs / 60000)
+      : null;
+
+  // ── The Alerts tab: what it counts, and why it never opens itself ──────────
+  //
+  // One key per notice that lives under Alerts, derived at render like the
+  // notices themselves: the staleness band (`"band"`, NOT a `cacheNotices`
+  // entry — see the paragraph over the band), each `cacheNotices` key, the
+  // drain's outcome and the clock drift. The guest-list warning is not here: it
+  // is an instruction about whom to let in, and it stays above the search.
+  const alertKeys: string[] = [
+    ...(listIsStale && listAgeMs !== null ? ["band"] : []),
+    ...cacheNotices.map((notice) => `notice:${notice.key}`),
+    ...(blockedResult ? ["drain"] : []),
+    ...(driftMinutes !== null ? ["drift"] : []),
+  ];
+  const alertKeySignature = alertKeys.join("|");
+
+  // D-52-20: a new alert LIGHTS the tab, it never OPENS it. Somebody looking
+  // for a name in Out must not lose the list because the cache complained, so
+  // nothing in this file changes `activeFilter` except a tap on a tab. The
+  // keys become "seen" while Alerts is open; a key that goes away is forgotten,
+  // so the same notice coming back later is news again.
+  useEffect(() => {
+    const current = alertKeySignature ? alertKeySignature.split("|") : [];
+    setSeenAlertKeys((prev) => {
+      const next = new Set<string>();
+      for (const key of current) {
+        if (activeFilter === "alerts" || prev.has(key)) next.add(key);
+      }
+      if (next.size === prev.size && [...next].every((k) => prev.has(k))) {
+        return prev;
+      }
+      return next;
+    });
+  }, [activeFilter, alertKeySignature]);
+
+  const alertsUnseen =
+    activeFilter !== "alerts" && alertKeys.some((k) => !seenAlertKeys.has(k));
+
+  // Short labels for the eye, full names for a screen reader (D-52-26). The
+  // count sits beside the label WITHOUT parentheses: D-52-26 supersedes the
+  // "Recent (12)" form of D-52-19, because at 360 px five tabs have 62 px each
+  // and two glyphs of brackets do not fit. Alerts shows no number at zero.
+  const FILTER_TABS: {
+    key: FilterTab;
+    label: string;
+    count: number | null;
+    ariaLabel: string;
+    dot: boolean;
+  }[] = [
+    { key: "all", label: "All", count: totalAttendees, ariaLabel: `All guests, ${totalAttendees}`, dot: false },
+    { key: "not_arrived", label: "Out", count: totalNotArrived, ariaLabel: `Not arrived, ${totalNotArrived}`, dot: false },
+    { key: "checked_in", label: "In", count: totalCheckedIn, ariaLabel: `Checked in, ${totalCheckedIn}`, dot: false },
+    { key: "recent", label: "Recent", count: scanHistory.length, ariaLabel: `Recent scans, ${scanHistory.length}`, dot: false },
+    {
+      key: "alerts",
+      label: "Alerts",
+      count: alertKeys.length > 0 ? alertKeys.length : null,
+      ariaLabel:
+        alertKeys.length > 0
+          ? `Alerts, ${alertKeys.length}${alertsUnseen ? ", new" : ""}`
+          : "Alerts",
+      dot: alertsUnseen,
+    },
   ];
 
   // ── Party Selector Screen ──
@@ -2876,12 +2954,6 @@ export default function ScannerClient() {
   const nightEndedClock = doorAuth?.validUntil
     ? formatClock(doorAuth.validUntil)
     : null;
-
-  /** A drift worth saying out loud. Shown, never acted on. */
-  const driftMinutes =
-    clockDriftMs !== null && Math.abs(clockDriftMs) >= CLOCK_DRIFT_WORTH_SAYING_MS
-      ? Math.round(clockDriftMs / 60000)
-      : null;
 
   return (
     <div className="mx-auto w-full max-w-5xl min-h-dvh bg-ground pb-24">
@@ -3053,19 +3125,6 @@ export default function ScannerClient() {
           </div>
         )}
 
-        {/* The drift between this device's clock and the server's, shown because
-            it explains an odd-looking end time — and never used to decide one. */}
-        {driftMinutes !== null && (
-          <div className="mb-3 rounded-lg border border-line bg-surface px-3 py-2">
-            <p className="text-[11px] leading-snug text-muted">
-              This device&apos;s clock is {Math.abs(driftMinutes)} min{" "}
-              {driftMinutes > 0 ? "behind" : "ahead of"} the server. Times shown
-              on this screen come from this clock; nothing is refused because of
-              it.
-            </p>
-          </div>
-        )}
-
         {/*
           The queue, rendered OUTSIDE the Online/Offline ternary above.
 
@@ -3127,10 +3186,6 @@ export default function ScannerClient() {
               </span>
             )}
           </div>
-        )}
-
-        {blockedResult && (
-          <p className="mb-3 text-[10px] text-muted">{blockedResult}</p>
         )}
 
         {/* What the failed count actually counts. A number with no way to see
@@ -3272,22 +3327,56 @@ export default function ScannerClient() {
           )}
         </div>
 
-        {/* Filter tabs */}
-        <div className="flex gap-1 rounded-xl bg-surface p-1">
-          {FILTER_TABS.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveFilter(tab.key)}
-              className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
-                activeFilter === tab.key
-                  ? "bg-accent/20 text-accent"
-                  : "text-muted hover:text-ink"
-              }`}
-            >
-              {tab.label}{" "}
-              <span className="opacity-60">({tab.count})</span>
-            </button>
-          ))}
+        {/*
+          The five tabs (D-52-19, D-52-26), right under the search: search →
+          tabs → content are contiguous (D-52-28). No `p-1`, no `gap-1`: at
+          360 px they would take 24 px and push "Recent 5" under its width. Each
+          tab declares `min-h-11`, and its line left `DOOR_TARGET_DEBT` in the
+          same commit (14 → 13). Positions never change, empty tabs included.
+        */}
+        <div
+          role="group"
+          aria-label="Guest list view"
+          className="grid grid-cols-5 overflow-hidden rounded-xl bg-surface"
+        >
+          {FILTER_TABS.map((tab) => {
+            const isActive = activeFilter === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveFilter(tab.key)}
+                aria-pressed={isActive}
+                aria-label={tab.ariaLabel}
+                className={`relative flex min-h-11 flex-wrap items-center justify-center gap-x-1 px-1 text-xs font-semibold transition-colors ${FOCUS_RING} ${
+                  isActive ? "bg-raised text-ink" : "text-muted hover:text-ink"
+                }`}
+              >
+                {/* No pulse: Pending and Offline already pulse on this screen,
+                    and a third would make the three indistinguishable. */}
+                {tab.dot && (
+                  <span
+                    aria-hidden="true"
+                    className="h-2 w-2 rounded-full bg-sem-warn"
+                  />
+                )}
+                <span>{tab.label}</span>
+                {tab.count !== null && (
+                  <span
+                    className={`font-mono ${isActive ? "text-ink-2" : "text-muted"}`}
+                  >
+                    {tab.count}
+                  </span>
+                )}
+                {isActive && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-accent"
+                  />
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -3312,55 +3401,6 @@ export default function ScannerClient() {
             aria-live="polite"
           >
             {cameraFault}
-          </div>
-        )}
-
-        {/*
-          ── F2 / D-38-19: the band is DERIVED state, and it is not in the array ──
-
-          It belongs to the family below — same container semantics, same two
-          tone class sets, same "stays until it is no longer true" behaviour, and
-          just as deliberately not a toast. It does **not** belong to that
-          family's storage, and the distinction is the whole point.
-
-          `setCacheNotices` replaces its array **wholesale** on every fetch,
-          including on each of the three early-return failure branches of
-          `fetchAttendance` (unreachable, non-ok, unparseable). A band pushed
-          into that array would therefore be erased by a **failed** refresh —
-          which is precisely the moment it is the only thing telling anyone that
-          the list cannot be trusted. It would vanish exactly when it mattered,
-          and would look correct in review.
-
-          So: computed at render from `channelLive` and the age, rendered here as
-          its own element, and `setCacheNotices` stays the single writer of its
-          own array. If you are here to "simplify" this into the notices array,
-          this paragraph is the reason not to.
-
-          Two absences that are also decisions:
-
-          - **Nothing at all while healthy.** Not an empty container, not a green
-            tick. The door's screen is the busiest in the product and every
-            element proposed for it has to justify itself against that; a badge
-            that says "fine" 99% of the night is how the 1% stops being read.
-          - **The band never names a permission** (D-38-04). It reports a
-            transport fact and an age, and nothing else. See `stalenessBandText`
-            for why the four causes behind that fact are not distinguishable
-            from here — and why guessing between them would put a second verdict
-            about the operator on a screen that already has one.
-        */}
-        {listIsStale && listAgeMs !== null && (
-          <div className="mb-4" role="status" aria-live="polite">
-            <button
-              type="button"
-              onClick={() => requestReload("band")}
-              className={`w-full rounded-xl border px-3 py-2.5 text-left text-xs leading-relaxed transition-colors ${
-                channelLive
-                  ? "border-sem-warn/40 bg-sem-warn/10 text-sem-warn active:bg-sem-warn/20"
-                  : "border-sem-crit/40 bg-sem-crit/10 text-sem-crit active:bg-sem-crit/20"
-              }`}
-            >
-              {stalenessBandText(channelLive, listAgeMs)}
-            </button>
           </div>
         )}
 
@@ -3402,23 +3442,6 @@ export default function ScannerClient() {
           </div>
         )}
 
-        {cacheNotices.length > 0 && (
-          <div className="mb-4 space-y-2" role="status" aria-live="polite">
-            {cacheNotices.map((notice) => (
-              <div
-                key={notice.key}
-                className={`rounded-xl border px-3 py-2 text-xs leading-relaxed ${
-                  notice.tone === "error"
-                    ? "border-sem-crit/40 bg-sem-crit/10 text-sem-crit"
-                    : "border-sem-warn/40 bg-sem-warn/10 text-sem-warn"
-                }`}
-              >
-                {notice.text}
-              </div>
-            ))}
-          </div>
-        )}
-
         {/* QR Scanner - collapsible, continuous camera */}
         {showScanner && (
           <div className="mb-4 rounded-xl border border-line bg-surface p-4">
@@ -3454,147 +3477,266 @@ export default function ScannerClient() {
           />
         )}
 
-        {/* Scan history */}
-        {scanHistory.length > 0 && (
-          <div className="mb-4 space-y-1">
-            <p className="text-[10px] font-medium text-muted uppercase tracking-wider mb-2">
-              Recent scans
-            </p>
-            {scanHistory.map((record, i) => {
-              const isUndone = record.undone;
-              const isSuccess = record.status === "success" && !isUndone;
-              // The same third state as the flash: admitted-and-flagged, or
-              // already recorded. Never the refusal, because neither is one.
-              // Named by state and not by hue: the hue lives in one lookup, and
-              // a comment that spells it goes stale the day the lookup moves.
-              const isFlagged = record.status === "already_recorded" && !isUndone;
-              const isError = record.status === "error";
-              // A flagged admission is still an admission, so it stays undoable.
-              // The old `isSuccess && canUndo` would have taken that away from
-              // exactly the entries most likely to need it.
-              const canTap = record.canUndo && !isUndone;
+        {/*
+          ── Recent (D-52-22): the last five scans, each row tappable to undo,
+          with the same confirmation and the same supervision branch as before.
+          The rows and `handleUndoCheckIn` are unchanged; only where they are
+          read moved.
+        */}
+        {activeFilter === "recent" && (
+          <>
+            {scanHistory.length > 0 ? (
+              <div className="mb-4 space-y-1">
+                {scanHistory.map((record, i) => {
+                  const isUndone = record.undone;
+                  const isSuccess = record.status === "success" && !isUndone;
+                  // The same third state as the flash: admitted-and-flagged, or
+                  // already recorded. Never the refusal, because neither is one.
+                  // Named by state and not by hue: the hue lives in one lookup, and
+                  // a comment that spells it goes stale the day the lookup moves.
+                  const isFlagged = record.status === "already_recorded" && !isUndone;
+                  const isError = record.status === "error";
+                  // A flagged admission is still an admission, so it stays undoable.
+                  // The old `isSuccess && canUndo` would have taken that away from
+                  // exactly the entries most likely to need it.
+                  const canTap = record.canUndo && !isUndone;
 
-              return (
-                <button
-                  key={`${record.id}-${record.timestamp}-${i}`}
-                  onClick={() => canTap && handleUndoCheckIn(record)}
-                  disabled={!canTap}
-                  className={`w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-left transition-colors ${
-                    canTap
-                      ? "hover:bg-line/30 active:scale-[0.98]"
-                      : ""
-                  } ${isUndone ? "opacity-50" : ""}`}
-                >
-                  {/* Status icon */}
-                  <span className="shrink-0 flex items-center justify-center w-6 h-6 rounded-full">
-                    {isUndone ? (
-                      <svg
-                        className="h-4 w-4 text-muted"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"
-                        />
-                      </svg>
-                    ) : isSuccess ? (
-                      <svg
-                        className="h-4 w-4 text-green-500"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={2.5}
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="m4.5 12.75 6 6 9-13.5"
-                        />
-                      </svg>
-                    ) : isFlagged ? (
-                      <svg
-                        className="h-4 w-4 text-sem-done"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={2.5}
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-                        />
-                      </svg>
-                    ) : isError ? (
-                      <svg
-                        className="h-4 w-4 text-red-600"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={2.5}
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M6 18 18 6M6 6l12 12"
-                        />
-                      </svg>
-                    ) : null}
-                  </span>
+                  return (
+                    <button
+                      key={`${record.id}-${record.timestamp}-${i}`}
+                      onClick={() => canTap && handleUndoCheckIn(record)}
+                      disabled={!canTap}
+                      className={`w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-left transition-colors ${
+                        canTap
+                          ? "hover:bg-line/30 active:scale-[0.98]"
+                          : ""
+                      } ${isUndone ? "opacity-50" : ""}`}
+                    >
+                      {/* Status icon */}
+                      <span className="shrink-0 flex items-center justify-center w-6 h-6 rounded-full">
+                        {isUndone ? (
+                          <svg
+                            className="h-4 w-4 text-muted"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"
+                            />
+                          </svg>
+                        ) : isSuccess ? (
+                          <svg
+                            className="h-4 w-4 text-green-500"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2.5}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="m4.5 12.75 6 6 9-13.5"
+                            />
+                          </svg>
+                        ) : isFlagged ? (
+                          <svg
+                            className="h-4 w-4 text-sem-done"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2.5}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                            />
+                          </svg>
+                        ) : isError ? (
+                          <svg
+                            className="h-4 w-4 text-red-600"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2.5}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M6 18 18 6M6 6l12 12"
+                            />
+                          </svg>
+                        ) : null}
+                      </span>
 
-                  {/* Name + type */}
-                  <div className="min-w-0 flex-1">
-                    <span
-                      className={`text-sm truncate block ${
-                        isUndone
-                          ? "text-muted line-through"
-                          : "text-ink"
+                      {/* Name + type */}
+                      <div className="min-w-0 flex-1">
+                        <span
+                          className={`text-sm truncate block ${
+                            isUndone
+                              ? "text-muted line-through"
+                              : "text-ink"
+                          }`}
+                        >
+                          {record.name}
+                        </span>
+                        {(record.ticketType || record.reason) && (
+                          <span className="text-[10px] text-muted truncate block">
+                            {isUndone
+                              ? "Undone"
+                              : (record.reason ?? record.ticketType)}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Time */}
+                      <span className="shrink-0 text-[10px] text-muted tabular-nums">
+                        {formatScanTime(record.timestamp)}
+                      </span>
+
+                      {/* Undo hint for tappable items */}
+                      {canTap && (
+                        <svg
+                          className="shrink-0 h-3.5 w-3.5 text-muted"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"
+                          />
+                        </svg>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="px-6 py-8 text-center">
+                <p className="text-base font-semibold text-ink">No scans yet</p>
+                <p className="mt-1 text-sm text-muted">
+                  The last five check-ins appear here. Tap one to undo it.
+                </p>
+              </div>
+            )}
+          </>
+        )}
+
+        {/*
+          ── Alerts (D-52-21): news about the list and the queue, in this order —
+          the staleness band, the drain's outcome, the cache notices, the clock
+          drift. Same shapes and colours as before; they moved, they did not
+          change. What is NOT here, on purpose: the queue pills and the
+          guest-list warning, which are instructions and stay in the header.
+        */}
+        {activeFilter === "alerts" && (
+          <div className="mb-4">
+            {alertKeys.length > 0 ? (
+              <div className="space-y-2">
+                {/*
+                  ── F2 / D-38-19: the band is DERIVED state, and it is not in the array ──
+
+                  It belongs to the family below — same container semantics, same two
+                  tone class sets, same "stays until it is no longer true" behaviour, and
+                  just as deliberately not a toast. It does **not** belong to that
+                  family's storage, and the distinction is the whole point.
+
+                  `setCacheNotices` replaces its array **wholesale** on every fetch,
+                  including on each of the three early-return failure branches of
+                  `fetchAttendance` (unreachable, non-ok, unparseable). A band pushed
+                  into that array would therefore be erased by a **failed** refresh —
+                  which is precisely the moment it is the only thing telling anyone that
+                  the list cannot be trusted. It would vanish exactly when it mattered,
+                  and would look correct in review.
+
+                  So: computed at render from `channelLive` and the age, rendered here as
+                  its own element, and `setCacheNotices` stays the single writer of its
+                  own array. If you are here to "simplify" this into the notices array,
+                  this paragraph is the reason not to.
+
+                  Two absences that are also decisions:
+
+                  - **Nothing at all while healthy.** Not an empty container, not a green
+                    tick. The door's screen is the busiest in the product and every
+                    element proposed for it has to justify itself against that; a badge
+                    that says "fine" 99% of the night is how the 1% stops being read.
+                  - **The band never names a permission** (D-38-04). It reports a
+                    transport fact and an age, and nothing else. See `stalenessBandText`
+                    for why the four causes behind that fact are not distinguishable
+                    from here — and why guessing between them would put a second verdict
+                    about the operator on a screen that already has one.
+                */}
+                {listIsStale && listAgeMs !== null && (
+                  <div role="status" aria-live="polite">
+                    <button
+                      type="button"
+                      onClick={() => requestReload("band")}
+                      className={`w-full rounded-xl border px-3 py-2.5 text-left text-xs leading-relaxed transition-colors ${
+                        channelLive
+                          ? "border-sem-warn/40 bg-sem-warn/10 text-sem-warn active:bg-sem-warn/20"
+                          : "border-sem-crit/40 bg-sem-crit/10 text-sem-crit active:bg-sem-crit/20"
                       }`}
                     >
-                      {record.name}
-                    </span>
-                    {(record.ticketType || record.reason) && (
-                      <span className="text-[10px] text-muted truncate block">
-                        {isUndone
-                          ? "Undone"
-                          : (record.reason ?? record.ticketType)}
-                      </span>
-                    )}
+                      {stalenessBandText(channelLive, listAgeMs)}
+                    </button>
                   </div>
-
-                  {/* Time */}
-                  <span className="shrink-0 text-[10px] text-muted tabular-nums">
-                    {formatScanTime(record.timestamp)}
-                  </span>
-
-                  {/* Undo hint for tappable items */}
-                  {canTap && (
-                    <svg
-                      className="shrink-0 h-3.5 w-3.5 text-muted"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"
-                      />
-                    </svg>
-                  )}
-                </button>
-              );
-            })}
+                )}
+                {blockedResult && (
+                  <p className="text-[10px] text-muted">{blockedResult}</p>
+                )}
+                {cacheNotices.length > 0 && (
+                  <div className="space-y-2" role="status" aria-live="polite">
+                    {cacheNotices.map((notice) => (
+                      <div
+                        key={notice.key}
+                        className={`rounded-xl border px-3 py-2 text-xs leading-relaxed ${
+                          notice.tone === "error"
+                            ? "border-sem-crit/40 bg-sem-crit/10 text-sem-crit"
+                            : "border-sem-warn/40 bg-sem-warn/10 text-sem-warn"
+                        }`}
+                      >
+                        {notice.text}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* The drift between this device's clock and the server's, shown because
+                    it explains an odd-looking end time — and never used to decide one. */}
+                {driftMinutes !== null && (
+                  <div className="rounded-lg border border-line bg-surface px-3 py-2">
+                    <p className="text-[11px] leading-snug text-muted">
+                      This device&apos;s clock is {Math.abs(driftMinutes)} min{" "}
+                      {driftMinutes > 0 ? "behind" : "ahead of"} the server. Times shown
+                      on this screen come from this clock; nothing is refused because of
+                      it.
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="px-6 py-8 text-center">
+                <p className="text-base font-semibold text-ink">
+                  Nothing to report
+                </p>
+                <p className="mt-1 text-sm text-muted">
+                  List and queue warnings appear here and light up this tab.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Attendee list for selected party */}
-        {attendance && (
+        {/* Attendee list for selected party — All · Out · In */}
+        {attendance &&
+          activeFilter !== "recent" &&
+          activeFilter !== "alerts" && (
           <div className="rounded-xl border border-line bg-surface p-4">
             <div>
               {filteredAttendees.length > 0 ? (
