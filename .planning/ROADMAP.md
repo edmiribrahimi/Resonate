@@ -521,7 +521,7 @@ Plans:
 > che non stia gia' vedendo. E il calcolo va fatto **prima** del filtro per
 > format, o selezionandone uno spariscono tutti gli altri.
 
-**Plans:** 14/17 plans executed
+**Plans:** 14/19 plans executed
 
 Plans:
 **Wave 1**
@@ -556,15 +556,23 @@ Plans:
 
 - [x] 52-14-PLAN.md — la corsa del proprietario sul laboratorio, su iPhone, e la decisione sul login (checkpoint) — tre difetti aperti (zoom di Safari sui campi, Critical per la porta): 52-15 non parte prima di un piano di chiusura
 
-**Wave 7** *(blocked on Wave 6 completion)*
+**Wave 7** *(blocked on Wave 6 completion)* — chiusura delle lacune della corsa
 
-- [ ] 52-15-PLAN.md — atto 1 in produzione: M1 → deploy → M2, sotto `52-AUTHORISATION.md` (checkpoint)
+- [ ] 52-18-PLAN.md — difetti 2 e 3: lo `staff` su Account legge «Staff»; un indirizzo rifiutato dall'autenticazione ha la sua frase (`address_refused`), non «The write failed»
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
-- [ ] 52-16-PLAN.md — atto 2 in produzione: rimozione per chiave e ri-spogliatura, sotto `52-AUTHORISATION-MEDIA.md` (checkpoint)
+- [ ] 52-19-PLAN.md — difetto 1 (Critical, la porta): campi a 16 px sotto puntatore grossolano, niente blocco dello zoom (D-41-08), deroga datata in 41-UI-SPEC §7.4; misura prima/dopo su Safari simulato, P-52-F passo 5 rimisurato, laboratorio al commit della correzione
 
 **Wave 9** *(blocked on Wave 8 completion)*
+
+- [ ] 52-15-PLAN.md — atto 1 in produzione: M1 → deploy → M2, sotto `52-AUTHORISATION.md` (checkpoint)
+
+**Wave 10** *(blocked on Wave 9 completion)*
+
+- [ ] 52-16-PLAN.md — atto 2 in produzione: rimozione per chiave e ri-spogliatura, sotto `52-AUTHORISATION-MEDIA.md` (checkpoint)
+
+**Wave 11** *(blocked on Wave 10 completion)*
 
 - [ ] 52-17-PLAN.md — persona (media-and-storage, access-gating), sonda di cache dopo la finestra, `52-VERIFICATION.md` (checkpoint)
 
