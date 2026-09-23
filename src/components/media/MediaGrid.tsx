@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { StaggeredList, StaggeredItem } from "@/components/motion/StaggeredList";
 import { FOCUS_RING } from "@/components/ui/Button";
 
@@ -55,8 +55,27 @@ interface MediaGridProps {
   actions?: (item: MediaGridItem) => ReactNode;
 }
 
+/*
+  Zero silent failures (phase 52, NAV-07). After NAV-07 an address EXPIRES — the
+  gallery's signature lasts an hour — and a row can arrive with no address at
+  all when its signature failed. Without the sentence below an expired or
+  unsigned picture would be a mute rectangle, indistinguishable from a gallery
+  that simply has nothing in it. There is no error tracking in this product
+  (`meta-gates.md`), so the visible effect is the only one that reaches anybody.
+  A new pattern here: no `<img>` in the product had an `onError` before.
+*/
 export default function MediaGrid({ items, onItemClick, actions }: MediaGridProps) {
+  const [failed, setFailed] = useState<ReadonlySet<string>>(() => new Set());
+
   if (items.length === 0) return null;
+
+  const markFailed = (id: string) =>
+    setFailed((prev) => {
+      if (prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
 
   return (
     <StaggeredList className="grid grid-cols-2 lg:grid-cols-3 gap-2">
@@ -74,12 +93,19 @@ export default function MediaGrid({ items, onItemClick, actions }: MediaGridProp
           className={`relative aspect-square min-h-11 w-full overflow-hidden rounded-xl bg-surface transition-transform active:scale-95 active:opacity-80 ${FOCUS_RING}`}
           onClick={() => onItemClick?.(item)}
         >
-          {item.type === "photo" ? (
+          {item.url === "" || failed.has(item.id) ? (
+            <div className="flex h-full w-full items-center justify-center bg-raised">
+              <p className="px-2 text-center text-xs text-muted">
+                This image could not be loaded. Reload the page.
+              </p>
+            </div>
+          ) : item.type === "photo" ? (
             <img
               src={item.url}
               alt=""
               className="h-full w-full object-cover"
               loading="lazy"
+              onError={() => markFailed(item.id)}
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-raised">
