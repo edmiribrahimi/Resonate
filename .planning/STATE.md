@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "Completato 52-15-PLAN.md — fase 52 in produzione dal 2026-09-23 18:28:33Z (M1 → deploy f671144b → M2), verify:capabilities verde, autorizzazione ESAURITA; restano 52-16 e 52-17"
-last_updated: "2026-09-23T18:35:00Z"
+stopped_at: "Completato 52-16-PLAN.md — atto 2 ESAURITO a zero soggetti alle 18:43:33Z; resta 52-17"
+last_updated: "2026-09-23T18:45:24.496Z"
 last_activity: 2026-09-23
 progress:
   total_phases: 12
   completed_phases: 5
-  total_plans: 73
-  completed_plans: 64
+  total_plans: 75
+  completed_plans: 78
   percent: 42
 ---
 
@@ -35,8 +35,10 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 52 (la-barra-di-navigazione-e-i-ritocchi) — EXECUTING
-Plan: 17 of 19 completati (52-01..15, 52-18, 52-19)
-Next: 52-16 (atto 2: rimozione per chiave e ri-spogliatura — **oggi senza soggetto**, 0 media in produzione), poi 52-17 (persona e `52-VERIFICATION.md`).
+Plan: 18 of 19 completati (52-01..16, 52-18, 52-19)
+Next: 52-17 (persona e `52-VERIFICATION.md`; cancellazione datata delle istantanee del laboratorio).
+
+**52-16 chiuso: l'atto 2 e' ESAURITO alle 18:43:33Z, a zero soggetti.** Il proprietario ha concesso `entrambe` alle 18:42:23Z; `purge-media-orphans` e `restrip-event-media`, `--dry-run` poi `--apply` contro la produzione, uscita 0 su tutte e quattro le corse: **R 0 · O 0 · in volo 0 · P 0 · V 0**, riconfermati da PostgREST e Storage alle 18:43:29Z. Nessuna scrittura, nessuna istantanea. I blocchi restano `granted: yes · spent: no` (gli strumenti spendono solo quando scrivono); l'atto e' esaurito per data. D-52-30 e D-52-31 sono veri in produzione per assenza di soggetto. La verify automatica del Task 3 non passa per costruzione in questo caso: dichiarato come deviazione nel SUMMARY.
 
 **52-15 chiuso: la fase 52 e' in produzione dal 2026-09-23 18:28:33Z.** Sotto `52-AUTHORISATION.md` («tutto», poi riapprovata alle 18:25Z con «approvo m1, push, m2 e push finale. vai» dopo un diniego dell'ambiente al primo tentativo), ora **ESAURITA**. **M1** alle 18:26:38Z, versione `20260923182638`: `gallery.view` a master, organizer, staff — 16 chiavi, 31 concessioni (16/14/1/0), `storage_path` sui media. **Push** `65e9cc57..f671144b` (94 commit) alle 18:27:10Z; deploy `dpl_Dy9VYqPygXJiojRYrAf23jKvdDy1` **`READY` alle 18:28:33Z**: barra nuova, porta a cinque linguette, `/gallery` chiusa ad anonimi e attendee, campi a 16 px. **M2** alle 18:29:08Z, versione `20260923182908`: `storage_path` NOT NULL, bucket `event-media` **privato**, «Anyone can view event media» tolta, `event_media_select_gallery`. **`verify:capabilities` verde** (5/5, era rosso alle 18:16Z); `verify:refusal --section=gallery` **RIFIUTATO su 0 media**, come scritto prima della domanda, una corsa sola. Sonda anonima senza soggetto. **Lo zoom e' chiuso anche sull'iPhone del proprietario** (iOS 26.7, tocchi nativi, scala 1 su email e password, 18:27Z). Esiti in `52-ESITI.md`.
 
@@ -506,6 +508,7 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase ?]: 50-12: i moduli della persona si correggono DOPO la cancellazione, e verify:persona si lancia dopo la scrittura in produzione — un modulo aggiornato prima descrive un futuro (D-50-25)
 - [Phase ?]: 50-12: 50-VERIFICATION.md chiude passed perche' il criterio e' per REQUISITO e i sei sono chiusi da prove eseguite; la decisione contraddetta — D-50-18b, il nome dell'acquirente sullo schermo della porta — sta in frontmatter come decisions_contradicted: 1 e in una sezione sua, non in fondo
 - [Phase ?]: 50-12: CLAUDE.md entra nel perimetro benche' non sia nei files_modified del piano — i principi 1 e 8 dicevano che il referral entra subito e che member non e' approved, e si caricano su ogni risposta
+- [Phase 52]: 52-16: a zero soggetti gli strumenti media non spendono il blocco; l'atto si chiude ESAURITA per data e spent non si scrive a mano
 
 ## Accumulated Context
 
@@ -627,8 +630,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-09-23T18:35:00Z
-**Stopped at:** Completato 52-15-PLAN.md — fase 52 in produzione dal 18:28:33Z; restano 52-16 (senza soggetto oggi) e 52-17
+**Last session:** 2026-09-23T18:45:00.896Z
+**Stopped at:** Completato 52-16-PLAN.md — atto 2 ESAURITO a zero soggetti alle 18:43:33Z; resta 52-17
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 

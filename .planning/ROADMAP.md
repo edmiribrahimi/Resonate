@@ -521,7 +521,7 @@ Plans:
 > che non stia gia' vedendo. E il calcolo va fatto **prima** del filtro per
 > format, o selezionandone uno spariscono tutti gli altri.
 
-**Plans:** 17/19 plans executed
+**Plans:** 18/19 plans executed
 
 Plans:
 **Wave 1**
@@ -570,7 +570,7 @@ Plans:
 
 **Wave 10** *(blocked on Wave 9 completion)*
 
-- [ ] 52-16-PLAN.md — atto 2 in produzione: rimozione per chiave e ri-spogliatura, sotto `52-AUTHORISATION-MEDIA.md` (checkpoint)
+- [x] 52-16-PLAN.md — atto 2 in produzione: rimozione per chiave e ri-spogliatura, sotto `52-AUTHORISATION-MEDIA.md` (checkpoint)
 
 **Wave 11** *(blocked on Wave 10 completion)*
 
