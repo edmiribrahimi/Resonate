@@ -521,7 +521,7 @@ Plans:
 > che non stia gia' vedendo. E il calcolo va fatto **prima** del filtro per
 > format, o selezionandone uno spariscono tutti gli altri.
 
-**Plans:** 6/17 plans executed
+**Plans:** 10/17 plans executed
 
 Plans:
 **Wave 1**
@@ -538,10 +538,10 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 52-07-PLAN.md — la barra a quattro voci, TASK spenta, pannello Management (foglio e colonna); via «Management Tools»
-- [ ] 52-08-PLAN.md — NAV-02: prefisso, allow-list e guardia su `/gallery`; il modulo di firma; immagini che dichiarano il guasto
-- [ ] 52-09-PLAN.md — `purge-media-orphans.mjs`: rimozione per chiave di rifiutati e orfani, provata sul laboratorio
-- [ ] 52-10-PLAN.md — `restrip-event-media.mjs`: le foto pre-stripper ripassate dallo stripper vero, provata con GPS sul laboratorio
+- [x] 52-07-PLAN.md — la barra a quattro voci, TASK spenta, pannello Management (foglio e colonna); via «Management Tools»
+- [x] 52-08-PLAN.md — NAV-02: prefisso, allow-list e guardia su `/gallery`; il modulo di firma; immagini che dichiarano il guasto
+- [x] 52-09-PLAN.md — `purge-media-orphans.mjs`: rimozione per chiave di rifiutati e orfani, provata sul laboratorio
+- [x] 52-10-PLAN.md — `restrip-event-media.mjs`: le foto pre-stripper ripassate dallo stripper vero, provata con GPS sul laboratorio
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
