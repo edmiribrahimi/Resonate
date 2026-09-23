@@ -121,6 +121,22 @@ const NEXT_ALLOW_LIST: readonly RegExp[] = [
   // segment. A pattern loose enough to admit a suffix on an authenticated flow
   // is how an open redirect comes back (`T-51-22`).
   /^\/account$/,
+  // ── Added 2026-09-23, phase 52, D-52-13 — and it IS an access decision ────
+  //
+  // The gallery stopped being a public page: it is now a tool, behind the
+  // `gallery.view` key (plan 52-06 wrote the map entry). The map entry alone
+  // does not send an anonymous caller to sign-in with a way back — that is
+  // `PROTECTED_PREFIXES` below, and a prefix whose pattern is missing here
+  // turns check [3/3] of `scripts/verify-routes.mjs` red. So the two move in
+  // the same commit: somebody bounced off `/gallery` while signed out comes
+  // back to `/gallery` after signing in, and whether they are ADMITTED there
+  // is decided by the page's own capability check and by the row policy, not
+  // by this list.
+  //
+  // Anchored at both ends, no `.*`, one literal segment: nothing below
+  // `/gallery` is a destination the product serves, and a pattern loose enough
+  // to admit a suffix is how an open redirect comes back (`T-52-33`).
+  /^\/gallery$/,
   /^\/dashboard$/,
   /^\/set-password$/,
   /^\/events\/[a-z0-9-]{1,80}$/,
@@ -216,6 +232,14 @@ const NEXT_ALLOW_LIST: readonly RegExp[] = [
  * because a sentence that says "a sixth" over a list of three is the kind of
  * dated line this file has already had to correct once.)*
  *
+ * *(They became five again on 2026-09-23, phase 52, D-52-13: `/gallery`
+ * joined, because the gallery is now a tool behind `gallery.view` and an
+ * anonymous caller has to be bounced to sign-in with `?next=/gallery` rather
+ * than served a page that no longer admits them. Five prefixes, spelled out:
+ * `/account`, `/dashboard`, `/admin`, `/door`, `/gallery`. The bounce is UX —
+ * the page repeats the guard by capability, and the row policy on
+ * `event_media` is the boundary.)*
+ *
  * The order is the middleware's `startsWith` order and carries no meaning.
  */
 export const PROTECTED_PREFIXES = [
@@ -223,6 +247,7 @@ export const PROTECTED_PREFIXES = [
   "/dashboard",
   "/admin",
   "/door",
+  "/gallery",
 ] as const;
 
 /**

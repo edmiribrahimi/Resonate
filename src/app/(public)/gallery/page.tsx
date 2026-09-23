@@ -1,8 +1,11 @@
+import { redirect } from "next/navigation";
+
 import { createClient } from "@/lib/supabase/server";
 import AppNav from "@/components/layout/AppNav";
 import AnimatedSection from "@/components/motion/AnimatedSection";
 import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle } from "@/components/ui/Typography";
+import { CAP } from "@/lib/capabilities/keys";
 import { getAccessContext } from "@/lib/capabilities/server";
 import GalleryClient from "./GalleryClient";
 import type { UserRole } from "@/types/database";
@@ -33,20 +36,47 @@ import type { UserRole } from "@/types/database";
  * more group could show a place before its night reveals it, and there is no
  * un-revealing. The filter below is on the **moderation state of the row**, not
  * on the viewer, and it is the same filter it was.
+ *
+ * ── Phase 52: the gallery is a tool now (NAV-02, D-52-13) ────────────────────
+ *
+ * Until phase 52 this page had no guard of its own and its tab was drawn to
+ * everyone. **This is the phase that builds the gate**: the entry moved into the
+ * Management panel under `gallery.view`, an anonymous caller is bounced to
+ * sign-in with a way back, and the page asks the key itself before reading
+ * anything. The note on reopening it sits beside the guard, below.
  */
 export default async function GalleryPage() {
-  // Role comes from the session, not from a request header, and gates nothing
-  // here — the media query below filters on `status = "approved"`, which is the
-  // moderation state of the ROW and never was the viewer's, and is unchanged.
-  // The value goes to the navigation, a "use client" component.
+  // ── The gate — phase 52, NAV-02, D-52-13 ───────────────────────────────────
   //
-  // An approval status used to be read beside it, for the navigation only. Phase
-  // 50 removed the axis. **The Gallery tab is now drawn to everyone**, which is
-  // a visibility change and not an access one: this page has never had a guard
-  // of its own and anybody who knows the address already arrives (`NAV-02`,
-  // phase 52, builds the real gate).
+  // This is the phase that builds it. The Gallery entry is no longer drawn to
+  // everyone: it sits in the Management panel under `gallery.view`, and this
+  // address is gated in three pieces that give the same verdict because they
+  // read the same key — the capability-route map entry (plan 52-06), the
+  // `/gallery` prefix in `PROTECTED_PREFIXES` with its `?next=` pattern
+  // (`src/lib/routes/next-redirect.ts`), and the guard below.
+  //
+  // The guard sits BEFORE the client is created and before any read. The
+  // middleware and the page give the same verdict because they read the same
+  // entry (D-34-09), and a page that stops asking is a page protected by a
+  // redirect alone. Neither is the security boundary: the row policy on
+  // `event_media` and, after M2, the object policy on the bucket are.
+  //
+  // ⚠ **For whoever reopens the gallery to the public (D-52-14).** Reopening is
+  // not one line. It means removing this guard, the map entry, the prefix and
+  // its pattern — and, since NAV-07, **a migration too**: the row policy
+  // `event_media_select_gallery` and the bucket, which is private from M2 on and
+  // serves pictures only through a signature minted under a session. The key
+  // `gallery.view` stays either way. A reopening that removed the four code
+  // pieces and not the migration would ship a public page that draws nothing.
+  //
+  // Role and the live-assignment set are read here for the navigation only,
+  // which is a "use client" component; they gate nothing on this page.
   const { role, capabilities, liveAssignmentCapabilities } =
     await getAccessContext();
+
+  if (!capabilities.has(CAP.GALLERY_VIEW)) {
+    redirect("/dashboard");
+  }
 
   const supabase = await createClient();
 
