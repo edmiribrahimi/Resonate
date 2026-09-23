@@ -23,18 +23,21 @@ garantito dalla RLS o solo dal redirect.
 
 `src/types/database.ts:99` definisce **una** dimensione:
 
-- **Ruolo** — `master` · `organizer` · `staff` · `member`
+- **Ruolo** — `master` · `organizer` · `staff` · `attendee`
 
 Il predicato autoritativo dell'accesso e' `private.has_capability`: ruolo →
 capability, piu' l'assegnazione per serata
 (`20260921120000_drop_status_and_referral.sql:397-420`). Non c'e' un secondo
 asse da guardare.
 
-**`member` non significa «socio».** L'account di chi compra un biglietto o
-riceve un invito da guest list nasce **leggero**, con ruolo `member` (D-50-05):
-e' un account, non un'appartenenza. Il ruolo dedicato a chi compra e' differito
-alla **fase 51** — fino ad allora `member` e' il ruolo **senza capability di
-lavoro**, ed e' cosi' che va letto in ogni gate qui sotto.
+**`attendee` non significa «socio».** L'account di chi compra un biglietto o
+riceve un invito da guest list nasce **leggero**, con ruolo `attendee`: e' un
+account, non un'appartenenza, e **non tiene alcuna capability** — zero
+concessioni a quel ruolo in `private.role_capabilities`, rilette dalla
+produzione il 2026-09-22. Fino a quel giorno si chiamava `member` (D-50-05);
+la fase 51 lo ha rinominato (D-51-06) e il `CHECK` di `profiles.role` **non
+accetta piu' il nome vecchio**: un predicato che lo scrivesse fallirebbe con
+`23514`, un confronto in TypeScript non compilerebbe.
 
 > **Lo stato e' stato rimosso il 2026-09-21, fase 50.** `profiles.status`,
 > `public.get_user_status()` e `role_capabilities.requires_approved` non
@@ -61,11 +64,9 @@ lavoro**, ed e' cosi' che va letto in ogni gate qui sotto.
 - **Gate redirect validato**: Il parametro `next` del callback finisce in `NextResponse.redirect`. Oggi la concatenazione con `origin` impedisce il salto a un altro host, ma resta input non validato in un header `Location`. Ogni nuovo redirect parametrico usa una allow-list di path relativi, mai la stringa grezza.
 - **Gate entropia degli identificatori**: Un codice che concede accesso deve resistere a un tentativo di indovinarlo. Ogni nuovo identificatore d'accesso nasce da un CSPRNG — `crypto.getRandomValues` lato applicazione, `extensions.gen_random_bytes` lato database — mai da `Math.random()` ne' dal `random()` di plpgsql.
 
-  **Questa riga diceva `src/utils/qr.ts:49`, e indicava il posto sbagliato.** Quella funzione era **codice morto, zero importatori**, ed e' stata rimossa il 2026-09-05. Il codice di membership nasce nel trigger `public.handle_new_user`, e **dal 2026-09-05 nasce da `extensions.gen_random_bytes`**: alfabeto di 32 caratteri per 10, **2^50**, dentro la regex che la porta gia' accetta (`ScannerClient.tsx:71`, massimo 10). Prima erano 8 caratteri dal `random()` **seminato** di plpgsql: 2^40 come tetto nominale, meno nei fatti.
+  **Il codice socio non esiste piu'.** Fino al 2026-09-22 questo capoverso descriveva il suo conio — `public.handle_new_user` con `extensions.gen_random_bytes` dal 2026-09-05, 2^50, e i quattro codici deboli emessi prima e mai rigenerati (`D-49-01`). La fase 51 ha cancellato la colonna `profiles.membership_code`, il conio e la rotta che lo verificava (D-51-02, MEM-03): **i quattro codici deboli sono usciti con la colonna**, e la storia resta in `51-VERIFICATION.md`. Oggi gli identificatori d'accesso vivi sono il **QR del biglietto** (firma HMAC, `TICKET_SIGNING_SECRET`) e i **token d'ordine** nell'URL della pagina d'ordine; ogni nuovo identificatore nasce sotto la stessa regola. E il rate limiting **continua a non esistere** (gate sotto): la rotta che questo capoverso citava come oracolo e' uscita con la fase 51, il difetto no.
 
-  **Cosa NON e' cambiato, e va tenuto:** i **quattro codici emessi prima** non sono stati rigenerati — `D-49-01`, perche' sono credenziali in mano a persone reali — quindi la debolezza vecchia sopravvive su quei quattro. E il rate limiting **continua a non esistere** (gate sotto): la rotta che questo capoverso citava come oracolo e' uscita con la fase 51, il difetto no.
-
-- **Gate la porta ha due credenziali, e la seconda non guarda chi sei**: Si entra col biglietto **oppure** col solo `membership_code`, e la seconda strada ammette **senza leggere il ruolo** (`src/app/api/tickets/attendance/route.ts:145`). E' il gate *ruolo e capability* che non si applica sul percorso piu' corto. **E' debito NON scelto, non un difetto ignorato**: togliere l'ammissione sul solo codice era la terza strada di `D-49-01` ed e' stata scartata per non allargare la fase. Finche' resta cosi', nessuna modifica puo' **allargare** cio' che quel codice apre, e ogni fase che ne conia di piu' deve dichiararlo.
+- **Gate la porta ha due credenziali, e nessuna delle due e' un'identita'**: Si entra col **biglietto** (QR firmato HMAC) **oppure per nome dalla guest list** scaricata sul telefono, e nessuna delle due strade legge il ruolo di chi entra — legge quello di chi **tiene la porta** (`door.operate`, per ruolo o per assegnazione sulla serata). *(Fino al 2026-09-22 la seconda credenziale era il codice socio, che ammetteva da solo e senza firma: la fase 51 lo ha cancellato con la sua colonna e la sua rotta — D-51-02, MEM-03. Questo gate lo descriveva ancora come vivo il 2026-09-23.)* Cio' che resta vero, e vincola: un ingresso in guest list e' un ingresso **senza firma e senza pagamento**, quindi ogni percorso che aggiunge un nome va attribuito (`ticketing-payments.md`, gate guest list), e nessuna modifica alla porta puo' **allargare** cio' che un nome in lista apre.
 - **Gate nessun rate limiting, oggi**: Verificato il 2026-08-05: **il repo non ha alcun rate limiting** — nessuna dipendenza, nessuna implementazione. Ogni endpoint pubblico che risponde "valido / non valido" e' quindi un oracolo interrogabile senza costo: il lookup dei token drink (`src/app/api/drinks/tokens/route.ts`) e la validazione di un codice sconto. **La lista si e' accorciata con la fase 51 perche' una rotta e' uscita, non perche' il difetto sia stato riparato.** Finche' non esiste, **nessun nuovo endpoint di verifica va aggiunto senza dire, per iscritto, che e' esposto** — e ogni nuovo identificatore va reso abbastanza largo da non essere enumerabile.
 - **Gate coerenza navigazione/permessi**: La lista `NAV_ITEMS` in `src/lib/rbac/roles.ts` nasconde le voci per ruolo. Nascondere un link **non e' proteggere una rotta**: ogni voce nascosta deve avere il suo controllo lato server. Se cambi l'una senza l'altra, hai spostato il problema, non risolto.
 
@@ -76,5 +77,5 @@ lavoro**, ed e' cosi' che va letto in ogni gate qui sotto.
 - When using the service-role client: justify it in the commit, and prove no untrusted input reaches it
 - When adding a parametric redirect: validate against an allow-list of relative paths
 - When generating an access-granting code: use a CSPRNG — `crypto.getRandomValues` in the app, `extensions.gen_random_bytes` in the database — never `Math.random` and never plpgsql `random()`
-- When touching what a bare membership code opens: it admits without reading the role — narrow it or leave it, never widen it
+- When touching what a guest-list name opens: it admits without a signature — narrow it or leave it, never widen it
 - When hiding a nav item by role: add the corresponding server-side check

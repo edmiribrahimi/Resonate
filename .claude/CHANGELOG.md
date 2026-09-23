@@ -3,6 +3,47 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.25.0] - 2026-09-23
+
+### Changed — la persona smette di chiamare `member` un ruolo che il database rifiuta, e di descrivere una credenziale cancellata: `CLAUDE.md`, `access-gating.md`, `checkin-offline.md`, `community-membership.md`
+
+**Cosa e' cambiato.** Quattro punti in cui la persona descriveva il prodotto
+com'era **prima** della fase 51, tutti in moduli che si caricano da soli:
+
+- `CLAUDE.md`, principio 8 — diceva che `member` e' il ruolo dell'account
+  leggero. Dal 2026-09-22 il ruolo si chiama `attendee` (D-51-06) e il `CHECK`
+  di `profiles.role` **rifiuta** `member`. Il principio si carica su ogni
+  risposta.
+- `access-gating.md` — l'asse del ruolo elencava `member`; il capoverso sotto
+  rimandava «alla fase 51» un rinomina gia' avvenuto; e il gate *la porta ha
+  due credenziali* descriveva come viva l'ammissione sul solo `membership_code`,
+  con la riga `attendance/route.ts:145` che oggi dice il contrario. Il gate e'
+  **riscritto** sulle due credenziali vere — biglietto firmato e nome in guest
+  list — e l'imperativo che lo accompagna con lui.
+- `checkin-offline.md` — il gate *entropia dei codici* citava
+  `BARE_MEMBERSHIP_PATTERN` (**zero occorrenze** in `src/`) e il gate *due
+  credenziali* la seconda credenziale cancellata. Riscritti sulla stessa base.
+- `community-membership.md` — due righe con `member` al posto di `attendee`.
+
+**Cosa lo ha fatto scattare.** `51-VERIFICATION.md`, tabella *il debito che
+questa fase lascia*, prima riga: *«due gate che descrivono un percorso rimosso,
+ed e' il caso che `meta-gates.md` chiama una riga che descrive male il prodotto,
+peggio di una riga assente»*. Era assegnato alla fase 57; e' stato anticipato il
+2026-09-23 perche' la fase 52 lavora su ruoli e navigazione **con questi moduli
+caricati**, e un gate che descrive una credenziale cancellata e' un gate che fa
+ragionare su un prodotto che non esiste. **La ricognizione lessicale completa
+resta alla fase 57**: qui sono cambiate solo le righe che erano false, non tutte
+quelle che dicono «member».
+
+**Scenario di carico.** Un file in `src/app/(admin)/admin/scanner/**` carica
+`checkin-offline.md` e `access-gating.md`: una modifica che aggiungesse un
+rifiuto offline «codice sconosciuto» deve incontrare il gate *due credenziali*
+che dice che la seconda credenziale e' un nome in lista, non un codice — e
+non uno che le chiede di preservare il rifiuto su un codice che non esiste.
+
+**Verifica.** `npm run verify:persona` rilanciato dopo le modifiche; il
+context budget non cambia perche' nessun `paths:` e' stato toccato.
+
 ## [1.24.0] - 2026-09-22
 
 ### Changed — la porta perde una rotta e la persona smette di dichiararla: `checkin-offline.md`, `access-gating.md`, `meta-gates.md`, `CLAUDE.md`

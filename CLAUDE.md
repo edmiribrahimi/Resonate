@@ -112,11 +112,12 @@ classificato ("si", "fatto", conferme). Nel dubbio, mettilo.
 
 8. **Precisione lessicale.**
    Un *format* non e' un *evento*, una *serata* non e' una *edizione*, un
-   *satellite* non e' la *notte*. E **`member` non e' «socio»**: dal 2026-09-21
+   *satellite* non e' la *notte*. E **`attendee` non e' «socio»**: dal 2026-09-21
    l'asse dello stato non esiste piu' — `profiles.status` e' stato rimosso — e
-   `member` e' il ruolo dell'**account leggero** di chi ha comprato un biglietto
-   o e' stato invitato. Chiamarlo socio produce bug di accesso, come prima li
-   produceva confonderlo con `approved`.
+   dal 2026-09-22 il ruolo dell'**account leggero** di chi ha comprato un
+   biglietto o e' stato invitato si chiama `attendee` (D-51-06): **`member` non
+   e' piu' un valore che il database accetta**. Chiamarlo socio produce bug di
+   accesso, come prima li produceva confonderlo con `approved`.
 
 ---
 

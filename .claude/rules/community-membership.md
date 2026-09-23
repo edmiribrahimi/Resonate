@@ -34,7 +34,8 @@ biglietteria: e' chi c'e' dentro. *(Quella frase descrive un meccanismo che dal
 **Cosa esegue il codice oggi.** Gli account di lavoro — `master`, `organizer`,
 `staff` — li crea un admin o un organizer **dentro l'app**, e chi compra un
 biglietto o riceve un invito da guest list ottiene un **account leggero** con
-ruolo `member`, coniato dalla chiave di servizio. Non c'e' una coda, non c'e'
+ruolo `attendee` (dal 2026-09-22, D-51-06; prima `member`), coniato dalla chiave
+di servizio. Non c'e' una coda, non c'e'
 una richiesta da valutare, non c'e' un testo di rifiuto da scrivere.
 
 **E il criterio con cui si decide chi entra continua a non essere scritto.** E'
@@ -53,7 +54,7 @@ una community si giudica. **La porta si e' spostata; la domanda no.**
 - **Gate chi decide e' tracciato**: Creare o **cancellare** un account sono operazioni privilegiate: vanno registrate con **chi** le ha fatte e **quando**. Il registro esiste ed e' `membership_acts`: dal 2026-09-21 porta l'atto `deleted` e **la riga sopravvive alla persona** — il soggetto cancellato lascia `subject_id` nullo, quindi il registro ricorda una cancellazione che non ha piu' un profilo da indicare (`20260921120000_drop_status_and_referral.sql`, D-50-16). E' la stessa logica dell'annullamento alla porta (`checkin-offline.md`): il percorso piu' semplice per far entrare — o per far sparire — qualcuno e' anche quello che va reso visibile.
 - **Gate nessuna corsia grigia**: Ogni via d'ingresso che non passa dal biglietto — guest list, invito diretto, account creato a mano — **e' un'eccezione al gating**, non una funzione di comodo. *(Prima aggirava l'approvazione; dal 2026-09-21 aggira la cassa, ed e' la stessa cosa vista dall'altro lato.)* Va contata, attribuita e tenuta d'occhio: e' li' che il meccanismo si svuota senza che nessuna riga di codice cambi. Vedi `ticketing-payments.md`, gate guest list.
 - **Gate la capienza e' finita**: Le sedi in target stanno fra 150 e 300 persone. Una community che cresce piu' in fretta delle serate che puo' ospitare produce membri che non entrano mai — e un membro che non entra mai e' un ex membro. Crescita e capienza vanno guardate **insieme**, non in due dashboard diverse.
-- **Gate socio e utente non sono la stessa cosa**: Se l'ingresso alle sedi private passa dal modello del circolo, esistera' un **libro soci** con obblighi propri, e un ruolo `member` sull'app non e' automaticamente un socio — **tanto meno oggi**, che `member` e' il ruolo dell'account leggero di chi ha comprato un biglietto (`access-gating.md`). Prima di far coincidere le due cose serve una decisione dichiarata. Vedi `legal-compliance.md`.
+- **Gate socio e utente non sono la stessa cosa**: Se l'ingresso alle sedi private passa dal modello del circolo, esistera' un **libro soci** con obblighi propri, e un ruolo `attendee` sull'app non e' automaticamente un socio — **tanto meno oggi**, che `attendee` e' il ruolo dell'account leggero di chi ha comprato un biglietto (`access-gating.md`; si chiamava `member` fino al 2026-09-22). Prima di far coincidere le due cose serve una decisione dichiarata. Vedi `legal-compliance.md`.
 - **Gate quello che si promette all'ingresso si mantiene**: Un accesso "su invito" comunica esclusivita'. Ogni ampliamento — piu' membri, piu' canali, piu' eccezioni — va misurato contro quella promessa, perche' la community vale finche' la promessa e' vera. Allargare e' una decisione di prodotto, mai un aggiustamento operativo.
 
 ## Imperative Behaviors
