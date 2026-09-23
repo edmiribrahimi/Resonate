@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Image from "next/image";
 import { updateMediaStatus } from "@/app/(public)/events/[slug]/actions";
 import { Button } from "@/components/ui/Button";
 
@@ -22,6 +21,18 @@ import { Button } from "@/components/ui/Button";
  * leaving it would have made every browser between those two widths fetch a
  * half-width file for a full-width slot — a layout decision expressed in
  * bytes, and the one part of a grid conversion that is invisible on screen.
+ * *(Phase 52 removed the optimiser, and with it the size hint: see below.)*
+ *
+ * ── A plain `<img>`, not the framework image component (phase 52, Pitfall 13)
+ *
+ * The thumbnails are SIGNED addresses that live five minutes and change on
+ * every render. The image optimiser caches by URL, so a fresh signature is a
+ * miss on every render — and, worse, the optimised copy would stay servable
+ * from the optimiser route after the signature it was made from expired: a
+ * picture under review, not approved, outliving the window chosen to keep it
+ * short. So the browser fetches the signed address itself, and a failure is
+ * said in words (`onError`, or an address the page could not sign), in the
+ * same shape and sentence as `MediaGrid`.
  *
  * ── The two controls, and why the primitives rather than a chosen colour ─────
  *
@@ -67,6 +78,14 @@ interface MediaReviewGridProps {
 }
 
 export default function MediaReviewGrid({ items }: MediaReviewGridProps) {
+  const [failed, setFailed] = useState<ReadonlySet<string>>(() => new Set());
+  const markFailed = (id: string) =>
+    setFailed((prev) => {
+      if (prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
   const [isPending, startTransition] = useTransition();
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -165,13 +184,19 @@ export default function MediaReviewGrid({ items }: MediaReviewGridProps) {
           >
             {/* Thumbnail */}
             <div className="relative aspect-square bg-sunk">
-              {item.type === "photo" ? (
-                <Image
+              {item.url === "" || failed.has(item.id) ? (
+                <div className="flex h-full w-full items-center justify-center bg-raised">
+                  <p className="px-2 text-center text-xs text-muted">
+                    This image could not be loaded. Reload the page.
+                  </p>
+                </div>
+              ) : item.type === "photo" ? (
+                <img
                   src={item.url}
-                  alt="Pending media"
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  alt=""
+                  loading="lazy"
+                  className="h-full w-full object-cover"
+                  onError={() => markFailed(item.id)}
                 />
               ) : (
                 <div className="flex h-full items-center justify-center">

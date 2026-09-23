@@ -24,6 +24,10 @@ import SecretVenueDialog from "./SecretVenueDialog";
 import ShareButton from "./ShareButton";
 import MediaGallerySection from "./MediaGallerySection";
 import { logMoneyPathFailure } from "@/lib/failure/money-path";
+import {
+  signEventMedia,
+  EVENT_MEDIA_SIGNATURE_SECONDS,
+} from "@/lib/media/sign-event-media";
 import { formatTime } from "@/utils/formatTime";
 import { CalendarIcon, ClockIcon, MapPinIcon, LockClosedIcon, MusicalNoteIcon } from "@/components/ui/Icons";
 import type { UserRole, AccessType } from "@/types/database";
@@ -1010,21 +1014,65 @@ export default async function EventDetailPage({
   // l'arm non e' stato riparato: farla funzionare vorrebbe dire ridare il
   // caricamento a chiunque abbia una presenza registrata.
 
-  // Fetch approved media for this event
-  const { data: approvedMedia } = await supabase
-    .from("event_media")
-    .select("id, url, type, uploaded_by, created_at")
-    .eq("event_id", event.id)
-    .eq("status", "approved")
-    .order("created_at", { ascending: false });
+  // ── La galleria: letta solo da chi la puo' vedere, e firmata (NAV-07) ────────
+  //
+  // D-52-29: la pagina non annuncia foto che chi guarda non puo' vedere. Senza
+  // `gallery.view` i media approvati **non si leggono affatto** — non per
+  // nasconderli dopo, ma perche' dopo M2 la RLS rifiuterebbe comunque quelle
+  // righe, e una query il cui unico esito possibile e' «niente» e' un giro in
+  // rete per ogni visita. Nessun conteggio, nessun «N foto» derivato da una
+  // lettura piu' larga.
+  //
+  // D-52-25: si seleziona la CHIAVE (`storage_path`), mai `url`. L'indirizzo
+  // lo produce `signEventMedia`, col client della sessione di chi guarda e con
+  // scadenza di un'ora: la policy dell'oggetto chiede che la riga sia visibile
+  // a quella sessione, quindi la firma non allarga cio' che la RLS ha dato. Le
+  // chiavi non lasciano il server: al componente arriva `id → URL firmato`.
+  //
+  // Tre esiti, tenuti distinti (`meta-gates.md`): lettura fallita, firma
+  // fallita, lista vuota. I primi due hanno la propria categoria nel log e un
+  // avviso in pagina; solo il terzo e' «nessuna foto».
+  const hasGalleryView = capabilities.has(CAP.GALLERY_VIEW);
+  let mediaItems: { id: string; url: string; type: "photo" | "video"; uploaded_by?: string }[] = [];
+  let galleryUnavailable = false;
 
-  const mediaItems: { id: string; url: string; type: "photo" | "video"; uploaded_by?: string }[] =
-    (approvedMedia ?? []).map((m: { id: string; url: string; type: string; uploaded_by: string }) => ({
-      id: m.id,
-      url: m.url,
-      type: m.type as "photo" | "video",
-      uploaded_by: m.uploaded_by,
-    }));
+  if (hasGalleryView) {
+    const { data: approvedMedia, error: approvedMediaError } = await supabase
+      .from("event_media")
+      .select("id, storage_path, type, uploaded_by, created_at")
+      .eq("event_id", event.id)
+      .eq("status", "approved")
+      .order("created_at", { ascending: false });
+
+    if (approvedMediaError) {
+      console.error(
+        `[gallery.read_failed] code=${approvedMediaError.code ?? "unknown"} message=${approvedMediaError.message}`
+      );
+      galleryUnavailable = true;
+    } else {
+      const rows = (approvedMedia ?? []) as {
+        id: string;
+        storage_path: string | null;
+        type: string;
+        uploaded_by: string | null;
+      }[];
+      const signed = await signEventMedia(rows, EVENT_MEDIA_SIGNATURE_SECONDS);
+      if (!signed.ok) {
+        // Il log con categoria l'ha gia' scritto il firmatario
+        // (`[gallery.sign_failed]`); qui l'effetto visibile.
+        galleryUnavailable = true;
+      } else {
+        // Una riga senza firma resta nella lista con l'indirizzo vuoto:
+        // `MediaGrid` la disegna come «could not be loaded», non la fa sparire.
+        mediaItems = rows.map((m) => ({
+          id: m.id,
+          url: signed.urls[m.id] ?? "",
+          type: m.type as "photo" | "video",
+          uploaded_by: m.uploaded_by ?? undefined,
+        }));
+      }
+    }
+  }
 
   // Check if any drinks are available across parties
   const { count: drinkItemCount } = await supabase
@@ -1959,16 +2007,39 @@ export default async function EventDetailPage({
           </AnimatedSection>
         )}
 
-        {/* Event Gallery */}
-        <AnimatedSection scrollTriggered className="mb-6">
-          <SectionHeading>Gallery</SectionHeading>
-          <MediaGallerySection
-            media={mediaItems}
-            canUpload={canUpload}
-            eventId={event.id}
-            uploadableParties={uploadableParties}
-          />
-        </AnimatedSection>
+        {/*
+          Event Gallery — montata solo per chi tiene `gallery.view` o puo'
+          caricare. D-52-29: la pagina non annuncia foto che chi guarda non puo'
+          vedere, quindi senza la chiave non esiste nemmeno il titolo «Gallery».
+          P5: la sezione porta anche il caricamento, e chi puo' caricare per
+          assegnazione senza tenere `gallery.view` deve ancora trovarla — con il
+          solo caricamento, senza griglia (`showGrid`). Oggi quell'insieme e'
+          vuoto (`staff` tiene `gallery.view` per ruolo), ma la condizione e'
+          scritta qui, non dedotta.
+        */}
+        {(hasGalleryView || canUpload) && (
+          <AnimatedSection scrollTriggered className="mb-6">
+            <SectionHeading>Gallery</SectionHeading>
+            {galleryUnavailable && (
+              <div
+                role="alert"
+                className="mb-4 rounded-2xl border border-sem-crit/40 bg-sem-crit/10 p-4"
+              >
+                <p className="text-sm font-semibold text-sem-crit">
+                  The photos of this night could not be loaded
+                </p>
+                <p className="mt-1 text-xs text-muted">Reload the page.</p>
+              </div>
+            )}
+            <MediaGallerySection
+              media={mediaItems}
+              canUpload={canUpload}
+              showGrid={hasGalleryView && !galleryUnavailable}
+              eventId={event.id}
+              uploadableParties={uploadableParties}
+            />
+          </AnimatedSection>
+        )}
       </div>
         <SiteFooter />
         </PageShell>

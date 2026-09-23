@@ -10,6 +10,14 @@ import MediaUpload from "@/components/media/MediaUpload";
 interface MediaGallerySectionProps {
   media: MediaGridItem[];
   canUpload: boolean;
+  /**
+   * Whether the grid and its empty sentences are drawn at all (phase 52,
+   * D-52-29 + P5). `false` when the viewer may upload to a night without
+   * holding `gallery.view`, or when the page could not read or sign the
+   * gallery and says so itself: a "No photos or videos yet" there would lie
+   * about WHY nothing is shown. Decided by the page, carried through here.
+   */
+  showGrid: boolean;
   eventId: string;
   /**
    * The nights this viewer may upload to, resolved on the server
@@ -24,6 +32,7 @@ interface MediaGallerySectionProps {
 export default function MediaGallerySection({
   media,
   canUpload,
+  showGrid,
   eventId,
   uploadableParties,
 }: MediaGallerySectionProps) {
@@ -39,7 +48,7 @@ export default function MediaGallerySection({
   return (
     <div>
       {/* Gallery grid */}
-      {hasMedia && (
+      {showGrid && hasMedia && (
         <MediaGrid
           items={media}
           onItemClick={(item) => setSelectedItem(item)}
@@ -47,12 +56,12 @@ export default function MediaGallerySection({
       )}
 
       {/* Empty states */}
-      {!hasMedia && !canUpload && (
+      {showGrid && !hasMedia && !canUpload && (
         <p className="py-8 text-center text-sm text-muted">
           No photos or videos yet
         </p>
       )}
-      {!hasMedia && canUpload && (
+      {showGrid && !hasMedia && canUpload && (
         <p className="mb-4 text-center text-sm text-muted">
           Be the first to share photos from this event!
         </p>

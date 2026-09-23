@@ -6,6 +6,11 @@ import { CAP } from "@/lib/capabilities/keys";
 import MediaReviewGrid from "@/components/media/MediaReviewGrid";
 import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle } from "@/components/ui/Typography";
+import {
+  signEventMedia,
+  EVENT_MEDIA_REVIEW_SIGNATURE_SECONDS,
+  type EventMediaSignatureResult,
+} from "@/lib/media/sign-event-media";
 
 /**
  * Media moderation for one event — the collapsed surface.
@@ -19,6 +24,12 @@ import { PageTitle } from "@/components/ui/Typography";
  * the same values and order the same way. No query changed, no column was added,
  * no capability check was touched and no action payload was altered, so a media
  * item that is hidden today is hidden after.
+ *
+ * *(That sentence was true of 41.1-09 and is no longer true of the file. Phase
+ * 52, plan 52-12, changed the pending read on purpose: it selects the object's
+ * key instead of a public address, it no longer embeds an uploader join that
+ * never worked, and every read now checks its error — see the queue block
+ * below.)*
  *
  * `width="default"` and not `wide`: §4's wide list is closed and does not name
  * this route. That is not a fallback — it is the answer for every surface nobody
@@ -164,10 +175,16 @@ export default async function MediaReviewPage({ params }: PageProps) {
   }
 
   // Fetch status counts
-  const { data: allMedia } = await supabase
+  const { data: allMedia, error: countsError } = await supabase
     .from("event_media")
     .select("id, status")
     .eq("event_id", eventId);
+
+  if (countsError) {
+    console.error(
+      `[media_review.counts_read_failed] code=${countsError.code ?? "unknown"} message=${countsError.message}`
+    );
+  }
 
   const counts = { pending: 0, approved: 0, rejected: 0 };
   (allMedia ?? []).forEach((m) => {
@@ -177,25 +194,94 @@ export default async function MediaReviewPage({ params }: PageProps) {
     }
   });
 
-  // Fetch pending media with uploader name
-  const { data: pendingMedia } = await supabase
+  // ── The pending queue — and the silent failure it used to be ─────────────────
+  //
+  // Until 2026-09-23 this read embedded
+  // `profiles!event_media_uploaded_by_fkey(full_name)`. That foreign key points
+  // at `auth.users`, NOT at `public.profiles` (read identically from the lab's
+  // and production's catalogs, 52-01), so PostgREST answered 400 `PGRST200`;
+  // the error was never looked at and the page drew "Nothing has been uploaded"
+  // directly under a tile saying "2 Pending". No media could be approved or
+  // rejected from the product — a moderation queue that failed in silence
+  // (`meta-gates.md`).
+  //
+  // Now: the rows are read on their own, the uploaders' names by a second read
+  // of `profiles` under the same session (`profiles_select_admin` admits
+  // exactly `staff.manage`, the key this page is gated on — no policy is
+  // widened and no service role is used), and each failure has its own
+  // category and its own notice. A failed name read does NOT hide the queue:
+  // the pictures are what must be judged, the name is context.
+  //
+  // NAV-07 (D-52-25): the rows carry the KEY, `storage_path`, never `url`, and
+  // the thumbnails are signed for five minutes — what is under review is by
+  // definition not approved (`EVENT_MEDIA_REVIEW_SIGNATURE_SECONDS`).
+  const { data: pendingMedia, error: pendingError } = await supabase
     .from("event_media")
-    .select("id, url, type, file_size, created_at, uploaded_by, profiles!event_media_uploaded_by_fkey(full_name)")
+    .select("id, storage_path, type, file_size, created_at, uploaded_by")
     .eq("event_id", eventId)
     .eq("status", "pending")
     .order("created_at", { ascending: true });
 
-  const items = (pendingMedia ?? []).map((m) => {
-    const profile = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
-    return {
-      id: m.id,
-      url: m.url,
-      type: m.type as "photo" | "video",
-      file_size: m.file_size,
-      created_at: m.created_at,
-      uploader_name: (profile as { full_name: string } | null)?.full_name ?? null,
-    };
-  });
+  if (pendingError) {
+    console.error(
+      `[media_review.pending_read_failed] code=${pendingError.code ?? "unknown"} message=${pendingError.message}`
+    );
+  }
+
+  const pendingRows = (pendingMedia ?? []) as {
+    id: string;
+    storage_path: string | null;
+    type: string;
+    file_size: number | null;
+    created_at: string;
+    uploaded_by: string | null;
+  }[];
+
+  const uploaderIds = [
+    ...new Set(
+      pendingRows
+        .map((m) => m.uploaded_by)
+        .filter((id): id is string => typeof id === "string")
+    ),
+  ];
+  const uploaderNames = new Map<string, string | null>();
+  let uploaderNamesFailed = false;
+  if (uploaderIds.length > 0) {
+    const { data: uploaders, error: uploadersError } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", uploaderIds);
+    if (uploadersError) {
+      console.error(
+        `[media_review.uploader_read_failed] code=${uploadersError.code ?? "unknown"} message=${uploadersError.message}`
+      );
+      uploaderNamesFailed = true;
+    } else {
+      for (const u of (uploaders ?? []) as { id: string; full_name: string | null }[]) {
+        uploaderNames.set(u.id, u.full_name);
+      }
+    }
+  }
+
+  // The signer logs its own category (`[gallery.sign_failed]`); the page owes
+  // the visible effect. A row it could not sign stays in the queue with an
+  // empty address, and the grid says "could not be loaded" on that card.
+  const signed: EventMediaSignatureResult =
+    pendingRows.length > 0
+      ? await signEventMedia(pendingRows, EVENT_MEDIA_REVIEW_SIGNATURE_SECONDS)
+      : { ok: true, urls: {}, unsigned: 0 };
+  const signFailed = !signed.ok;
+
+  const items = pendingRows.map((m) => ({
+    id: m.id,
+    url: signed.ok ? (signed.urls[m.id] ?? "") : "",
+    type: m.type as "photo" | "video",
+    file_size: m.file_size,
+    created_at: m.created_at,
+    uploader_name: m.uploaded_by ? (uploaderNames.get(m.uploaded_by) ?? null) : null,
+  }));
+
+  const readFailed = Boolean(countsError || pendingError);
 
   return (
     <PageShell width="default">
@@ -237,6 +323,52 @@ export default async function MediaReviewPage({ params }: PageProps) {
       </div>
 
       {/*
+        Failures first, each in its own words, and never the empty state in
+        their place: an empty queue under a failed read is the lie this page
+        used to tell.
+      */}
+      {readFailed && (
+        <div
+          role="alert"
+          className="mb-4 rounded-2xl border border-sem-crit/40 bg-sem-crit/10 p-4"
+        >
+          <p className="text-sm font-semibold text-sem-crit">
+            The media of this event could not be read
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            The counts and the queue below may be incomplete. Reload the page.
+          </p>
+        </div>
+      )}
+      {!readFailed && signFailed && (
+        <div
+          role="alert"
+          className="mb-4 rounded-2xl border border-sem-crit/40 bg-sem-crit/10 p-4"
+        >
+          <p className="text-sm font-semibold text-sem-crit">
+            The pending pictures could not be loaded
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            The items are listed, but their previews failed. Reload the page
+            before approving or rejecting.
+          </p>
+        </div>
+      )}
+      {!readFailed && uploaderNamesFailed && (
+        <div
+          role="alert"
+          className="mb-4 rounded-2xl border border-line bg-surface p-4"
+        >
+          <p className="text-sm font-semibold text-ink">
+            Uploader names could not be read
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            The queue is complete; only who uploaded each item is missing.
+          </p>
+        </div>
+      )}
+
+      {/*
         The queue is empty on arrival. §8.11's class contract again, and §11's
         copy rule: a heading naming what is absent in this surface's own noun,
         and a body saying why the emptiness is normal rather than an error.
@@ -245,7 +377,7 @@ export default async function MediaReviewPage({ params }: PageProps) {
         the last pending item has just been dismissed in the browser, and it says
         so in its own words; this one is the server's answer.
       */}
-      {items.length === 0 ? (
+      {readFailed ? null : items.length === 0 ? (
         <div className="px-6 py-12 text-center">
           <p className="text-base font-semibold text-ink">
             No pending media to review
