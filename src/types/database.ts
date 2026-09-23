@@ -182,9 +182,10 @@ export interface Event {
  * `format_di` compiles, runs, and returns `undefined` — on a surface, with
  * nothing logged, in a repository with no error tracking (`meta-gates.md`).
  *
- * The sentence is not new — `AccountActRow`, `EventMediaRow` and
- * `Attendance.entry_role` each carry their own copy, for their own columns. It
- * is repeated a fourth time because it is the reason **every later plan in this
+ * The sentence is not new — `AccountActRow` and `EventMediaRow` each carry
+ * their own copy, for their own columns (a third copy left with the interface
+ * of the dropped `attendances` table on 2026-09-23). It is repeated here
+ * because it is the reason **every later plan in this
  * phase verifies its queries by RUNNING them and not by compiling them**, and a
  * reader who arrives at `Format` from the migration rather than from one of
  * those three would otherwise not meet it. It is recorded in
@@ -401,46 +402,17 @@ export interface RSVP {
   created_at: string;
 }
 
-export interface Attendance {
-  id: string;
-  event_id: string;
-  user_id: string;
-  /** NULL means the presence is event-level, not that a party is missing. */
-  party_id: string | null;
-  // `checked_in_at` has a default but no NOT NULL, and `checked_in_by` has
-  // neither (schema.sql:235-236). Both were typed non-nullable here until
-  // 2026-08-05; the correction is not an addition.
-  checked_in_at: string | null;
-  checked_in_by: string | null;
-  /**
-   * What this entry WAS, taken at the door and written at the door — phase 43,
-   * plan 10, ACCT-05/D-13 (`20260808003000_attendances_entry_role.sql`).
-   *
-   * Typed `string | null` and deliberately **not** `UserRole | null`, which
-   * would be the tidier line and the false one. The column has no CHECK (the
-   * migration says why: a fourth role enumeration would raise a `23514` inside
-   * the door's insert, in front of a queue), so the database can hold a label
-   * this union cannot name. A type that promised `UserRole` would be a type
-   * that lies, and `supabase-data.md` prefers an absent type to a lying one.
-   *
-   * NULL means **"written before this column existed"** — or, on a row written
-   * after it, "the door sent a label nobody could recognise". It never means
-   * "this entry was an ordinary member". A night report that counts NULLs as
-   * members prints a fabricated number.
-   *
-   * The value is denormalised at write time with no foreign key: it may
-   * disagree with `Profile.role` and the disagreement is the record working,
-   * not a defect.
-   *
-   * As plan 43-07 noted for the register, and for the same reason: **no
-   * Supabase client in this repository is parameterised with `Database`**
-   * (`src/lib/supabase/client.ts`, `server.ts`, `middleware.ts`, `service.ts`),
-   * so this field name is checked by nothing at any call site. A typo here and
-   * a typo in the insert would both compile, and the first thing that would
-   * notice either is a real scan at a real door.
-   */
-  entry_role: string | null;
-}
+// ── An interface describing a table that no longer exists came out here ──────
+//
+// `public.attendances` was dropped by
+// `20260922180000_drop_membership_code_and_rename_acts.sql` (phase 51, D-51-14),
+// read back from production as `to_regclass → null`. Its interface survived
+// that commit with zero importers, and since no Supabase client in this
+// repository is parameterised with `Database`, a type for a table that is not
+// there is an invitation to write a query that compiles and answers `42P01` at
+// run time (phase 51 review, WR-08). Removed on 2026-09-23. The lexicon it
+// carried — *entry_role is what the entry WAS, taken at the door* — lives on in
+// `door_scan_events`, which is where a presence is recorded now.
 
 /**
  * One row of `public.event_media` — the file, and the NIGHT it belongs to.

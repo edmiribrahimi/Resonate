@@ -93,29 +93,16 @@ const DOOR_HREF: Extract<DoorAddress, Route> = "/door";
 // descriveva.
 export type { UserRole };
 
-// Role constants
-export const ROLES = {
-  MASTER: "master",
-  ORGANIZER: "organizer",
-  // The fourth role (phase 43, D-01). It carries **no work permission**: work
-  // permissions come from Phase 35's per-night assignment and expire with the
-  // night (D-03).
-  //
-  // What it granted on top of that — permanent entry to a night through the
-  // membership card — is gone with phase 51: the card, the page that showed it
-  // and the route that checked it were deleted (plans 51-04 and 51-05), so the
-  // sentence that promised it has been deleted with them rather than left to
-  // describe a door that no longer opens.
-  STAFF: "staff",
-  // Il quarto valore ha cambiato nome nella fase 51 (D-51-06): e' quello di chi
-  // partecipa — compra un biglietto o e' invitato. **Il nome vecchio non si
-  // ricopia qui**, per la ragione scritta piu' sotto accanto alle costanti
-  // dello stato: una prosa che lo nomina tiene rosso il grep che prova la
-  // cancellazione. La costante **non ha consumatori misurati**
-  // (`51-RESEARCH.md` §G), quindi il build non la difende: se un consumatore
-  // compare, si muove a mano insieme a lei.
-  ATTENDEE: "attendee",
-} as const;
+// ── `ROLES` e' uscita il 2026-09-23 ─────────────────────────────────────────
+//
+// Qui stava una costante con i quattro valori del ruolo. **Non aveva
+// consumatori** — misurato da `51-RESEARCH.md` §G e di nuovo dal code review
+// della fase 51 (IN-01): `grep -rn "ROLES\." src/` trovava solo due occorrenze
+// in prosa. Un export morto che ogni rinomina del ruolo doveva comunque
+// attraversare, e che il build non avrebbe difeso se fosse stato dimenticato.
+// L'unione che conta e' `UserRole` in `@/types/database`, specchio del `CHECK`
+// di `profiles.role`; i letterali di ruolo sparsi nel prodotto si confrontano
+// con quella, e il compilatore li difende (WR-09 dello stesso review).
 
 // ── Le costanti dello stato sono uscite con la fase 50 (D-50-01) ────────────
 //
