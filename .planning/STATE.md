@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: Phase 51 complete — 15/15 plans, in produzione dal 2026-09-22 19:13Z; il 2026-09-23 chiuso il debito del review (resta WR-05), deciso WR-04, lanciato verify:refusal, pulito il lab; VERIFICATION passed; WR-05 applicato su lab e produzione; push autorizzato il 2026-09-23
+stopped_at: Phase 51 complete — 15/15 plans, in produzione dal 2026-09-22 19:13Z; il 2026-09-23 chiuso il debito del review (resta WR-05), deciso WR-04, lanciato verify:refusal, pulito il lab; VERIFICATION passed; WR-05 su lab e produzione; spinto e READY il 2026-09-23 (dpl_HHHM4bG7…)
 last_updated: "2026-09-23T10:50:00.000Z"
 last_activity: 2026-09-23
 progress:
@@ -52,7 +52,14 @@ i due gate rossi ereditati dalla 50 **chiusi** — `npm run verify` e'
 **VERIFY_OK, 24 gate**; **WR-05** ha la migration di solo `COMMENT`
 `20260923120000_role_capabilities_comment.sql`, applicata sul laboratorio **e in
 produzione** (versione `20260923110143`, `51-AUTHORISATION-COMMENT.md` ESAURITA). `51-VERIFICATION.md` e' `passed`.
-`npm run build` exit 0, `verify:persona` 7/7.
+`npm run build` exit 0, `verify:persona` 7/7. **Spinto e dispiegato il 2026-09-23**:
+`origin/main` `3d3e650..92f612d` (11 commit), deploy Vercel Production
+`dpl_HHHM4bG744GgX1qQQFaEE5D6oWMN` **READY** (letto dall'API, non dal terminale del
+push); prima richiesta a mano da anonimo su `www.`: `/events` 200, `/door` e
+`/admin/scanner` 307 al login, `/membership-card` e `/attendance` 404,
+`/api/tickets/attendance` 401, `/api/tickets/checkin` 405. Zero 500. `main`
+spinto anche su `lab`. Produzione inerte al momento del push: 0 serate in
+finestra o future, 0 biglietti, 0 ordini pendenti, 0 scansioni, 0 assegnazioni.
 
 **Cosa e' in produzione — DEPLOYATO il 2026-09-07.** Le sei migration erano
 applicate dal 2026-09-06; il codice le ha raggiunte il giorno dopo: 55 commit
