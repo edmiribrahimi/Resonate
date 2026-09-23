@@ -245,8 +245,12 @@ const SRC_DIR = `${ROOT}/src`;
  * `membership.card.view` era concessa a tutti e quattro i ruoli, e per DUE di
  * loro era l'**unica** concessione: `private.role_capabilities` passa da 32
  * righe a 28, e le quattro che escono sono **l'intero patrimonio di `attendee`
- * (gia' `member`) e l'intero patrimonio di `staff`**. Master resta a 16,
- * organizer a 14, **gli altri due a ZERO**.
+ * (gia' `member`) e l'intero patrimonio di `staff`**. Master resta a 15,
+ * organizer a 13, **gli altri due a ZERO**. *(Questa riga diceva 16 e 14, i
+ * valori di prima della cancellazione — lo stesso errore corretto nel `COMMENT`
+ * da `20260923120000_role_capabilities_comment.sql`. Corretta qui il 2026-09-23
+ * dal piano 52-06, che riporta master e organizer a 16 e 14 per un'altra
+ * ragione: vedi il paragrafo seguente.)*
  *
  * Per `attendee` e' voluto: chi compra un biglietto non ha capacita' di lavoro
  * (D-51-09). **Per `staff` no, e va guardato**:
@@ -263,8 +267,28 @@ const SRC_DIR = `${ROOT}/src`;
  * `20260922145319`) e arriva in produzione con il piano **51-13**. Fino ad
  * allora un run contro la produzione riporta 17 dove questo file dice 15, ed e'
  * il gate che funziona. **Non si ripara editando questa costante.**
+ *
+ * ── Da 15 a 16 il 2026-09-23, piano 52-06 (D-52-12) — ed e' un'AGGIUNTA ──────
+ *
+ * `gallery.view` entra nel catalogo con
+ * `20260923180000_gallery_view_and_media_paths.sql`, nell'oggetto `CAP` e in
+ * `capability-routes.ts` (sotto `/gallery`, `alsoGatesTables: true`) **nello
+ * stesso commit**: 15 + 1 = 16. Tre concessioni per ruolo — master, organizer,
+ * **staff** — e un rifiuto, `attendee`.
+ *
+ * ⚠ LA RIGA CHE QUESTO NUMERO DEVE DIRE: `staff` torna a tenere UNA chiave per
+ * ruolo, dopo un giorno a zero (vedi il paragrafo qui sopra e la nota nel blocco
+ * `staff` di `ROLE_GRANTS`). Master 16, organizer 14, **staff 1**, attendee 0.
+ * La porta resta dell'assegnazione: la gallery non e' lavoro di una serata.
+ *
+ * ⚠ ROSSO CONTRO LA PRODUZIONE, VERDE CONTRO IL LABORATORIO — di nuovo, e con
+ * un altro nome. La migration e' applicata al laboratorio dal piano **52-06** e
+ * arriva in produzione con il piano **52-15**, sotto un atto datato. Fino ad
+ * allora un run contro la produzione riporta 15 dove questo file dice 16 (e 28
+ * concessioni dove dice 31), ed e' il gate che funziona. **Non si ripara
+ * editando questa costante.**
  */
-const EXPECTED_KEY_COUNT = 15;
+const EXPECTED_KEY_COUNT = 16;
 
 /**
  * ── The pre-registered grant declaration (phase decision D-02) ─────────────
@@ -429,6 +453,8 @@ const ROLE_GRANTS = {
     'production.manifesto.manage': 'GRANTED',
     'production.visual.manage': 'GRANTED',
     'production.location.manage': 'GRANTED',
+    // D-52-12, plan 52-06. The master holds everything, the gallery included.
+    'gallery.view': 'GRANTED',
   },
   organizer: {
     'staff.manage': 'GRANTED',
@@ -485,6 +511,9 @@ const ROLE_GRANTS = {
     'production.manifesto.manage': 'GRANTED',
     'production.visual.manage': 'GRANTED',
     'production.location.manage': 'GRANTED',
+    // D-52-12, plan 52-06. By role: the organizer runs the nights and moderates
+    // their media, so the archive of those nights is the organizer's to see.
+    'gallery.view': 'GRANTED',
   },
   // ── The fourth role, added by plan 43-05 with its migration ───────────────
   //
@@ -623,6 +652,17 @@ const ROLE_GRANTS = {
     // address. A space under negotiation named outside the people negotiating is
     // a negotiation made public, and a publication does not un-publish.
     'production.location.manage': 'REFUSED',
+    // ── ⚠ DAL 2026-09-23 LO STAFF TIENE DI NUOVO UNA CHIAVE PER RUOLO ──────
+    //
+    // D-52-12, piano 52-06, decisione del proprietario: la gallery si vede per
+    // RUOLO da master, organizer e staff. E' la prima concessione per ruolo dello
+    // staff dal 2026-09-22 (vedi la nota qui sopra, «questo ruolo non tiene piu'
+    // nulla»), e non contraddice D-03: D-03 rifiuta al ruolo il LAVORO — porta,
+    // back office, caricamenti — perche' il lavoro e' della serata e scade con
+    // lei. Guardare l'archivio delle serate non e' lavoro e non e' per serata.
+    // Quello che la chiave NON apre, e resta rifiutato qui sopra: caricare
+    // (`media.upload`), moderare (`staff.manage`), rivelare (`venue.reveal`).
+    'gallery.view': 'GRANTED',
   },
   // ── `member` SI CHIAMA `attendee` DAL 2026-09-22 (piano 51-08, D-51-06) ────
   //
@@ -684,6 +724,15 @@ const ROLE_GRANTS = {
     'production.manifesto.manage': 'REFUSED',
     'production.visual.manage': 'REFUSED',
     'production.location.manage': 'REFUSED',
+    // Refused, plan 52-06 (D-52-12), AND THIS IS THE PAIR NAV-07 EXISTS FOR.
+    // Un `attendee` con questa riga vedrebbe l'intero archivio delle serate —
+    // comprese le foto scattate dentro una sede segreta, di serate a cui non ha
+    // partecipato — e da M2 (`20260923180100_gallery_close_data.sql`) la chiave
+    // governa le RIGHE di `event_media` e la firma degli oggetti, non solo
+    // l'indirizzo. Un biglietto non e' un posto nell'archivio. Nothing else in
+    // the model would say no — which is why this line, and not a comment, is
+    // where the refusal exists.
+    'gallery.view': 'REFUSED',
   },
 };
 
@@ -781,9 +830,25 @@ const ROLE_GRANTS = {
 // concessioni che escono, DUE erano l'unica di un ruolo: dopo questo commit
 // `staff` e `attendee` non tengono **nulla**. Vedi il paragrafo di
 // `EXPECTED_KEY_COUNT` e le due note dentro `ROLE_GRANTS`.
-const EXPECTED_PAIR_COUNT = 60;
-const EXPECTED_GRANT_COUNT = 28;
-const EXPECTED_REFUSAL_COUNT = 32;
+//
+// ── 2026-09-23, piano 52-06 (D-52-12): UNA CHIAVE ENTRA ─────────────────────
+//
+// SOMMATA IN CODA, non riscritta sopra. 64 = 4 ruoli × **16** chiavi: 60 + 4.
+// Concessioni: 28 + 3 = **31** (`gallery.view` a master, organizer, staff).
+// Rifiuti: 32 + 1 = **33** (`gallery.view` ad attendee). Per ruolo, camminando
+// `ROLE_GRANTS`: master 16, organizer 14, **staff 1**, attendee 0 — 31.
+//
+// La nona mossa della storia qui sopra, nella forma di quella lista:
+//   60/28/32 → 64/31/33   plan 52-06, a sixteenth CAPABILITY (2026-09-23)
+// Ed e' la prima aggiunta che tocca `staff`: una concessione per ruolo, dopo un
+// giorno a zero.
+//
+// ⚠ ROSSO CONTRO LA PRODUZIONE fino al piano **52-15**, che applica la migration
+// sotto atto datato; VERDE CONTRO IL LABORATORIO dal piano 52-06. Non si ripara
+// editando questi numeri.
+const EXPECTED_PAIR_COUNT = 64;
+const EXPECTED_GRANT_COUNT = 31;
+const EXPECTED_REFUSAL_COUNT = 33;
 
 /**
  * The two markers a pair carries in `ROLE_GRANTS`.
