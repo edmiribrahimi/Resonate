@@ -69,6 +69,19 @@
  * (M2) non cambia le copie gia' in cache ne' quelle gia' scaricate da qualcuno.
  * Il residuo si scrive nel VERIFICATION con i tempi, non si tace.
  *
+ * MISURATO sul laboratorio il 2026-09-23, alla prima prova: subito dopo la
+ * sovrascrittura, anche l'endpoint AUTENTICATO di download (service role)
+ * restituiva i byte vecchi, con il GPS, servito dalla cache con il
+ * `cacheControl` dell'oggetto (`max-age=3600`). Il catalogo diceva gia' il
+ * vero (eTag = md5 dei byte spogliati). Da qui tre regole di questo file:
+ *   - ogni lettura che DECIDE (istantanea, sorgente, rilettura) e' `freshRead`,
+ *     che scavalca la cache — altrimenti si spoglierebbe e si salverebbe una
+ *     versione vecchia al posto di quella corrente;
+ *   - la seconda fonte e' il CATALOGO (`storage.objects.metadata`: eTag e
+ *     size), che nessuna cache separa dalla verita' dell'oggetto;
+ *   - una lettura ATTRAVERSO la cache si fa comunque, e si conta come
+ *     `cdn_stale`: e' il residuo, misurato, e dura fino al max-age.
+ *
  * ── I VIDEO ─────────────────────────────────────────────────────────────────
  * Lo stripper non tratta i video (`strip-metadata.ts`, «WHAT THIS FILE DOES NOT
  * COVER»). Qui si CONTANO in `videos_skipped`, non si toccano, e il numero sta
@@ -377,14 +390,51 @@ const storage = createClient(STORAGE_URL, SERVICE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 }).storage.from(BUCKET);
 
-async function download(path) {
-  const { data, error } = await storage.download(path);
-  if (error || !data) {
-    const status = storageStatus(error);
-    return { ok: false, category: status === 404 || status === 400 ? "object_missing" : "download_failed", status };
+/**
+ * Lettura FRESCA, che scavalca la cache. Misurato sul laboratorio il 2026-09-23:
+ * l'endpoint autenticato di download e' servito dalla CDN con il `max-age`
+ * dell'oggetto (3600 s), e subito dopo la sovrascrittura restituiva ancora i
+ * byte VECCHI, con il GPS. Una lettura in cache qui produrrebbe due errori: una
+ * rilettura che accusa una scrittura riuscita, e — peggio — un'istantanea o una
+ * sorgente vecchia che lo stripper spoglierebbe al posto dell'oggetto corrente.
+ * Quindi ogni lettura che decide qualcosa passa da qui: parametro unico nella
+ * query e `Cache-Control: no-cache`.
+ */
+async function freshRead(path) {
+  const encoded = path.split("/").map(encodeURIComponent).join("/");
+  let res;
+  try {
+    res = await fetch(
+      `${STORAGE_URL}/storage/v1/object/${BUCKET}/${encoded}?restrip=${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      {
+        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, "Cache-Control": "no-cache" },
+        cache: "no-store",
+      }
+    );
+  } catch {
+    return { ok: false, category: "download_failed", status: null };
   }
-  return { ok: true, bytes: Buffer.from(await data.arrayBuffer()) };
+  if (!res.ok) {
+    return {
+      ok: false,
+      category: res.status === 404 || res.status === 400 ? "object_missing" : "download_failed",
+      status: res.status,
+    };
+  }
+  return { ok: true, bytes: Buffer.from(await res.arrayBuffer()), cdn: res.headers.get("cf-cache-status") };
 }
+
+/**
+ * Lettura ATTRAVERSO la cache, come la farebbe chiunque: serve solo a MISURARE
+ * il residuo dichiarato nel docblock, mai a decidere un esito.
+ */
+async function cachedRead(path) {
+  const { data, error } = await storage.download(path);
+  if (error || !data) return null;
+  return Buffer.from(await data.arrayBuffer());
+}
+
+const md5 = (buf) => createHash("md5").update(buf).digest("hex");
 
 /* ──────────────────────────────── il referto ─────────────────────────────── */
 
@@ -467,7 +517,32 @@ if (photos.length === 0) {
   process.exit(0);
 }
 
+/* Il CATALOGO come arbitro della sorgente. Misurato il 2026-09-23: la lettura
+ * fresca ha risposto con `cf-cache-status: HIT` e ha comunque restituito i byte
+ * correnti — la cache dello storage non e' caratterizzata abbastanza per
+ * fidarsi di un header. Quindi i byte scaricati si confrontano con l'eTag
+ * registrato in `storage.objects` (l'md5 per un caricamento a richiesta
+ * singola): se non coincidono, la foto NON si spoglia e si conta
+ * `source_stale`, perche' spogliare una versione vecchia e riscriverla
+ * cancellerebbe quella corrente. Un eTag multipart (con «-») non e' un md5:
+ * si dichiara `source_unverifiable` e si procede, contandolo. */
+async function catalogEtags() {
+  const rows = await sql(
+    `select name, metadata->>'eTag' as etag from storage.objects where bucket_id = ${q(BUCKET)}
+     and name = ANY(ARRAY[${photos.map((r) => q(r.storage_path)).join(", ")}]);`
+  );
+  return new Map(rows.map((c) => [c.name, (c.etag ?? "").replace(/"/g, "")]));
+}
+/** "ok" | "stale" | "unverifiable" | "absent" */
+function checkAgainstCatalog(etags, path, bytes) {
+  const etag = etags.get(path);
+  if (!etag) return "absent";
+  if (etag.includes("-")) return "unverifiable";
+  return etag === md5(bytes) ? "ok" : "stale";
+}
+
 /* (b) L'istantanea dei byte ORIGINALI, prima di qualunque scrittura. */
+const etagsBefore = await catalogEtags();
 try {
   mkdirSync(SNAPSHOT_DIR, { recursive: false });
 } catch (err) {
@@ -486,7 +561,7 @@ const index = {
 const originals = new Map();
 let snapMissing = 0;
 for (const [i, r] of photos.entries()) {
-  const got = await download(r.storage_path);
+  const got = await freshRead(r.storage_path);
   const entry = { n: i + 1, id: r.id, storage_path: r.storage_path, row: r.row };
   if (!got.ok) {
     entry.snapshot = got.category;
@@ -502,6 +577,10 @@ for (const [i, r] of photos.entries()) {
       sha256: createHash("sha256").update(got.bytes).digest("hex"),
       ...meta,
     });
+    entry.catalog = checkAgainstCatalog(etagsBefore, r.storage_path, got.bytes);
+    if (entry.catalog !== "ok") {
+      note(`snapshot_${entry.catalog}`, `code=etag message=istantanea #${i + 1}: i byte letti non sono verificati dal catalogo (${entry.catalog})`);
+    }
     originals.set(r.id, { bytes: got.bytes, meta });
   }
   index.foto.push(entry);
@@ -533,15 +612,26 @@ const capturedPaths = new Set(photos.map((r) => r.storage_path));
 /* (d) L'atto, una chiave alla volta, nell'ordine di finalize.ts. */
 say("");
 say("  (d) L'ATTO — scarica, spoglia (stripper del prodotto), riscrivi sullo stesso path, rileggi");
-const tally = { rewritten: 0, object_missing: 0, download_failed: 0, unknown_extension: 0, mime_mismatch: 0, strip_refused: 0, write_failed: 0, still_has_exif: 0, readback_failed: 0 };
+const tally = { rewritten: 0, object_missing: 0, download_failed: 0, source_stale: 0, source_unverifiable: 0, unknown_extension: 0, mime_mismatch: 0, strip_refused: 0, write_failed: 0, still_has_exif: 0, readback_failed: 0, readback_mismatch: 0 };
+const etagsAct = await catalogEtags();
 const rewritten = [];
 for (const [i, r] of photos.entries()) {
   const tag = `#${i + 1}`;
-  const src = await download(r.storage_path);
+  const src = await freshRead(r.storage_path);
   if (!src.ok) {
     tally[src.category] += 1;
     note(src.category, `code=${src.status ?? "unknown"} message=foto ${tag} non scaricata — il banco puo' essere cambiato sotto lo strumento`);
     continue;
+  }
+  const srcCheck = checkAgainstCatalog(etagsAct, r.storage_path, src.bytes);
+  if (srcCheck === "stale" || srcCheck === "absent") {
+    tally.source_stale += 1;
+    note("source_stale", `code=${srcCheck} message=foto ${tag}: i byte scaricati non sono quelli registrati nel catalogo — non spogliata, lasciata com'era`);
+    continue;
+  }
+  if (srcCheck === "unverifiable") {
+    tally.source_unverifiable += 1;
+    note("source_unverifiable", `code=multipart message=foto ${tag}: eTag multipart, la sorgente non e' verificabile per md5 — si procede, contata`);
   }
   const ext = (r.storage_path.split(".").pop() ?? "").toLowerCase();
   const mime = MIME_BY_EXT[ext];
@@ -572,7 +662,7 @@ for (const [i, r] of photos.entries()) {
     note("write_failed", `code=${storageStatus(writeError) ?? "unknown"} message=foto ${tag}: scrittura rifiutata, l'originale e' nell'istantanea`);
     continue;
   }
-  const back = await download(r.storage_path);
+  const back = await freshRead(r.storage_path);
   if (!back.ok) {
     tally.readback_failed += 1;
     note("readback_failed", `code=${back.status ?? "unknown"} message=foto ${tag}: scritta ma non riletta`);
@@ -584,12 +674,58 @@ for (const [i, r] of photos.entries()) {
     note("still_has_exif", `code=exif message=foto ${tag}: riletta con exif ${after.exif} / xmp ${after.xmp} byte`);
     continue;
   }
+  if (md5(back.bytes) !== md5(stripped)) {
+    tally.readback_mismatch += 1;
+    note("readback_mismatch", `code=md5 message=foto ${tag}: i byte riletti non sono quelli restituiti dallo stripper`);
+    continue;
+  }
   tally.rewritten += 1;
-  rewritten.push(r);
+  rewritten.push({ ...r, strippedMd5: md5(stripped), strippedLen: stripped.length });
   const orig = originals.get(r.id)?.meta;
-  say(`      · ${tag} exif ${orig?.exif ?? "?"} → ${after.exif} byte, ${back.bytes.length} byte scritti, stesso path`);
+  say(
+    `      · ${tag} exif ${orig?.exif ?? "?"} → ${after.exif} byte, ${back.bytes.length} byte scritti, ` +
+      `stesso path (lettura fresca, cdn ${back.cdn ?? "n/d"})`
+  );
 }
 say(`      atto chiuso il ${utc()}`);
+
+/* (e) Il CATALOGO come seconda fonte: `storage.objects.metadata` porta size ed
+ *     eTag (l'md5 dei byte) di cio' che lo storage ha davvero registrato. Nessuna
+ *     cache sta fra questa lettura e la verita' dell'oggetto. */
+let catalogOk = 0;
+let catalogCache = null;
+if (rewritten.length > 0) {
+  const cat = await sql(
+    `select name, metadata->>'eTag' as etag, (metadata->>'size')::bigint as size, metadata->>'cacheControl' as cc
+     from storage.objects where bucket_id = ${q(BUCKET)}
+     and name = ANY(ARRAY[${rewritten.map((r) => q(r.storage_path)).join(", ")}]);`
+  );
+  const byName = new Map(cat.map((c) => [c.name, c]));
+  for (const [i, r] of rewritten.entries()) {
+    const c = byName.get(r.storage_path);
+    const etag = (c?.etag ?? "").replace(/"/g, "");
+    if (c && etag === r.strippedMd5 && Number(c.size) === r.strippedLen) catalogOk += 1;
+    else note("catalog_mismatch", `code=etag message=riscritta #${i + 1}: il catalogo non registra i byte spogliati`);
+    catalogCache ??= c?.cc ?? null;
+  }
+}
+
+/* (e') Il RESIDUO, misurato e non supposto: una lettura ATTRAVERSO la cache,
+ *      come la farebbe chiunque, subito dopo l'atto. Se serve ancora i byte
+ *      vecchi, e' la CDN — e resta cosi' fino al max-age dell'oggetto. Contato,
+ *      mai scambiato per un fallimento della scrittura ne' per un successo. */
+let cdnStale = 0;
+for (const r of rewritten) {
+  const viaCache = await cachedRead(r.storage_path);
+  if (viaCache && md5(viaCache) !== r.strippedMd5) cdnStale += 1;
+}
+if (cdnStale > 0) {
+  note(
+    "cdn_stale",
+    `code=${cdnStale} message=${cdnStale} foto ancora servite dalla CACHE nella versione precedente ` +
+      `(cacheControl ${catalogCache ?? "n/d"}): residuo dichiarato, scade col max-age`
+  );
+}
 
 /* (f) Il referto per categoria. */
 say("");
@@ -652,8 +788,17 @@ if (vanished > 0) {
   note("bench_changed", `code=vanished message=${vanished} oggetti non catturati sono spariti durante l'atto (un altro strumento sul banco?) — non toccati da qui`);
 }
 
+say(`      catalogo (storage.objects: eTag = md5 dei byte spogliati, size): ${catalogOk} / ${rewritten.length}`);
+say(
+  `      RESIDUO misurato — lette ATTRAVERSO la cache e ancora vecchie: ${cdnStale} / ${rewritten.length}` +
+    ` (cacheControl dell'oggetto: ${catalogCache ?? "n/d"})`
+);
+
+// `cdnStale` NON entra fra i problemi: e' il residuo dichiarato, non un
+// fallimento della scrittura. Entra nel referto, e nel VERIFICATION.
 const problems =
-  photos.length - tally.rewritten + (sample.length - signedOk) + rowsChanged + collateral + (rowsAfter.length !== photos.length ? 1 : 0);
+  photos.length - tally.rewritten + (sample.length - signedOk) + (rewritten.length - catalogOk) +
+  rowsChanged + collateral + (rowsAfter.length !== photos.length ? 1 : 0);
 
 /* (h) L'atto si consuma qui, dentro il suo blocco e solo li'. */
 if (IS_PRODUCTION && grant) {
