@@ -3,8 +3,8 @@ import FormatMarker from "@/components/formats/FormatMarker";
 import { FOCUS_RING } from "@/components/ui/Button";
 
 /**
- * The format filter on `/events` — the chip row that must look the same to
- * everybody, always.
+ * The format filter on `/events` — the chip row that shows a viewer only the
+ * formats of nights that viewer is already seeing (D-52-15, 2026-09-23).
  *
  * ── Why anchors, and not buttons ─────────────────────────────────────────────
  *
@@ -23,22 +23,27 @@ import { FOCUS_RING } from "@/components/ui/Button";
  *
  * ── Why this component is not given the events ───────────────────────────────
  *
- * This is the guarantee, and it is structural rather than a rule somebody has
- * to keep: the props below are the CATALOGUE, the active slug and the active
- * tab. There is no results array here, so no property of a chip can depend on
- * one. A chip is therefore never greyed out, reordered or hidden because a
- * format happens to have nothing visible — and that is not a nicety. It is a
- * count with one bit of resolution: if a chip went dark when a format had
- * nothing published, LIGHTING UP WOULD BE THE ANNOUNCEMENT (D-36-13, D-36-14).
+ * The props below are the CHIPS, the active slug and the active tab. There is
+ * no results array here, so no property of a chip can depend on one: a chip is
+ * never greyed out or reordered because of what the list below contains.
+ *
+ * WHICH chips exist does depend on the data now — and that is a decision taken
+ * in writing, not a drift. REVERSED ON PURPOSE on 2026-09-23 (D-52-15): this
+ * docblock used to say the row must be identical for everybody (D-36-13,
+ * D-36-16), because a chip that lit up when a format got a night would be the
+ * announcement. The page now builds the chips from the array of nights RLS
+ * already returned to THIS viewer, before the format filter — never from a
+ * *"does this format have anything?"* read. So the row varies with the viewer
+ * but cannot tell them anything the list under it is not already telling them:
+ * a staff viewer sees a draft's chip because they already see the draft; an
+ * anonymous visitor cannot, because the draft never reached the page. The
+ * guarantee moved from "the row does not vary" to "the row has no source but
+ * the rendered nights", and that source is the page's, not this file's.
  *
  * For the same reason nothing here emits a number — not in a label, not in an
  * `aria-label`, not in a `title`. A count is the one channel that reveals an
  * unannounced night WITHOUT SHOWING ANYTHING, so no visual inspection of this
  * page could ever catch one.
- *
- * The row is also identical for an anonymous visitor and for someone who can
- * see drafts (D-36-16). The page builds it from one query, on one path; a
- * staff viewer's *results* include drafts, their *chips* do not.
  *
  * ── The two things not to copy from the neighbours ───────────────────────────
  *
@@ -108,8 +113,10 @@ interface FormatChip {
 
 interface FormatFilterRowProps {
   /**
-   * The active catalogue, in the catalogue's own order. Retired and unlisted
-   * formats never reach this list, so they get no chip.
+   * The chips: the listed catalogue, in its own order, intersected with the
+   * formats of the nights this viewer can see (D-52-15). Unlisted formats never
+   * reach this list; a retired one does while it still has visible nights
+   * (D-52-16). Empty means the row is not mounted at all (D-52-17).
    */
   readonly formats: readonly FormatChip[];
   /** The slug the address selected, already validated against `formats`. */
@@ -123,8 +130,14 @@ export default function FormatFilterRow({
   activeFormat,
   activeTab,
 }: FormatFilterRowProps) {
+  // D-52-17, 2026-09-23: with zero visible nights there is no row at all — no
+  // `<nav>`, no lone `All`, no reserved space. An `All` on its own would be a
+  // filter with nothing to choose. The empty state of the list stays the one
+  // `EventTabs` already draws, unchanged.
+  if (formats.length === 0) return null;
+
   // Exactly one chip is current at a time. `All` is current whenever the
-  // address named no format, or named one this catalogue does not hold — which
+  // address named no format, or named one this row does not hold — which
   // is the same answer, deliberately, so the page is no oracle for whether a
   // format exists.
   const allIsCurrent = activeFormat === null;
