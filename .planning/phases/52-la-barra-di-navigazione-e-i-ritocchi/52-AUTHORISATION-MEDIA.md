@@ -3,8 +3,13 @@ phase: 52-la-barra-di-navigazione-e-i-ritocchi
 document: autorizzazione a scrivere in produzione — rimozione per chiave (D-52-30) e ri-spogliatura (D-52-31)
 written: 2026-09-23
 written_at: "2026-09-23T18:40Z"
-granted: no
-status: SCRITTA, NON CONCESSA
+granted: yes
+granted_date: 2026-09-23
+granted_by: il proprietario
+granted_at: "2026-09-23T18:42:23Z — risposta scelta dal proprietario con lo strumento di domanda dell'orchestratore; registrata qui a quest'ora dell'orologio di questa macchina, prima di qualunque lancio"
+answer: entrambe
+scope: "(a) purge-media-orphans --dry-run poi --apply, R 0 · O 0; (b) restrip-event-media --dry-run poi --apply con --before 2026-09-23T18:29:09Z, P 0 · V 0 — in quest'ordine, oggi, una volta"
+status: CONCESSA
 counted_at: "2026-09-23T18:38:21Z → 18:38:28Z"
 numbers: "R 0 · O 0 · in volo 0 · P 0 · V 0"
 ---
@@ -187,13 +192,15 @@ VERIFICATION con i tempi (sonda ripetuta nel piano 52-17).
 ### I due blocchi di concessione
 
 Letti e marcati **solo fra i loro marcatori**, ciascuno dal proprio strumento.
-Oggi `granted: no`: nessuno dei due strumenti parte.
+Fino alle 18:42:23Z `granted: no`; da quell'ora, per la risposta `entrambe`,
+`granted: yes` e `granted_on: 2026-09-23` in **tutti e due** — nient'altro
+toccato dentro i blocchi.
 
 <!-- purge-media-orphans: grant -->
 act: event_media.purge
 target: production
-granted: no
-granted_on: —
+granted: yes
+granted_on: 2026-09-23
 spent: no
 rejected_objects: 0
 orphan_objects: 0
@@ -202,8 +209,8 @@ orphan_objects: 0
 <!-- restrip-event-media: grant -->
 act: event_media.restrip
 target: production
-granted: no
-granted_on: —
+granted: yes
+granted_on: 2026-09-23
 spent: no
 before: 2026-09-23T18:29:09Z
 photos: 0
@@ -239,8 +246,11 @@ Da porre al proprietario, con le quattro opzioni e senza raccomandarne una:
 | `solo-ristrip` | (b); `granted: yes` **solo** nel blocco `restrip-event-media` | (a): R oggetti rifiutati e O orfani restano nel bucket, irraggiungibili per firma ma non rimossi — oggi **R = O = 0** |
 | `niente` | nessun passo; entrambi i blocchi restano `granted: no` | D-52-30 e D-52-31 restano aperti: il VERIFICATION li dichiara debito **con i numeri di oggi, R 0 · O 0 · P 0 · V 0** |
 
-Risposta del proprietario, letterale: *(non ancora posta — si registra qui, con
-l'ora, prima di qualunque lancio)*
+Risposta del proprietario, letterale: **`entrambe`** — posta alla lettera dallo
+strumento di domanda dell'orchestratore il 2026-09-23 (l'etichetta mostrata era
+«entrambe (Recommended)»: la raccomandazione era dello strumento, non di questo
+documento, che non ne fa), registrata qui alle **18:42:23Z**, prima di
+qualunque lancio. Concede (a) poi (b), oggi, una volta.
 
 ---
 
