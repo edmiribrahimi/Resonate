@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: Phase 51 complete — 15/15 plans, in produzione dal 2026-09-22 19:13Z; il 2026-09-23 chiuso il debito del review (resta WR-05), deciso WR-04, lanciato verify:refusal, pulito il lab; VERIFICATION human_needed solo per la riga di console del passo 9; sei commit NON ancora spinti
+stopped_at: Phase 51 complete — 15/15 plans, in produzione dal 2026-09-22 19:13Z; il 2026-09-23 chiuso il debito del review (resta WR-05), deciso WR-04, lanciato verify:refusal, pulito il lab; VERIFICATION passed; WR-05 applicato sul lab, in produzione con atto datato; commit NON ancora spinti
 last_updated: "2026-09-23T10:50:00.000Z"
 last_activity: 2026-09-23
 progress:
@@ -46,10 +46,13 @@ descritto come vivo). `verify:refusal` lanciato sotto
 `51-AUTHORISATION-REFUSAL.md` (ESAURITA): 8/11 coppie reggono, 3 RIFIUTATE su
 tabelle vuote. Laboratorio pulito per chiave (19 righe di scansioni finte, il
 biglietto «1 di 2» riportato a non scansionato); la riga guest `63ebd88f-…`
-**non c'era piu'**. Restano: **WR-05** (un `COMMENT`, con la prossima
-migration), la riga di console del passo 9 (serve un telefono con Web
-Inspector), i due gate rossi della 52 (`verify:venue-surfaces` G2,
-`verify:touch-targets`). `npm run build` exit 0, `verify:persona` 7/7.
+**non c'era piu'**. Poi, lo stesso giorno: la riga di console dello scarto v6
+**osservata** su Chrome headless contro il lab (non su telefono, dichiarato);
+i due gate rossi ereditati dalla 50 **chiusi** — `npm run verify` e'
+**VERIFY_OK, 24 gate**; **WR-05** ha la migration di solo `COMMENT`
+`20260923120000_role_capabilities_comment.sql`, applicata sul laboratorio,
+**in produzione con un atto datato**. `51-VERIFICATION.md` e' `passed`.
+`npm run build` exit 0, `verify:persona` 7/7.
 
 **Cosa e' in produzione — DEPLOYATO il 2026-09-07.** Le sei migration erano
 applicate dal 2026-09-06; il codice le ha raggiunte il giorno dopo: 55 commit

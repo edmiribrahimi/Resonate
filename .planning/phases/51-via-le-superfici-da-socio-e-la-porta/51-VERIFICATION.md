@@ -2,7 +2,7 @@
 phase: 51-via-le-superfici-da-socio-e-la-porta
 milestone: v1.6
 verified: 2026-09-22
-status: human_needed
+status: passed
 requirements_total: 4
 requirements_closed: 4
 requirements_partial: 0
@@ -10,10 +10,11 @@ requirements_contradicted: 0
 decisions_total: 16
 decisions_contradicted: 0
 procedure_expectations_contradicted: 1
-gates_red: 2
-manual_steps_open: 1
+gates_red: 0
+manual_steps_open: 0
 lab_cleanup_owed: 0
 reopened: 2026-09-23
+closed: 2026-09-23
 environment: produzione (`c61760f`, due migration applicate il 2026-09-22) + laboratorio permanente (`.planning/v1.6-LAB-DESIGN.md`), dove sono state percorse le due corse della porta
 evidence: 51-ESITI.md (due corse di `P-51-1` PERCORSE + l'atto di produzione), 51-AUTHORISATION.md (ESAURITA), 51-CATALOG.md, i quindici SUMMARY, deferred-items.md
 ---
@@ -34,9 +35,20 @@ evidence: 51-ESITI.md (due corse di `P-51-1` PERCORSE + l'atto di produzione), 5
 >    La riga della tabella dei gate qui sotto e la sezione *La domanda aperta*
 >    restano come sono: descrivono la misura del 2026-09-22, e il documento non
 >    si riscrive al posto della riga originale.
-> 2. **La riga di console del passo 9 — ANCORA NON OSSERVATA.** Serve un Web
->    Inspector collegato al telefono; nessuno e' tornato alla porta. E' la voce
->    `manual_steps_open: 1`.
+> 2. **La riga di console del passo 9 — OSSERVATA, su desktop e non su telefono,
+>    e la differenza si dichiara.** 2026-09-23, 10:58:36Z: Chrome headless
+>    isolato contro il dev server del laboratorio, sessione del master di banco;
+>    IndexedDB `resonate-checkin` seminato **a versione 5** con una voce
+>    `membership` in `pendingCheckins`, una voce `guest` di controllo in
+>    `failedCheckins`, lo store `members` e la chiave `rosterPredatesRole`;
+>    aperto `/admin/scanner`. Console: **`checkin-store:v6_dropped_membership_entries
+>    {count: 1}`**, tipo `warning`. Riletto lo store dopo: versione **6**,
+>    `members` **assente**, `pendingCheckins` **0**, `failedCheckins` **[guest]**
+>    (il controllo e' sopravvissuto), `rosterPredatesRole` **null**. Il database
+>    e' stato cancellato a fine prova e il profilo del browser era usa e getta.
+>    **Cosa NON prova:** che la riga venga scritta da Safari su iPhone — e' lo
+>    stesso codice, ma un altro motore di IndexedDB. La riserva di MEM-03 si
+>    chiude sul codice, non sul dispositivo.
 > 3. **`verify:refusal` — LANCIATO, sotto `51-AUTHORISATION-REFUSAL.md`**
 >    (2026-09-23, ESAURITA): 11 righe, **8 con la coppia che regge, 3 RIFIUTATE**
 >    perche' le tre tabelle sono vuote e il controllo positivo e' muto; **due
@@ -63,14 +75,25 @@ evidence: 51-ESITI.md (due corse di `P-51-1` PERCORSE + l'atto di produzione), 5
 > `@lab.invalid` del piano 51-12) restano, per scelta del proprietario: sono
 > evidenza citata dai SUMMARY.
 >
+> **I due gate rossi ereditati dalla fase 50 — CHIUSI il 2026-09-23** (commit
+> di questa data, `npm run verify` → **VERIFY_OK, 24 gate**, era `VERIFY_FAIL —
+> 2`). `verify:venue-surfaces` G2: `sumup_checkout_id` e' stato **pesato** —
+> riferimento opaco del fornitore, stampato da nessuna parte, nessun luogo — e
+> ammesso nell'allow-list positiva insieme al docblock che lo dichiara; non e'
+> un allentamento, e' il passaggio che la lista esiste per imporre.
+> `verify:touch-targets`: i due `<button>` di `GuestTokenDisplay.tsx` portano
+> `min-h-11`, e l'`<a>` di `ticket-order.tsx` e' diventato il `Button` di
+> `@react-email/components`, come gli altri link delle mail. **WR-05** ha la
+> sua migration di solo `COMMENT`, `20260923120000_role_capabilities_comment.sql`,
+> **applicata sul laboratorio** (versione `20260923105525`, commento riletto
+> dal catalogo con 15 e 13); **in produzione aspetta un atto datato**.
+>
 > **Il debito della code review, riletto.** Chiusi il 2026-09-23 con un commit
 > ciascuno: **WR-03** (`7c6c859`, il flag di revoca viaggia nella risposta guest
 > e il drain lo archivia come `recorded_after_revocation`), **WR-04**
 > (`514c497`), **WR-06** (`c730b1d`), **WR-08** e **IN-01** (`778af39`),
-> **IN-02..05** (`482c450`), **IN-06** e **IN-07** (dentro `514c497`). Resta
-> **WR-05** — il `COMMENT` della migration applicata dice 16/14 per 15/13 — che
-> si corregge con una migration di solo `COMMENT` quando ce ne sara' una da
-> applicare comunque. E la persona: `CLAUDE.md`, `access-gating.md`,
+> **IN-02..05** (`482c450`), **IN-06** e **IN-07** (dentro `514c497`). **WR-05** e' sopra: migration scritta e applicata sul laboratorio, produzione
+> in attesa dell'atto. E la persona: `CLAUDE.md`, `access-gating.md`,
 > `checkin-offline.md` e `community-membership.md` non descrivono piu' il codice
 > socio come vivo ne' `member` come ruolo (**1.25.0**, `282d809`); la
 > ricognizione lessicale completa resta alla fase 57.
