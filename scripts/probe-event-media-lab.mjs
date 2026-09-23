@@ -257,7 +257,7 @@ console.log("");
 try {
   /* ── 1. anonimo, indirizzo pubblico ─────────────────────────────────── */
   {
-    const plain = { ok: 0, twoHundred: 0, statuses: {}, cache: {} };
+    const plain = { ok: 0, twoHundred: 0, secretTwoHundred: 0, statuses: {}, cache: {} };
     const busted = { twoHundred: 0, statuses: {} };
     for (const r of approved) {
       const publicUrl = `${URL_BASE}/storage/v1/object/public/${BUCKET}/${r.storage_path}`;
@@ -265,6 +265,9 @@ try {
       plain.statuses[a.status] = (plain.statuses[a.status] ?? 0) + 1;
       plain.cache[a.cache] = (plain.cache[a.cache] ?? 0) + 1;
       if (a.status === 200) plain.twoHundred += 1;
+      // Per il segreto del venue conta SE l'oggetto ancora servito e' di una
+      // serata segreta: si conta, non si nomina.
+      if (a.status === 200 && r.event_parties?.venue_secret === true) plain.secretTwoHundred += 1;
       const b = await anonymousGet(publicUrl, { bust: true });
       busted.statuses[b.status] = (busted.statuses[b.status] ?? 0) + 1;
       if (b.status === 200) busted.twoHundred += 1;
@@ -282,7 +285,7 @@ try {
       "1a",
       "anonimo, indirizzo pubblico cosi' com'e' (cio' che riceve chi l'ha copiato)",
       `non 200 su ${approved.length}/${approved.length}${inWindow ? " — ma dentro la finestra un 200 e' cache" : ""}`,
-      `stati ${fmt(plain.statuses)} · cf-cache-status ${fmt(plain.cache)} · ${sinceM2} s dopo M2`,
+      `stati ${fmt(plain.statuses)} · 200 di serata segreta ${plain.secretTwoHundred} · cf-cache-status ${fmt(plain.cache)} · ${sinceM2} s dopo M2`,
       plain.twoHundred === 0 ? "conforme" : inWindow ? "cache (dentro la finestra)" : "NON CONFORME"
     );
   }
