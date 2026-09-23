@@ -4,8 +4,9 @@
  *
  * Before this module there were **three** hand-maintained menus, not the two
  * `34-CONTEXT.md` counted: the tab bar (`src/components/staff/StaffNav.tsx`),
- * the account list (`src/components/account/ManagementSection.tsx`, which held
- * two literal lists of seven and four addresses), and the bottom nav
+ * the account list (a section of the account page, which held two literal
+ * lists of seven and four addresses — removed by NAV-03 in phase 52, when the
+ * same entries moved into the bar's Management panel), and the bottom nav
  * (`src/lib/rbac/roles.ts`). Two of the three filtered on role; one filtered on
  * role *and* status. None of them could be right for a role that did not exist
  * when they were written — and the fourth role now does exist.
@@ -85,7 +86,8 @@ export interface StaffTab {
 }
 
 /**
- * The ten, in the order they are drawn. (Eight until 2026-08-14, when the
+ * The ten, in declared order — which since phase 52 is no longer the order
+ * they are drawn (see below). (Eight until 2026-08-14, when the
  * owner removed Finance and Analytics — see the note where they stood; six
  * until phase 44, when Calendar landed after its pages did; seven until phase
  * 45, when the calendar stopped being the only production section.)
@@ -103,6 +105,25 @@ export interface StaffTab {
  * What the adjacency must NOT be read as saying is *one permission*. It is
  * four, and the four lines below each name a different one.
  *
+ * ── The declaration keeps the grouping; the RENDERING is alphabetical ───────
+ *
+ * **Phase 52, D-52-27.** The strip, the Management panel of the bar and its
+ * column list draw these tabs in **alphabetical order by label**, through
+ * `sortTabsByLabel` at the bottom of this file — so on screen the four
+ * production sections are no longer adjacent (Calendar · Formats · Location ·
+ * Manage events · Manifesto …). What the paragraph above says about a menu
+ * read as a grouping was true of the menu it described, and the owner chose a
+ * different menu: one list, one order, the same in all three places, and an
+ * order a reader can predict without knowing how the product is organised.
+ *
+ * **This declaration is deliberately NOT reordered.** It keeps the grouping,
+ * because the grouping is what a reader of THIS file needs — the four
+ * production entries and their four different keys sit together so their
+ * docblocks can be read against each other. The alphabet is applied where the
+ * list is drawn, never written into the source order, so that adding a tab
+ * cannot silently reorder a menu and reordering a menu cannot silently move a
+ * docblock away from its neighbours.
+ *
  * The first four were the tabs an organizer already saw; the master-only ones
  * carried `roles: ["master"]`. That role filter is not translated — it is
  * **replaced** by the capability the middleware actually asks, which is
@@ -119,7 +140,15 @@ export interface StaffTab {
  * `CAP.PRODUCTION_*` is four of them.
  */
 const DECLARED = [
-  { href: "/admin/events", label: "Events", capability: CAP.ORGANIZER_ACCESS },
+  // "Manage events", not "Events" — D-52-10, phase 52. The bar's first entry is
+  // `Events`, the public list; this tab is the organizer's tool at another
+  // address, and two entries with one label in the same navigation is a bar
+  // that lies about where it goes. The address and the key do not change.
+  {
+    href: "/admin/events",
+    label: "Manage events",
+    capability: CAP.ORGANIZER_ACCESS,
+  },
   { href: "/admin/members", label: "Members", capability: CAP.ORGANIZER_ACCESS },
   { href: "/admin/artists", label: "Artists", capability: CAP.ORGANIZER_ACCESS },
   { href: "/admin/venues", label: "Venues", capability: CAP.ORGANIZER_ACCESS },
@@ -135,8 +164,8 @@ const DECLARED = [
   // The two ways to make it compile early were weighed and rejected, and they
   // stay rejected: widening `href` would turn `typedRoutes` off for every tab
   // above and push the loosening into both consumers, which pass `tab.href`
-  // straight into `<Link href>` (`StaffNav.tsx:68-73`,
-  // `ManagementSection.tsx:51`); and asserting the type on this one entry — the
+  // straight into `<Link href>` (`StaffNav.tsx:68-73`, and the account
+  // page's list that phase 52 folded into the bar's panel); and asserting the type on this one entry — the
   // cast is deliberately not spelled here, so the check that forbids it cannot
   // go green on the sentence forbidding it — would compile, and would be a hole
   // outliving the week it was needed, on the one file whose whole job is this
@@ -360,4 +389,26 @@ export function visibleStaffTabs(
 ): readonly StaffTab[] {
   const held = new Set<CapabilityKey>(capabilities);
   return STAFF_TABS.filter((tab) => held.has(tab.capability));
+}
+
+/**
+ * The one implementation of the menu order — alphabetical by label, in
+ * English (D-52-27).
+ *
+ * Used by the bar's Management panel (`src/lib/rbac/roles.ts`) and by the strip
+ * (`StaffNav.tsx`, phase 52 plan 11). **One function, not two sorts**: two
+ * comparators over one list are two chances to disagree, the same argument as
+ * `visibleStaffTabs` above.
+ *
+ * Returns a new array; the input is not mutated, so `STAFF_TABS` keeps its
+ * declared, grouped order for every other reader. Generic over anything with a
+ * label, because the panel sorts the tabs together with two entries that are
+ * not tabs (Gallery and Account).
+ *
+ * Like the filter above, it decides **presentation only**.
+ */
+export function sortTabsByLabel<T extends { readonly label: string }>(
+  tabs: readonly T[]
+): T[] {
+  return [...tabs].sort((a, b) => a.label.localeCompare(b.label, "en"));
 }
