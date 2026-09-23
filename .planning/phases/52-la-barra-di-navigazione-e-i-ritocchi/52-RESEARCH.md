@@ -125,6 +125,41 @@
   login, porta con la tastiera aperta e un form pubblico, scritta passo per
   passo; nessun test automatico esiste.
 
+#### Aggiunte del 2026-09-23, dopo la ricerca (copiate da 52-CONTEXT.md)
+- **D-52-24 — TASK spento compare anche al master**, non solo a organizer e
+  staff: il master tiene tutto e la sua barra mostra la forma finale.
+- **D-52-25 — NAV-07: la gallery chiude anche i dati.** La ricerca ha misurato
+  che il cancello di NAV-02 decide dove si va e non cosa si legge: un
+  `attendee` legge via API le righe approvate di `event_media` e il bucket
+  delle foto e' pubblico. **Decisione del proprietario: si stringe in questa
+  fase** — policy di lettura su `event_media` legata a `gallery.view`, bucket
+  privato, immagini servite con URL firmati (il pattern esiste gia' in
+  `src/app/(admin)/admin/visual/actions.ts`, `createSignedUrls`), censimento e
+  conversione dei link pubblici gia' emessi (mail, pagine). Proposta una fase
+  52.1 separata; scelto «dentro la 52, come NAV-07». **E' Critical**: RLS e
+  media, `access-gating.md` + `media-and-storage.md`; migration sul lab prima,
+  produzione sotto atto datato; niente foto di una serata segreta puo' essere
+  raggiungibile da un URL non firmato.
+- **D-52-26 — Le cinque linguette stanno in una riga, con etichette corte**:
+  All · Out · In · Recent · Alerts, numero accanto; le posizioni non cambiano
+  mai durante la serata.
+- **D-52-27 — La striscia degli strumenti da telefono e la colonna espansa su
+  desktop seguono l'ordine alfabetico del pannello**: una lista sola, un ordine
+  solo (`STAFF_TABS` si ordina per etichetta al momento del rendering, non si
+  riordina la dichiarazione).
+- **D-52-28 — Il viewport iOS, con l'aspettativa scritta.** `interactive-widget=
+  resizes-content` va nel meta viewport (Next 16 lo tipizza, aiuta Android, e'
+  innocuo) **ma Safari iOS non lo implementa ancora** (WebKit lo ha nel sorgente
+  da agosto 2026, non in una release — ricerca §H): sull'iPhone del
+  proprietario il ridimensionamento sotto la tastiera e' **atteso assente**, e
+  la prova manuale lo dichiara prima di essere percorsa. Quello che DEVE
+  funzionare sull'iPhone sono le misure di layout: l'avviso della guest list
+  sopra la ricerca, il campo di ricerca che al fuoco sale in cima, la barra che
+  si nasconde con `:has(:focus)` sotto `pointer: coarse` (D-52-06). Il login
+  **non monta la barra**: D-52-06 non lo riguarda; `FOCUS_ROOT` di `PageShell`
+  (digest custodito da `verify:conversion`) **non si tocca** prima di aver
+  provato il login com'e' sull'iPhone — si decide sul risultato.
+
 ### Claude's Discretion
 - L'ordine dei chip (catalogo `sort_order`, come oggi, o prima apparizione) e
   la forma dello stato vuoto della lista quando la riga dei chip e' assente.
@@ -155,6 +190,7 @@
 | NAV-04 | Dentro uno strumento, da telefono, la striscia degli strumenti resta appesa | §B.4 (`StaffNav` strip, `(work)/layout.tsx`, nessun antenato con overflow) |
 | NAV-05 | La cifra `staff` non e' piu' un link con filtro | §F (`MemberTable.tsx:686-694`) e la legenda che diventa falsa con `gallery.view` (§F.2) |
 | NAV-06 | Chip solo per i format con almeno una serata visibile, dall'array gia' letto, prima del filtro | §E (`events/page.tsx:208-222`, `:577-586`, perche' non si usa `CardFormat.name`) |
+| NAV-07 | La gallery chiude anche i dati: RLS su `gallery.view`, bucket privato, URL firmati, censimento dei link emessi | §I (policy in vigore, bucket, `storage_path`, M1 → deploy → M2, censimento, sonde) |
 | (todo 51) | Linguette Recent e Alerts alla porta | §G (`ScannerClient.tsx`, debito dei bersagli, cosa va dove) |
 | (todo 51) | Viewport sotto la tastiera | §H (Next 16 lo supporta; **Safari no**; misure che funzionano su iPhone) |
 </phase_requirements>
@@ -207,6 +243,16 @@ Tre scoperte cambiano il piano rispetto a una lettura ingenua del CONTEXT:
    **layout** (nulla fra campo di ricerca e lista; il campo portato in cima al
    fuoco), non di viewport. Va detto al proprietario **prima** della prova su
    iPhone, o la prova misurera' un meccanismo che non c'e'.
+
+**Aggiunta del 2026-09-23 (NAV-07, D-52-25).** Il proprietario ha deciso di chiudere
+anche i dati (§I). Misurato: oggi ogni sessione `authenticated` legge le righe
+approvate, il bucket `event-media` e' pubblico, e l'indirizzo e' salvato come **URL
+pubblico assoluto** (`actions.ts:179`) — le righe devono guadagnare una chiave
+(`storage_path`). Forma raccomandata: la policy sull'**oggetto** chiede la **riga**
+(`EXISTS` su `event_media` sotto la RLS di chi firma), la firma passa dal client
+della sessione come in `visual/actions.ts`, e l'ordine e' **M1 additiva → deploy del
+codice che firma → M2 che chiude** (bucket privato prima del deploy = immagini rotte
+a tutti).
 
 **Primary recommendation:** tre onde — (1) catalogo + cancello gallery + legenda
 staff, applicato al laboratorio; NAV-05; NAV-06; linguette della porta; (2) la
@@ -652,6 +698,288 @@ prima della prova (Open Question 1).
   - Su iOS oggi la barra fissa sta ancorata al layout viewport, quindi e' gia' **dietro** la tastiera; nasconderla evita che salti durante lo scorrimento con la tastiera aperta. Su Android con `resizes-content` e' la misura che serve davvero (la barra salirebbe sopra la tastiera).
 - **Mai `visualViewport` per risolvere questo senza decisione.** Non e' nell'elenco di `verify:no-viewport-read` (`:181-185`), ma lo spirito del gate (41-UI-SPEC §0 regola 6) e' «il layout lo decide il CSS»; introdurlo e' una decisione da chiedere, non un dettaglio.
 
+### §I — NAV-07: la gallery chiude anche i dati
+
+> Aggiunta il 2026-09-23 dopo D-52-25 (decisione del proprietario: NAV-07 dentro
+> la 52). Rende superata la raccomandazione di §C.5 («accettarlo e scriverlo»):
+> §C.5 resta come **misura dello stato di partenza**, non come proposta.
+> **Critical**: RLS, storage, media di serate segrete — `access-gating.md`,
+> `media-and-storage.md`, `venue-secrecy.md`.
+
+#### I.1 — `public.event_media` oggi: le policy in vigore [MISURATO]
+
+Rilette migration per migration, l'ultima che nomina la policy vince:
+
+| Policy | Verbo | Predicato in vigore | Scritta da |
+|---|---|---|---|
+| `event_media_select_approved` | SELECT `TO authenticated` | `status = 'approved'` | `20260225120000_phase7_media.sql:25-27` — **mai ritoccata** (`20260809004500_event_media_party_id.sql:408-412` lo dichiara) |
+| `event_media_select_own` | SELECT `TO authenticated` | `(select auth.uid()) = uploaded_by` | `20260807020000_wrap_auth_uid.sql:110-115` |
+| `event_media_select_admin` | SELECT `TO authenticated` | `(select private.has_capability('staff.manage'))` | `20260807010000_policies_to_capabilities.sql:205-210` |
+| `event_media_update_admin` | UPDATE | `has_capability('staff.manage')` | `20260807010000_policies_to_capabilities.sql:212-216` |
+| `event_media_delete_admin` | DELETE | `has_capability('staff.manage')` | `20260807010000_policies_to_capabilities.sql:191-196` |
+| `event_media_delete_own` | DELETE | `(select auth.uid()) = uploaded_by` | `20260807020000_wrap_auth_uid.sql:96-101` |
+| `event_media_insert_staff` | INSERT | `uid = uploaded_by AND (staff.manage OR media.upload sulla serata) AND party_id IS NOT NULL AND party_event_id(party_id) = event_id` | `20260921120000_drop_status_and_referral.sql:194-206` (sostituisce `event_media_insert_member`) |
+
+**Chi legge una riga approvata oggi:** qualunque sessione `authenticated`,
+quindi **ogni `attendee`**, via PostgREST, senza passare da nessuna pagina.
+L'**anonimo no** (tutte le SELECT sono `TO authenticated`): la gallery da anonimo
+e' vuota gia' oggi.
+
+**Chi legge `event_media` nel prodotto** [MISURATO: grep `from("event_media")`]:
+
+| Superficie | Riga | Cosa legge | Come disegna |
+|---|---|---|---|
+| `/gallery` | `src/app/(public)/gallery/page.tsx:54-59` | approvate, `limit(200)`, `id, url, type, event_id, events(...)` | `GalleryClient` → `MediaGrid` (`<img src={item.url}>`, `MediaGrid.tsx:78-79`) e `Lightbox` (`<img>`/`<video src={item.url}>`, `Lightbox.tsx:103-110`) |
+| pagina della serata `/events/[slug]` | `src/app/(public)/events/[slug]/page.tsx:1014-1027` | approvate dell'evento, `id, url, type, uploaded_by, created_at` | `MediaGallerySection` sotto l'intestazione «Gallery» (`:1962-1970`) — **a chiunque abbia una sessione** |
+| moderazione `/admin/events/[id]/media` | `src/app/(admin)/admin/(work)/events/[id]/media/page.tsx:167-195` | conteggi per stato + le `pending` con `url` | `MediaReviewGrid` con **`next/image`** (`MediaReviewGrid.tsx:4, 169-170`) |
+| azioni | `src/app/(public)/events/[slug]/actions.ts:182` (insert), `:247` (update di stato), `:301` e `:338` (delete) | — | — |
+| mail | nessuna: zero occorrenze di `event_media`, `event-media` o `storage/v1` in `src/emails/**` e `src/lib/email.ts` | — | — |
+| Open Graph | solo l'immagine statica di `src/app/layout.tsx:63-67`; nessuna `generateMetadata` sulle pagine con media | — | — |
+| pagina del biglietto | nessuna lettura di media | — | — |
+
+**Conseguenza da decidere, non da scoprire:** la pagina della serata mostra la
+sezione «Gallery» a ogni sessione. Con la nuova policy un `attendee` ricevera'
+**zero righe** e vedra' una sezione vuota con il suo titolo. Va deciso se la
+sezione **sparisce** per chi non ha `gallery.view` (raccomandato: stessa
+condizione della voce del pannello, letta da `getAccessContext()`; una sezione
+vuota con titolo e' uno stato vuoto che mente sul perche') — vedi Open Questions.
+
+#### I.2 — I bucket [MISURATO]
+
+| Bucket | `public` | Chi scrive | Chi legge | Fonte |
+|---|---|---|---|---|
+| `event-media` | **true** | solo il service role (la route di finalize) | chiunque: policy `"Anyone can view event media"` (SELECT **senza `TO`**, quindi anche `anon`) **e** l'endpoint `/object/public/` che per un bucket pubblico non guarda la RLS [CITATO: supabase.com/docs/guides/storage/security/access-control — «not needed for public buckets, as they are already publicly accessible»] | `20260225120000_phase7_media.sql:64-66, 79-82`; INSERT tolta da `20260809006000_event_media_server_upload_only.sql:97` |
+| `event-media-quarantine` | false | `staff.manage` (policy `event_media_quarantine_insert_staff`) | nessuno dal client | `20260809004600_event_media_quarantine_bucket.sql:100-106`, `20260921120000:263-270` |
+| `visual-archive` | false | service role (finalize-archive) | `authenticated` con `production.visual.manage` | `20260817120400_visual_archive_bucket.sql:169-205` |
+| `event-images` (copertine), `venue-photos`, `artist-photos` | true | organizer/master | chiunque, `getPublicUrl` (`EventForm.tsx:537`, `CreateVenueModal.tsx:154`, `CreateArtistModal.tsx:150`) | — |
+
+**`event-images` e' un bucket diverso e resta pubblico**: sono le copertine
+delle serate, pagina pubblica. NAV-07 tocca **solo** `event-media`.
+
+Le altre due policy di storage su `event-media` restano in vigore e servono:
+`"Members can delete own event media"` (`(storage.foldername(name))[2] = auth.uid()::text`)
+e `"Admins can delete event media"` (`public.is_admin_or_organizer()`)
+(`20260225120000_phase7_media.sql:86-101`); `deleteMedia` cancella l'oggetto con
+il client della sessione (`actions.ts:326-329`) — `20260809006000:81-90` spiega
+perche' non si toccano.
+
+**Come e' salvato l'indirizzo: URL pubblico assoluto, non un path.**
+`registerMedia` scrive
+`url = ${NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/event-media/${storagePath}`
+(`actions.ts:179, 182-192`), e `deleteMedia` ricava il path **tagliando quel
+prefisso** (`actions.ts:318-323`). La colonna e' `url text not null`
+(`supabase/schema.sql:257`). Quindi le righe esistenti **devono** acquistare un
+path — non si firma un URL, si firma una chiave.
+
+Il path e' `${eventId}/${userId}/${Date.now()}-${i}.${ext}`
+(`MediaUpload.tsx:401`), deciso dal browser e restituito dalla route
+(`MediaUpload.tsx:469, 492-495`): derivabile da due identificatori che
+circolano, piu' un istante — `media-and-storage.md`, gate *il path non e' una
+password*.
+
+#### I.3 — Una foto di una serata segreta, oggi, e' raggiungibile per URL?
+
+**Si', misurato sulla sequenza:**
+- la route di finalize scrive nel bucket **pubblico** al momento del caricamento, quando la riga e' ancora `pending` (`finalize/route.ts:554-560`; la riga nasce `pending` a `actions.ts:190`). Quindi **anche le foto non ancora moderate, e quelle rifiutate**, sono servite da `/object/public/` a chi ha l'URL: rifiutare cambia la riga, non l'oggetto (`media-and-storage.md`, «nascondere, non togliere»);
+- i **video** di una serata segreta sono rifiutati a monte (`MEDIA_FINALIZE_VIDEO_ON_SECRET_NIGHT`, `finalize/route.ts:216-217, 268, 308`); le **foto** passano, spogliate dei metadati (`src/lib/media/finalize.ts`, controllo B di `verify:media-strip`) — ma il **contenuto** della foto (un'insegna, una facciata) resta, e nessun predicato lo vede (`verify-venue-surfaces.mjs:52, 1176-1179` lo dichiara di se');
+- `/gallery` e la pagina della serata le mostrano oggi a **ogni sessione**, non solo a chi ha il biglietto di quella serata;
+- le righe caricate **prima** di `20260809006000_event_media_server_upload_only.sql` (il browser scriveva direttamente nel bucket pubblico) **non sono passate dallo stripper**: possono portare GPS. Quante sono lo dice il censimento (§I.7).
+
+Con NAV-07 fatto come sotto, l'oggetto di una serata segreta si raggiunge solo con
+una firma, e firma solo chi puo' leggere **quella riga**.
+
+#### I.4 — La forma raccomandata: la riga decide l'oggetto
+
+**Una colonna `storage_path`**, non la riscrittura di `url`. Precedente in casa:
+`production_visual_asset.object_key` + firma (`visual/actions.ts:444-470`). `url`
+resta per storia (smette di funzionare quando il bucket si chiude), perde il
+`NOT NULL` e non si scrive piu'; `storage_path` diventa `NOT NULL` dopo il
+backfill, con un `CHECK` (niente `http`, niente `/` iniziale) e un indice.
+
+```sql
+-- M1 (additiva) — forma, non file finale
+ALTER TABLE public.event_media ADD COLUMN IF NOT EXISTS storage_path text;
+UPDATE public.event_media
+   SET storage_path = substring(url from '/storage/v1/object/public/event-media/(.+)$')
+ WHERE storage_path IS NULL;
+-- il DO rilegge: righe con storage_path NULL dopo il backfill = 0, o SOLLEVA
+-- (una riga che non corrisponde al prefisso e' un caso da guardare, non da indovinare)
+ALTER TABLE public.event_media ALTER COLUMN storage_path SET NOT NULL;
+ALTER TABLE public.event_media ALTER COLUMN url DROP NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS event_media_storage_path_key ON public.event_media (storage_path);
+
+-- la policy sull'OGGETTO chiede la RIGA, sotto la RLS di chi chiede
+CREATE POLICY event_media_objects_select_by_row ON storage.objects
+  FOR SELECT TO authenticated
+  USING (
+    bucket_id = 'event-media'
+    AND EXISTS (SELECT 1 FROM public.event_media m WHERE m.storage_path = storage.objects.name)
+  );
+```
+
+**Perche' `EXISTS` sulla riga e non `has_capability('gallery.view')` sul bucket.**
+La sottoquery gira con i permessi di chi firma, quindi sotto la RLS di
+`event_media` [ASSUNTO — comportamento standard di Postgres per le tabelle
+nominate in un'espressione di policy; da provare sul lab con le sonde di I.8]:
+- `gallery.view` → firma **solo** gli oggetti di righe **approvate**;
+- `staff.manage` → firma tutto (`event_media_select_admin`), come serve alla moderazione;
+- chi ha caricato → firma i propri (`event_media_select_own`);
+- chiunque altro → nessuna riga, nessuna firma, anche conoscendo il path.
+
+Una policy sul solo bucket (`gallery.view` e basta) lascerebbe a ogni membro
+dello staff la firma di foto **pending o rifiutate** di cui indovinasse il path:
+esattamente la tenda che il gate *moderazione = rimozione* vieta.
+
+```sql
+-- M2 (la chiusura) — dopo il deploy del codice che firma
+DROP POLICY IF EXISTS event_media_select_approved ON public.event_media;
+CREATE POLICY event_media_select_gallery ON public.event_media
+  AS PERMISSIVE FOR SELECT TO authenticated
+  USING (status = 'approved' AND (SELECT private.has_capability('gallery.view')));
+DROP POLICY IF EXISTS "Anyone can view event media" ON storage.objects;
+UPDATE storage.buckets SET public = false WHERE id = 'event-media';
+-- DO: rilegge pg_policies (nessuna SELECT su storage.objects per event-media senza TO authenticated),
+-- storage.buckets.public = false, e SOLLEVA altrimenti
+```
+
+La forma `(SELECT private.has_capability('<chiave>'))` e' quella di tutte le
+policy di lettura del catalogo (`20260817120000_production_section_keys.sql:299-300`,
+`20260817120400_visual_archive_bucket.sql:198-205`): il sotto-select la valuta
+una volta per statement (`20260807000000_capability_model.sql:177-184`, citato da
+`20260809004600:130-133`).
+
+**Cosa non cambia:** `event_media_select_own`, `event_media_select_admin`,
+`event_media_insert_staff`, le due UPDATE/DELETE, le due DELETE di storage, e
+`verify:media-strip` controllo D (nessuna INSERT per `authenticated` sul bucket:
+M1 e M2 creano solo SELECT).
+
+**Il codice (una sola ondata, deployata fra M1 e M2):**
+- `registerMedia` scrive `storage_path` (la chiave che la route ha restituito) e non costruisce piu' l'URL pubblico (`actions.ts:179`);
+- `deleteMedia` legge `storage_path` invece di tagliare il prefisso (`actions.ts:318-323`); l'ordine resta **oggetto prima, riga dopo** (`:325-343`), perche' la policy dell'oggetto chiede la riga;
+- `/gallery`, la pagina della serata e la moderazione selezionano `storage_path` (mai `url`) e firmano **in una chiamata** `createSignedUrls(paths, TTL)` con il **client della sessione** (`createClient()`), non con il service role — il precedente lo dice per esteso: *«the guard above is the message, the policy is the boundary, and routing this through the service role would have removed the boundary»* (`visual/actions.ts:398-407`);
+- le chiavi non lasciano il server: al client arriva la mappa `id → signedUrl` (stessa forma di `visual/actions.ts:484-500`); una firma fallita per un elemento lo lascia senza immagine **e lo dice** (categoria di log propria, `[gallery.sign_failed]`, distinta dalla lettura fallita);
+- `MediaReviewGrid` smette di passare da `next/image` per questi file (`unoptimized` o `<img>`): l'ottimizzatore mette in cache **per URL**, una firma nuova a ogni render e' un miss a ogni render, e l'immagine ottimizzata resterebbe servita da `/_next/image?url=…` per tutta la durata della sua cache anche dopo la scadenza della firma [ASSUNTO sul comportamento della cache dell'ottimizzatore di Vercel];
+- la voce `NEXT_PUBLIC_*` non entra: `NEXT_PUBLIC_SUPABASE_URL` resta, ma nessun componente client costruisce piu' un indirizzo di `event-media`.
+
+**Durata della firma e costo** [MISURATO il precedente, ASSUNTO il resto]: il
+precedente usa **300 s** per le miniature dell'archivio
+(`src/lib/production/sections/visual-archive.ts:67`). La gallery ha anche
+**video**, che si guardano e si mettono in pausa: una firma di 300 s scade a meta'
+di una visione e il `seek` successivo fallisce. Raccomandato **3600 s** per
+`/gallery` e la pagina della serata (la pagina e' dinamica, si rifirma a ogni
+visita), **300 s** per la moderazione (miniature). Costo per render: **una**
+chiamata di firma per fino a 200 chiavi (il `limit(200)` di `gallery/page.tsx:59`),
+e per ciascuna la valutazione della policy `EXISTS` → serve l'indice su
+`storage_path`. Nessun costo per foto in piu' lato Vercel se non si usa
+`next/image`.
+
+#### I.5 — Cosa dicono i moduli, e cosa diventa falso [MISURATO]
+
+- `media-and-storage.md` e' **datato**: dice *«`event-media`, `public: true` … si legge con `getPublicUrl`»* e *«L'upload richiede oggi utente approvato con un biglietto»* e *«Nessuna sanitizzazione dei metadati esiste nel codice»* — le ultime due superate gia' dalle fasi 35 e 50, la prima superata da NAV-07. E' persona (fase 57 per i documenti, ma `ai-engineering.md`, gate *documentazione datata*, chiede di non lasciare una riga che descrive male il prodotto). Se il piano la ritocca: `npm run verify:persona` **dopo**, e attenzione al budget — `media-and-storage.md` si carica su `src/app/**/media/**`, cioe' anche su `src/app/(admin)/admin/(work)/events/[id]/media/page.tsx`, che carica pure `access-gating` e `nextjs-architecture`: allungarla avvicina quel file al tetto (oggi il caso peggiore e' `DoorSurface.tsx`, 13580/15000).
+- `venue-secrecy.md` enumera i percorsi di uscita e mette le foto fra *«i percorsi che non sono codice … una foto che inquadra l'insegna»*: NAV-07 non la chiude (il contenuto resta), ma la **restringe** a chi tiene `gallery.view`. Da dichiarare nel VERIFICATION, non da presentare come chiusa.
+- I commenti di `verify-media-strip.mjs` chiamano `event-media` «the public bucket» (`:179-180` `PUBLIC_BUCKET`, e il testo del controllo A): il controllo e' per **letterale quotato**, quindi il gate resta verde e corretto; la prosa diventa falsa e va corretta (o il nome della costante resta con una riga che dice perche').
+- `createSignedUrls` **non** e' nella lista delle scritture di `verify:media-strip` (`.upload(`, `.copy(`, `.move(`, `.createSignedUploadUrl(`, `.uploadToSignedUrl(`, `finalizeStrippedUpload` — `verify-media-strip.mjs:350-376`): firmare in lettura dalla pagina non lo fa diventare rosso. **Non** usare `createSignedUploadUrl` per nessuna ragione: e' la scrittura che quel gate esiste per vedere.
+- `verify:venue-surfaces` non guarda i media (`:52`): nessuna reazione, e il suo testo resta vero.
+
+#### I.6 — L'ordine: laboratorio, poi produzione, con il codice nel mezzo
+
+| Passo | Dove | Che cosa | Se si inverte |
+|---|---|---|---|
+| **M1** — `gallery.view` (§D) + `storage_path` + backfill + policy `EXISTS` sugli oggetti | lab, poi prod sotto atto | additiva: il bucket e' ancora pubblico, `url` funziona ancora | — |
+| **deploy** del codice che firma e scrive `storage_path` | Vercel | la firma funziona anche su un bucket pubblico finche' esiste una SELECT che la consente (oggi `"Anyone can view"`, dopo M1 anche quella `EXISTS`) | codice prima di M1: `registerMedia` scrive una colonna che non c'e' → **caricamento rotto** |
+| **M2** — policy di riga su `gallery.view`, via `"Anyone can view"`, `public = false` | lab, poi prod sotto atto | chiude | M2 prima del deploy: la gallery e la pagina della serata disegnano `url` pubblici che rispondono errore → **immagini rotte a tutti** fino al deploy |
+
+**Reversibilita' [ASSUNTO sul comportamento, MISURATO sui verbi]:** M2 si annulla
+con `public = true` e la policy ricreata — ma e' la direzione che **allarga**, e
+cio' che e' stato visto mentre era aperto resta visto (`venue-secrecy.md`, gate
+irreversibilita'). La direzione di NAV-07 e' quella che la guardia monotona
+permette.
+
+**Due atti in produzione, o uno con due passi e il deploy in mezzo**, nella forma
+di `51-AUTHORISATION-COMMENT.md`: perimetro «un byte oltre», domanda letterale,
+registro d'uso con l'ora di ogni passo, rilettura dal catalogo. Il laboratorio
+prima, **con oggetti veri**: su un lab senza media le sonde di I.8 misurano il
+vuoto.
+
+**Cio' che resta servito dopo M2, per costruzione** [ASSUNTO, da osservare]:
+- la **CDN di Supabase** puo' servire un oggetto pubblico gia' in cache fino al suo `max-age`: `finalize` non passa `cacheControl` (`src/lib/media/finalize.ts:348-352`), quindi vale il default della libreria (3600 s [ASSUNTO]);
+- il **service worker**: gli URL cross-origin passano dalla regola `cross-origin` di `@serwist/next` — `NetworkFirst`, 32 voci, **1 ora**, usata solo se la rete non risponde (`node_modules/@serwist/next/dist/index.worker.js:241-253`) [MISURATO]; la regola `static-image-assets` (`:54-64`, 30 giorni) e' una RegExp che su un URL cross-origin **non** si applica se non combacia dall'inizio [ASSUNTO sul comportamento di Workbox/Serwist];
+- la cache del browser e dell'ottimizzatore d'immagini (`/_next/image`) per le miniature della moderazione.
+Nessuna di queste e' un «link emesso» che si possa convertire: si esauriscono da
+sole. Va scritto nel VERIFICATION con i tempi, non taciuto.
+
+#### I.7 — Il censimento dei link pubblici emessi
+
+**Dove un URL pubblico di `event-media` puo' essere uscito** [MISURATO dove e' codice]:
+- **HTML delle pagine** `/gallery` e `/events/[slug]` (`src` di `<img>`/`<video>`), a ogni sessione autenticata dal 2026-02-25;
+- **l'ottimizzatore d'immagini** per la moderazione (`MediaReviewGrid.tsx:169-170`; `next.config.ts:55-62` apre `*.supabase.co`);
+- **mail, Open Graph, pass Wallet, pagina del biglietto**: **nessuno** — zero occorrenze in `src/emails/**`, `src/lib/email.ts`, `src/lib/apple-wallet.ts`; l'OG e' statico (`layout.tsx:63-67`);
+- **fuori dal codice**: chiunque abbia copiato un indirizzo o salvato un'immagine. **Non enumerabile**: dopo M2 quell'indirizzo smette di rispondere, e questo e' tutta la «conversione» possibile per cio' che e' fuori dal nostro sistema.
+
+La «conversione» che si puo' fare davvero e' quindi **sulle righe**: ogni riga
+guadagna `storage_path`, e nessuna superficie legge piu' `url`.
+
+**La lettura da fare prima di scrivere M1, `read_only`, solo conteggi** (il repo e'
+pubblico: nessun URL, nessun path, nessun identificativo stampato):
+
+```sql
+-- righe, per forma dell'indirizzo e per stato
+SELECT
+  count(*)                                                                        AS righe,
+  count(*) FILTER (WHERE url LIKE '%/storage/v1/object/public/event-media/%')      AS url_pubblico_event_media,
+  count(*) FILTER (WHERE url NOT LIKE '%/storage/v1/object/public/event-media/%')  AS altra_forma,
+  count(*) FILTER (WHERE status = 'approved')                                      AS approvate,
+  count(*) FILTER (WHERE status = 'pending')                                       AS in_attesa,
+  count(*) FILTER (WHERE status = 'rejected')                                      AS rifiutate,
+  count(*) FILTER (WHERE party_id IS NULL)                                         AS legacy_senza_serata,
+  count(*) FILTER (WHERE EXISTS (SELECT 1 FROM public.event_parties p
+                                  WHERE p.id = m.party_id AND p.venue_secret))     AS di_serate_segrete
+FROM public.event_media m;
+
+-- righe caricate prima che il browser smettesse di scrivere nel bucket pubblico
+-- (quindi senza stripper): la soglia e' la versione con cui 20260809006000 e'
+-- registrata in supabase_migrations.schema_migrations, riletta, non supposta
+SELECT count(*) FROM public.event_media WHERE created_at < '<istante letto dal catalogo>';
+
+-- oggetti contro righe
+SELECT count(*) FROM storage.objects WHERE bucket_id = 'event-media';
+SELECT count(*) FROM storage.objects o
+ WHERE o.bucket_id = 'event-media'
+   AND NOT EXISTS (SELECT 1 FROM public.event_media m
+                    WHERE m.url LIKE '%/event-media/' || o.name);   -- oggetti orfani
+```
+
+Letture da interpretare:
+- `altra_forma > 0` → il backfill non le copre: il `DO` di M1 deve sollevare, e le righe si guardano una per una **prima**, non si indovina;
+- `rifiutate > 0` con oggetto presente → oggi scaricabili da chiunque abbia l'URL; M2 le chiude, ma il gate *moderazione = rimozione* chiede di togliere l'oggetto: fuori da NAV-07, da dichiarare come debito con il numero;
+- **oggetti orfani** (oggetto senza riga: la finestra fra publish e insert di `registerMedia`, `actions.ts:145-152`) → dopo M2 **nessuno** li puo' firmare (la policy chiede la riga): diventano irraggiungibili, che e' la direzione giusta; il loro numero va nel VERIFICATION;
+- `di_serate_segrete` e le righe **prima dello stripper** sono il numero che interessa `venue-secrecy.md`: foto di una sede segreta, forse con GPS, raggiungibili per URL fino a M2.
+
+#### I.8 — Come si prova (entra in Validation Architecture)
+
+Sonde sul laboratorio, **dopo M2**, con almeno una riga approvata, una pending e
+una di una serata segreta:
+1. anonimo, `GET` dell'indirizzo pubblico di un oggetto approvato → **non** 200 (atteso 400/404 dal bucket privato) [ASSUNTO sul codice esatto];
+2. `attendee`, PostgREST `select` su `event_media` con `status=eq.approved` → **0 righe**;
+3. `attendee`, `createSignedUrls` su un path noto → **rifiutata**, nessun URL;
+4. `staff` (tiene `gallery.view`, non `staff.manage`), firma di un path **pending** noto → **rifiutata**; di uno approvato → firmata;
+5. `organizer`, `/gallery` e la moderazione → immagini e video caricati; un video messo in pausa e ripreso entro l'ora;
+6. `organizer`, cancellazione di un media → oggetto sparito da `storage.objects` **e** riga sparita (rilettura dal catalogo);
+7. nuovo caricamento da staff → riga con `storage_path`, `url` nullo, visibile in moderazione, poi in gallery dopo l'approvazione;
+8. una firma scaduta (TTL corto in una prova dedicata) → l'URL risponde errore.
+
+`verify:refusal` puo' ospitare la sonda 2 come un **gruppo in piu'** di
+`SECTION_TARGETS` (`verify-refusal.mjs:196-230`: controllo `master` legge righe,
+`attendee` zero, `anon` zero); su un database senza righe approvate lo strumento
+**rifiuta** invece di passare, che e' il comportamento giusto. In produzione serve
+un atto come `51-AUTHORISATION-REFUSAL.md`.
+
+`rls-baseline.mjs` copre gia' `event_media` in scrittura (`PROBE_PAYLOADS.event_media`,
+`:1270-1282`): l'`insert` di sonda elenca `event_id, party_id, url, type,
+uploaded_by` — con `storage_path NOT NULL` **la sonda fallisce per la colonna
+mancante, non per la policy**, e misurerebbe una cosa diversa da quella che
+dichiara. Aggiungere `storage_path` ai valori nello stesso commit di M1.
+
 ### Anti-Patterns to Avoid
 - **Nascondere la voce Gallery e basta**: senza mappa, prefisso e guardia l'indirizzo resta aperto (`ROADMAP.md:505-509`).
 - **Un secondo `Link` con `isPhone ? ENTRY_PHONE : ENTRY_RESPONSIVE`**: rende ambiguo il frammento dichiarato → `verify:touch-targets` rifiuta.
@@ -731,6 +1059,30 @@ riscritti — su laboratorio e produzione, due applicazioni distinte (§D).
 **What goes wrong:** da chiusa i link restano nel tab order con opacita' zero.
 **How to avoid:** `hidden` (o `inert`) sulla lista chiusa.
 
+### Pitfall 10: il bucket chiuso prima del codice che firma
+**What goes wrong:** `/gallery`, la pagina della serata e la moderazione disegnano `url` pubblici che rispondono errore: immagini rotte a tutti.
+**How to avoid:** M1 → deploy → M2 (§I.6); la prova sul lab percorre lo stesso ordine.
+
+### Pitfall 11: via `"Anyone can view"` senza una SELECT che la sostituisca
+**What goes wrong:** nessuno firma piu' (la firma chiede una SELECT sull'oggetto) e la cancellazione dallo storage puo' fallire [ASSUNTO: `remove` chiede anche la SELECT], lasciando righe cancellate con oggetti vivi — `deleteMedia` continua comunque a cancellare la riga (`actions.ts:330-343`), in silenzio.
+**How to avoid:** la policy `EXISTS` entra in **M1**, prima che `"Anyone can view"` esca in M2; sonda 6 di §I.8.
+
+### Pitfall 12: firmare con il service role
+**What goes wrong:** il confine torna a essere il `if` in pagina; una server action raggiunta da chi non ha `gallery.view` firmerebbe tutto.
+**How to avoid:** client della sessione, come `visual/actions.ts:398-407`.
+
+### Pitfall 13: `next/image` sugli URL firmati
+**What goes wrong:** un miss di cache a ogni render e un'immagine ottimizzata che sopravvive alla firma.
+**How to avoid:** `unoptimized` o `<img>` per `event-media` (§I.4).
+
+### Pitfall 14: la sonda di `rls-baseline` che fallisce per la colonna
+**What goes wrong:** con `storage_path NOT NULL` l'`insert` di `PROBE_PAYLOADS.event_media` fallisce per un vincolo, e il banco registra un rifiuto che la policy non ha dato.
+**How to avoid:** aggiungere `storage_path` ai valori della sonda nello stesso commit di M1 (§I.8).
+
+### Pitfall 15: «chiuso» dichiarato mentre la cache serve ancora
+**What goes wrong:** subito dopo M2 un indirizzo pubblico risponde ancora dalla CDN o dalla cache del dispositivo, e la prova lo registra come fallimento — o, peggio, la verifica dice «chiuso» senza aver aspettato.
+**How to avoid:** la procedura annota i tempi (CDN ≈ `max-age`, SW 1 ora, §I.6) e ripete la sonda 1 dopo la finestra.
+
 ## Code Examples
 
 ### La voce di mappa con la nota di riapertura
@@ -791,6 +1143,11 @@ const shownEvents = activeFormat ? allEvents.filter(/* invariato */) : allEvents
 | A5 | `usePathname()` rende lo stesso valore al render server e all'idratazione, quindi lo stato iniziale della colonna non produce mismatch | §B.3 | un avviso di idratazione nel build/console; si risolverebbe con un effetto |
 | A6 | «Not Arrived (123)» non entra in ~60 px a `text-xs` | §G | se entrasse, una riga sola basterebbe |
 | A7 | Una pagina `/admin/*` in cache SW puo' mostrare la vecchia etichetta offline | Runtime State | nessun rischio reale |
+| A8 | Una sottoquery su `public.event_media` dentro una policy di `storage.objects` gira sotto la RLS di chi firma | §I.4 | se girasse senza RLS, chiunque abbia una sessione firmerebbe ogni oggetto con riga: la sonda 3 di §I.8 lo vede |
+| A9 | `createSignedUrls` chiede la SELECT sull'oggetto; `remove` chiede DELETE e SELECT | §I.4, Pitfall 11 | firma o cancellazione che si rompono dopo M2; il precedente `visual-archive` (solo SELECT per `authenticated`, firma dal client di sessione) regge la prima meta' |
+| A10 | Il `cacheControl` di default di un upload senza opzione e' 3600 s, e la CDN serve fino a quello | §I.6 | la finestra dopo M2 e' piu' lunga o piu' corta di quanto scritto nella procedura |
+| A11 | Le RegExp di Serwist non si applicano a URL cross-origin se non combaciano dall'inizio | §I.6 | un'immagine pubblica puo' restare nella cache `static-image-assets` di un telefono fino a 30 giorni (servita solo a quel telefono) |
+| A12 | Un URL firmato di un video regge le richieste a intervalli (`Range`) fino alla scadenza | §I.4 | video che non si riprendono dopo la pausa: sonda 5 |
 
 ## Open Questions
 
@@ -798,8 +1155,11 @@ const shownEvents = activeFormat ? allEvents.filter(/* invariato */) : allEvents
    - What we know: Next emette `interactive-widget`; Chrome/Firefox Android lo rispettano; Safari al 2026-09-11 no; `dvh` non segue la tastiera su iOS.
    - What's unclear: se il proprietario accetta che la prova su iPhone verifichi le misure di layout (lista contigua, ricerca in cima, barra nascosta) e registri il ridimensionamento come «atteso assente su Safari di oggi».
    - Recommendation: dirlo **prima** della prova, in parole di dominio: «sull'iPhone la pagina non si stringera' sopra la tastiera, perche' Safari non lo fa ancora; quello che sistemiamo e' che il nome cercato e il suo "Check in" stiano subito sotto il campo».
-2. **TASK a `master`?** D-52-03 nomina organizer e staff. Un master senza TASK vede tre voci. Raccomandato chiedere; in attesa, filtro per `roles: ["organizer", "staff"]` come scritto.
-3. **Il confine sui dati della gallery.** Il cancello e' di indirizzo; un `attendee` legge ancora `event_media` approvati via API, e il bucket e' pubblico. Accettato come temporaneo (D-52-14) o da stringere? Raccomandato: accettarlo e **scriverlo** (§C.5); stringere la RLS e' un'altra fase.
+2. ~~TASK a `master`?~~ — **deciso (D-52-24): si', anche al master.** Filtro `roles: ["master", "organizer", "staff"]`.
+3. ~~Il confine sui dati della gallery~~ — **deciso il 2026-09-23 (D-52-25, NAV-07): si stringe in questa fase.** Restano tre domande figlie (§I):
+   - a. **La sezione «Gallery» della pagina della serata** per chi non ha `gallery.view`: sparisce (raccomandato) o resta vuota con il suo titolo?
+   - b. **Gli oggetti di righe rifiutate** (e gli orfani senza riga): M2 li rende irraggiungibili; toglierli davvero (*moderazione = rimozione*) e' fuori da NAV-07 — debito dichiarato con il numero del censimento, o dentro la fase?
+   - c. **Le righe caricate prima dello stripper** (possibili GPS): dopo M2 le vede solo chi tiene `gallery.view`; ripassarle dallo stripper e' un'altra operazione, da decidere sul numero del censimento.
 4. **Geometria delle cinque linguette** (§G): due righe, riga scorrevole o etichette corte.
 5. **Il login da telefono**: toccare `FOCUS_ROOT` (tutte le superfici `focus`, digest da aggiornare) o lasciarlo centrato e accettare che iOS scorra al campo? Raccomandato: provarlo prima com'e' sull'iPhone con le altre misure, e decidere sul risultato.
 6. **Ordine della striscia degli strumenti**: il pannello e' alfabetico (D-52-07); la striscia (NAV-04) resta nell'ordine di `STAFF_TABS` o diventa alfabetica anche lei? Non deciso; raccomandato lasciarla com'e' e dichiararlo.
@@ -844,6 +1204,7 @@ database, procedure manuali scritte.
 | NAV-06 | chip dalle serate visibili | statico + manuale | `npm run verify:venue-surfaces` (le due stringhe esatte), build; **P-52-D** nel lab: da anonimo i chip = format con serate pubblicate; con `staff.manage` compare il chip di un format con sola bozza; selezionare un chip non fa sparire gli altri; con zero serate la riga e' assente | ❌ |
 | porta, linguette | cinque linguette, conteggi, evidenza, undo | statico + manuale | `npm run verify:touch-targets` (debito 14 o meno, nessun quindicesimo), `verify:scan-legibility`; **P-52-E** su iPhone nel lab, radio accesa e spenta: le cinque linguette sempre presenti; Recent vuota «No scans yet»; Alerts vuota «Nothing to report»; un avviso nuovo evidenzia Alerts senza aprirla; le pastiglie e l'avviso guest list restano visibili con Recent aperta; undo da Recent registra l'atto; titolo e «QR Scan» restano in vista scorrendo con ogni linguetta | ❌ |
 | viewport | tastiera | manuale | **P-52-F** su iPhone (Safari), login, ricerca alla porta, un form pubblico, con la tastiera aperta: barra nascosta al fuoco e di ritorno al blur; riga trovata e «Check in» interi sopra la tastiera; viewport ridimensionato **atteso assente** su Safari (registrato, non «fallito»); versione di iOS scritta | ❌ |
+| NAV-07 | righe e oggetti chiusi | database + manuale | `npm run build`; `verify:media-strip` (resta verde: nessuna scrittura nuova, nessuna INSERT per `authenticated`); `verify:capabilities`; `baseline:rls` + `baseline:compare` sul lab (il diff deve mostrare **solo** le policy di §I.4); censimento `read_only` di §I.7 prima di M1, in lab e in produzione; **P-52-G** — le otto sonde di §I.8 sul lab, dopo M2, con righe vere (approvata, pending, di serata segreta); `verify:refusal` con un gruppo `gallery` su `event_media` (in produzione sotto atto) | gate ✅ · sonde ❌ da scrivere |
 | persona | coerenza | statico | `npm run verify:persona` **solo se** si tocca `.claude/**` (worst-case oggi `DoorSurface.tsx`, 13580/15000 token: la fase non cambia i moduli caricati dai file che tocca, quindi il caso peggiore non si sposta se la persona non viene editata) [MISURATO in questa sessione] | ✅ |
 
 ### Sampling Rate
@@ -855,6 +1216,9 @@ database, procedure manuali scritte.
 - [ ] `52-PROCEDURES.md` — P-52-A..F nella forma di `51-PROCEDURES.md` (passo · ruolo · cosa si deve osservare), compresa la precondizione `PRE-LAB`.
 - [ ] Un account `attendee` e uno `staff` di prova sul laboratorio (se non ci sono gia': leggerli da `.env.lab.seed.json`, non inventarli).
 - [ ] `scripts/verify-capabilities.mjs` aggiornato nello stesso commit della migration.
+- [ ] Il censimento di §I.7 eseguito `read_only` su lab e produzione **prima** di scrivere M1, con i soli conteggi in `52-ESITI.md`.
+- [ ] Media di prova sul laboratorio: almeno una riga approvata, una pending e una di una serata segreta, caricate dal percorso vero (finalize), non inserite a mano.
+- [ ] `PROBE_PAYLOADS.event_media` in `scripts/rls-baseline.mjs` con `storage_path`, nello stesso commit di M1.
 - Nessun framework da installare: e' una decisione del progetto, non un buco.
 
 ## Security Domain
@@ -877,7 +1241,9 @@ database, procedure manuali scritte.
 | open redirect via `?next=/gallery…` | Spoofing | `resolveNext` rifiuta per difetto; pattern ancorato `^\/gallery$` |
 | bozza rivelata da un conteggio o da una query «ha serate?» | Information disclosure | chip dal solo array gia' filtrato dalla RLS; nessun numero passato ai figli |
 | nome di sede in un chip (serie) | Information disclosure | nome del chip dal catalogo, mai da `CardFormat.name` |
-| lettura diretta di `event_media` da un attendee | Information disclosure | **non mitigato in questa fase, dichiarato** (§C.5) |
+| lettura diretta di `event_media` da un attendee | Information disclosure | **mitigato da NAV-07**: `event_media_select_gallery` (approvate **e** `gallery.view`) (§I.4) |
+| oggetto raggiungibile per URL pubblico (anche pending/rifiutato, anche di serata segreta) | Information disclosure | bucket privato + firma solo per chi legge la riga (`EXISTS`) + URL a scadenza (§I.4); residuo di cache dichiarato (§I.6) |
+| firma emessa con privilegi larghi | Elevation | client della sessione, mai il service role (§I.4) |
 | decisione d'accesso nel client | Tampering | la barra riceve le chiavi dal server e non filtra per larghezza |
 | avviso della porta nascosto | Repudiation / DoS operativo | Alerts evidenziata, pastiglie e avviso guest list sempre in testata |
 
@@ -893,6 +1259,7 @@ database, procedure manuali scritte.
 - `node_modules/next/dist/lib/metadata/types/extra-types.d.ts:53` (Next 16.1.6)
 
 ### Secondary (MEDIUM confidence)
+- [Supabase — Storage access control](https://supabase.com/docs/guides/storage/security/access-control) — i bucket pubblici non passano dalla RLS in lettura (§I.2)
 - [bram.us — WebKit supports interactive-widget … and hopefully Safari will too? (2026-09-11)](https://www.bram.us/2026/09/11/webkit-supports-interactive-widget-and-hopefully-safari-will-too/) — stato di Safari
 - [HTMHell — Control the Viewport Resize Behavior on mobile with interactive-widget](https://www.htmhell.dev/adventcalendar/2024/4/) — semantica dei tre valori, unita' di viewport sotto `resizes-visual`, supporto Chrome/Firefox
 - [WebKit bug 259770 — Implement the interactive-widget property](https://bugs.webkit.org/show_bug.cgi?id=259770) — tracciamento (non letto per esteso)
