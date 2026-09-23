@@ -9,11 +9,7 @@ import {
 import MemberActionNotice, {
   type MemberNoticeKind,
 } from "@/app/(admin)/admin/members/MemberActionNotice";
-import {
-  Button,
-  FOCUS_RING,
-  type ButtonVariant,
-} from "@/components/ui/Button";
+import { Button, type ButtonVariant } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Chip";
 import { DataTable, type DataColumn } from "@/components/ui/DataTable";
@@ -123,10 +119,16 @@ function RoleBadge({ role }: { role: UserRole }) {
   //
   //   * `staff` NON deve prendere in prestito il vocabolario cromatico del
   //     potere. Misurato cella per cella nel piano 43-08 su 21 tabelle × 3
-  //     verbi: `staff` non concede **nulla** che un `attendee` non abbia gia', e
-  //     non porta alcuna riga `door.operate`. Il viola e il blu dicono «questo
-  //     account puo' di piu'»; per `staff` sarebbe una bugia detta
-  //     dall'interfaccia prima che qualcuno legga una parola.
+  //     verbi, `staff` non concedeva allora **nulla** che un `attendee` non
+  //     avesse gia'. **Dal 2026-09-23, fase 52 (D-52-12), tiene UNA chiave per
+  //     ruolo: `gallery.view`** — la prima concessione per ruolo mai data a
+  //     `staff`, che apre la gallery e nient'altro. Resta vero cio' che conta
+  //     per il colore: **nessun potere operativo**, nessuna riga `door.operate`
+  //     per ruolo — la porta viene dall'assegnazione della serata. Il viola e
+  //     il blu dicono «questo account puo' di piu'»; per `staff` sarebbe una
+  //     bugia detta dall'interfaccia prima che qualcuno legga una parola. Il
+  //     tratteggio resta, e ora dice «non concede potere operativo», non piu'
+  //     «non concede nulla».
   //   * `staff` deve restare TROVABILE a colpo d'occhio. Non piu' per il posto
   //     gratuito permanente — quello e' uscito con la tessera nella fase 51,
   //     vedi la legenda sotto la tabella — ma perche' chi conta gli account di
@@ -683,16 +685,17 @@ export default function MemberTable({
           <span className="font-mono font-semibold text-ink">{organizerCount}</span>{" "}
           organizers
         </span>
-        {/* La cifra `staff` e' un link con filtro, e le altre due non lo sono.
-            `NAV-05` (fase 52) vuole le altre come questa — e' una disuguaglianza
-            nota, dichiarata invece che scoperta, e non e' di questa fase. */}
-        <button
-          type="button"
-          onClick={() => setRoleFilter("staff")}
-          className={`inline-flex min-h-11 items-center gap-1 underline decoration-dotted underline-offset-4 transition-colors hover:text-ink ${FOCUS_RING}`}
-        >
-          <span className="font-mono font-semibold text-ink">{staffCount}</span> staff
-        </button>
+        {/* La cifra `staff` era un pulsante con filtro, e le altre due no: una
+            disuguaglianza nota, dichiarata fino alla fase 52 invece che
+            scoperta. **Chiusa il 2026-09-23, fase 52, D-52-18 (NAV-05)**: tre
+            cifre, una sola forma, nessuna delle tre e' un bersaglio. Il filtro
+            per ruolo non e' sparito — resta raggiungibile dal selettore del
+            ruolo nei filtri qui sotto, che e' dove `setRoleFilter` continua a
+            vivere. */}
+        <span>
+          <span className="font-mono font-semibold text-ink">{staffCount}</span>{" "}
+          staff
+        </span>
       </div>
 
       {/*
@@ -719,11 +722,24 @@ export default function MemberTable({
         questa colonna. Se l'ingresso gratuito deve tornare a essere una
         promessa di prodotto, ha bisogno di un meccanismo, ed e' una decisione
         del proprietario: non una frase da lasciare in piedi qui.
+
+        **2026-09-23, fase 52 — la frase sopra e' diventata falsa, e questa e'
+        la sua correzione.** D-52-12 concede `gallery.view` a `staff` **per
+        ruolo** (migration del piano 52-06): e' la prima concessione per ruolo
+        mai data a `staff`. Da quel giorno «grants nothing of its own» e «a
+        gallery comes from the night's own assignment» erano due falsi, letti
+        esattamente nel momento sbagliato — prima di promuovere qualcuno. E la
+        gallery non e' una vetrina innocua: con D-52-25 ci stanno anche le foto
+        di serate in sede segreta, quindi chi promuove deve sapere che le
+        consegna. La porta invece resta dove stava: nessuna riga `door.operate`
+        per ruolo, solo l'assegnazione della serata. Questa legenda spedisce
+        **nello stesso deploy** della migration (atto del piano 52-15), perche'
+        non esista un momento in cui la produzione ne mostri una falsa.
       */}
       <p className="mb-6 text-xs text-muted">
-        A <span className="font-semibold text-ink">staff</span> account grants
-        nothing of its own — it can do nothing an attendee cannot, and it opens
-        no door on its own. Working the door or a gallery comes from the
+        A <span className="font-semibold text-ink">staff</span> account opens
+        the gallery — photos and videos from the nights — and nothing else of
+        its own. It opens no door on its own: working the door comes from the
         night&apos;s own assignment, which an organizer makes and which ends
         with the night.
       </p>
