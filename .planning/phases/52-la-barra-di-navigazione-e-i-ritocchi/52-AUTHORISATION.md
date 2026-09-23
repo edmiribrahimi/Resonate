@@ -3,13 +3,14 @@ phase: 52-la-barra-di-navigazione-e-i-ritocchi
 document: autorizzazione a scrivere in produzione — M1, deploy, M2 di NAV-07 e la chiave gallery.view
 written: 2026-09-23
 written_at: "2026-09-23T18:16Z"
-granted: —
-granted_date: —
-granted_by: —
+granted: yes
+granted_date: 2026-09-23
+granted_by: il proprietario
+granted_at: "2026-09-23 ~18:22Z (20:22 locali), come riferita dall'orchestratore; registrata qui alle 18:21:29Z dell'orologio di questa macchina"
 scope: "(a) M1 `20260923180000_gallery_view_and_media_paths.sql` dall'endpoint migrations, con rilettura read_only; (b) `git push origin main` e deploy Vercel di produzione atteso READY; (c) M2 `20260923180100_gallery_close_data.sql` dall'endpoint migrations, con rilettura read_only; (d) `verify:capabilities` e `verify:refusal --section=gallery` contro la produzione; (e) la sonda anonima su un oggetto approvato, se ne esiste uno — in quest'ordine, oggi, una volta"
-answer: —
+answer: tutto
 spent: no
-status: SCRITTA, NON CONCESSA
+status: CONCESSA, IN USO
 ---
 
 # Autorizzazione a scrivere in produzione — 2026-09-23, M1 → deploy → M2
@@ -197,7 +198,15 @@ Da porre al proprietario, con le tre opzioni e senza raccomandarne una:
 | `senza-m2` | (a), (b), (d); (c) ed (e) **non** si eseguono e si dichiarano al loro posto | la gallery resta leggibile via API da ogni sessione e il bucket pubblico: la seconda finestra del §1.1 resta aperta fino a un atto nuovo |
 | `niente` | nessun passo | la fase resta chiusa sul laboratorio; `verify:capabilities` resta rosso contro la produzione |
 
-Risposta del proprietario, letterale: **—**
+Risposta del proprietario, letterale: **«tutto»** — 2026-09-23, riferita come
+delle 18:22Z (20:22 locali) dall'orchestratore che ha posto la domanda del §2
+alla lettera; registrata in questo documento alle **18:21:29Z** dell'orologio
+di questa macchina, **prima di qualunque scrittura in produzione**. Lo scarto di
+un minuto e' fra l'ora riferita (arrotondata) e l'orologio locale: non c'e' una
+seconda risposta.
+
+Autorizza **(a), (b), (c), (d), (e), in quest'ordine, oggi, una volta** — e
+nient'altro: il «Fuori perimetro» del §1 resta tale per intero.
 
 ---
 
