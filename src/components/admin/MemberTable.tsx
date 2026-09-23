@@ -9,11 +9,7 @@ import {
 import MemberActionNotice, {
   type MemberNoticeKind,
 } from "@/app/(admin)/admin/members/MemberActionNotice";
-import {
-  Button,
-  FOCUS_RING,
-  type ButtonVariant,
-} from "@/components/ui/Button";
+import { Button, type ButtonVariant } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Chip";
 import { DataTable, type DataColumn } from "@/components/ui/DataTable";
@@ -683,16 +679,17 @@ export default function MemberTable({
           <span className="font-mono font-semibold text-ink">{organizerCount}</span>{" "}
           organizers
         </span>
-        {/* La cifra `staff` e' un link con filtro, e le altre due non lo sono.
-            `NAV-05` (fase 52) vuole le altre come questa — e' una disuguaglianza
-            nota, dichiarata invece che scoperta, e non e' di questa fase. */}
-        <button
-          type="button"
-          onClick={() => setRoleFilter("staff")}
-          className={`inline-flex min-h-11 items-center gap-1 underline decoration-dotted underline-offset-4 transition-colors hover:text-ink ${FOCUS_RING}`}
-        >
-          <span className="font-mono font-semibold text-ink">{staffCount}</span> staff
-        </button>
+        {/* La cifra `staff` era un pulsante con filtro, e le altre due no: una
+            disuguaglianza nota, dichiarata fino alla fase 52 invece che
+            scoperta. **Chiusa il 2026-09-23, fase 52, D-52-18 (NAV-05)**: tre
+            cifre, una sola forma, nessuna delle tre e' un bersaglio. Il filtro
+            per ruolo non e' sparito — resta raggiungibile dal selettore del
+            ruolo nei filtri qui sotto, che e' dove `setRoleFilter` continua a
+            vivere. */}
+        <span>
+          <span className="font-mono font-semibold text-ink">{staffCount}</span>{" "}
+          staff
+        </span>
       </div>
 
       {/*
