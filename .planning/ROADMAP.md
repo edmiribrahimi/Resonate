@@ -524,22 +524,48 @@ Plans:
 **Plans:** 17 plans in 9 waves
 
 Plans:
+**Wave 1**
+
 - [ ] 52-01-PLAN.md — censimento di NAV-07 su laboratorio e produzione (solo numeri) e banco dei media sul laboratorio
 - [ ] 52-02-PLAN.md — procedure P-52-A..G scritte prima della corsa, VALIDATION onesta, note della UI-SPEC in 41 §10/§12
 - [ ] 52-03-PLAN.md — NAV-05: la cifra staff come le altre; la legenda staff vera dopo `gallery.view`
 - [ ] 52-04-PLAN.md — NAV-06: chip dalle serate visibili, prima del filtro; riga assente a zero
 - [ ] 52-05-PLAN.md — la porta a cinque linguette (Recent, Alerts), ricerca contigua alla lista, viewport con l'aspettativa iOS scritta
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 52-06-PLAN.md — M1 additiva (`gallery.view`, `storage_path`, policy `EXISTS`) con catalogo TS e gate, applicata al laboratorio
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 52-07-PLAN.md — la barra a quattro voci, TASK spenta, pannello Management (foglio e colonna); via «Management Tools»
 - [ ] 52-08-PLAN.md — NAV-02: prefisso, allow-list e guardia su `/gallery`; il modulo di firma; immagini che dichiarano il guasto
 - [ ] 52-09-PLAN.md — `purge-media-orphans.mjs`: rimozione per chiave di rifiutati e orfani, provata sul laboratorio
 - [ ] 52-10-PLAN.md — `restrip-event-media.mjs`: le foto pre-stripper ripassate dallo stripper vero, provata con GPS sul laboratorio
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 52-11-PLAN.md — via la colonna Work; la striscia degli strumenti appesa e alfabetica (NAV-04)
 - [ ] 52-12-PLAN.md — firma sulla pagina della serata e in moderazione; `registerMedia`/`deleteMedia` per chiave; sezione Gallery sotto `gallery.view`
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 52-13-PLAN.md — M2 scritta; deploy del ramo `lab`; M2 sul laboratorio; sonde, `verify:refusal` gruppo gallery, linea di base RLS
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
 - [ ] 52-14-PLAN.md — la corsa del proprietario sul laboratorio, su iPhone, e la decisione sul login (checkpoint)
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
 - [ ] 52-15-PLAN.md — atto 1 in produzione: M1 → deploy → M2, sotto `52-AUTHORISATION.md` (checkpoint)
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
 - [ ] 52-16-PLAN.md — atto 2 in produzione: rimozione per chiave e ri-spogliatura, sotto `52-AUTHORISATION-MEDIA.md` (checkpoint)
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
 - [ ] 52-17-PLAN.md — persona (media-and-storage, access-gating), sonda di cache dopo la finestra, `52-VERIFICATION.md` (checkpoint)
 
 ### Phase 53: TASK

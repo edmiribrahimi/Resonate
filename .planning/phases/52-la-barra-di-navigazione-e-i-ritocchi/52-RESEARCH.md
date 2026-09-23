@@ -1149,9 +1149,9 @@ const shownEvents = activeFormat ? allEvents.filter(/* invariato */) : allEvents
 | A11 | Le RegExp di Serwist non si applicano a URL cross-origin se non combaciano dall'inizio | §I.6 | un'immagine pubblica puo' restare nella cache `static-image-assets` di un telefono fino a 30 giorni (servita solo a quel telefono) |
 | A12 | Un URL firmato di un video regge le richieste a intervalli (`Range`) fino alla scadenza | §I.4 | video che non si riprendono dopo la pausa: sonda 5 |
 
-## Open Questions
+## Open Questions (RESOLVED — tutte chiuse il 2026-09-23, decisioni in 52-CONTEXT.md)
 
-1. **D-52-23 misura un meccanismo che l'iPhone non ha.**
+1. **RESOLVED (D-52-28)** — **D-52-23 misura un meccanismo che l'iPhone non ha.**
    - What we know: Next emette `interactive-widget`; Chrome/Firefox Android lo rispettano; Safari al 2026-09-11 no; `dvh` non segue la tastiera su iOS.
    - What's unclear: se il proprietario accetta che la prova su iPhone verifichi le misure di layout (lista contigua, ricerca in cima, barra nascosta) e registri il ridimensionamento come «atteso assente su Safari di oggi».
    - Recommendation: dirlo **prima** della prova, in parole di dominio: «sull'iPhone la pagina non si stringera' sopra la tastiera, perche' Safari non lo fa ancora; quello che sistemiamo e' che il nome cercato e il suo "Check in" stiano subito sotto il campo».
@@ -1160,9 +1160,9 @@ const shownEvents = activeFormat ? allEvents.filter(/* invariato */) : allEvents
    - a. **La sezione «Gallery» della pagina della serata** per chi non ha `gallery.view`: sparisce (raccomandato) o resta vuota con il suo titolo?
    - b. **Gli oggetti di righe rifiutate** (e gli orfani senza riga): M2 li rende irraggiungibili; toglierli davvero (*moderazione = rimozione*) e' fuori da NAV-07 — debito dichiarato con il numero del censimento, o dentro la fase?
    - c. **Le righe caricate prima dello stripper** (possibili GPS): dopo M2 le vede solo chi tiene `gallery.view`; ripassarle dallo stripper e' un'altra operazione, da decidere sul numero del censimento.
-4. **Geometria delle cinque linguette** (§G): due righe, riga scorrevole o etichette corte.
-5. **Il login da telefono**: toccare `FOCUS_ROOT` (tutte le superfici `focus`, digest da aggiornare) o lasciarlo centrato e accettare che iOS scorra al campo? Raccomandato: provarlo prima com'e' sull'iPhone con le altre misure, e decidere sul risultato.
-6. **Ordine della striscia degli strumenti**: il pannello e' alfabetico (D-52-07); la striscia (NAV-04) resta nell'ordine di `STAFF_TABS` o diventa alfabetica anche lei? Non deciso; raccomandato lasciarla com'e' e dichiararlo.
+4. **RESOLVED (D-52-26: una riga, etichette corte)** — **Geometria delle cinque linguette** (§G): due righe, riga scorrevole o etichette corte.
+5. **RESOLVED (D-52-28: si prova prima com'e' sull'iPhone, `FOCUS_ROOT` non si tocca; decisione al piano 52-14)** — **Il login da telefono**: toccare `FOCUS_ROOT` (tutte le superfici `focus`, digest da aggiornare) o lasciarlo centrato e accettare che iOS scorra al campo? Raccomandato: provarlo prima com'e' sull'iPhone con le altre misure, e decidere sul risultato.
+6. **RESOLVED (D-52-27: alfabetica come il pannello)** — **Ordine della striscia degli strumenti**: il pannello e' alfabetico (D-52-07); la striscia (NAV-04) resta nell'ordine di `STAFF_TABS` o diventa alfabetica anche lei? Non deciso; raccomandato lasciarla com'e' e dichiararlo.
 
 ## Environment Availability
 
