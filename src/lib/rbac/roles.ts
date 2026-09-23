@@ -636,18 +636,3 @@ export function getNavigation(
   return { bar, panel };
 }
 
-// ── PONTE TEMPORANEO, vive un commit solo (piano 52-07, task 1 → task 2) ────
-//
-// `AppNav` importa ancora il nome del filtro di prima; il task 2 dello stesso
-// piano lo passa a `getNavigation` e toglie questa funzione. Esiste solo perche'
-// ogni commit del piano compili da solo. Restituisce le sole voci-link: fra i
-// due commit la barra non disegna TASK ne' Management.
-export function getVisibleNavItems(
-  role: UserRole | null,
-  capabilities: readonly CapabilityKey[],
-  liveAssignmentCapabilities: readonly string[] | null
-): Extract<BarEntry, { kind: "link" }>[] {
-  return getNavigation(role, capabilities, liveAssignmentCapabilities).bar.filter(
-    (entry): entry is Extract<BarEntry, { kind: "link" }> => entry.kind === "link"
-  );
-}
