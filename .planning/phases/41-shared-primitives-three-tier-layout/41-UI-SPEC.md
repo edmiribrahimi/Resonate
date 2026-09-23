@@ -689,6 +689,34 @@ written 90+ ways are the same shape of problem and take the same answer —
 `text-xs font-semibold text-ink-2` (12.24:1 on `--surface`), a convention, not a
 primitive.
 
+### 7.4 Dated deviation — form fields at 16px under a coarse pointer (2026-09-23, phase 52, plan 52-19)
+
+**The rule.** Text fields, `select` and `textarea` render at **16px**
+(`text-base`) where Safari would otherwise zoom: **below `md`** in the primitive
+(`Input.tsx` `CONTROL`, and `AutocompleteInput.tsx`'s copy of it —
+`text-base md:text-sm`), and **under every coarse pointer** in an unlayered net
+in `globals.css` that reaches the raw fields which do not use the primitive (the
+door's search, the tag fields). **Body stays 14px everywhere else**: this is a
+deviation for form controls, not a change of the Body role in the table above.
+
+**The measured reason.** Safari on iOS (26.7 on the owner's iPhone, 27.0 on the
+simulator) zooms the page when a field under 16px takes focus, and **does not
+return to scale 1 after the blur**: `visualViewport.scale` 1 → **1.1436** on
+every 14px field — login, the door's search, a night's discount code. At the
+door the zoom pushed **«QR Scan»** and the **Alerts** tab off the right edge
+(`52-ESITI.md`, «Difetti trovati dalla corsa», defect 1).
+
+**Why not `maximum-scale`.** D-41-08 (§12): pinch-zoom is the workaround for the
+defect RESP-03 exists to fix, and a viewport that locks the scale takes it away
+from whoever needs it. The fix is the size of the text in the field, not a lock
+on the scale.
+
+**The numbers, before and after:** `52-ESITI.md`, «Chiusura delle lacune»
+(same probe, same simulator, native tap).
+
+**Changing the size of fields again is a system decision, declared here** — not
+a class adjusted on one surface.
+
 ---
 
 ## 8. The primitives
@@ -902,10 +930,13 @@ that single sentence is the difference between a correct file and a 20px target.
 
 ```
 Input / Textarea / Select:
-  min-h-11 w-full rounded-xl border border-control bg-sunk px-4 text-sm text-ink
+  min-h-11 w-full rounded-xl border border-control bg-sunk px-4 text-base md:text-sm text-ink
   placeholder:text-muted
   focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink
 ```
+
+`text-base md:text-sm` since 2026-09-23 — 16px below `md`, so Safari does not
+zoom on focus: §7.4.
 
 | Pairing | Computed | Against |
 |---|---|---|
@@ -1125,6 +1156,8 @@ Two of the three sit in single-file conversion units and are cheap.
 - **`userScalable: false` is removed** (D-41-08, `layout.tsx:81-92`,
   `40-REVIEW.md` WR-16). A phase about touchability that ships with pinch-zoom
   disabled has removed the workaround for the exact defect RESP-03 exists to fix.
+  **The zoom on focus is not prevented by locking the scale but by the size of
+  the fields: §7.4** (2026-09-23).
 - **Colour is never the only channel.** The active nav entry carries
   `aria-current="page"` as well as its colour — `aria-current` appears **5 times
   in the whole tree** today and in no nav. A state, a stage and a format are all
@@ -1145,7 +1178,8 @@ Two of the three sit in single-file conversion units and are cheap.
   **dashed border** of the icon well does (`--faint` on `--ground`, 3.54:1, above
   the 3:1 of 1.4.11), and `aria-disabled="true"` carries it for assistive
   technology (`52-UI-SPEC.md` §Color, §A.3). List of exceptions: **one**.
-- **Body stays 14px minimum; the label/data role is 12px.** `text-[10px]` and
+- **Body stays 14px minimum; the label/data role is 12px.** Form controls are
+  16px under a coarse pointer since 2026-09-23 (§7.4); D-41-08 is untouched. `text-[10px]` and
   `text-[11px]` are not declared sizes; the scanner's are Phase 42's, the other
   eleven files' are this phase's.
 - **Reduced motion:** this phase adds no animation. `MotionConfig

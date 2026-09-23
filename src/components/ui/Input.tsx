@@ -98,9 +98,19 @@ import { FOCUS_RING } from "@/components/ui/Button";
  * The radius is the control radius of §9 — 12 px. The 8 px radius the incumbent
  * strings use four different ways does not survive §9's three-rung ladder: a
  * pill is fully round, a container is 16 px, a control is 12 px.
+ *
+ * **16 px below `md`, since 2026-09-23 (plan 52-19).** Safari on iOS zooms the
+ * page when a field under 16 px takes focus, and does not bring it back to 1
+ * after the blur: measured in 52-14 on iOS 26.7 and 27.0, `visualViewport.scale`
+ * 1 → 1.1436 on every field, and at the door «QR Scan» and the Alerts tab left
+ * the screen. `text-base md:text-sm` is the fix, and it is NOT a lock on the
+ * scale — D-41-08 leaves pinch-zoom to whoever needs it, so `layout.tsx` keeps
+ * no `maximum-scale` and no `user-scalable=no`. The deviation from §7's Body
+ * role is dated in 41-UI-SPEC.md §7.4, and globals.css carries the net for the
+ * raw fields that do not use this primitive.
  */
 const CONTROL =
-  "min-h-11 w-full rounded-xl border border-control bg-sunk px-4 text-sm text-ink " +
+  "min-h-11 w-full rounded-xl border border-control bg-sunk px-4 text-base md:text-sm text-ink " +
   "placeholder:text-muted";
 
 /**

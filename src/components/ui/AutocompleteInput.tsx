@@ -84,9 +84,12 @@ interface AutocompleteInputProps {
  * finding §6.1 exists for; the hover fill is `--raised`, the ladder's top step
  * and §5.1's answer for a dropdown, and never an accent tint — §5.1's closed
  * list forbids the accent as a state signal.
+ *
+ * `text-base md:text-sm` since 2026-09-23 — the reason is `Input.tsx`'s
+ * `CONTROL` docblock (Safari's focus zoom, 41-UI-SPEC.md §7.4).
  */
 const CONTROL =
-  "min-h-11 w-full rounded-xl border border-control bg-sunk px-4 text-sm text-ink " +
+  "min-h-11 w-full rounded-xl border border-control bg-sunk px-4 text-base md:text-sm text-ink " +
   "placeholder:text-muted";
 
 const LIST =

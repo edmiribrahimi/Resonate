@@ -637,6 +637,63 @@ input[type="time"] {
 }
 
 /*
+ * Form fields at 16px under a coarse pointer — 52-19, 41-UI-SPEC.md §7.4.
+ *
+ * WHY. Safari on iOS zooms the page when a text field under 16px takes focus,
+ * and leaves it zoomed after the keyboard closes. Measured in 52-14 on the
+ * simulator and on the owner's iPhone: 14px fields, visualViewport.scale
+ * 1 -> 1.1436 on every tap, and at the door «QR Scan» and the Alerts tab
+ * pushed off the right edge — the button that lets people in and the tab that
+ * says the list is stale. The owner's requirement, verbatim (2026-09-23):
+ * «se sono sulla pagina di login, e clicco sul campo mail o password, non deve
+ * avvenire lo zoom». The primitive (Input.tsx CONTROL) is text-base below md;
+ * this rule is the net for every field that does not use it.
+ *
+ * HOW, AND WHAT IT DOES NOT DO.
+ *   - Written OUTSIDE any @layer, on purpose. Tailwind 4 puts its utilities in
+ *     @layer utilities, and an unlayered rule beats every layered one whatever
+ *     the specificity — so this reaches the raw fields that carry text-sm and
+ *     never import the primitive: the door's «Search by name...» field
+ *     (ScannerClient.tsx, not edited: its palette exemptions in
+ *     verify:conversion are anchored to its lines) and the two tag fields.
+ *     No field in the tree is sized above text-base, so this rule shrinks
+ *     nobody. Whoever one day wants a field larger than 16px finds out here.
+ *   - Keyed on pointer: coarse with NO width limit — a planner's choice,
+ *     declared: a phone held sideways can be wider than 48rem (the md edge)
+ *     and Safari zooms it just the same, because Safari decides on the text
+ *     size, not on the width. The cost: on a tablet the fields are 16px above
+ *     md too, i.e. the scale's Heading size — a visual cost, against a zoom
+ *     that stays.
+ *   - This is NOT the pointer block below, «written ONCE, and only ever used
+ *     to SHRINK» (41-UI-SPEC.md §6.2): that one sizes targets. This one sizes
+ *     text in fields, a different question, and it does not touch
+ *     pointer-fine-only.
+ *   - Only the font size changes: no height, padding or position is set here,
+ *     so the door's search field keeps its box.
+ *   - No maximum-scale, no user-scalable=no: D-41-08 leaves pinch-zoom alone.
+ *   - Checkboxes, radios, buttons, submits, resets, hidden, file, range, color
+ *     and image inputs raise no keyboard and are excluded.
+ */
+@media (pointer: coarse) {
+  input:not(
+      [type="checkbox"],
+      [type="radio"],
+      [type="button"],
+      [type="submit"],
+      [type="reset"],
+      [type="hidden"],
+      [type="file"],
+      [type="range"],
+      [type="color"],
+      [type="image"]
+    ),
+  textarea,
+  select {
+    font-size: 1rem;
+  }
+}
+
+/*
  * SunSet's gradient — its ONE application route (40-UI-SPEC.md §7 clause 2).
  *
  * No component composes the stops itself: a surface either uses this name or
