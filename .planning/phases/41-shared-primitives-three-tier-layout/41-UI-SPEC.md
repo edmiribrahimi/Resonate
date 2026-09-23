@@ -1036,6 +1036,8 @@ Written out so a new primitive does not land on the wrong rung.
 
 | Layer | Value | Who |
 |---|---|---|
+| sticky in-flow bar | `z-10` (`sticky`) | the door's fixed header (`ScannerClient.tsx:2928`, plan 51-07) and the hanging tool strip (Phase 52, D-52-11) |
+| fixed buy bar | `z-40` (`fixed`) | `StickyBuyBar` (`StickyBuyBar.tsx:121`) |
 | dropdown / suggestion list | `z-50` (`absolute`) | `AutocompleteInput.tsx:107`, `AutocompleteTagInput.tsx:191` |
 | **navigation** | `z-50` (`fixed`) | `AppNav`, both forms |
 | **non-modal overlay that must clear the navigation** | **`z-[60]`** | the rung D-41-09 protects |
@@ -1043,6 +1045,11 @@ Written out so a new primitive does not land on the wrong rung.
 | scanner flash — **Phase 42** | `z-[70]` | `ScanFlash.tsx:135` |
 | full-screen redeem confirmation | `z-[100]` | `RedeemConfirmationModal.tsx:100,125`, `GuestTokenDisplay.tsx:158,182` |
 | **modal dialog** | **top layer**, above every `z-index` | the `Dialog` primitive, via `showModal()` |
+
+*Recorded 2026-09-23, Phase 52:* the `z-10` and `z-40` rungs already existed in
+the tree and were missing from the written ladder. Phase 52 records them
+**without adding any**: the Management sheet sits on `z-50`, the navigation's
+own rung.
 
 **No new rung is added.** The eleven `fixed inset-0 z-[60]` overlays become
 dialogs and vacate the rung; the rung stays declared for anything that must clear
@@ -1131,6 +1138,13 @@ Two of the three sit in single-file conversion units and are cheap.
   it stays exposed and unused, and the moment a converted surface reaches for a
   tertiary label the pairing to use is `--muted` on `--surface`, 6.78:1
   (`40-REVIEW.md` WR-12).
+- **The one exception, recorded 2026-09-23, Phase 52:** the label of the
+  **disabled TASK entry** in the navigation is `--faint` on `--ground` (3.54:1).
+  WCAG 1.4.3 exempts the text of an inactive user-interface component, and a
+  disabled TASK is exactly that. The colour does **not** carry the state: the
+  **dashed border** of the icon well does (`--faint` on `--ground`, 3.54:1, above
+  the 3:1 of 1.4.11), and `aria-disabled="true"` carries it for assistive
+  technology (`52-UI-SPEC.md` §Color, §A.3). List of exceptions: **one**.
 - **Body stays 14px minimum; the label/data role is 12px.** `text-[10px]` and
   `text-[11px]` are not declared sizes; the scanner's are Phase 42's, the other
   eleven files' are this phase's.
