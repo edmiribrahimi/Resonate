@@ -802,3 +802,44 @@ trattati = 0 · R = 0 · O = 0 · righe cancellate 0.**
   delle 13:08Z).
 - Le istantanee del laboratorio (piani 52-09, 52-10) restano sul disco: si
   cancellano nel passo datato del piano **52-17**.
+
+## La sonda di cache dopo la finestra (piano 52-17) — 2026-09-23, 18:48Z
+
+**La differenza dall'atteso, per prima.** Il piano chiedeva di ripetere, **dopo
+la finestra** (M2 + un'ora + il `max-age` dell'oggetto), la sonda anonima su un
+oggetto approvato di **produzione**, e di scrivere l'esito: atteso **non 200**.
+**La sonda non e' stata eseguita, perche' non ha soggetto** — come gia' al
+piano 52-15 (*«sonda anonima (e): non eseguita, senza soggetto»*). Non si e'
+inventato un oggetto e non si e' seminata la produzione per crearne uno: sarebbe
+stata una scrittura in produzione fuori da ogni atto, per misurare un residuo
+che per costruzione non puo' esistere.
+
+**La lettura che lo dice, in sola lettura, 18:48:05Z** (chiave di servizio,
+PostgREST e API Storage, solo numeri stampati):
+
+| Lettura | Valore |
+|---|---|
+| righe di `event_media` | **0** |
+| oggetti nel bucket `event-media` (livello radice, dove stanno le cartelle per serata) | **0** |
+| oggetti in `event-media-quarantine` | **0** |
+| `event-media` `public` | **`false`** |
+
+**Perche' il residuo e' zero per costruzione, e non per fortuna.** La cache del
+bordo CDN puo' servire solo un oggetto che qualcuno ha letto per indirizzo
+pubblico **mentre il bucket era pubblico**. In produzione il bucket e' stato
+pubblico fino a M2 (**18:29:08Z**) e in quel periodo **non ha mai contenuto un
+oggetto**: 0 al censimento delle 13:08:07Z, 0 alla guardia di 52-15 subito prima
+di M2 (18:29:08Z), 0 al riconteggio di 52-16 (18:43:29Z), 0 ora. Nulla poteva
+entrare in cache; nulla puo' restarci.
+
+**L'unico residuo misurato resta quello del laboratorio** (piano 52-13, e prima
+52-10 con `cdn_stale`, `max-age=3600`): un oggetto di una serata segreta, gia'
+in cache, servito senza firma **62 minuti dopo M2**, oltre il `max-age` — i
+byte spogliati, senza EXIF ne' GPS. E' il limite da scrivere nella verifica: il
+bordo della CDN non segue il `max-age` e non si invalida chiudendo il bucket.
+
+**Quando la finestra di produzione si chiude, per chi volesse ripetere la
+misura con un soggetto:** M2 18:29:08Z + 3600 s + `max-age` 3600 s =
+**20:29:08Z**. Ma un oggetto nato **dopo** M2 nasce in un bucket privato e non
+ha mai avuto un indirizzo pubblico servibile: la sonda anonima non ha soggetto
+nemmeno domani.
