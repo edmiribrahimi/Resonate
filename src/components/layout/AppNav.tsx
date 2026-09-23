@@ -7,7 +7,6 @@ import type { UserRole } from "@/types/database";
 import { getNavigation } from "@/lib/rbac/roles";
 import type { CapabilityKey } from "@/lib/capabilities/keys";
 import { FOCUS_RING } from "@/components/ui/Button";
-import { SectionHeading } from "@/components/ui/Typography";
 
 /**
  * The product navigation, in both tiers.
@@ -64,7 +63,10 @@ import { SectionHeading } from "@/components/ui/Typography";
  *   - On the phone the tools were never in the bar: they were a strip in flow
  *     on the work pages and a list on the account page. The sheet puts them one
  *     tap from any page instead of two screens away. The strip stays on the
- *     work pages (NAV-04, plan 52-11).
+ *     work pages (NAV-04, plan 52-11), pinned to the top while a tool scrolls.
+ *   - **The column carries ONE list** (D-52-08): the Management panel. The
+ *     `Work` section that used to sit under the entries is gone, so a tool is
+ *     never listed twice, in two orders, on the same screen.
  *
  * **Two disclosures, two buttons, two states, chosen by CSS** — the sheet from
  * the bar's Management button (`md:hidden` in the responsive form), the list
@@ -138,18 +140,14 @@ export interface AppNavProps {
    * a prop with no purpose and proposes removing it.
    */
   form?: "responsive" | "phone";
-  /**
-   * The work-surface tabs, rendered inside the column under a `Work` heading
-   * from 768 px up. Rendered nowhere on the phone form — the strip is in flow
-   * above the page's content there, drawn by the work layout.
-   *
-   * **Leaves in plan 52-11**, which depends on this one: from that plan the
-   * Management list in the column is the only list (D-52-08). Until it lands,
-   * a work page shows the tools twice from tablet up — in the Management list
-   * and under `Work` — and that duplication is the declared state between the
-   * two plans, not a finding.
-   */
-  workNav?: ReactNode;
+  // ── La prop degli strumenti di lavoro e' uscita (fase 52, 52-11, D-52-08) ──
+  //
+  // Portava le tab degli strumenti nella colonna, sotto un titolo `Work`, e il
+  // layout di lavoro era il suo unico consumatore. Dal 2026-09-23 la colonna ha
+  // **una lista sola**: il pannello Management qui sotto, che dentro uno
+  // strumento parte aperto. Tenere anche la sezione `Work` avrebbe mostrato gli
+  // stessi strumenti due volte, in due ordini diversi. Da telefono la striscia
+  // resta, disegnata dal layout di lavoro (`StaffNav`, NAV-04).
 }
 
 const icons: Record<string, ReactNode> = {
@@ -317,7 +315,6 @@ export default function AppNav({
   capabilities,
   liveAssignmentCapabilities,
   form = "responsive",
-  workNav,
 }: AppNavProps) {
   const pathname = usePathname();
   const { bar, panel } = getNavigation(
@@ -605,21 +602,10 @@ export default function AppNav({
           })}
 
           {/*
-            The work tabs, inside the column only. `hidden md:block` and not a
-            JavaScript branch: the tier is decided by CSS, so no viewport is read
-            and both trees exist in the markup with one removed from the
-            accessibility tree by `display` (§8.8's mechanism, G7's requirement).
-
-            Not rendered at all on the phone form — there the strip is in flow
-            above the page content, drawn by `(work)/layout.tsx`. Leaves in
-            plan 52-11.
+            There is no `Work` section under the entries any more (D-52-08,
+            plan 52-11, 2026-09-23): the Management list above is the column's
+            only list, and it is the same list the phone sheet shows.
           */}
-          {!isPhone && workNav ? (
-            <div className="hidden md:mt-6 md:block">
-              <SectionHeading>Work</SectionHeading>
-              {workNav}
-            </div>
-          ) : null}
         </div>
       </nav>
 

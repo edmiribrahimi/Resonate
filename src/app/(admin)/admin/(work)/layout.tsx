@@ -54,13 +54,17 @@ import type { UserRole } from "@/types/database";
  * two askers. The middleware is still UX and the RLS is still the boundary —
  * mounting a nav from a resolved context changes neither.
  *
- * ── It mounts `AppNav` directly, and the two staff forms it composes ─────────
+ * ── It mounts `AppNav` directly, and the strip of tools below it ──────────────
  *
- * This layout is the **only** mount site that passes `workNav`, because it is
- * the only one under which the eight work surfaces live. From 768 px up the
- * eight tabs are stacked inside the navigation column under a `Work` heading;
- * below it they are a strip in flow above the content. Two trees, each removed
- * at the other tier by `display` — never one tree filtered by width.
+ * This layout is the only one under which the work surfaces live, and it is the
+ * only mount of `StaffNav`: on a phone, the tools as one horizontal strip,
+ * pinned to the top while the tool scrolls (NAV-04, D-52-11). From 768 px up
+ * the strip is removed by `display` and the column carries the tools as
+ * `AppNav`'s Management list, open inside a tool — **one list, not two**
+ * (D-52-08, plan 52-11, 2026-09-23). Until that plan this layout also handed
+ * `AppNav` a second copy of the tabs for a `Work` section in the column; that
+ * prop and that section are gone, and no tool lost its way in: every row of the
+ * panel comes from the same `visibleStaffTabs` the strip draws.
  *
  * It mounts `AppNav` in its **responsive** form deliberately: the phone form
  * belongs to the **door**, which keeps the bar at every width (D-42-03), and a
@@ -153,7 +157,6 @@ export default async function WorkSurfaceLayout({
         liveAssignmentCapabilities={
           liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null
         }
-        workNav={<StaffNav capabilities={staffCapabilities} form="column" />}
       />
       {/*
         This element DECLARES the leading-edge column clearance and no longer
@@ -178,7 +181,7 @@ export default async function WorkSurfaceLayout({
         build of plan 41.1-05.
       */}
       <div className="md:[--nav-inset-inline-start:14rem]">
-        <StaffNav capabilities={staffCapabilities} form="strip" />
+        <StaffNav capabilities={staffCapabilities} />
         {children}
       </div>
     </>
