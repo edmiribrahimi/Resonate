@@ -178,6 +178,28 @@ documento, non la tabella.
   (digest custodito da `verify:conversion`) **non si tocca** prima di aver
   provato il login com'e' sull'iPhone — si decide sul risultato.
 
+### NAV-07, le tre domande figlie (2026-09-23, da `52-RESEARCH.md` §I)
+- **D-52-29 — La sezione «Gallery» della pagina della serata sparisce** per chi
+  non ha `gallery.view`: nessun titolo, nessun riquadro vuoto. La pagina non
+  annuncia foto che non si possono vedere (`events/[slug]/page.tsx`, sezione
+  Gallery mostrata oggi a ogni sessione).
+- **D-52-30 — Gli oggetti delle foto rifiutate e gli orfani del bucket SI
+  RIMUOVONO in questa fase**, non restano debito: cancellazione **per chiave**
+  dal bucket e dalle righe, su una lista catturata dal censimento, dopo
+  istantanea, sotto atto datato; laboratorio prima. Chiude il gate *moderazione
+  = rimozione* (`media-and-storage.md`). Decisione del proprietario.
+- **D-52-31 — Le foto precedenti allo stripper dei metadati si RIPASSANO
+  TUTTE dallo stripper in questa fase**: uno script che scarica, spoglia e
+  ricarica ogni oggetto vecchio (stesso path, stessa riga), provato sul
+  laboratorio con media veri, poi in produzione sotto atto datato. Il
+  censimento dice quante sono; il numero va nel VERIFICATION. Decisione del
+  proprietario.
+- **Vincolo d'ordine, dalla ricerca §I, che il planner rispetta:** M1 additiva
+  (`gallery.view`, `storage_path` con backfill, policy `EXISTS` sugli oggetti)
+  → deploy del codice che firma → M2 che chiude (policy di riga, via «Anyone can
+  view», `public = false`). Il contrario rompe le immagini per tutti o rompe il
+  caricamento.
+
 ### Claude's Discretion
 - L'ordine dei chip (catalogo `sort_order`, come oggi, o prima apparizione) e
   la forma dello stato vuoto della lista quando la riga dei chip e' assente.
