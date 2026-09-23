@@ -356,7 +356,7 @@ prezzo di avere il bordo tratteggiato di TASK alla stessa quota delle vicine.
 |---|---|
 | Contenitore | `grid grid-cols-5 overflow-hidden rounded-xl bg-surface`, `role="group" aria-label="Guest list view"`. **Niente `p-1`, niente `gap-1`**: oggi rubano 24 px e portano la linguetta da 62.4 a 57.6 px, cioe' sotto «Recent 5» |
 | Linguetta | `button`, `relative flex min-h-11 flex-wrap items-center justify-center gap-x-1 px-1 text-xs font-semibold` + `FOCUS_RING`, `aria-pressed` |
-| Contenuto | etichetta + conteggio **accanto** (D-52-26), **senza parentesi**: il conteggio e' separato dall'etichetta dal carattere (`font-mono`), non da due glifi in piu' che non ci stanno |
+| Contenuto | etichetta + conteggio **accanto** (D-52-26), **senza parentesi**: il conteggio e' separato dall'etichetta dal carattere (`font-mono`), non da due glifi in piu' che non ci stanno. **La forma senza parentesi e' D-52-26** («etichette corte, numero accanto»), che supera la forma «Recent (12)» scritta in D-52-19: e' la decisione piu' recente del proprietario, citata qui perche' non sembri una deviazione da D-52-19 |
 | Ingombro misurato | «Recent 5» ≈ 51 px + 8 di padding = 59 su 62.4. «All 142», «Out 142», «In 142» ≤ 50 |
 | Sotto i 360 px | `flex-wrap`: se una linguetta non ci sta, **il conteggio va a capo sotto l'etichetta** dentro gli stessi 44 px (due righe da 16). Mai troncata, mai scorrimento orizzontale, mai un'etichetta che cambia |
 | Posizioni | fisse per tutta la serata, sempre cinque, anche vuote (D-52-19, D-52-26) |
