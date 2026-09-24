@@ -34,6 +34,24 @@ export function SiteFooter() {
         <Link href="/privacy" className="inline-flex min-h-11 items-center hover:text-ink">Privacy</Link>
         <a href="mailto:info@resonatemotion.com" className="inline-flex min-h-11 items-center hover:text-ink">Contact</a>
       </nav>
+      {/* The one social link, given by the owner on 2026-09-24. A native link
+          to the profile — not a printed handle — so the address is the one
+          thing here that can be updated in one place. New tab, because a
+          footer link that navigates the buyer away from a ticket page is a
+          lost sale. */}
+      <a
+        href="https://www.instagram.com/resonatemotion"
+        target="_blank"
+        rel="noopener"
+        className="mt-1 inline-flex min-h-11 items-center gap-1.5 hover:text-ink"
+      >
+        <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.6}>
+          <rect x="3" y="3" width="18" height="18" rx="5" />
+          <circle cx="12" cy="12" r="3.8" />
+          <circle cx="17.3" cy="6.7" r="0.9" fill="currentColor" stroke="none" />
+        </svg>
+        Follow us on Instagram
+      </a>
       {/* The year is the render's, so the notice never ages on its own. The
           name is the brand's, not a legal entity's: the association is still
           to be constituted (`legal-compliance.md`), and a notice that named
