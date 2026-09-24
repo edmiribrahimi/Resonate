@@ -721,13 +721,35 @@ export default function EventTabs({
             transition: dragX === 0 ? "transform 300ms ease-out" : "none",
           }}
         >
-          {/* `dvh`, not `vh` — D-52-23: the product's last `vh` height. */}
-          <div className="w-1/2 shrink-0 min-w-0 px-6 pb-4" style={{ minHeight: "60dvh" }}>
-            <EventList events={upcoming} isPast={false} activeFormat={activeFormat} />
-          </div>
-          <div className="w-1/2 shrink-0 min-w-0 px-6 pb-4" style={{ minHeight: "60dvh" }}>
-            <EventList events={past} isPast={true} activeFormat={activeFormat} />
-          </div>
+          {/*
+            ── The footer sits under the last VISIBLE night (owner, 2026-09-24) ──
+            The two panels share one row, so the row was as tall as the taller
+            panel, and each panel carried a 60dvh floor (`dvh`, D-52-23) so the
+            footer would not jump between tabs. Both put empty space under a
+            short list on every device. Now the panel that is not on screen
+            collapses to zero height once the slide has settled, so the row is
+            exactly the visible list; during a drag or the 300ms slide both
+            panels keep their height, so what moves under the finger is real.
+            The footer moves when the tab changes — by the difference between
+            two lists, which is what a list does.
+          */}
+          {(["upcoming", "past"] as const).map((tab) => {
+            const collapsed = tab !== activeTab && !isAnimating && dragX === 0;
+            return (
+              <div
+                key={tab}
+                aria-hidden={tab !== activeTab || undefined}
+                className="w-1/2 shrink-0 min-w-0 px-6 pb-4"
+                style={collapsed ? { height: 0, overflow: "hidden", paddingBottom: 0 } : undefined}
+              >
+                <EventList
+                  events={tab === "upcoming" ? upcoming : past}
+                  isPast={tab === "past"}
+                  activeFormat={activeFormat}
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

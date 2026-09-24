@@ -74,7 +74,7 @@ import { FOCUS_RING } from "@/components/ui/Button";
  * (`verify:no-viewport-read`); one button deciding "am I in the bar or in the
  * column?" would have to.
  *
- * ── The 4rem is a declared value, not a measurement ──────────────────────────
+ * ── The bar height is a declared value, not a measurement ─────────────────
  *
  * *(5rem and `h-20` until 2026-09-24; the owner took 16px out of the bar so a
  * phone shows two nights with their posters. Everything below holds with the
@@ -82,7 +82,8 @@ import { FOCUS_RING } from "@/components/ui/Button";
  *
  * The bar's row is `h-16` — 4 rem — and the safe-area inset sits **outside** it
  * on the nav element, so the bar's total height is exactly
- * `calc(4rem + env(safe-area-inset-bottom))`. That is the literal
+ * `calc(4rem + env(safe-area-inset-bottom))` — and since the pill floats 0.75rem
+ * above that edge, the content clearance is 5.5rem. That is the literal
  * `--nav-inset-block-end` is built from in `globals.css`, and several files
  * depend on it staying true (the page shell's bottom padding, the toast's
  * offset, the dialog sheet's bottom padding, the sticky buy bar, the
@@ -240,20 +241,30 @@ const icons: Record<string, ReactNode> = {
 // ancestor, not the viewport: a sheet rendered inside this `<nav>` would be
 // placed inside the bar's 5 rem. The sheet and its scrim are therefore
 // SIBLINGS of this element, rendered right after it (52-UI-SPEC.md §B.2).
+// ── A floating pill on the phone (owner's decision, 2026-09-24) ────────────
+//
+// The bar no longer sits on the screen's edge: it floats 0.75rem above the
+// safe area, inset 1rem from both sides, fully rounded, with the same
+// translucent ground. The active entry gets a filled pill behind icon and
+// label (`INDICATOR_PHONE`) instead of an accent line under it. The insets
+// are logical (`start`/`end`) so the column form can override the same
+// properties at `md:` without a physical/logical race. The clearance the
+// content keeps under it is `--nav-inset-block-end` in `globals.css`, now
+// 5.5rem: 4rem of bar plus the air on either side.
 const NAV_PHONE =
-  "fixed inset-x-0 bottom-0 z-50 border-t border-line bg-ground/80 backdrop-blur-xl " +
-  "[transform:translate3d(0,0,0)] [-webkit-backface-visibility:hidden] " +
-  "pb-[env(safe-area-inset-bottom)]";
+  "fixed start-4 end-4 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] z-50 " +
+  "rounded-full border border-line bg-ground/85 shadow-lg backdrop-blur-xl " +
+  "[transform:translate3d(0,0,0)] [-webkit-backface-visibility:hidden]";
 
 const NAV_RESPONSIVE =
   `${NAV_PHONE} md:fixed md:inset-y-0 md:start-0 md:end-auto md:z-50 md:w-56 ` +
-  "md:border-e md:border-t-0 md:border-line md:pb-0";
+  "md:rounded-none md:border-0 md:border-e md:border-line md:shadow-none";
 
 // 4rem since 2026-09-24 (owner's decision, «leggera»): the bar lost 16px of
 // air so a phone shows two nights, poster included. Icons, labels and the
 // 44px targets did not move. `--nav-inset-block-end` in `globals.css` says
 // the same number — the two are one declaration in two places, on purpose.
-const ROW_PHONE = "mx-auto flex h-16 max-w-lg items-stretch";
+const ROW_PHONE = "mx-auto flex h-16 max-w-lg items-stretch px-1.5";
 
 const ROW_RESPONSIVE =
   `${ROW_PHONE} md:h-full md:max-w-none md:flex-col md:items-stretch md:gap-1 ` +
@@ -269,11 +280,11 @@ const ROW_RESPONSIVE =
  * tracking and a missing focus ring raises nothing.
  */
 const ENTRY_PHONE =
-  "relative flex min-h-11 flex-1 flex-col items-center justify-center gap-1 " +
-  `text-xs transition-all active:scale-95 active:opacity-80 ${FOCUS_RING}`;
+  "relative isolate my-1.5 flex min-h-11 flex-1 flex-col items-center justify-center gap-1 " +
+  `rounded-full text-xs transition-all active:scale-95 active:opacity-80 ${FOCUS_RING}`;
 
 const ENTRY_RESPONSIVE =
-  `${ENTRY_PHONE} md:min-h-11 md:flex-none md:flex-row md:items-center ` +
+  `${ENTRY_PHONE} md:my-0 md:min-h-11 md:flex-none md:flex-row md:items-center ` +
   "md:justify-start md:gap-3 md:rounded-xl md:px-4 md:text-sm";
 
 /**
@@ -291,11 +302,14 @@ const COLUMN_TIER =
   "md:rounded-xl md:px-4 md:text-sm";
 
 /** 2 px. An underline in the bar; a leading edge in the column. */
-const INDICATOR_PHONE = "absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-accent";
+// The phone indicator is the FILL behind the active entry, not a line under
+// it (2026-09-24): `-z-10` inside the entry's own stacking context (`isolate`)
+// puts it under icon and label. The column keeps its accent bar on the edge.
+const INDICATOR_PHONE = "absolute inset-0 -z-10 rounded-full bg-surface";
 
 const INDICATOR_RESPONSIVE =
-  `${INDICATOR_PHONE} md:inset-x-auto md:inset-y-1 md:bottom-auto md:start-0 ` +
-  "md:h-auto md:w-0.5";
+  `${INDICATOR_PHONE} md:inset-auto md:inset-y-1 md:start-0 md:z-auto ` +
+  "md:w-0.5 md:rounded-full md:bg-accent";
 
 /**
  * The leading-edge indicators of the panel's rows (52-UI-SPEC.md §B.2, §B.3).
