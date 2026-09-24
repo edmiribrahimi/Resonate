@@ -354,13 +354,21 @@ export default async function TicketsPage() {
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl">
+                          {/*
+                            La miniatura ha il formato della locandina (16:9,
+                            lo stesso `aspect-video` della card pubblica in
+                            `events/EventTabs.tsx`), non un quadrato: un quadrato
+                            ritagliava la data grande e il logo, cioe' le due
+                            cose che rendono riconoscibile una serata a colpo
+                            d'occhio. Visto sul telefono il 2026-09-24.
+                          */}
+                          <div className="aspect-video h-12 w-auto shrink-0 overflow-hidden rounded-lg">
                             {event?.cover_image ? (
                               <Image
                                 src={event.cover_image}
                                 alt={event.title ?? ""}
-                                width={48}
-                                height={48}
+                                width={96}
+                                height={54}
                                 className="h-full w-full object-cover"
                               />
                             ) : (

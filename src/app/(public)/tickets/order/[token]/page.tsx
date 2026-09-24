@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/Card";
 import { PageTitle } from "@/components/ui/Typography";
 import { formatHolderLabel } from "@/lib/tickets/holder-label";
 import { Button } from "@/components/ui/Button";
+import ResendTicketsForm from "./ResendTicketsForm";
 
 /**
  * I biglietti di un ordine comprato senza account, aperti da una firma.
@@ -397,6 +398,16 @@ export default async function GuestOrderTicketsPage({
           </div>
         ))}
       </div>
+
+      {/*
+        Il rinvio della mail. Chiede l'indirizzo invece di leggerlo dall'ordine:
+        vedi il docblock in testa («e nessun indirizzo di posta») e quello del
+        componente. Aggiunto il 2026-09-24, dopo che il primo ordine vero e'
+        rimasto senza mail per una chiave del fornitore scaduta.
+      */}
+      <Card className="mt-4 w-full">
+        <ResendTicketsForm />
+      </Card>
 
       {completeAccountOffered ? (
         <Card className="mt-4 w-full">

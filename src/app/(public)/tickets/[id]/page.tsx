@@ -261,14 +261,18 @@ export default async function TicketPage({
             converted, both for the same reason.
           */}
           <div className="w-full overflow-hidden rounded-2xl border border-line bg-surface">
-            {/* Cover image or gradient */}
+            {/*
+              Cover image or gradient. Stesso formato della card pubblica
+              (`aspect-video`): a 160 px fissi la locandina perdeva la data in
+              alto e il logo in basso. Visto sul telefono il 2026-09-24.
+            */}
             {event.cover_image ? (
               <Image
                 src={event.cover_image}
                 alt={event.title}
                 width={400}
-                height={200}
-                className="w-full h-40 object-cover"
+                height={225}
+                className="aspect-video w-full object-cover"
               />
             ) : (
               <div className="flex h-32 items-center justify-center bg-gradient-to-br from-accent/30 to-accent/5">
