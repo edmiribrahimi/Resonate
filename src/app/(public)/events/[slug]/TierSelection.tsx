@@ -266,7 +266,21 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
   // **dice** invece di aprire un checkout che verrebbe rifiutato con «serata non
   // trovata» — un «no» travestito da guasto, che e' il difetto che il piano
   // 49-04 ha gia' corretto una volta in questa fase.
-  const guestRoad = !isAuthenticated && partyId !== null;
+  //
+  // ── DAL 2026-09-24 LA CASSA E' UNA SOLA, CON O SENZA SESSIONE ─────────────
+  //
+  // Decisione del proprietario: chi e' loggato compra come l'ospite — quantita'
+  // fino al tetto per ordine, biglietti al portatore sul proprio account, mail
+  // dell'ordine — senza reinserire nome e mail, che l'azione prende dalla
+  // sessione e ignora dal modulo. Prima una sessione portava su `purchaseTicket`
+  // (un biglietto per account per serata) e per comprarne due per un amico
+  // bisognava uscire. `orderRoad` e' la strada dell'ordine, per tutti;
+  // `identityFields` e' cio' che resta della vecchia `guestRoad`: i due campi
+  // che servono solo a chi un account non ce l'ha ancora. La strada vecchia
+  // sopravvive **solo** per l'Event Pass, che non ha una serata e quindi non ha
+  // un ordine.
+  const orderRoad = partyId !== null;
+  const identityFields = !isAuthenticated && partyId !== null;
   const cap = Number.isInteger(maxTicketsPerOrder) && maxTicketsPerOrder > 0
     ? maxTicketsPerOrder
     : 1;
@@ -349,15 +363,18 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
     // identiche proprio dove contano. Le venti cause del preventivo sono distinte
     // apposta, e collassarle in «Impossibile procedere» rifarebbe il difetto del
     // form newsletter registrato in questo progetto.
-    if (!isAuthenticated) {
-      if (!partyId) {
-        // Nessuna strada d'ospite sul pass di evento. Detto, non simulato.
-        setError(
-          "Buying this pass without an account is not available yet. Pick a single night instead — that road is open."
-        );
-        return;
-      }
+    if (!isAuthenticated && !partyId) {
+      // Nessuna strada d'ospite sul pass di evento. Detto, non simulato.
+      setError(
+        "Buying this pass without an account is not available yet. Pick a single night instead — that road is open."
+      );
+      return;
+    }
 
+    if (partyId) {
+      // La cassa unica (2026-09-24): con o senza sessione. Con una sessione
+      // `email` e `fullName` sono stringhe vuote e l'azione li ignora comunque,
+      // prendendo l'identita' dalla sessione lato server.
       startTransition(async () => {
         const result = await purchaseTicketsGuest({
           partyId,
@@ -379,12 +396,9 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
       return;
     }
 
-    // La strada con sessione resta **quella di prima, argomento per argomento**.
-    // Compra un biglietto, e le fasi 50/51 decideranno se sopravvive. Mescolare
-    // le due qui produrrebbe la superficie mezza convertita che questa fase
-    // esiste per evitare — ed e' anche la ragione per cui il selettore di
-    // quantita' sotto non le viene mostrato: un controllo il cui valore non
-    // arriva da nessuna parte e' teatro, come il campo del nome.
+    // La strada vecchia, ormai solo per l'Event Pass con sessione: un biglietto
+    // per account sull'evento, `pending_purchases` e `reserve_ticket`. Sulle
+    // serate non e' piu' raggiungibile dal 2026-09-24 (vedi `orderRoad`).
     startTransition(async () => {
       try {
         const result = await purchaseTicket(partyId, selectedTierId, discount?.id ?? null);
@@ -557,9 +571,15 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
       )}
 
       {/*
-        ── NOME, QUANTITA' E INDIRIZZO — la strada senza sessione ──────────────
+        ── NOME, QUANTITA' E INDIRIZZO ─────────────────────────────────────────
 
-        I tre campi si rendono **solo** su quella strada, ed e' una scelta:
+        **Dal 2026-09-24 la quantita' si rende a tutti** (cassa unica, vedi
+        `orderRoad`) e i due campi d'identita' solo senza sessione. Il testo
+        che segue descrive la scelta originaria del 2026-09-21, e resta perche'
+        le sue ragioni sul nome e sull'indirizzo valgono ancora; sulla quantita'
+        e' superato dalla nota sopra.
+
+        I tre campi si rendevano **solo** sulla strada senza sessione, ed era una scelta:
 
         · la QUANTITA' perche' su quella strada arriva davvero fino al database,
           mentre la strada con sessione compra un biglietto e ignorerebbe il
@@ -582,18 +602,26 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
         costante di questo file e non deve diventarlo: chi organizza lo cambia
         dalla schermata in cui configura la serata, e il numero ha una casa sola.
       */}
-      {guestRoad && (
+      {orderRoad && (
         <div className="mb-4 space-y-3">
-          <Input
-            id={nameFieldId}
-            label="Full name"
-            type="text"
-            autoComplete="name"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            disabled={isPending}
-            placeholder="Your name"
-          />
+          {/*
+            Nome e indirizzo solo senza sessione (2026-09-24): chi e' loggato
+            li ha gia', e l'azione li prende dalla sessione. La quantita'
+            invece si mostra a tutti, perche' da quel giorno arriva al database
+            su entrambe le strade.
+          */}
+          {identityFields && (
+            <Input
+              id={nameFieldId}
+              label="Full name"
+              type="text"
+              autoComplete="name"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              disabled={isPending}
+              placeholder="Your name"
+            />
+          )}
 
           {/*
             Meno/piu' al posto della tendina (decisione del proprietario,
@@ -623,17 +651,19 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
             forma la controlla il server, e la frase che ne torna e' l'unica —
             una seconda copia sarebbe una seconda verita' che nessuno confronta.
           */}
-          <Input
-            id={emailFieldId}
-            label="Where should the tickets go?"
-            type="email"
-            inputMode="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={isPending}
-            placeholder="you@example.com"
-          />
+          {identityFields && (
+            <Input
+              id={emailFieldId}
+              label="Where should the tickets go?"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={isPending}
+              placeholder="you@example.com"
+            />
+          )}
         </div>
       )}
 

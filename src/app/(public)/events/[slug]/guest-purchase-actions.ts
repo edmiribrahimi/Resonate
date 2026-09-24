@@ -2,6 +2,7 @@
 
 import { createCheckout } from "@/lib/sumup";
 import { getServiceClient } from "@/lib/supabase/service";
+import { createClient } from "@/lib/supabase/server";
 import { logMoneyPathFailure } from "@/lib/failure/money-path";
 import { redactDbError } from "@/lib/errors/redact";
 import {
@@ -253,8 +254,44 @@ export async function purchaseTicketsGuest(input: {
   // 1. L'indirizzo e il nome, normalizzati PRIMA di toccare qualunque cosa,
   //    con le regole che vivono in un posto solo (`@/lib/tickets/buyer-input`)
   //    perche' l'altro modulo d'ordine usa le stesse.
-  const email = normalizeBuyerEmail(input.email);
-  const fullName = normalizeBuyerName(input.fullName);
+  //
+  // ── CON UNA SESSIONE, L'IDENTITA' VIENE DALLA SESSIONE ─────────────────────
+  //
+  // Decisione del proprietario, 2026-09-24: chi e' loggato compra dalla stessa
+  // cassa dell'ospite — quantita' libera fino al tetto per ordine, biglietti al
+  // portatore sul proprio account — **senza reinserire nome e mail**. Fino a
+  // quel giorno una sessione portava sulla strada vecchia (`purchaseTicket`,
+  // un biglietto per account per serata), e per comprarne due per un amico
+  // bisognava uscire dall'account.
+  //
+  // L'indirizzo e il nome del modulo vengono **ignorati** quando c'e' una
+  // sessione: l'ordine appartiene a chi e' loggato, e un indirizzo diverso
+  // manderebbe i codici — e l'indirizzo del venue — a un conto che non e' il
+  // suo. `user_id` si scrive subito sull'ordine: il webhook lo trova e non
+  // cerca ne' conia nessuna identita' (`route.ts`, passo 2).
+  //
+  // Il nome puo' mancare su un account nato prima che venisse chiesto: non e'
+  // un motivo per rifiutare l'acquisto, perche' su un conto esistente il nome
+  // non viene comunque riscritto (`guest-identity.ts`). Resta nullo.
+  const supabase = await createClient();
+  const {
+    data: { user: sessionUser },
+  } = await supabase.auth.getUser();
+
+  let email = normalizeBuyerEmail(input.email);
+  let fullName = normalizeBuyerName(input.fullName);
+  let buyerId: string | null = null;
+
+  if (sessionUser) {
+    buyerId = sessionUser.id;
+    email = normalizeBuyerEmail(sessionUser.email ?? "");
+    const { data: profile } = await getServiceClient()
+      .from("profiles")
+      .select("full_name")
+      .eq("id", sessionUser.id)
+      .maybeSingle();
+    fullName = normalizeBuyerName(profile?.full_name ?? undefined);
+  }
 
   if (!email) {
     return {
@@ -277,14 +314,16 @@ export async function purchaseTicketsGuest(input: {
   // troppo lungo. Il tetto si applica al valore gia' normalizzato — senza, un
   // campo fatto di soli spazi supererebbe la misura e fallirebbe la successiva
   // con la causa sbagliata addosso.
-  if (!fullName) {
+  // Il nome e' obbligatorio solo per chi NON ha una sessione: e' il nome con
+  // cui nascera' il suo account. Con una sessione l'account esiste gia'.
+  if (!fullName && !sessionUser) {
     return {
       success: false,
       refusal: GUEST_NAME_MISSING,
       error: GUEST_PURCHASE_ERROR[GUEST_NAME_MISSING],
     };
   }
-  if (fullName.length > FULL_NAME_MAX_LENGTH) {
+  if (fullName && fullName.length > FULL_NAME_MAX_LENGTH) {
     return {
       success: false,
       refusal: GUEST_NAME_TOO_LONG,
@@ -381,9 +420,11 @@ export async function purchaseTicketsGuest(input: {
     event_id: quote.eventId,
     party_id: quote.partyId,
     tier_id: quote.tierId,
-    user_id: null,
+    // Nullo per l'ospite: l'identita' la conia il webhook dietro l'incasso.
+    // Valorizzato per chi ha una sessione: vedi il blocco in testa.
+    user_id: buyerId,
     buyer_email: email,
-    buyer_name: fullName,
+    buyer_name: fullName || null,
     quantity: quote.quantity,
     sumup_checkout_id: checkoutId,
     total_amount: quote.totalAmount,

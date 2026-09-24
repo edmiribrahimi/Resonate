@@ -111,6 +111,18 @@ import type { UserRole } from "@/types/database";
  */
 export const dynamic = "force-dynamic";
 
+/**
+ * « · 2 of 3» accanto alla data, solo quando l'ordine ha piu' di un biglietto:
+ * su un ordine da uno la dicitura sarebbe rumore. Stessa grammatica di
+ * `formatHolderLabel` (`di` o `of`), senza il ripiego sull'indice, che qui non
+ * avrebbe un totale a cui riferirsi.
+ */
+function holderOf(label: string | null | undefined): string {
+  const m = /^\s*(\d+)\s+(?:di|of)\s+(\d+)\s*$/i.exec(label ?? "");
+  if (!m || Number(m[2]) <= 1) return "";
+  return ` · ${m[1]} of ${m[2]}`;
+}
+
 export default async function TicketsPage() {
   const supabase = await createClient();
   const {
@@ -137,7 +149,10 @@ export default async function TicketsPage() {
   const { data: tickets, error: ticketsError } = await supabase
     .from("tickets")
     .select(
-      "id, created_at, events(title, date, slug, cover_image), ticket_tiers(name), event_parties(title, date)"
+      // `holder_label` (2026-09-24): da loggato si comprano piu' biglietti in un
+      // ordine, e tre righe identiche non si distinguono per inoltrarle
+      // (`D-49-03`). Non e' un nome: e' «2 di 3».
+      "id, created_at, holder_label, events(title, date, slug, cover_image), ticket_tiers(name), event_parties(title, date)"
     )
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
@@ -389,6 +404,7 @@ export default async function TicketsPage() {
                               */}
                               {day !== null ? formatDay(day) : "Date unavailable"}
                               {tier?.name ? ` · ${tier.name}` : ""}
+                              {holderOf(ticket.holder_label)}
                             </p>
                           </div>
                           <span className="shrink-0 text-sm text-accent">
