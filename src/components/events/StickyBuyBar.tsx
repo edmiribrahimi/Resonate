@@ -156,7 +156,7 @@ export function StickyBuyBar({ nights, anchorId }: StickyBuyBarProps) {
       // the content clearance, which already holds the navigation pill and
       // 0.75rem of air above it — so the two pills stack with that gap. In
       // the column form the start inset moves past the column.
-      className={`fixed start-4 end-4 z-40 rounded-full border border-line bg-ground/75 shadow-lg backdrop-blur-xl md:start-[calc(var(--nav-inset-inline-start)+1rem)] transition-[opacity,transform] duration-700 ease-in-out motion-reduce:transition-none ${
+      className={`fixed inset-x-0 z-40 flex justify-center pointer-events-none md:start-[var(--nav-inset-inline-start)] transition-[opacity,transform] duration-700 ease-in-out motion-reduce:transition-none ${
         hidden ? "pointer-events-none translate-y-2 opacity-0" : "translate-y-0 opacity-100"
       }`}
       style={{ bottom: "var(--nav-inset-block-end, 0px)" }}
@@ -164,7 +164,9 @@ export function StickyBuyBar({ nights, anchorId }: StickyBuyBarProps) {
       aria-label="Tickets on sale"
       aria-hidden={hidden || undefined}
     >
-      <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 py-1.5 ps-5 pe-1.5">
+      {/* The pill is the inner box, as wide as price, date and button (owner,
+          2026-09-24): the outer strip only centres it and lets touches through. */}
+      <div className="pointer-events-auto flex max-w-[calc(100vw-2rem)] items-center gap-5 rounded-full border border-line bg-ground/75 py-1.5 ps-5 pe-1.5 shadow-lg backdrop-blur-xl">
         <div className="min-w-0">
           <p className="truncate text-base font-bold text-ink">{offer.priceLabel}</p>
           <p className="truncate text-xs text-muted">{offer.when}</p>
