@@ -1763,12 +1763,16 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
       }
     }
 
-    // Compute chain status
+    // Le tre regole di `tier-status.ts` (`tierStatus`) sui conteggi appena
+    // letti: inizio non arrivato, esaurito, scaduto — e NIENTE ALTRO. La catena
+    // per prezzo (un tier chiuso finche' il piu' economico non era esaurito o
+    // scaduto) e' stata tolta il 2026-09-24 per decisione del proprietario, in
+    // tutti e tre i posti in cui era scritta — questo, `order-quote.ts` e
+    // `tier-status.ts` — nello stesso commit.
     type TierStatus = "coming_soon" | "available" | "sold_out" | "expired";
     const statusMap = new Map<string, TierStatus>();
 
-    for (let i = 0; i < allTiers.length; i++) {
-      const t = allTiers[i];
+    for (const t of allTiers) {
       const sold = soldMap.get(t.id) ?? 0;
       const available = t.quantity !== null ? t.quantity - sold : null;
 
@@ -1783,14 +1787,6 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
       if (t.expires_at && now >= new Date(t.expires_at)) {
         statusMap.set(t.id, "expired");
         continue;
-      }
-      const prev = i > 0 ? allTiers[i - 1] : null;
-      if (prev) {
-        const prevStatus = statusMap.get(prev.id)!;
-        if (prevStatus !== "sold_out" && prevStatus !== "expired") {
-          statusMap.set(t.id, "coming_soon");
-          continue;
-        }
       }
       statusMap.set(t.id, "available");
     }

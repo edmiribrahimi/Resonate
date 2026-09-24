@@ -7,8 +7,8 @@
  * stato divergono al primo che qualcuno tocca, e una barra che promette un
  * prezzo che il controllo non offre e' un difetto che chi compra vede per primo.
  *
- * La regola e' quella di sempre: i tier si attivano **in catena per prezzo** —
- * il piu' caro parte solo quando i piu' economici sono esauriti o scaduti — e
+ * La regola, dal 2026-09-24: ogni tier si giudica **da solo** — inizio,
+ * quantita', fine — e nessun tier aspetta un altro (vedi `tierStatus` sotto).
  * `starts_at` / `expires_at` si leggono contro `now`, che il chiamante passa
  * quando deve rendere sul client dopo il mount (evita differenze fra server e
  * browser sull'orologio).
@@ -34,45 +34,47 @@ export interface PublicTier {
 export type TierStatus = "coming_soon" | "available" | "sold_out" | "expired";
 
 export function computeTierStatuses(tiers: PublicTier[], now: Date = new Date()): TierStatus[] {
-  const sorted = [...tiers].sort((a, b) => a.price - b.price);
-  const statusMap = new Map<string, TierStatus>();
+  return tiers.map((tier) => tierStatus(tier, now));
+}
 
-  for (let i = 0; i < sorted.length; i++) {
-    const tier = sorted[i];
-
-    // 1. Explicit starts_at not yet reached
-    if (tier.starts_at && now < new Date(tier.starts_at)) {
-      statusMap.set(tier.id, "coming_soon");
-      continue;
-    }
-
-    // 2. Sold out (only if quantity is set)
-    if (tier.available !== null && tier.available <= 0) {
-      statusMap.set(tier.id, "sold_out");
-      continue;
-    }
-
-    // 3. Expired
-    if (tier.expires_at && now >= new Date(tier.expires_at)) {
-      statusMap.set(tier.id, "expired");
-      continue;
-    }
-
-    // 4. Previous tier (by price) still active → this one waits
-    const prevTier = i > 0 ? sorted[i - 1] : null;
-    if (prevTier) {
-      const prevStatus = statusMap.get(prevTier.id)!;
-      if (prevStatus !== "sold_out" && prevStatus !== "expired") {
-        statusMap.set(tier.id, "coming_soon");
-        continue;
-      }
-    }
-
-    // 5. Available
-    statusMap.set(tier.id, "available");
-  }
-
-  return tiers.map((t) => statusMap.get(t.id)!);
+/**
+ * Lo stato di UN tier, e di quello solo. Tre ragioni per non essere in vendita,
+ * nessuna delle quali guarda un altro tier — D-2026-09-24, deciso dal
+ * proprietario e verificato con quattro domande:
+ *
+ *   1. la data d'inizio non e' arrivata      → `coming_soon`
+ *   2. la quantita' e' esaurita               → `sold_out`
+ *   3. la data di fine e' passata             → `expired`
+ *
+ * L'ordine conta dove due ragioni valgono insieme: un tier esaurito E scaduto
+ * dice «sold out», perche' e' la frase che spiega a chi compra cosa e' successo
+ * mentre guardava; e un tier non ancora aperto dice «coming soon» anche se ha
+ * quantita' zero, perche' la vendita non e' cominciata.
+ *
+ * ── La catena per prezzo NON c'e' piu', e questo paragrafo dice perche' ─────
+ *
+ * Fino al 2026-09-24 una quarta regola teneva un tier in `coming_soon` finche'
+ * il piu' economico non era esaurito o scaduto. Nasceva per «Early Bird →
+ * Regular → Last minute», e sul primo evento con tre varianti parallele
+ * («GA», «GA + 1 drink», «GA + 2 drinks») ha chiuso due tier su tre per sempre:
+ * GA non aveva quantita', quindi non sarebbe mai «finito». Il proprietario ha
+ * deciso che anche le fasi successive dello stesso biglietto stanno in vendita
+ * insieme: Early Bird con la sua quantita', Regular senza date, e quando Early
+ * Bird finisce resta Regular. La sequenza si esprime con date e quantita', mai
+ * con un legame fra tier.
+ *
+ * `src/lib/tickets/order-quote.ts` applica le STESSE tre regole lato server:
+ * se cambi una qui, cambiala li' nello stesso commit, o la pagina offrira' un
+ * tier che il preventivo rifiuta.
+ */
+export function tierStatus(
+  tier: Pick<PublicTier, "available" | "starts_at" | "expires_at">,
+  now: Date = new Date()
+): TierStatus {
+  if (tier.starts_at && now < new Date(tier.starts_at)) return "coming_soon";
+  if (tier.available !== null && tier.available <= 0) return "sold_out";
+  if (tier.expires_at && now >= new Date(tier.expires_at)) return "expired";
+  return "available";
 }
 
 /**

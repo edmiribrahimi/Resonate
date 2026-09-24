@@ -286,7 +286,7 @@ export interface OrderQuoteInput {
    * cioe' rifiuterebbe una prenotazione per non aver raggiunto il minimo di un
    * pagamento che nessuno sta facendo.
    *
-   * **Cosa NON salta**: tetto per ordine, catena dei tier, capienza, catalogo,
+   * **Cosa NON salta**: tetto per ordine, finestre e quantita' dei tier, capienza, catalogo,
    * pubblicazione dell'evento. Sono i controlli che decidono se qualcuno puo'
    * avere quel biglietto, e valgono identici a zero euro. Qui si salta **una**
    * riga, e quella riga parla di carte. Chi la salta dichiara **anche** che il
@@ -429,12 +429,18 @@ export async function buildOrderQuote(
     return refuse(QUOTE_TIER_FREE_ON_PAID_NIGHT);
   }
 
-  // 6. La catena dei tier e la capienza.
+  // 6. Lo stato dei tier (inizio, quantita', fine) e la capienza.
   //
-  //    **La catena non era nel piano, ed e' Rule 2.** Il percorso con sessione
-  //    la applica lato server (`admin/events/actions.ts:1339-1427`) e
-  //    `reserve_ticket_order` **non** la applica: guarda la capienza, non la
-  //    finestra temporale ne' l'ordine dei tier. Un percorso ospite senza questo
+  //    *(Fino al 2026-09-24 questo blocco si chiamava «la catena dei tier» e
+  //    teneva un tier chiuso finche' il piu' economico non era esaurito o
+  //    scaduto. La catena e' stata tolta per decisione del proprietario, in
+  //    tutti e tre i posti in cui era scritta; il resto del ragionamento vale
+  //    identico per le tre regole rimaste.)*
+  //
+  //    **Lo stato non era nel piano, ed e' Rule 2.** Il percorso con sessione
+  //    lo applica lato server (`admin/events/actions.ts`, `purchaseTicket`) e
+  //    `reserve_ticket_order` **non** lo applica: guarda la capienza, non la
+  //    finestra temporale. Un percorso ospite senza questo
   //    blocco sarebbe **piu' permissivo** di quello con sessione sullo stesso
   //    tier — cioe' chiunque potrebbe comprare l'early bird chiamando l'azione
   //    direttamente mentre la pagina lo mostra esaurito. Su un prodotto dove i
@@ -454,7 +460,7 @@ export async function buildOrderQuote(
   const { data: allTiers, error: allTiersError } = await tierChainQuery;
 
   if (allTiersError) {
-    // NON SI E' POTUTO CONTARE. La catena non si valuta e l'acquisto prosegue:
+    // NON SI E' POTUTO CONTARE. Lo stato dei tier non si valuta e l'acquisto prosegue:
     // il tetto che regge davvero resta quello della RPC, che fallisce chiuso.
     logMoneyPathFailure("buildOrderQuote.tier_list_unreadable", safe(allTiersError));
   } else if (allTiers && allTiers.length > 0) {
@@ -482,8 +488,16 @@ export async function buildOrderQuote(
     type TierStatus = "coming_soon" | "available" | "sold_out" | "expired";
     const statusMap = new Map<string, TierStatus>();
 
-    for (let i = 0; i < allTiers.length; i++) {
-      const t = allTiers[i];
+    // Le tre regole di `tier-status.ts` (`tierStatus`), riscritte qui sui
+    // conteggi appena letti invece che su `available`: inizio non arrivato,
+    // esaurito, scaduto — e NIENTE ALTRO. La quarta regola che stava qui, la
+    // catena per prezzo (un tier chiuso finche' il piu' economico non era
+    // esaurito o scaduto), e' stata tolta il 2026-09-24 per decisione del
+    // proprietario: tutti i tier di una serata sono in vendita insieme, e la
+    // sequenza Early Bird → Regular si fa con quantita' e date. Tolta in
+    // entrambi i posti nello stesso commit, perche' la pagina e il preventivo
+    // devono dare la stessa risposta.
+    for (const t of allTiers) {
       const sold = soldMap.get(t.id) ?? 0;
       const left = t.quantity !== null ? t.quantity - sold : null;
 
@@ -499,14 +513,6 @@ export async function buildOrderQuote(
         statusMap.set(t.id, "expired");
         continue;
       }
-      const prev = i > 0 ? allTiers[i - 1] : null;
-      if (prev) {
-        const prevStatus = statusMap.get(prev.id)!;
-        if (prevStatus !== "sold_out" && prevStatus !== "expired") {
-          statusMap.set(t.id, "coming_soon");
-          continue;
-        }
-      }
       statusMap.set(t.id, "available");
     }
 
@@ -516,7 +522,7 @@ export async function buildOrderQuote(
       return refuse(QUOTE_TIER_NOT_ON_SALE);
     }
 
-    // La capienza per la quantita' CHIESTA, che la catena non guarda: quella
+    // La capienza per la quantita' CHIESTA, che lo stato non guarda: quella
     // dice se ne resta almeno uno, questa se ne restano abbastanza.
     const chainTier = allTiers.find((t) => t.id === tierId);
     const capacity = chainTier ? chainTier.quantity : tier.quantity;

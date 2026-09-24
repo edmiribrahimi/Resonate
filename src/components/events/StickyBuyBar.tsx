@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FOCUS_RING } from "@/components/ui/Button";
 import { formatTime } from "@/utils/formatTime";
 import { lowestOnSalePrice, type PublicTier } from "@/lib/tickets/tier-status";
@@ -114,10 +114,37 @@ export function StickyBuyBar({ nights, anchorId }: StickyBuyBarProps) {
     return () => observer.disconnect();
   }, [anchorId]);
 
-  if (!offer || anchorInView) return null;
+  // The bar is `fixed`, so it takes no room in the flow and covers whatever
+  // ends the page — the footer's Terms, Refund policy, Privacy and Contact,
+  // seen covered on 2026-09-24. The spacer below gives the document that room,
+  // measured from the bar itself so a longer price label or a taller button
+  // never desynchronises the two. It stays while the bar is merely hidden
+  // behind the tickets section, so the end of the page does not jump by a
+  // bar's height every time the anchor scrolls in and out of view.
+  const barRef = useRef<HTMLDivElement>(null);
+  const [barHeight, setBarHeight] = useState(0);
+  useEffect(() => {
+    const el = barRef.current;
+    if (!el) return;
+    const measure = () => setBarHeight(el.getBoundingClientRect().height);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [offer, anchorInView]);
+
+  if (!offer) return null;
+
+  if (anchorInView) {
+    return <div aria-hidden style={{ height: barHeight }} />;
+  }
 
   return (
+    <>
+    <div aria-hidden style={{ height: barHeight }} />
     <div
+      ref={barRef}
       className="fixed inset-x-0 z-40 border-t border-line bg-ground/90 backdrop-blur-xl ps-[var(--nav-inset-inline-start)]"
       style={{ bottom: "var(--nav-inset-block-end, 0px)" }}
       role="region"
@@ -140,5 +167,6 @@ export function StickyBuyBar({ nights, anchorId }: StickyBuyBarProps) {
         </a>
       </div>
     </div>
+    </>
   );
 }
