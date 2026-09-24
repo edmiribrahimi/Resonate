@@ -28,6 +28,7 @@ import {
   EVENT_MEDIA_SIGNATURE_SECONDS,
 } from "@/lib/media/sign-event-media";
 import { formatTime } from "@/utils/formatTime";
+import { formatHolderLabel } from "@/lib/tickets/holder-label";
 import { CalendarIcon, ClockIcon, MapPinIcon, LockClosedIcon, MusicalNoteIcon } from "@/components/ui/Icons";
 import type { UserRole, AccessType } from "@/types/database";
 import { venueRevealHours } from "@/utils/datetime";
@@ -1854,15 +1855,22 @@ export default async function EventDetailPage({
                     fabbricato dentro un fatto vecchio.
                   */}
                   <div className="flex flex-col items-center gap-2">
-                    {party.userTickets.map((ticket) => (
+                    {party.userTickets.map((ticket, index) => (
                       <Link
                         key={ticket.id}
                         href={`/tickets/${ticket.id}`}
                         className={`inline-flex min-h-11 w-full items-center justify-center rounded-full bg-accent px-6 text-sm font-semibold text-ground transition-colors hover:bg-accent-hover active:scale-95 active:opacity-80 ${FOCUS_RING}`}
                       >
-                        {ticket.holder_label
-                          ? `View ticket ${ticket.holder_label}`
-                          : "View Your Ticket"}
+                        {/*
+                          «1 di 1» compariva in una pagina inglese (visto sul
+                          telefono il 2026-09-24): l'etichetta si stampa con
+                          `formatHolderLabel`, che la traduce, e solo quando i
+                          biglietti sono piu' di uno — su uno solo il numero e'
+                          rumore.
+                        */}
+                        {party.userTickets.length > 1
+                          ? `View ticket ${formatHolderLabel(ticket.holder_label, index, party.userTickets.length)}`
+                          : "View your ticket"}
                       </Link>
                     ))}
                   </div>
@@ -1880,29 +1888,30 @@ export default async function EventDetailPage({
 
               {/* Paid party: tier selection (upcoming only) */}
               {/*
-                ── PERCHE' QUESTA CONDIZIONE NON E' STATA TOLTA ─────────────────
+                ── LA CONDIZIONE «SOLO A CHI NON HA BIGLIETTI» E' USCITA IL 2026-09-24 ──
 
-                `BUY-01` permette a una persona di avere piu' biglietti su una
-                serata, e i due indici unici parziali sono stati ristretti
-                apposta. Verrebbe da rendere il controllo anche a chi ne ha gia'
-                uno — **e sarebbe un controllo che rifiuta sempre.**
+                Qui stava `party.userTickets.length === 0 &&`, con la sua
+                ragione: la strada con sessione passava da `purchaseTicket`,
+                che rifiuta un secondo biglietto per account (piu' il vincolo
+                dentro `reserve_ticket`), quindi rendere il controllo a chi ne
+                aveva gia' uno lo avrebbe mandato contro un rifiuto senza
+                ragione visibile. Era vero, e la riga diceva che *«le fasi 50/51
+                chiuderanno»* quella strada.
 
-                La strada con sessione passa ancora da `purchaseTicket`, che
-                porta il proprio controllo di duplicato
-                (`admin/events/actions.ts:1446-1455` e `:1458-1468`) piu' quello
-                dentro `reserve_ticket`. Nessuno dei tre e' toccato da questa
-                fase: governano la strada vecchia, che le fasi 50/51 chiuderanno.
-                Offrire l'acquisto a chi ha gia' un biglietto significherebbe
-                mandarlo contro un rifiuto la cui ragione non e' visibile da
-                nessuna parte.
+                L'ha chiusa il proprietario il 2026-09-24: con una sessione
+                `TierSelection` percorre la cassa dell'ospite — ordine, quantita'
+                fino al tetto per ordine, nessun controllo di duplicato — e chi
+                ha gia' un biglietto puo' comprarne altri per chi viene con lui.
+                Il riquadro «You have a ticket» resta sopra, il controllo torna
+                sotto. La strada vecchia sopravvive solo per l'Event Pass, ed e'
+                per questo che `!hasMasterTicket` resta: chi ha il pass e'
+                coperto su ogni serata, e il suo controllo e' l'altro.
 
                 **Chi non ha una sessione non e' toccato da questa riga**:
-                l'elenco e' vuoto per costruzione, il controllo si rende, e la
-                strada d'ospite non ha nessuno dei tre rifiuti — un ordine porta
-                fino al tetto della serata in un colpo solo.
+                l'elenco e' vuoto per costruzione e la strada d'ospite non ha
+                mai avuto un rifiuto di duplicato.
               */}
               {isUpcoming &&
-                party.userTickets.length === 0 &&
                 !hasMasterTicket &&
                 party.access_type === "paid" &&
                 party.tiers.length > 0 &&
