@@ -267,6 +267,43 @@ const BADGE_TONE = {
 
 export type BadgeTone = keyof typeof BADGE_TONE;
 
+/**
+ * The compact pill for a line-up: a 32px pill on a 44px target.
+ *
+ * Owner's decision, 2026-09-24. Five names as full `Chip`s wrapped onto three
+ * rows of 44px inside a night's card and pushed the tiers off the phone
+ * screen. The floor a target owes a finger (§6.1) is a floor for the LINK,
+ * not for the ink: the `<Link>` here keeps `min-h-11`, literally, where the
+ * gate reads it, and draws nothing itself; the pill a reader sees is the span
+ * inside it, 32px tall. The negative vertical margin lets a row of these sit
+ * 32px + gap apart rather than 44px, so adjacent rows' hit boxes overlap by a
+ * few pixels — a finger that lands on the overlap gets the pill it is on,
+ * which is the one it sees.
+ *
+ * Link-only, and unselected-only: a line-up pill is never "current", and a
+ * compact button has no consumer. Add a branch when one appears, not before.
+ */
+export function CompactChip<T extends string>({
+  href,
+  children,
+  className = "",
+}: {
+  href: Route<T>;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`inline-flex min-h-11 shrink-0 items-center -my-1.5 rounded-full ${FOCUS_RING} ${className}`.trimEnd()}
+    >
+      <span className="inline-flex h-8 items-center whitespace-nowrap rounded-full border border-control px-3 text-xs font-semibold normal-case tracking-wide text-ink-2 transition-all hover:text-ink active:scale-95 active:opacity-80">
+        {children}
+      </span>
+    </Link>
+  );
+}
+
 export function Badge({
   tone = "neutral",
   children,

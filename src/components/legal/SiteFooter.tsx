@@ -11,8 +11,10 @@ import Link from "next/link";
  */
 export function SiteFooter() {
   return (
-    <footer className="mt-16 border-t border-line pt-6 text-xs text-muted">
-      <nav className="flex flex-wrap gap-x-4 gap-y-2">
+    <footer className="mt-16 border-t border-line pt-6 text-center text-xs text-muted">
+      {/* Centred since 2026-09-24 (owner's request): links and the sign-off
+          line sit on the page's axis rather than its left gutter. */}
+      <nav className="flex flex-wrap justify-center gap-x-4 gap-y-2">
         <Link href="/terms" className="inline-flex min-h-11 items-center hover:text-ink">Terms</Link>
         <Link href="/refunds" className="inline-flex min-h-11 items-center hover:text-ink">Refund policy</Link>
         <Link href="/privacy" className="inline-flex min-h-11 items-center hover:text-ink">Privacy</Link>

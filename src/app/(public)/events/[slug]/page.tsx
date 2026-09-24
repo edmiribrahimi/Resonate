@@ -6,7 +6,7 @@ import AnimatedSection from "@/components/motion/AnimatedSection";
 import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle, SectionHeading } from "@/components/ui/Typography";
 import { Card } from "@/components/ui/Card";
-import { Chip, Badge } from "@/components/ui/Chip";
+import { CompactChip, Badge } from "@/components/ui/Chip";
 import { FOCUS_RING } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext, hasCapability } from "@/lib/capabilities/server";
@@ -1377,13 +1377,15 @@ export default async function EventDetailPage({
                 also emits aria-current, and a pill that is not "current" may not
                 claim to be. Declared, and owed to a person to look at.
               */}
-              <div className="flex flex-wrap gap-2">
+              {/* Same compact pill as the card below (2026-09-24), so the two
+                  line-up rows on one page read as one thing. */}
+              <div className="flex flex-wrap gap-x-1.5 gap-y-1.5">
                 {unique.map((artist: string) => {
                   const slug = artistSlugs.get(artist);
                   return slug ? (
-                    <Chip key={artist} href={`/artists/${slug}`}>
+                    <CompactChip key={artist} href={`/artists/${slug}`}>
                       {artist}
-                    </Chip>
+                    </CompactChip>
                   ) : (
                     <Badge key={artist}>{artist}</Badge>
                   );
@@ -1778,16 +1780,17 @@ export default async function EventDetailPage({
 
               {/* Party lineup (inside the card) */}
               {party.lineup.length > 0 && (
-                <div className="mb-3 flex flex-wrap gap-1.5">
-                  {/* §6.4 names this pill by file and line — 20 px, a <Link>,
-                      and therefore a Chip at 44 px. See the note on the
-                      event-level row above. */}
+                <div className="mb-3 flex flex-wrap gap-x-1.5 gap-y-1.5">
+                  {/* Compact since 2026-09-24 (owner's decision): the pill is
+                      32px tall, the link behind it still 44px, so five names
+                      take two rows of 32 instead of three of 44 and the tiers
+                      come up into view. See `CompactChip` in `Chip.tsx`. */}
                   {[...party.lineup].sort().map((artist) => {
                     const slug = artistSlugs.get(artist);
                     return slug ? (
-                      <Chip key={artist} href={`/artists/${slug}`}>
+                      <CompactChip key={artist} href={`/artists/${slug}`}>
                         {artist}
-                      </Chip>
+                      </CompactChip>
                     ) : (
                       <Badge key={artist}>{artist}</Badge>
                     );
