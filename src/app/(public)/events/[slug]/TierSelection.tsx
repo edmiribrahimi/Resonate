@@ -448,6 +448,17 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
                   <p className="text-sm font-semibold text-ink">
                     {tier.name}
                   </p>
+                  {/*
+                    What the tier includes, under the name and above the state
+                    pill — the sentence a person reads to choose between two
+                    prices. Skipped entirely when absent: a blank line between
+                    name and pill would read as a missing value.
+                  */}
+                  {tier.description ? (
+                    <p className="mt-1 whitespace-pre-line text-xs text-ink-2">
+                      {tier.description}
+                    </p>
+                  ) : null}
                   <div className="flex items-center gap-2 mt-1">
                     <Badge className="shrink-0">{statusLabel(status)}</Badge>
                     {status === "available" && tier.show_remaining !== false && tier.available !== null && (

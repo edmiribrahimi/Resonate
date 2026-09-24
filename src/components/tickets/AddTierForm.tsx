@@ -5,8 +5,9 @@ import { createTier } from "@/app/(admin)/admin/events/[id]/tickets/actions";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Checkbox } from "@/components/ui/Checkbox";
-import { Input } from "@/components/ui/Input";
+import { Input, Textarea } from "@/components/ui/Input";
 import { SectionHeading } from "@/components/ui/Typography";
+import { TIER_DESCRIPTION_HINT } from "@/components/tickets/tier-description";
 
 /**
  * The form that creates a ticket tier — converted onto the primitives in plan
@@ -89,6 +90,23 @@ export default function AddTierForm({ eventId, partyId }: AddTierFormProps) {
           required
           maxLength={100}
           placeholder="e.g. Early Bird, VIP, General"
+        />
+
+        {/*
+          What the tier includes. Read on the event page before anyone buys, on
+          the ticket, on the guest order page and in the order email — and at the
+          door, where the staff decides from it whether a drink is owed. The hint
+          is the only guard the text has: no predicate can tell whether a free
+          sentence names a place.
+        */}
+        <Textarea
+          id={`tier-description-${scope}`}
+          label="What's included (optional)"
+          name="description"
+          rows={3}
+          maxLength={500}
+          placeholder="e.g. Entry + 2 drinks"
+          hint={TIER_DESCRIPTION_HINT}
         />
 
         {/*

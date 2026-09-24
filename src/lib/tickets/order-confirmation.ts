@@ -280,7 +280,7 @@ export async function sendOrderConfirmation({
 
     const { data: tier, error: tierError } = await serviceClient
       .from("ticket_tiers")
-      .select("name")
+      .select("name, description")
       .eq("id", order.tier_id)
       .single();
 
@@ -429,6 +429,7 @@ export async function sendOrderConfirmation({
         eventEndTime: party?.end_time ? formatTime(party.end_time) : "",
         partyTitle: party?.title ?? (order.party_id ? undefined : "Event Pass"),
         tierName: tier.name,
+        tierDescription: tier.description ?? null,
         tickets: emailTickets,
         completeAccountUrl,
       })

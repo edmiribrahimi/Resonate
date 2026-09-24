@@ -656,7 +656,7 @@ export default async function EventDetailPage({
         );
 
         tiers = await Promise.all(
-          sellableTiers.map(async (tier: { id: string; name: string; price: number; quantity: number | null; show_remaining?: boolean; starts_at?: string | null; expires_at?: string | null }) => {
+          sellableTiers.map(async (tier: { id: string; name: string; description?: string | null; price: number; quantity: number | null; show_remaining?: boolean; starts_at?: string | null; expires_at?: string | null }) => {
             // THE ERROR IS READ, and a count that did not come back is no
             // longer written down as zero.
             //
@@ -981,7 +981,7 @@ export default async function EventDetailPage({
       .order("price", { ascending: true });
 
     eventTiers = await Promise.all(
-      (rawEventTiers ?? []).map(async (tier: { id: string; name: string; price: number; quantity: number | null; show_remaining?: boolean; starts_at?: string | null; expires_at?: string | null }) => {
+      (rawEventTiers ?? []).map(async (tier: { id: string; name: string; description?: string | null; price: number; quantity: number | null; show_remaining?: boolean; starts_at?: string | null; expires_at?: string | null }) => {
         // Byte-identical to the per-party read above except for its scope, and
         // it carries the same reasoning: the error is read, a count that did
         // not arrive is not written down as zero, and `available` goes to

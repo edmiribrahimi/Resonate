@@ -53,6 +53,35 @@ function getServiceClient() {
 // =============================================================
 
 /**
+ * La descrizione di un tier: cosa include. Vuota → `null`, mai stringa vuota,
+ * perche' ogni superficie che la disegna la salta su `null` e stamperebbe un
+ * paragrafo vuoto su `""`. Il tetto di 500 e' lo stesso del `CHECK` in
+ * `20260924100000_tier_description.sql`: qui per rispondere con una frase,
+ * li' per garantirlo.
+ *
+ * E' copy pubblica, letta prima dell'acquisto e stampata in mail: il form lo
+ * dice sotto la casella, e nessun controllo qui puo' sapere se un testo
+ * descrive un posto. Vedi `venue-secrecy.md`.
+ */
+const TIER_DESCRIPTION_MAX = 500;
+
+function readTierDescription(formData: FormData): string | null {
+  const raw = formData.get("description");
+  // Una textarea inviata come form porta `\r\n` (e' il valore di submission
+  // dello standard, non quello dell'API): normalizzato a `\n`, che e' l'unico
+  // a capo che `white-space: pre-line` disegna. Misurato nel lab il 2026-09-24.
+  const description =
+    typeof raw === "string" ? raw.replace(/\r\n?/g, "\n").trim() : "";
+  if (description.length === 0) return null;
+  if (description.length > TIER_DESCRIPTION_MAX) {
+    throw new Error(
+      `Tier description must be at most ${TIER_DESCRIPTION_MAX} characters`
+    );
+  }
+  return description;
+}
+
+/**
  * Create a new ticket tier for an event.
  */
 export async function createTier(eventId: string, partyId: string | null, formData: FormData) {
@@ -87,6 +116,8 @@ export async function createTier(eventId: string, partyId: string | null, formDa
   const expiresAtRaw = (formData.get("expires_at") as string)?.trim() || null;
   const expires_at = expiresAtRaw ? new Date(expiresAtRaw).toISOString() : null;
 
+  const description = readTierDescription(formData);
+
   // Use service-role client for master (bypasses RLS ownership check)
   const client = ctx.capabilities.has(CAP.MASTER_MANAGE)
     ? getServiceClient()
@@ -96,6 +127,7 @@ export async function createTier(eventId: string, partyId: string | null, formDa
     event_id: eventId,
     party_id: partyId || null,
     name,
+    description,
     price,
     quantity,
     show_remaining: showRemaining,
@@ -153,6 +185,8 @@ export async function updateTier(
   const expiresAtRaw = (formData.get("expires_at") as string)?.trim() || null;
   const expires_at = expiresAtRaw ? new Date(expiresAtRaw).toISOString() : null;
 
+  const description = readTierDescription(formData);
+
   // Use service-role client for master (bypasses RLS ownership check)
   const client = ctx.capabilities.has(CAP.MASTER_MANAGE)
     ? getServiceClient()
@@ -160,7 +194,7 @@ export async function updateTier(
 
   const { error } = await client
     .from("ticket_tiers")
-    .update({ name, price, quantity, show_remaining: showRemaining, starts_at, expires_at })
+    .update({ name, description, price, quantity, show_remaining: showRemaining, starts_at, expires_at })
     .eq("id", tierId);
 
   if (error) {

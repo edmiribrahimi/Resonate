@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Chip";
 import { Checkbox } from "@/components/ui/Checkbox";
-import { Input } from "@/components/ui/Input";
+import { Input, Textarea } from "@/components/ui/Input";
+import { TIER_DESCRIPTION_HINT } from "@/components/tickets/tier-description";
 
 /**
  * One ticket tier, read and edited in place — converted in plan 41.1-22.
@@ -57,6 +58,8 @@ import { Input } from "@/components/ui/Input";
 interface TierWithSold {
   id: string;
   name: string;
+  /** What the tier includes. `null` on tiers written before 2026-09-24. */
+  description?: string | null;
   price: number;
   quantity: number | null;
   sold: number;
@@ -144,6 +147,17 @@ export default function TierCard({ tier, eventId }: TierCardProps) {
             defaultValue={tier.name}
           />
 
+          <Textarea
+            id={`tier-edit-description-${tier.id}`}
+            label="What's included (optional)"
+            name="description"
+            rows={3}
+            maxLength={500}
+            defaultValue={tier.description ?? ""}
+            placeholder="e.g. Entry + 2 drinks"
+            hint={TIER_DESCRIPTION_HINT}
+          />
+
           <div className="grid gap-3 md:grid-cols-2">
             <Input
               id={`tier-edit-price-${tier.id}`}
@@ -229,6 +243,11 @@ export default function TierCard({ tier, eventId }: TierCardProps) {
                   <Badge>Expired</Badge>
                 )}
               </div>
+              {tier.description ? (
+                <p className="mt-1 whitespace-pre-line text-sm text-ink-2">
+                  {tier.description}
+                </p>
+              ) : null}
               <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted">
                 <span>
                   {tier.quantity !== null

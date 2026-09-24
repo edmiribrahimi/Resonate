@@ -1037,10 +1037,17 @@ const GUEST_PLACE_TERMS = [
  * no undo — make it deliberately, and say why in the commit.
  */
 const GUEST_SURFACES = [
+  // `description` joined on 2026-09-24: `ticket_tiers.description`, what a
+  // tier includes («entry + 2 drinks»), written by the organizer and printed on
+  // the event page to anyone before purchase — so this surface adds no reader
+  // the text did not already have. It is free text, and no allow-list can see
+  // whether a sentence names a place: that guard is the hint under the box
+  // (`src/components/tickets/tier-description.ts`) and the column comment in
+  // `20260924100000_tier_description.sql`. Weighed and admitted deliberately.
   [
     ORDER_PAGE_REL,
     ORDER_PAGE,
-    "date, end_time, event_id, holder_label, id, name, party_id, quantity, slug, status, tier_id, time, title, user_id",
+    "date, description, end_time, event_id, holder_label, id, name, party_id, quantity, slug, status, tier_id, time, title, user_id",
     5,
   ],
   // `sumup_checkout_id` joined on 2026-09-08 (phase 49, P-WH-4: the callback

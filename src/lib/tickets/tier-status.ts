@@ -16,6 +16,12 @@
 export interface PublicTier {
   id: string;
   name: string;
+  /**
+   * Cosa include il livello, scritto dall'organizer. `null` o assente sui
+   * livelli senza descrizione: chi lo disegna lo salta, non stampa una riga
+   * vuota. Non entra in nessun calcolo di stato o di prezzo.
+   */
+  description?: string | null;
   price: number;
   quantity: number | null;
   sold: number;

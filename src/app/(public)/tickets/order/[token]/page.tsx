@@ -265,7 +265,7 @@ export default async function GuestOrderTicketsPage({
   // il docblock in testa e il controllo G del gate delle superfici.
   const [{ data: event }, { data: tier }] = await Promise.all([
     service.from("events").select("title, slug, date").eq("id", order.event_id).maybeSingle(),
-    service.from("ticket_tiers").select("name").eq("id", order.tier_id).maybeSingle(),
+    service.from("ticket_tiers").select("name, description").eq("id", order.tier_id).maybeSingle(),
   ]);
 
   let party: { title: string; date: string; time: string; end_time: string | null } | null =
@@ -354,6 +354,9 @@ export default async function GuestOrderTicketsPage({
         </p>
         <h2 className="mt-2 text-xl font-bold tracking-tight">{heading}</h2>
         {tier?.name ? <p className="mt-1 text-sm text-muted">{tier.name}</p> : null}
+        {tier?.description ? (
+          <p className="mt-1 whitespace-pre-line text-sm text-ink-2">{tier.description}</p>
+        ) : null}
         {displayDate ? (
           <p className="mt-2 text-sm text-muted">{formatEventDate(displayDate)}</p>
         ) : null}

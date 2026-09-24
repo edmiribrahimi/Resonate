@@ -100,6 +100,12 @@ interface TicketOrderEmailProps {
   eventEndTime: string;
   partyTitle?: string;
   tierName: string;
+  /**
+   * Cosa include il livello, sotto il nome del tier. `null` → la riga non
+   * compare. E' la stessa frase della pagina del biglietto: alla porta si
+   * mostra l'una o l'altra, e devono dire la stessa cosa.
+   */
+  tierDescription: string | null;
   tickets: TicketOrderTicket[];
   /**
    * Il link che porta alla scelta della password, **oppure `null`**.
@@ -124,6 +130,7 @@ export function TicketOrderEmail({
   eventEndTime,
   partyTitle,
   tierName,
+  tierDescription,
   tickets,
   completeAccountUrl,
 }: TicketOrderEmailProps) {
@@ -200,6 +207,21 @@ export function TicketOrderEmail({
       >
         {subtitle}
       </Text>
+
+      {tierDescription ? (
+        <Text
+          style={{
+            color: BRAND.foreground,
+            fontSize: "14px",
+            lineHeight: "1.5",
+            margin: "0 0 4px",
+            fontFamily: BODY_FONT,
+            whiteSpace: "pre-line",
+          }}
+        >
+          {tierDescription}
+        </Text>
+      ) : null}
 
       <Text
         style={{

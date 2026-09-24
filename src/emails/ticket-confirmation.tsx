@@ -8,6 +8,8 @@ interface TicketConfirmationEmailProps {
   eventDate: string;
   eventTime: string;
   tierName: string;
+  /** Cosa include il livello. `null` → nessuna riga. Vedi `ticket-order.tsx`. */
+  tierDescription?: string | null;
   partyTitle?: string;
   ticketUrl: string;
 }
@@ -18,6 +20,7 @@ export function TicketConfirmationEmail({
   eventDate,
   eventTime,
   tierName,
+  tierDescription = null,
   partyTitle,
   ticketUrl,
 }: TicketConfirmationEmailProps) {
@@ -59,6 +62,21 @@ export function TicketConfirmationEmail({
       >
         {partyTitle ? `${partyTitle} - ${tierName}` : tierName}
       </Text>
+
+      {tierDescription ? (
+        <Text
+          style={{
+            color: BRAND.foreground,
+            fontSize: "14px",
+            lineHeight: "1.5",
+            margin: "0 0 4px",
+            fontFamily: "'Arial', sans-serif",
+            whiteSpace: "pre-line",
+          }}
+        >
+          {tierDescription}
+        </Text>
+      ) : null}
 
       <Text
         style={{

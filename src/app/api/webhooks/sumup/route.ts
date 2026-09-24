@@ -214,7 +214,7 @@ export async function POST(request: Request) {
         // Fetch tier name
         const { data: tier } = await supabase
           .from("ticket_tiers")
-          .select("name")
+          .select("name, description")
           .eq("id", purchase.tier_id)
           .single();
 
@@ -241,6 +241,7 @@ export async function POST(request: Request) {
               eventDate: formattedDate,
               eventTime,
               tierName: tier.name,
+              tierDescription: tier.description ?? null,
               partyTitle: party?.title ?? (purchase.party_id ? undefined : "Event Pass"),
               ticketUrl,
             })

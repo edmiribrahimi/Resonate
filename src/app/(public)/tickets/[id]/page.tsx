@@ -145,7 +145,7 @@ export default async function TicketPage({
   const { data: ticket } = await supabase
     .from("tickets")
     .select(
-      "*, ticket_tiers(name), events(title, date, venue_secret, cover_image, slug), event_parties(title, date, time, end_time, venue_text, venue_secret, venue_reveal_hours, venue_revealed_at)"
+      "*, ticket_tiers(name, description), events(title, date, venue_secret, cover_image, slug), event_parties(title, date, time, end_time, venue_text, venue_secret, venue_reveal_hours, venue_revealed_at)"
     )
     .eq("id", ticketId)
     .eq("user_id", user.id)
@@ -163,7 +163,7 @@ export default async function TicketPage({
     cover_image: string | null;
     slug: string;
   };
-  const tier = ticket.ticket_tiers as { name: string };
+  const tier = ticket.ticket_tiers as { name: string; description: string | null };
   const party = ticket.event_parties as {
     title: string;
     date: string;
@@ -297,7 +297,23 @@ export default async function TicketPage({
               )}
 
               {/* Tier */}
-              <p className="mb-3 text-sm text-muted">{tier.name}</p>
+              <p className={tier.description ? "mb-1 text-sm text-muted" : "mb-3 text-sm text-muted"}>
+                {tier.name}
+              </p>
+              {/*
+                What the tier includes — the line the holder shows at the door
+                when the staff has to decide whether a drink is owed. It sits
+                on the ticket, under the tier, because the ticket is what gets
+                shown; the scanner overlay carries only the outcome and the
+                tier name (owner's decision, 2026-09-21, phase 51), and
+                widening it is a decision about the offline cache, not a copy
+                change.
+              */}
+              {tier.description ? (
+                <p className="mb-3 whitespace-pre-line text-sm text-ink-2">
+                  {tier.description}
+                </p>
+              ) : null}
 
               {/* Date & Time */}
               <div className="mb-2 flex items-center gap-2 text-sm text-muted">
