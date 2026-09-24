@@ -247,7 +247,7 @@ function EventList({
   }
 
   return (
-    <StaggeredList className="flex flex-col gap-4">
+    <StaggeredList className="flex flex-col gap-3 md:gap-4">
       {events.map((event) => (
         <StaggeredItem key={event.slug}>
           {/*
@@ -281,7 +281,7 @@ function EventList({
             className={`block min-h-11 ${FOCUS_RING}`}
           >
             <div
-              className={`rounded-2xl border border-line p-6 transition-all hover:border-accent/50 active:scale-[0.98] active:opacity-80 ${
+              className={`rounded-2xl border border-line p-4 md:p-6 transition-all hover:border-accent/50 active:scale-[0.98] active:opacity-80 ${
                 isPast
                   ? "bg-surface/50 opacity-70 hover:opacity-100"
                   : "bg-surface"
@@ -293,7 +293,7 @@ function EventList({
                   alt=""
                   width={800}
                   height={450}
-                  className="mb-4 aspect-video w-full rounded-xl object-cover"
+                  className="mb-2 aspect-video w-full rounded-xl object-cover"
                 />
               )}
               <p className="mb-1 text-sm text-muted">
@@ -356,7 +356,7 @@ function EventList({
                   ))}
                 </div>
               )}
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-1">
                 <h3 className="inline-flex items-center gap-2 text-base font-semibold">
                   {titleIsTheMarker(event) && (
                     <span
@@ -389,17 +389,17 @@ function EventList({
                   </Badge>
                 )}
               </div>
+              {/*
+                One line, truncated (owner's decision, 2026-09-24, «leggera»):
+                the pills wrapped onto two rows on a five-name night and cost
+                the second card its place on a phone screen. The names are the
+                same names in the same order; what a reader loses past the
+                ellipsis is on the night's page, one tap away.
+              */}
               {event.lineup.length > 0 && (
-                <div className="mb-2 flex flex-wrap gap-1.5">
-                  {event.lineup.map((artist) => (
-                    <span
-                      key={artist}
-                      className="rounded-full bg-accent/10 px-2.5 py-0.5 text-xs text-accent font-medium"
-                    >
-                      {artist}
-                    </span>
-                  ))}
-                </div>
+                <p className="mb-2 truncate text-xs font-medium text-accent">
+                  {event.lineup.join(", ")}
+                </p>
               )}
               {event.venues.length > 0 && (
                 <div className="flex items-center gap-1.5 text-sm text-muted flex-wrap">

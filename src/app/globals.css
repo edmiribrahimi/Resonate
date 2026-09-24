@@ -332,7 +332,10 @@
    * sheet padding and the toast's bottom offset on surfaces this phase does not
    * convert — to fix no measured defect.
    */
-  --nav-inset-block-end: calc(5rem + env(safe-area-inset-bottom));
+  /* 4rem since 2026-09-24: the bar is `h-16` in AppNav (owner's decision,
+   * «leggera»). The paragraph above described the 5rem it replaced, and its
+   * argument holds unchanged for the new number. */
+  --nav-inset-block-end: calc(4rem + env(safe-area-inset-bottom));
   --nav-inset-inline-start: 0px;
 }
 

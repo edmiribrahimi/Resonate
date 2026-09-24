@@ -161,7 +161,7 @@ export function PageShell({
       <div
         className={`mx-auto w-full ${
           width === "wide" ? "max-w-7xl" : "max-w-5xl"
-        } px-6 pt-12 pb-[calc(var(--nav-inset-block-end)+1rem)] ${className}`.trimEnd()}
+        } px-6 pt-6 md:pt-12 pb-[calc(var(--nav-inset-block-end)+1rem)] ${className}`.trimEnd()}
       >
         {children}
       </div>

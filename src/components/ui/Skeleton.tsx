@@ -123,7 +123,7 @@ interface SkeletonCardProps {
 export function SkeletonCard({ className = "" }: SkeletonCardProps) {
   return (
     <div
-      className={`animate-pulse rounded-2xl border border-line bg-surface p-6 ${className}`.trimEnd()}
+      className={`animate-pulse rounded-2xl border border-line bg-surface p-4 md:p-6 ${className}`.trimEnd()}
     >
       <SkeletonLine className="h-5 w-3/4 mb-4" />
       <SkeletonLine className="h-4 w-full mb-2" />

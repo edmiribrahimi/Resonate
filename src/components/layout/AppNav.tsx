@@ -74,11 +74,15 @@ import { FOCUS_RING } from "@/components/ui/Button";
  * (`verify:no-viewport-read`); one button deciding "am I in the bar or in the
  * column?" would have to.
  *
- * ── The 5rem is a declared value, not a measurement ──────────────────────────
+ * ── The 4rem is a declared value, not a measurement ──────────────────────────
  *
- * The bar's row is `h-20` — 5 rem — and the safe-area inset sits **outside** it
+ * *(5rem and `h-20` until 2026-09-24; the owner took 16px out of the bar so a
+ * phone shows two nights with their posters. Everything below holds with the
+ * new number.)*
+ *
+ * The bar's row is `h-16` — 4 rem — and the safe-area inset sits **outside** it
  * on the nav element, so the bar's total height is exactly
- * `calc(5rem + env(safe-area-inset-bottom))`. That is the literal
+ * `calc(4rem + env(safe-area-inset-bottom))`. That is the literal
  * `--nav-inset-block-end` is built from in `globals.css`, and several files
  * depend on it staying true (the page shell's bottom padding, the toast's
  * offset, the dialog sheet's bottom padding, the sticky buy bar, the
@@ -245,7 +249,11 @@ const NAV_RESPONSIVE =
   `${NAV_PHONE} md:fixed md:inset-y-0 md:start-0 md:end-auto md:z-50 md:w-56 ` +
   "md:border-e md:border-t-0 md:border-line md:pb-0";
 
-const ROW_PHONE = "mx-auto flex h-20 max-w-lg items-stretch";
+// 4rem since 2026-09-24 (owner's decision, «leggera»): the bar lost 16px of
+// air so a phone shows two nights, poster included. Icons, labels and the
+// 44px targets did not move. `--nav-inset-block-end` in `globals.css` says
+// the same number — the two are one declaration in two places, on purpose.
+const ROW_PHONE = "mx-auto flex h-16 max-w-lg items-stretch";
 
 const ROW_RESPONSIVE =
   `${ROW_PHONE} md:h-full md:max-w-none md:flex-col md:items-stretch md:gap-1 ` +
