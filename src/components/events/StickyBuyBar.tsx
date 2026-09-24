@@ -156,8 +156,8 @@ export function StickyBuyBar({ nights, anchorId }: StickyBuyBarProps) {
       // the content clearance, which already holds the navigation pill and
       // 0.75rem of air above it — so the two pills stack with that gap. In
       // the column form the start inset moves past the column.
-      className={`fixed inset-x-0 z-40 flex justify-center pointer-events-none md:start-[var(--nav-inset-inline-start)] transition-[opacity,transform] duration-700 ease-in-out motion-reduce:transition-none ${
-        hidden ? "pointer-events-none translate-y-2 opacity-0" : "translate-y-0 opacity-100"
+      className={`fixed inset-x-0 z-40 flex justify-center pointer-events-none md:start-[var(--nav-inset-inline-start)] transition-[opacity,transform] duration-1000 ease-in-out ${
+        hidden ? "pointer-events-none translate-y-2 opacity-0 motion-reduce:translate-y-0" : "translate-y-0 opacity-100"
       }`}
       style={{ bottom: "var(--nav-inset-block-end, 0px)" }}
       role="region"
