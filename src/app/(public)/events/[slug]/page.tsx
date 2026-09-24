@@ -28,7 +28,6 @@ import {
   EVENT_MEDIA_SIGNATURE_SECONDS,
 } from "@/lib/media/sign-event-media";
 import { formatTime } from "@/utils/formatTime";
-import { formatHolderLabel } from "@/lib/tickets/holder-label";
 import { CalendarIcon, ClockIcon, MapPinIcon, LockClosedIcon, MusicalNoteIcon } from "@/components/ui/Icons";
 import type { UserRole, AccessType } from "@/types/database";
 import { venueRevealHours } from "@/utils/datetime";
@@ -1811,71 +1810,13 @@ export default async function EventDetailPage({
                 </p>
               )}
 
-              {/* Already has one or more tickets for this party */}
-              {isAuthenticated && party.userTickets.length > 0 && (
-                <div className="rounded-xl border border-sem-done/30 bg-sem-done/10 p-4 text-center">
-                  <p className="text-sm font-medium text-sem-done mb-3">
-                    {party.userTickets.length === 1
-                      ? "You have a ticket for this"
-                      : `You have ${party.userTickets.length} tickets for this`}
-                  </p>
-                  {/*
-                    ── UNA FRASE, AGGIUNTA IL 2026-08-22 ────────────────────────
-
-                    E' l'unica modifica di questo file in questo lavoro, ed e'
-                    additiva: nessuna condizione, nessuna lettura, nessun
-                    predicato di rivelazione e nessuna colonna e' toccata. La
-                    riga sopra e il link sotto sono quelli che c'erano.
-
-                    Serve perche' questa e' la superficie su cui atterra chi ha
-                    ripreso un acquisto interrotto: quel percorso ricarica la
-                    pagina della serata, e fino a oggi nessuno gli diceva che il
-                    biglietto non sta nella posta. Detto qui, arriva anche a lui
-                    senza toccare il file che decide se un acquisto riprende.
-
-                    Non promette un account — vincolo del proprietario del
-                    2026-08-22 sull'acquisto da ospite — e non nomina nessuna
-                    sede: dice dove sta il biglietto e che la mail non serve.
-                  */}
-                  <p className="text-xs text-muted mb-3">
-                    You never need to open the email — showing the QR code from
-                    the ticket is enough.
-                  </p>
-                  {/*
-                    UN COLLEGAMENTO PER BIGLIETTO, e non piu' uno solo.
-                    L'etichetta e' `holder_label` — «n di N» — che e' **un
-                    progressivo dentro l'ordine e non un nome** (`D-49-03`, il
-                    biglietto e' al portatore). Chi ha comprato per sei ne
-                    regalera' cinque, e i cinque destinatari non compaiono da
-                    nessuna parte: il biglietto vale per chi lo tiene.
-
-                    Un biglietto nato dalla strada con sessione non ha etichetta
-                    (`holder_label` e' `NULL`): allora si scrive la frase che
-                    c'era. Non si inventa un «1 di 1» — sarebbe un dato
-                    fabbricato dentro un fatto vecchio.
-                  */}
-                  <div className="flex flex-col items-center gap-2">
-                    {party.userTickets.map((ticket, index) => (
-                      <Link
-                        key={ticket.id}
-                        href={`/tickets/${ticket.id}`}
-                        className={`inline-flex min-h-11 w-full items-center justify-center rounded-full bg-accent px-6 text-sm font-semibold text-ground transition-colors hover:bg-accent-hover active:scale-95 active:opacity-80 ${FOCUS_RING}`}
-                      >
-                        {/*
-                          «1 di 1» compariva in una pagina inglese (visto sul
-                          telefono il 2026-09-24): l'etichetta si stampa con
-                          `formatHolderLabel`, che la traduce, e solo quando i
-                          biglietti sono piu' di uno — su uno solo il numero e'
-                          rumore.
-                        */}
-                        {party.userTickets.length > 1
-                          ? `View ticket ${formatHolderLabel(ticket.holder_label, index, party.userTickets.length)}`
-                          : "View your ticket"}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/*
+                Qui stava il riquadro «You have a ticket for this», con i bottoni
+                «View ticket n of N». Tolto il 2026-09-24 su decisione del
+                proprietario: chi ha una sessione trova i suoi biglietti
+                sull'account («My tickets»), e questa pagina vende. La lettura
+                di `userTickets` resta perche' il badge del pass qui sotto la usa.
+              */}
 
               {/* Master ticket holder sees "covered" badge */}
               {isAuthenticated && hasMasterTicket && party.userTickets.length === 0 && (
