@@ -140,10 +140,33 @@ import { LockClosedIcon } from "@/components/ui/Icons";
  * and inventing one would say in colour what this project has written down is
  * not yet decided — the criterion by which somebody is let in.
  */
+/**
+ * The reveal window as a person reads it. A multiple of 24 is exact — «3 days»;
+ * anything else at a day or more is rounded and says so — «about 3 days» for
+ * 73, «about 1 day» for the 25-hour default; under a day it stays in hours.
+ * Copy only: the hour the predicate fires is `revealHours`, unrounded, in
+ * `venue-disclosure.ts`. The word "about" is what keeps a rounded figure from
+ * becoming a promise the cron does not keep.
+ */
+export function formatRevealWindow(hours: number): string {
+  const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
+  if (hours >= 24) {
+    const days = Math.round(hours / 24);
+    return hours % 24 === 0 ? plural(days, "day") : `about ${plural(days, "day")}`;
+  }
+  return plural(hours, "hour");
+}
+
 interface SecretVenueDialogProps {
   hint: string | null;
   isAuthenticated: boolean;
   /** The EFFECTIVE window, already resolved by the server. Never the raw column. */
+  /**
+   * The night's reveal window, in hours, resolved by the server. Printed
+   * through `formatRevealWindow`, never raw: «73 hours» reads like a typo to
+   * a person, «3 days» reads like a promise. The number itself is untouched —
+   * the predicate in `venue-disclosure.ts` still fires at the exact hour.
+   */
   revealHours: number;
 }
 
@@ -209,43 +232,49 @@ export default function SecretVenueDialog({
                   `src/lib/venue-reveal/venue-disclosure.ts` e non e' toccato.
                 */
                 <>
+                  {/*
+                    ── Tightened on 2026-09-24, same facts, fewer words ────────
+
+                    The owner read the previous copy and asked for it leaner.
+                    What went: the second telling of where the address arrives
+                    (it was in the first bullet AND in the closing line), and
+                    "by hand", which is our word for the manual reveal and
+                    nobody else's. What stays is every fact the 2026-08-22
+                    rewrite established — ticket holders get it on the ticket at
+                    the window or earlier, RSVP holders by mail once revealed,
+                    and this page never — because each of those is a promise
+                    the system keeps, and the last one is the 2026-08-22
+                    decision itself. The lead sentence is new: it says WHY
+                    before HOW, which is the sentence that justifies a secret.
+
+                    ONE ROAD, AND IT LEAVES THIS PAGE. The bullets that once
+                    described the page's own reveal ladder (removed 2026-08-22)
+                    are not here in any wording, because none would be true of
+                    THIS surface.
+                  */}
+                  <p>The address goes only to people who are coming.</p>
                   <ul className="list-disc list-inside space-y-1">
-                    {/*
-                      ONE ROAD NOW, AND IT LEAVES THIS PAGE.
-
-                      The two bullets that stood here — a ticket or an RSVP
-                      unlocking "straight away", and an approved member seeing
-                      the address "here" at the window — described the page's
-                      own reveal ladder, which was removed on 2026-08-22. Both
-                      are gone rather than reworded, because there is no
-                      remaining version of either that is true of THIS surface.
-
-                      `revealOnPurchase` went with them. It used to split the
-                      first bullet in two, and it no longer moves a pixel on any
-                      public surface, so the prop was removed rather than left
-                      arriving and deciding nothing.
-                    */}
                     <li>
-                      Buy a ticket. The venue appears on your ticket as soon as
-                      it is revealed — {revealHours} hours before the night
-                      starts, or sooner if we reveal it by hand
+                      Ticket holders see it on their ticket{" "}
+                      {formatRevealWindow(revealHours)} before the night, or
+                      earlier if we choose to reveal it.
                     </li>
                     <li>
-                      On an RSVP night, confirm your RSVP: we email you the
-                      venue when it is revealed
+                      On an RSVP night, we email it to you once it&apos;s
+                      revealed.
                     </li>
                   </ul>
                   {/*
                     The sentence that closes the dialog, and the one line in this
                     file a future edit is most likely to get wrong. It has to say
                     that this page is NOT where the address arrives — otherwise a
-                    reader keeps checking a page that will never change — without
-                    attaching an hour to the mail, which nothing here can promise.
+                    reader keeps checking a page that will never change — and
+                    that this holds after the night too (owner's decision,
+                    2026-08-22), without attaching an hour to the mail, which
+                    nothing here can promise.
                   */}
                   <p className="text-xs">
-                    The venue never appears on this page — not before the night,
-                    not after it. It reaches the people who are coming: on their
-                    ticket, and by email.
+                    It never appears on this page, before or after the night.
                   </p>
                 </>
               )}
