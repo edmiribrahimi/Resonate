@@ -136,10 +136,11 @@ export function StickyBuyBar({ nights, anchorId }: StickyBuyBarProps) {
 
   if (!offer) return null;
 
-  if (anchorInView) {
-    return <div aria-hidden style={{ height: barHeight }} />;
-  }
-
+  // Always mounted once there is an offer, so it can FADE (owner, 2026-09-24)
+  // instead of appearing: hidden while the tickets section is in view —
+  // transparent, nudged down 8px, inert to the pointer and to assistive tech —
+  // and eased back in 300ms when the section scrolls away. Reduced motion gets
+  // the state change without the transition.
   return (
     <>
     <div aria-hidden style={{ height: barHeight }} />
@@ -150,10 +151,13 @@ export function StickyBuyBar({ nights, anchorId }: StickyBuyBarProps) {
       // the content clearance, which already holds the navigation pill and
       // 0.75rem of air above it — so the two pills stack with that gap. In
       // the column form the start inset moves past the column.
-      className="fixed start-4 end-4 z-40 rounded-full border border-line bg-ground/75 shadow-lg backdrop-blur-xl md:start-[calc(var(--nav-inset-inline-start)+1rem)]"
+      className={`fixed start-4 end-4 z-40 rounded-full border border-line bg-ground/75 shadow-lg backdrop-blur-xl md:start-[calc(var(--nav-inset-inline-start)+1rem)] transition-[opacity,transform] duration-300 ease-out motion-reduce:transition-none ${
+        anchorInView ? "pointer-events-none translate-y-2 opacity-0" : "translate-y-0 opacity-100"
+      }`}
       style={{ bottom: "var(--nav-inset-block-end, 0px)" }}
       role="region"
       aria-label="Tickets on sale"
+      aria-hidden={anchorInView || undefined}
     >
       <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 py-1.5 ps-5 pe-1.5">
         <div className="min-w-0">
