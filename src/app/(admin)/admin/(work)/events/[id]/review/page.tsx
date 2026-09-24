@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext, hasCapability } from "@/lib/capabilities/server";
-import { ownsOrIsMaster } from "@/lib/capabilities/guards";
+import { mayManageEvent } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
 import { classifyNight } from "@/lib/door/classify";
 import { partyStartInstant, partyEndInstant } from "@/utils/datetime";
@@ -216,7 +216,7 @@ export default async function DoorReviewPage({
   // ── The gate, both arms, and the second one can FAIL ────────────────────────
   //
   // **Arm 1, unchanged and first.** The organizer area plus ownership of this
-  // event. `ownsOrIsMaster` is one call and never a re-inlined comparison: it
+  // event. `mayManageEvent` is one call and never a re-inlined comparison: it
   // refuses a null identity and an unowned row explicitly, where the comparison
   // written out by hand would compare `null !== null` and **admit**. It
   // short-circuits, so an owner never reaches the round trip below.
@@ -245,7 +245,7 @@ export default async function DoorReviewPage({
   // for somebody who arrived by assignment the outcome is an ordinary refusal.
   // It is named here rather than left to be discovered.
   const mayReviewThisNight =
-    (holdsOrganizerAccess && ownsOrIsMaster(ctx, event.created_by)) ||
+    (holdsOrganizerAccess && mayManageEvent(ctx, event.created_by)) ||
     (selectedParty !== null &&
       (await hasCapability(CAP.PARTY_MANAGE, { partyId: selectedParty.id })));
 

@@ -5,7 +5,7 @@ import { getServiceClient } from "@/lib/supabase/service";
 import { processGuestEntry } from "@/lib/guest-list/process-entry";
 import { getPostHogServer } from "@/lib/posthog/server";
 import {
-  assertEventOwnership,
+  assertMayManageEvent,
   assertStaffManage,
 } from "@/lib/capabilities/guards";
 import type { GuestListEntry } from "@/types/database";
@@ -47,7 +47,7 @@ import type { GuestListEntry } from "@/types/database";
  * the read, the cookie client answers "no row" where the service client answers
  * the truth.
  *
- * `assertEventOwnership` takes the client as an argument precisely so that
+ * `assertMayManageEvent` takes the client as an argument precisely so that
  * difference is **one legible line here** rather than a third copy of the
  * function. Moving this to the cookie client is a real improvement with its own
  * evidence burden, and the evidence is one target out of two: the phase-32
@@ -64,8 +64,8 @@ import type { GuestListEntry } from "@/types/database";
  *
  *   `forbidden.staff_manage_required`      — assertStaffManage
  *   `capabilities.resolve_failed: …`       — the resolver, or no_subject below
- *   `forbidden.not_event_owner`            — assertEventOwnership
- *   `event.lookup_failed: <code>`          — assertEventOwnership, no answer
+ *   `forbidden.not_event_manager`            — assertMayManageEvent
+ *   `event.lookup_failed: <code>`          — assertMayManageEvent, no answer
  *
  * Which one you got is decided by **which line threw**, never by parsing a
  * message. No `catch` here flattens them.
@@ -85,7 +85,7 @@ async function verifyOrganizerAccess(eventId: string): Promise<string> {
   }
 
   // The SERVICE client, deliberately and unchanged. See the note above.
-  await assertEventOwnership(getServiceClient(), eventId, ctx);
+  await assertMayManageEvent(getServiceClient(), eventId, ctx);
 
   return ctx.userId;
 }

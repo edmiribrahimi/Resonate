@@ -241,7 +241,7 @@ export default async function MembersPage() {
           atto mirato al proprio autore, e dalla fase 50 quella regola copre
           anche la cancellazione, dove costa di più.
 
-          So the `null == null` regression `ownsOrIsMaster` exists to prevent
+          So the `null == null` regression `mayManageEvent` exists to prevent
           cannot arise here: `member.id` is a non-null `profiles` primary key,
           so neither `""` nor `null` ever equals it, and `===` does not coerce.
           `?? ""` therefore reproduces today's behaviour in every reachable

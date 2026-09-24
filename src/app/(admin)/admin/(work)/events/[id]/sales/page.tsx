@@ -3,7 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { getAccessContext } from "@/lib/capabilities/server";
-import { ownsOrIsMaster } from "@/lib/capabilities/guards";
+import { mayManageEvent } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
 import SalesDashboard from "@/components/events/SalesDashboard";
 import { FOCUS_RING } from "@/components/ui/Button";
@@ -49,10 +49,10 @@ import { PageTitle } from "@/components/ui/Typography";
  *
  * The `/admin` version asked `admin.access` and did **no** ownership check
  * ("master sees all"); the organizer version asked `organizer.access` and then
- * `ownsOrIsMaster`. The merged page asks `organizer.access` — the key
+ * `mayManageEvent`. The merged page asks `organizer.access` — the key
  * `src/lib/routes/capability-routes.ts` binds to this address, so the middleware
  * and the page give the same verdict (D-34-09) — **and keeps the ownership
- * check**. Verdict-identical per role: a master clears `ownsOrIsMaster` through
+ * check**. Verdict-identical per role: a master clears `mayManageEvent` through
  * its `master.manage` branch before the row is read, so it still sees every
  * event; an organizer reached this content at the twin under exactly these two
  * conditions. Dropping the ownership check would have let any organizer read any
@@ -105,7 +105,7 @@ export default async function SalesPage({
   // is retained unchanged by this collapse — the phase changes where a verdict
   // is asked, never what the verdict is — and the statement is recorded here
   // because `meta-gates.md` requires it in writing.
-  if (!ownsOrIsMaster(ctx, event.created_by)) {
+  if (!mayManageEvent(ctx, event.created_by)) {
     redirect("/admin/events");
   }
 

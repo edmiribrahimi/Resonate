@@ -506,7 +506,12 @@ export default async function EventDetailPage({
     notFound();
   }
 
-  const isOrganizer = !!user && event.created_by === user.id;
+  // Since 2026-09-24 any organizer manages any night (owner's decision, and
+  // the RLS moved with it: `20260924120000_organizers_manage_all_events.sql`).
+  // So "the organizer of this night" is no longer "its creator": it is anyone
+  // holding `staff.manage`. The name stays because its one reader below asks
+  // exactly that question.
+  const isOrganizer = capabilities.has(CAP.STAFF_MANAGE);
 
   // Service client for counting tickets (anon users can't read tickets via RLS)
   const serviceClient = createSupabaseClient(

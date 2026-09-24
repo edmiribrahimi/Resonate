@@ -2,7 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/capabilities/server";
-import { ownsOrIsMaster } from "@/lib/capabilities/guards";
+import { mayManageEvent } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
 import EventForm from "@/components/events/EventForm";
 // R-WORK-ROUTES: inside `(work)` there are only route files, so the panel lives
@@ -36,13 +36,13 @@ import { Card } from "@/components/ui/Card";
  *     `organizer.access` is held by `master` and `organizer` only — a `staff`
  *     role gains nothing.
  *
- *  2. **Ownership.** The `/organizer` twin called `ownsOrIsMaster`; the
+ *  2. **Ownership.** The `/organizer` twin called `mayManageEvent`; the
  *     `/admin` twin did not. Resolved towards the **more restrictive** of the
  *     two (D-34-06), which is also the only direction that keeps the interface
  *     agreeing with the row-level boundary: the `events` UPDATE policy is
  *     `(auth.uid() = created_by) OR has_capability('master.manage')`
  *     (`20260807010000_policies_to_capabilities.sql:255`) — the same truth
- *     table `ownsOrIsMaster` states. A master is unaffected
+ *     table `mayManageEvent` states. A master is unaffected
  *     (`('master','master.manage',false)`, `:396`, short-circuits first); an
  *     organizer is admitted on their own events, exactly as at the address they
  *     used yesterday.
@@ -199,7 +199,7 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
   // Ownership — one call, never a re-inlined comparison. Master short-circuits
   // before the row is considered; a null identity and an unowned row both
   // refuse. See axis 2 above for the grant row that decides it.
-  if (!ownsOrIsMaster(ctx, event.created_by)) {
+  if (!mayManageEvent(ctx, event.created_by)) {
     redirect("/admin/events");
   }
 
@@ -292,7 +292,7 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
   // that a page-level check does not cover the Server Actions defined inside
   // it — an action is its own entry point, POSTable directly. No second gate is
   // added here on purpose: `boundUpdateEvent` delegates to `updateEvent`, which
-  // calls `assertStaffManage` and then `assertEventOwnership` inside itself
+  // calls `assertStaffManage` and then `assertMayManageEvent` inside itself
   // (`(admin)/admin/events/actions.ts`, re-measured 2026-08-09 — not assumed).
   // Adding a check here would create a NEW refusal path on a surface whose
   // behaviour must not change.

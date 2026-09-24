@@ -10,7 +10,7 @@ import type { AccessType, DrinkItem } from "@/types/database";
 import { menuCloseInstant, DEFAULT_VENUE_REVEAL_HOURS } from "@/utils/datetime";
 import { logMoneyPathFailure, type SafeError } from "@/lib/failure/money-path";
 import {
-  assertEventOwnership,
+  assertMayManageEvent,
   assertStaffManage,
 } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
@@ -40,7 +40,7 @@ function getServiceClient() {
  *
  *   const supabase = await createClient();
  *   const ctx = await assertStaffManage();          // resolve ONCE
- *   await assertEventOwnership(supabase, eventId, ctx);
+ *   await assertMayManageEvent(supabase, eventId, ctx);
  *
  * `assertStaffManage()` is called **exactly once per invocation**. `cache()`
  * does not memoise inside a Server Action body (measured — see
@@ -1149,7 +1149,7 @@ export async function updateEvent(
   const supabase = await createClient();
   const ctx = await assertStaffManage();
 
-  await assertEventOwnership(supabase, eventId, ctx);
+  await assertMayManageEvent(supabase, eventId, ctx);
 
   const data = validateEventData(formData);
 
@@ -1492,7 +1492,7 @@ export async function deleteEvent(eventId: string) {
   const supabase = await createClient();
   const ctx = await assertStaffManage();
 
-  await assertEventOwnership(supabase, eventId, ctx);
+  await assertMayManageEvent(supabase, eventId, ctx);
 
   // Fetch slug before deletion for path revalidation
   const { data: event } = await supabase
@@ -1523,7 +1523,7 @@ export async function publishEvent(eventId: string) {
   const supabase = await createClient();
   const ctx = await assertStaffManage();
 
-  await assertEventOwnership(supabase, eventId, ctx);
+  await assertMayManageEvent(supabase, eventId, ctx);
 
   // Use service-role client for master (bypasses RLS ownership check)
   const client = ctx.capabilities.has(CAP.MASTER_MANAGE)
@@ -1557,7 +1557,7 @@ export async function unpublishEvent(eventId: string) {
   const supabase = await createClient();
   const ctx = await assertStaffManage();
 
-  await assertEventOwnership(supabase, eventId, ctx);
+  await assertMayManageEvent(supabase, eventId, ctx);
 
   // Use service-role client for master (bypasses RLS ownership check)
   const client = ctx.capabilities.has(CAP.MASTER_MANAGE)
@@ -2150,7 +2150,7 @@ export async function reorderDrinkItems(
   // definition, which also gains the null-`created_by` refusal the inline form
   // never had: `event.created_by !== user.id` with a null owner and a real user
   // refused by luck, and would have ADMITTED had both been null.
-  await assertEventOwnership(supabase, eventId, ctx);
+  await assertMayManageEvent(supabase, eventId, ctx);
 
   if (ids.length === 0) return { success: true };
 

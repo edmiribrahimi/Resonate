@@ -3,7 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { getAccessContext } from "@/lib/capabilities/server";
-import { ownsOrIsMaster } from "@/lib/capabilities/guards";
+import { mayManageEvent } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
 import GuestListClient from "@/app/(admin)/admin/events/[id]/guest-list/GuestListClient";
 import GuestListUnavailable from "@/components/guest-list/GuestListUnavailable";
@@ -23,7 +23,7 @@ import type { GuestListEntry } from "@/types/database";
  * capability, so its affordances cannot differ by page. What may be done to an
  * entry is decided inside `guest-list/actions.ts`, which this plan neither moves
  * nor edits (R-WORK-ROUTES): `addGuest` still writes `added_by: userId` from an
- * identity `assertStaffManage` + `assertEventOwnership` resolved, so the
+ * identity `assertStaffManage` + `assertMayManageEvent` resolved, so the
  * attribution `community-membership.md` requires of every lane around the gate
  * is untouched.
  *
@@ -74,7 +74,7 @@ export default async function GuestListPage({ params }: PageProps) {
   //
   // **Kept from the organizer twin because it is the more restrictive of the
   // two behaviours** (D-34-06). The `/admin` twin had no ownership check at all
-  // ("master sees all"), and a master still passes here: `ownsOrIsMaster`
+  // ("master sees all"), and a master still passes here: `mayManageEvent`
   // answers through its `master.manage` branch before the row is considered. An
   // organizer, who reached this content at the twin under exactly this
   // condition, keeps it. Nobody's verdict moved.
@@ -84,7 +84,7 @@ export default async function GuestListPage({ params }: PageProps) {
   // read there is no second boundary: this `if` is the only thing scoping the
   // query to an event the caller may see, and a guest-list entry is an unpaid
   // admission — exactly the sort of thing that must not widen by accident.
-  if (!ownsOrIsMaster(ctx, event.created_by)) {
+  if (!mayManageEvent(ctx, event.created_by)) {
     redirect("/admin/events");
   }
 

@@ -129,7 +129,12 @@ export default async function EventsPage() {
   // That scope was a filter written in Node, not a security boundary. What a
   // caller may actually read from `events` is decided by the row-level
   // policies; since 2026-09-24 the page asks for everything they allow.
-  const canManageAll = capabilities.has(CAP.MASTER_MANAGE);
+  // `staff.manage`, not `master.manage`: since 2026-09-24 (owner's decision,
+  // same day, one hour after the list opened up) every organizer manages
+  // every night, and the RLS says the same — `events_update_staff`,
+  // `events_delete_staff`. The row's ownership branch in `EventList.tsx`
+  // is now a fallback nobody reaches, kept because it is the safe direction.
+  const canManageAll = capabilities.has(CAP.STAFF_MANAGE);
 
   const { data: events, error } = await query;
 

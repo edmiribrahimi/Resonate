@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/capabilities/server";
-import { ownsOrIsMaster } from "@/lib/capabilities/guards";
+import { mayManageEvent } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
 import AnimatedSection from "@/components/motion/AnimatedSection";
 import { PageShell } from "@/components/ui/PageShell";
@@ -92,7 +92,7 @@ export default async function AnalyticsPage({
     redirect("/admin/events");
   }
 
-  // Verify ownership — one call, never a re-inlined comparison. `ownsOrIsMaster`
+  // Verify ownership — one call, never a re-inlined comparison. `mayManageEvent`
   // answers master first (without reading the row), then refuses a null identity
   // and a row owned by nobody, and only then compares. Writing the inequality out
   // here would compare `null` against `null` on an unowned row and ADMIT — which
@@ -101,7 +101,7 @@ export default async function AnalyticsPage({
   // Kept from the organizer twin as the more restrictive of the two behaviours
   // (D-34-06); the `/admin` twin had none. A master still passes through the
   // `master.manage` branch, so no verdict moved.
-  if (!ownsOrIsMaster(ctx, event.created_by)) {
+  if (!mayManageEvent(ctx, event.created_by)) {
     redirect("/admin/events");
   }
 

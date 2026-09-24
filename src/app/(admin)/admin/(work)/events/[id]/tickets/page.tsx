@@ -3,7 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { getAccessContext } from "@/lib/capabilities/server";
-import { ownsOrIsMaster } from "@/lib/capabilities/guards";
+import { mayManageEvent } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
 import TierCard from "@/components/tickets/TierCard";
 import AddTierForm from "@/components/tickets/AddTierForm";
@@ -125,7 +125,7 @@ export default async function TicketTiersPage({ params }: PageProps) {
   //
   // This page differs from its six siblings: the ownership row is fetched
   // **only** when it is needed, so a master pays no round trip. That is
-  // preserved deliberately — asking `ownsOrIsMaster` unconditionally would be
+  // preserved deliberately — asking `mayManageEvent` unconditionally would be
   // correct and would add a Supabase read for every master on every visit,
   // changing no verdict. The whole reason the guard's first line is the master
   // branch is so a caller can skip the read.
@@ -163,7 +163,7 @@ export default async function TicketTiersPage({ params }: PageProps) {
     // "You may not" — the one call, never a re-inlined comparison. Inside this
     // branch the master line can only be false, so what it decides here is the
     // identity refusal, the unowned-row refusal, and then the comparison.
-    if (!ownsOrIsMaster(ctx, ownerRow.created_by)) {
+    if (!mayManageEvent(ctx, ownerRow.created_by)) {
       redirect("/admin/events");
     }
   }

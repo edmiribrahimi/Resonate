@@ -48,7 +48,7 @@ import { slugify } from "@/utils/slugify";
  * ── Why it is a local function and not an import ──────────────────────────────
  *
  * Its natural home is `src/lib/capabilities/guards.ts`, beside
- * `ownsOrIsMaster`. That file belongs to another plan executing in parallel, so
+ * `mayManageEvent`. That file belongs to another plan executing in parallel, so
  * hoisting it there is a follow-up, not this commit. It is deliberately NOT
  * exported: every export of a `"use server"` module is a public endpoint, and a
  * gate is not one.

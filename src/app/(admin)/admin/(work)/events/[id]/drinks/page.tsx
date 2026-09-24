@@ -2,7 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/capabilities/server";
-import { ownsOrIsMaster } from "@/lib/capabilities/guards";
+import { mayManageEvent } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
 import { getDrinkItems } from "@/app/(admin)/admin/events/actions";
 import DrinkMenuManager from "@/app/(admin)/admin/events/[id]/drinks/DrinkMenuManager";
@@ -29,7 +29,7 @@ import RefundRequestList, {
  *     today, and `organizer.access` is held by `master` and `organizer` alone.
  *
  *  2. **Ownership.** The `/organizer` twin selected `created_by` and called
- *     `ownsOrIsMaster`; the `/admin` twin did neither. Resolved towards the
+ *     `mayManageEvent`; the `/admin` twin did neither. Resolved towards the
  *     **more restrictive** (D-34-06), which is also the direction that keeps
  *     this page agreeing with the row-level boundary behind it
  *     (`(auth.uid() = created_by) OR has_capability('master.manage')`,
@@ -103,7 +103,7 @@ export default async function DrinksPage({ params }: DrinksPageProps) {
 
   // Ownership — one call, never a re-inlined comparison. Master short-circuits
   // before the row is considered; a null identity and an unowned row both refuse.
-  if (!ownsOrIsMaster(ctx, event.created_by)) {
+  if (!mayManageEvent(ctx, event.created_by)) {
     redirect("/admin/events");
   }
 

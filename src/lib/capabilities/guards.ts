@@ -63,7 +63,7 @@
  *
  * ── Errors: two categories, never one ────────────────────────────────────────
  *
- * `assertEventOwnership` distinguishes "you may not" from "I could not find
+ * `assertMayManageEvent` distinguishes "you may not" from "I could not find
  * out". This project has **no error tracking** — no monitoring dependency in
  * `package.json`, so no production error reaches a human on its own
  * (`meta-gates.md`) — and a `catch` that collapses the two is the recorded
@@ -108,7 +108,7 @@ import type { AccessContextResult } from "./server";
  * `next dev` and in a production build (`server.ts`, *Memoisation, and its
  * limit*). So a caller that asks this gate and then asks `getAccessContext()`
  * again pays two full round trips. Thread the returned `ctx` into
- * `assertEventOwnership` instead. **More than one `await assertStaffManage(` in
+ * `assertMayManageEvent` instead. **More than one `await assertStaffManage(` in
  * a single exported action is the defect**, and no compiler or build will see
  * it.
  *
@@ -171,33 +171,40 @@ export async function assertStaffManage(): Promise<AccessContextResult> {
 /**
  * May this context manage this event?
  *
- * Pure and synchronous: no round trip, no client, no `await`. It takes a
- * context the caller has already resolved and a `created_by` the caller has
- * already fetched, so the eight pages that call it pay exactly nothing for it.
+ * Pure and synchronous: no round trip, no client, no `await`.
  *
- * The order of the four lines is the contract, not a style:
+ * ── Since 2026-09-24 the answer is `staff.manage`, and nothing else ─────────
  *
- *   1. master first, before the row is considered at all;
- *   2. no identity → refuse (the trap above);
- *   3. no owner → refuse (a row owned by nobody is owned by nobody);
- *   4. only then, the comparison.
+ * Owner's decision, in the owner's words: *«gli organizer possono modificare
+ * eventi che non hanno creato loro. Se Ets crea un evento, Rebecca puo'
+ * gestirlo in toto»*. Until that day this function was `ownsOrIsMaster` and
+ * its four lines were a contract — master first; no identity → refuse; no
+ * owner → refuse; then `created_by === userId`. That contract is gone with
+ * the rule, and the row-level policies went with it in the same commit
+ * (`20260924120000_organizers_manage_all_events.sql`): `events_update_staff`,
+ * `events_delete_staff`, `event_parties_update_staff`,
+ * `event_parties_delete_staff` all ask `private.has_capability('staff.manage')`.
+ * This function asks the same key so the courtesy refusal in Node and the
+ * boundary in Postgres cannot disagree.
  *
- * **Why `master.manage` and not `admin.access`.** The question this function
- * asks is *"may this person manage an event they do not own"* — a reserved
- * operation. It is not *"may they reach the admin area"*. Three of the eight
- * capability keys resolve to the same predicate today
- * (`keys.ts:38-45`), so picking by predicate rather than by question is
- * invisible until phase 35 grants one night's door and accidentally grants
- * sixteen tables. The key is chosen by the question.
+ * **Why `staff.manage` and not `organizer.access`.** The question is *"may
+ * this person change a night"* — a write. `organizer.access` answers *"may
+ * they reach the work surfaces"* — an address. Both are granted to master and
+ * organizer today (`private.role_capabilities`, read 2026-09-24), and picking
+ * by question rather than by today's coincidence is what keeps the day they
+ * diverge from being a security incident.
+ *
+ * `createdBy` is still accepted and no longer read: thirty call sites pass it,
+ * and the day the rule changed was not the day to touch each of them.
  */
-export function ownsOrIsMaster(
+export function mayManageEvent(
   ctx: AccessContextResult,
-  createdBy: string | null | undefined
+  // Kept in the signature so the thirty call sites did not change shape on
+  // the day the rule did. It is READ NO MORE: since 2026-09-24 the answer does
+  // not depend on who created the night. See the docblock above.
+  _createdBy: string | null | undefined
 ): boolean {
-  if (ctx.capabilities.has(CAP.MASTER_MANAGE)) return true;
-  if (!ctx.userId) return false;
-  if (!createdBy) return false;
-  return createdBy === ctx.userId;
+  return ctx.capabilities.has(CAP.STAFF_MANAGE);
 }
 
 /**
@@ -214,36 +221,39 @@ export function ownsOrIsMaster(
  * `event_parties` trap in a new costume: a check that *looks* like the master
  * test but is a sub-select read as the caller.
  *
- * @throws `forbidden.not_event_owner` — the answer is no.
+ * @throws `forbidden.not_event_manager` — the answer is no.
  * @throws `event.lookup_failed: <code>` — there is no answer, because the row
  *         could not be read. Distinct on purpose: see the file comment.
  */
-export async function assertEventOwnership(
+export async function assertMayManageEvent(
   supabase: SupabaseClient,
   eventId: string,
   ctx: AccessContextResult
 ): Promise<void> {
-  // The master short-circuit, before any read. `ownsOrIsMaster(ctx, null)` can
-  // only be true through the master branch — the `!createdBy` line refuses
-  // every other path — so this is that branch, asked without duplicating it.
-  if (ownsOrIsMaster(ctx, null)) return;
+  // Since 2026-09-24 the verdict no longer needs the row: `staff.manage`
+  // answers for every night. The read stays for ONE reason — an id that names
+  // no event must still fail here, with its own category, rather than reach
+  // the write and fail there as something else.
+  if (!mayManageEvent(ctx, null)) {
+    throw new Error("forbidden.not_event_manager");
+  }
 
   const { data, error } = await supabase
     .from("events")
-    .select("created_by")
+    .select("id")
     .eq("id", eventId)
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error(
-      `[event.lookup_failed] could not read events.created_by for the ownership ` +
+      `[event.lookup_failed] could not read events.id for the manage ` +
         `check: ${error.code ?? "unknown"}. This is NOT a refusal — the question ` +
         `was never answered.`
     );
     throw new Error(`event.lookup_failed: ${error.code ?? "unknown"}`);
   }
 
-  if (!ownsOrIsMaster(ctx, data?.created_by ?? null)) {
-    throw new Error("forbidden.not_event_owner");
+  if (!data) {
+    throw new Error("forbidden.event_not_found");
   }
 }

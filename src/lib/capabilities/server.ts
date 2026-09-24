@@ -273,7 +273,7 @@ export interface AccessContextResult {
  * value that happens to compare unequal to every real id — which made those
  * sites refuse for an accidental reason rather than a stated one. `null` is the
  * honest answer to "who is this", and every consumer refuses on it explicitly:
- * see `ownsOrIsMaster` in `@/lib/capabilities/guards`.
+ * see `mayManageEvent` in `@/lib/capabilities/guards`.
  *
  * `liveAssignmentCapabilities` is the **empty set here, deliberately not
  * `null`**, and the two look interchangeable until you name what each one says.

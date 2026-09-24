@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import {
-  assertEventOwnership,
+  assertMayManageEvent,
   assertStaffManage,
 } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
@@ -29,7 +29,7 @@ function getServiceClient() {
  *
  *   const supabase = await createClient();
  *   const ctx = await assertStaffManage();          // resolve ONCE
- *   await assertEventOwnership(supabase, eventId, ctx);
+ *   await assertMayManageEvent(supabase, eventId, ctx);
  *
  * `assertStaffManage()` is called **exactly once per invocation** and its
  * context is threaded onward. `cache()` does not memoise inside a Server Action
@@ -88,7 +88,7 @@ export async function createTier(eventId: string, partyId: string | null, formDa
   const supabase = await createClient();
   const ctx = await assertStaffManage();
 
-  await assertEventOwnership(supabase, eventId, ctx);
+  await assertMayManageEvent(supabase, eventId, ctx);
 
   // Validate inputs
   const name = (formData.get("name") as string)?.trim();
@@ -157,7 +157,7 @@ export async function updateTier(
   const supabase = await createClient();
   const ctx = await assertStaffManage();
 
-  await assertEventOwnership(supabase, eventId, ctx);
+  await assertMayManageEvent(supabase, eventId, ctx);
 
   // Validate inputs
   const name = (formData.get("name") as string)?.trim();
@@ -212,7 +212,7 @@ export async function deleteTier(tierId: string, eventId: string) {
   const supabase = await createClient();
   const ctx = await assertStaffManage();
 
-  await assertEventOwnership(supabase, eventId, ctx);
+  await assertMayManageEvent(supabase, eventId, ctx);
 
   // Check ticket count -- tiers with existing sales cannot be deleted
   const client = ctx.capabilities.has(CAP.MASTER_MANAGE)
@@ -260,7 +260,7 @@ export async function createDiscountCode(
   const supabase = await createClient();
   const ctx = await assertStaffManage();
 
-  await assertEventOwnership(supabase, eventId, ctx);
+  await assertMayManageEvent(supabase, eventId, ctx);
 
   // Validate inputs
   const code = (formData.get("code") as string)?.trim();
@@ -357,7 +357,7 @@ export async function updateDiscountCode(
   const supabase = await createClient();
   const ctx = await assertStaffManage();
 
-  await assertEventOwnership(supabase, eventId, ctx);
+  await assertMayManageEvent(supabase, eventId, ctx);
 
   // Validate inputs
   const code = (formData.get("code") as string)?.trim();
@@ -464,7 +464,7 @@ export async function deleteDiscountCode(
   const supabase = await createClient();
   const ctx = await assertStaffManage();
 
-  await assertEventOwnership(supabase, eventId, ctx);
+  await assertMayManageEvent(supabase, eventId, ctx);
 
   const client = ctx.capabilities.has(CAP.MASTER_MANAGE)
     ? getServiceClient()
@@ -566,14 +566,14 @@ export async function validateDiscountCode(
  * Nato il 2026-09-08 da `49-ESITI.md`, P-WH-4: la scheda diceva «reach out
  * before the night» e la riparazione era due `update` sul catalogo. La stessa
  * guardia delle altre azioni di questa pagina (`assertStaffManage` +
- * `assertEventOwnership`), piu' il vincolo che l'ordine appartenga a questo
+ * `assertMayManageEvent`), piu' il vincolo che l'ordine appartenga a questo
  * evento, perche' `orderId` arriva dal form e il client di servizio bypassa la
  * RLS (`access-gating.md`, *gate service role*).
  */
 export async function retryFailedOrder(eventId: string, orderId: string) {
   const supabase = await createClient();
   const ctx = await assertStaffManage();
-  await assertEventOwnership(supabase, eventId, ctx);
+  await assertMayManageEvent(supabase, eventId, ctx);
 
   const serviceClient = getServiceClient();
   const { data: order } = await serviceClient

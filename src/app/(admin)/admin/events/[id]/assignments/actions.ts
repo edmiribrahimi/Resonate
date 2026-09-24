@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getServiceClient } from "@/lib/supabase/service";
 import {
-  assertEventOwnership,
+  assertMayManageEvent,
   assertStaffManage,
 } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
@@ -37,8 +37,8 @@ import { CAP } from "@/lib/capabilities/keys";
  *
  *   `forbidden.staff_manage_required`   — assertStaffManage
  *   `capabilities.resolve_failed: …`    — the resolver, or no_subject below
- *   `forbidden.not_event_owner`         — assertEventOwnership
- *   `event.lookup_failed: <code>`       — assertEventOwnership, no answer
+ *   `forbidden.not_event_manager`         — assertMayManageEvent
+ *   `event.lookup_failed: <code>`       — assertMayManageEvent, no answer
  *
  * Which one you got is decided by **which line threw**, never by parsing a
  * message. No `catch` in this file flattens them, and none of them crosses to
@@ -113,7 +113,7 @@ export type AssignmentRefusal =
   /**
    * The night does not belong to the event this call claims.
    *
-   * NOT a formality. `assertEventOwnership` proves the caller may manage
+   * NOT a formality. `assertMayManageEvent` proves the caller may manage
    * `eventId`; it proves nothing about `partyId`, which arrives on the same
    * untrusted POST body. Without this check an organizer could pass their own
    * event and somebody else's night, and the service client — which bypasses
@@ -194,7 +194,7 @@ async function verifyOrganizerAccess(eventId: string): Promise<string> {
     throw new Error("capabilities.resolve_failed: no_subject");
   }
 
-  await assertEventOwnership(getServiceClient(), eventId, ctx);
+  await assertMayManageEvent(getServiceClient(), eventId, ctx);
 
   return ctx.userId;
 }

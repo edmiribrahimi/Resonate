@@ -432,7 +432,7 @@ export const CAPABILITY_ROUTES = {
   [CAP.MASTER_MANAGE]: {
     scope: "table",
     reason:
-      "Gates rows and server-side operations, not addresses; the guard is `guards.ownsOrIsMaster` in `src/lib/capabilities/guards.ts`.",
+      "Gates rows and server-side operations, not addresses; the guard is `guards.mayManageEvent` in `src/lib/capabilities/guards.ts`.",
   },
 
   /**

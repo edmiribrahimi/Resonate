@@ -3,7 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { getAccessContext } from "@/lib/capabilities/server";
-import { ownsOrIsMaster } from "@/lib/capabilities/guards";
+import { mayManageEvent } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
 import AssignmentsClient from "@/app/(admin)/admin/events/[id]/assignments/AssignmentsClient";
 import { PageShell } from "@/components/ui/PageShell";
@@ -123,7 +123,7 @@ export default async function AssignmentsPage({ params }: PageProps) {
   // row-level policy (`access-gating.md`, gate *service role*). On those reads
   // there is no second boundary: this `if` is the only thing scoping them to an
   // event the caller may see.
-  if (!ownsOrIsMaster(ctx, event.created_by)) {
+  if (!mayManageEvent(ctx, event.created_by)) {
     redirect("/admin/events");
   }
 
