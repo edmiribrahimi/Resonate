@@ -337,7 +337,7 @@
    * argument holds unchanged for the new number. */
   /* 5.5rem since the bar became a floating pill (2026-09-24): 4rem of bar,
    * 0.75rem of air under it, 0.75rem of air above it for the content. */
-  --nav-inset-block-end: calc(5rem + env(safe-area-inset-bottom));
+  --nav-inset-block-end: calc(4.5rem + env(safe-area-inset-bottom));
   --nav-inset-inline-start: 0px;
 }
 

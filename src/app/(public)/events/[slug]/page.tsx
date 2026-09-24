@@ -14,7 +14,6 @@ import { CAP } from "@/lib/capabilities/keys";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import FormatMarker from "@/components/formats/FormatMarker";
 import TierSelection from "./TierSelection";
-import { StickyBuyBar } from "@/components/events/StickyBuyBar";
 import { SiteFooter } from "@/components/legal/SiteFooter";
 import FreeOrderForm from "./FreeOrderForm";
 
@@ -2096,25 +2095,6 @@ export default async function EventDetailPage({
       </div>
         <SiteFooter />
         </PageShell>
-        {/*
-          La barra fissa: prezzo minimo in vendita, quando, «Buy tickets» che
-          scorre all'ancora. Riceve SOLO data, ora e tier: nessun campo di
-          luogo esiste nelle sue props (`StickyBuyBar.tsx`). Le serate con un
-          biglietto o una prenotazione di chi guarda sono escluse: la pagina
-          mostra loro i biglietti, non il controllo, e una barra che invita a
-          comprare cio' che si e' gia' comprato contraddice la pagina.
-        */}
-        <StickyBuyBar
-          anchorId="tickets"
-          nights={parties
-            .filter((party) => party.userTickets.length === 0 && party.userRsvp === null)
-            .map((party) => ({
-              id: party.id,
-              date: party.date,
-              time: party.time,
-              tiers: party.tiers,
-            }))}
-        />
       </div>
 
       {/* Presentation. Cast at the page boundary because the navigation is a

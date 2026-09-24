@@ -255,7 +255,7 @@ const icons: Record<string, ReactNode> = {
 // click-through strip that only centres; the ROW is the pill, as wide as the
 // entries it holds — two for a visitor, more for staff — and 56px tall.
 const NAV_PHONE =
-  "fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] z-50 " +
+  "fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+0.25rem)] z-50 " +
   "flex justify-center pointer-events-none " +
   "[transform:translate3d(0,0,0)] [-webkit-backface-visibility:hidden]";
 
