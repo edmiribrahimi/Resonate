@@ -1301,7 +1301,13 @@ export default async function EventDetailPage({
             alt={event.title}
             width={800}
             height={400}
-            className="w-full max-h-80 object-cover rounded-2xl"
+            // 16:9, whole, at every width — D-52.1-19 (owner, 2026-09-23),
+            // brought forward on 2026-09-24. The `max-h-80` cap this replaces
+            // showed the poster whole on a phone (219px tall at 390px) and cut
+            // its top and bottom on a desktop, where the width outgrew the cap:
+            // the date and the last name of the line-up went first. A fixed
+            // ratio box has no width at which it starts cropping a 16:9 export.
+            className="aspect-video w-full object-cover rounded-2xl"
             priority
           />
         ) : (
