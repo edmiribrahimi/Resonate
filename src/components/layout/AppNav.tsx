@@ -83,7 +83,7 @@ import { FOCUS_RING } from "@/components/ui/Button";
  * The bar's row is `h-16` — 4 rem — and the safe-area inset sits **outside** it
  * on the nav element, so the bar's total height is exactly
  * `calc(4rem + env(safe-area-inset-bottom))` — and since the pill floats 0.75rem
- * above that edge, the content clearance is 5.5rem. That is the literal
+ * above that edge and is 3.5rem tall, the content clearance is 5rem. That is the literal
  * `--nav-inset-block-end` is built from in `globals.css`, and several files
  * depend on it staying true (the page shell's bottom padding, the toast's
  * offset, the dialog sheet's bottom padding, the sticky buy bar, the
@@ -251,24 +251,30 @@ const icons: Record<string, ReactNode> = {
 // properties at `md:` without a physical/logical race. The clearance the
 // content keeps under it is `--nav-inset-block-end` in `globals.css`, now
 // 5.5rem: 4rem of bar plus the air on either side.
+// Sized to its entries (owner, 2026-09-24): the `<nav>` is a full-width,
+// click-through strip that only centres; the ROW is the pill, as wide as the
+// entries it holds — two for a visitor, more for staff — and 56px tall.
 const NAV_PHONE =
-  "fixed start-4 end-4 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] z-50 " +
-  "rounded-full border border-line bg-ground/85 shadow-lg backdrop-blur-xl " +
+  "fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] z-50 " +
+  "flex justify-center pointer-events-none " +
   "[transform:translate3d(0,0,0)] [-webkit-backface-visibility:hidden]";
 
 const NAV_RESPONSIVE =
-  `${NAV_PHONE} md:fixed md:inset-y-0 md:start-0 md:end-auto md:z-50 md:w-56 ` +
-  "md:rounded-none md:border-0 md:border-e md:border-line md:shadow-none";
+  `${NAV_PHONE} md:pointer-events-auto md:block md:inset-x-auto md:inset-y-0 md:start-0 md:z-50 md:w-56 ` +
+  "md:border-e md:border-line md:bg-ground/80 md:backdrop-blur-xl";
 
 // 4rem since 2026-09-24 (owner's decision, «leggera»): the bar lost 16px of
 // air so a phone shows two nights, poster included. Icons, labels and the
 // 44px targets did not move. `--nav-inset-block-end` in `globals.css` says
 // the same number — the two are one declaration in two places, on purpose.
-const ROW_PHONE = "mx-auto flex h-16 max-w-lg items-stretch px-1.5";
+const ROW_PHONE =
+  "pointer-events-auto flex h-14 max-w-[calc(100vw-2rem)] items-stretch gap-1 px-1.5 " +
+  "rounded-full border border-line bg-ground/85 shadow-lg backdrop-blur-xl";
 
 const ROW_RESPONSIVE =
   `${ROW_PHONE} md:h-full md:max-w-none md:flex-col md:items-stretch md:gap-1 ` +
-  "md:overflow-y-auto md:px-4 md:py-6";
+  "md:overflow-y-auto md:px-4 md:py-6 " +
+  "md:rounded-none md:border-0 md:bg-transparent md:shadow-none md:backdrop-blur-none";
 
 /**
  * The focus expression is imported from the ladder, never respelled (§5.4).
@@ -280,11 +286,11 @@ const ROW_RESPONSIVE =
  * tracking and a missing focus ring raises nothing.
  */
 const ENTRY_PHONE =
-  "relative isolate my-1.5 flex min-h-11 flex-1 flex-col items-center justify-center gap-1 " +
+  "relative isolate my-1 flex min-h-11 flex-none flex-col items-center justify-center gap-0.5 px-5 " +
   `rounded-full text-xs transition-all active:scale-95 active:opacity-80 ${FOCUS_RING}`;
 
 const ENTRY_RESPONSIVE =
-  `${ENTRY_PHONE} md:my-0 md:min-h-11 md:flex-none md:flex-row md:items-center ` +
+  `${ENTRY_PHONE} md:my-0 md:min-h-11 md:flex-none md:flex-row md:items-center md:gap-3 ` +
   "md:justify-start md:gap-3 md:rounded-xl md:px-4 md:text-sm";
 
 /**
