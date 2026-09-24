@@ -24,6 +24,16 @@ interface EventItem {
 
 interface EventListProps {
   events: EventItem[];
+  /**
+   * Who is looking. Since 2026-09-24 the list holds every night, not only the
+   * viewer's own, and a row's controls follow ownership: `created_by ===
+   * viewerId`, or `canManageAll` (the `master.manage` grant). The database
+   * draws the same line — `events_update_own`, `events_delete_own` — so a
+   * control hidden here is one the policies would refuse anyway; hiding it
+   * spares the operator a refusal, it does not protect anything.
+   */
+  viewerId: string;
+  canManageAll: boolean;
   showCreator?: boolean;
 }
 
@@ -113,8 +123,12 @@ const ROW_CONTROLS = [
 
 export default function EventList({
   events,
+  viewerId,
+  canManageAll,
   showCreator = false,
 }: EventListProps) {
+  const canManage = (event: EventItem) =>
+    canManageAll || (!!event.created_by && event.created_by === viewerId);
   const [isPending, startTransition] = useTransition();
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -269,7 +283,11 @@ export default function EventList({
               width they WRAP — the row already wrapped, and no breakpoint
               prefix is introduced to hide the width they need. */}
           <div className="mt-3 flex items-center gap-2 flex-wrap">
-            {ROW_CONTROLS.map(({ segment, label }) => (
+            {/* The six work addresses, only on a night the viewer may manage.
+                On anyone else's night the row keeps Preview / View page alone:
+                every one of these six pages re-checks ownership on the server
+                and would refuse, so offering the link would offer a refusal. */}
+            {canManage(event) && ROW_CONTROLS.map(({ segment, label }) => (
               <Link
                 key={segment}
                 href={`/admin/events/${event.id}/${segment}`}
@@ -304,7 +322,7 @@ export default function EventList({
                 accent FILL takes the ground as its ink at 6.85 : 1 instead of
                 accent ink on an accent wash. Unpublishing is the quiet half of
                 the same pair and is secondary. */}
-            {event.is_published ? (
+            {canManage(event) && (event.is_published ? (
               <Button
                 variant="secondary"
                 size="sm"
@@ -323,20 +341,22 @@ export default function EventList({
               >
                 {pendingAction === `publish-${event.id}` ? "..." : "Publish"}
               </Button>
-            )}
+            ))}
 
             {/* Deleting a night is the destructive rung, and it keeps the red
                 channel it had — at 7.36 : 1 rather than a palette ink on a
                 tint. The confirmation on a published night is unchanged: this
                 conversion touched no guard, only the pill it sits on. */}
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => handleDelete(event)}
-              disabled={isPending && pendingAction === `delete-${event.id}`}
-            >
-              {pendingAction === `delete-${event.id}` ? "..." : "Delete"}
-            </Button>
+            {canManage(event) && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => handleDelete(event)}
+                disabled={isPending && pendingAction === `delete-${event.id}`}
+              >
+                {pendingAction === `delete-${event.id}` ? "..." : "Delete"}
+              </Button>
+            )}
           </div>
         </StaggeredItem>
       ))}

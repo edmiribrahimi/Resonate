@@ -90,9 +90,23 @@ export default async function EventsPage() {
     .select("id, slug, title, date, is_published, created_by")
     .order("date", { ascending: false });
 
-  // Master sees all; everyone else who reached this page sees their own.
+  // ── EVERY organizer sees EVERY night — owner's decision, 2026-09-24 ────────
   //
-  // The polarity is deliberately "NOT master" rather than "IS organizer", and
+  // Until that day this page filtered to `created_by = <viewer>` for anyone
+  // without `master.manage`, and the block below argued why. The owner, holding
+  // an organizer account, could not see the two nights the master account had
+  // created — *«un organizer puo' vedere tutti gli eventi passati e futuri
+  // anche quelli non creati da lui»* — and the filter went. What stays is the
+  // distinction the row-level policies already draw: `events_select_admin`
+  // lets `staff.manage` READ every row, while `events_update_own` and
+  // `events_delete_own` keep WRITING to the creator or a master. So the list
+  // shows every night, and each row's controls follow ownership
+  // (`EventList.tsx`, `canManage`): a night one does not own can be opened and
+  // previewed, not edited. The argument that follows is kept for the record of
+  // what the filter protected against — a fourth role reaching this page —
+  // which the `organizer.access` guard above still answers on its own.
+  //
+  // The polarity was deliberately "NOT master" rather than "IS organizer", and
   // that flip is the point of this line. Today the truth table is identical —
   // a master holds `master.manage` and gets the unfiltered query, an organizer
   // does not and gets `created_by = <their id>` — so this changes no verdict
@@ -112,14 +126,44 @@ export default async function EventsPage() {
   // role today and are not the same question, and picking by predicate instead
   // of by question is invisible until the day the grants diverge.
   //
-  // This scope is a filter written in Node, not a security boundary. What a
+  // That scope was a filter written in Node, not a security boundary. What a
   // caller may actually read from `events` is decided by the row-level
-  // policies; this decides what the page asks for.
-  if (!capabilities.has(CAP.MASTER_MANAGE)) {
-    query.eq("created_by", userId);
-  }
+  // policies; since 2026-09-24 the page asks for everything they allow.
+  const canManageAll = capabilities.has(CAP.MASTER_MANAGE);
 
   const { data: events, error } = await query;
+
+  // Who created each night one does not own, so a row without controls says
+  // whose it is. Read with the cookie client: `profiles_select_admin` grants
+  // the read to `staff.manage`, the same key that reached this list. If the
+  // read is refused the names are simply absent — the list still renders,
+  // and the refusal is logged with its own category rather than swallowed.
+  const creatorNames = new Map<string, string>();
+  const creatorIds = [
+    ...new Set(
+      (events ?? [])
+        .map((e) => e.created_by as string | null)
+        .filter((id): id is string => !!id && id !== userId)
+    ),
+  ];
+  if (creatorIds.length > 0) {
+    const { data: creators, error: creatorsError } = await supabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .in("id", creatorIds);
+    if (creatorsError) {
+      console.error(
+        `[events_list.creators_unreadable] ${creatorsError.code || "transport"}: ${creatorsError.message}`
+      );
+    }
+    for (const c of creators ?? []) {
+      creatorNames.set(c.id, (c.full_name as string | null)?.trim() || (c.email as string));
+    }
+  }
+  const listItems = (events ?? []).map((e) => ({
+    ...e,
+    creator_name: e.created_by ? creatorNames.get(e.created_by) ?? null : null,
+  }));
 
   if (error) {
     return (
@@ -198,7 +242,12 @@ export default async function EventsPage() {
       </AnimatedSection>
 
       <AnimatedSection delay={0.1}>
-        <EventList events={events ?? []} />
+        <EventList
+          events={listItems}
+          viewerId={userId}
+          canManageAll={canManageAll}
+          showCreator
+        />
       </AnimatedSection>
     </PageShell>
   );
