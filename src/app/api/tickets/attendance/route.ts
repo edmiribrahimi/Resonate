@@ -618,11 +618,21 @@ export async function GET(request: Request) {
     .toISOString()
     .split("T")[0];
 
-  // Fetch the night in progress and the upcoming ones, with their events
+  // Fetch the night in progress and the upcoming ones, with their events.
+  //
+  // ── Only nights that produce something to check in (owner, 2026-09-24) ──
+  // The door reads two credentials: a signed ticket, or a name on the guest
+  // list. A `free_public` night — free entry, no RSVP — issues neither, so it
+  // has nothing the scanner can read, and on this list it showed up as a
+  // 0/0 row that a staff member could open and find empty, unable to tell
+  // "nothing to scan" from "the scanner is broken" (`checkin-offline.md`,
+  // gate identita' del party). `paid` and `free_rsvp` stay; the exclusion is
+  // in the query so the `partyId` path below cannot reach one either.
   let partiesQuery = serviceClient
     .from("event_parties")
     .select("id, title, date, time, event_id, events(title)")
     .gte("date", windowStart)
+    .neq("access_type", "free_public")
     .order("date", { ascending: true })
     .order("time", { ascending: true });
 

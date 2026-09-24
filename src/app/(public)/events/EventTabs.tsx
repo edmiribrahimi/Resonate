@@ -92,6 +92,8 @@ interface EventCard {
   lineup: string[];
   formats: CardFormat[];
   is_draft?: boolean;
+  /** What the control on the right says: decided by the page from the nights' access types. Absent means «Tickets». */
+  entry?: "tickets" | "rsvp" | "free";
 }
 
 /**
@@ -506,7 +508,13 @@ function EventList({
                   the whole card is already the link, and a link inside a link
                   is not markup. It says what opening the card gets you. */}
               <span className="hidden shrink-0 items-center rounded-full border border-control px-4 text-xs font-semibold normal-case tracking-wide text-ink-2 @2xl:inline-flex @2xl:min-h-11">
-                {isPast ? "Details" : "Tickets"}
+                {isPast
+                  ? "Details"
+                  : event.entry === "free"
+                    ? "Free entry"
+                    : event.entry === "rsvp"
+                      ? "Free RSVP"
+                      : "Tickets"}
               </span>
             </div>
           </Link>

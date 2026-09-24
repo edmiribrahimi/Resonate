@@ -118,6 +118,15 @@ interface EventCard {
   /** First night's opening and last night's closing, `HH:MM[:SS]`; see `EventTabs.tsx`. */
   start_time: string | null;
   end_time: string | null;
+  /**
+   * What opening the card gets you, decided here from the nights' access
+   * types (owner, 2026-09-24: the card said «Tickets» on a free night whose
+   * page said «Free Entry»). `tickets` if any night sells; else `rsvp` if any
+   * night takes RSVPs; else `free` — free entry, nothing to hold. An event
+   * with no nights stored is `tickets`: it has nothing to say yet, and the
+   * ticket wording is the safe default.
+   */
+  entry: "tickets" | "rsvp" | "free";
 }
 
 /**
@@ -332,7 +341,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
     // than hoped for. It is built below.
     const query = supabase
       .from("events")
-      .select("slug, title, date, venue_secret, lineup, is_published, cover_image, event_parties(id, date, time, end_time, venue_text, sort_order, venue_secret, lineup, format_id, series_id, formats(name, slug, color), party_series!event_parties_series_id_fkey(name))")
+      .select("slug, title, date, venue_secret, lineup, is_published, cover_image, event_parties(id, date, time, end_time, venue_text, sort_order, venue_secret, access_type, lineup, format_id, series_id, formats(name, slug, color), party_series!event_parties_series_id_fkey(name))")
       .order("date", { ascending: true });
 
     if (!canSeeDrafts) {
@@ -443,7 +452,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
         lineup: string[] | null;
         is_published: boolean;
         cover_image: string | null;
-        event_parties: { id: string; date: string; time: string; end_time: string | null; venue_text: string | null; sort_order: number; venue_secret: boolean; lineup: string[] | null; format_id: string | null; series_id: string | null; formats: { name: string; slug: string; color: string } | { name: string; slug: string; color: string }[] | null; party_series: { name: string } | { name: string }[] | null }[];
+        event_parties: { id: string; date: string; time: string; end_time: string | null; venue_text: string | null; sort_order: number; venue_secret: boolean; access_type: string; lineup: string[] | null; format_id: string | null; series_id: string | null; formats: { name: string; slug: string; color: string } | { name: string; slug: string; color: string }[] | null; party_series: { name: string } | { name: string }[] | null }[];
       };
       const parties = evt.event_parties ?? [];
       const sortedDates = parties.map((p) => p.date).sort();
@@ -616,6 +625,12 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
         lineup: [...allLineup].sort(),
         formats,
         is_draft: !evt.is_published,
+        entry:
+          parties.length === 0 || parties.some((p) => p.access_type === "paid")
+            ? "tickets"
+            : parties.some((p) => p.access_type === "free_rsvp")
+              ? "rsvp"
+              : "free",
       };
     }
 
