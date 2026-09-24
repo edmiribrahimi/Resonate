@@ -5,6 +5,7 @@ import {
   Hr,
   Html,
   Img,
+  Link,
   Preview,
   Section,
   Text,
@@ -45,9 +46,15 @@ export const BRAND = {
  * scuro con il logo bianco in entrambe le modalita'. 816 px di larghezza per
  * 180 px resi, cioe' nitido anche su schermo retina.
  */
-const LOGO_URL = process.env.NEXT_PUBLIC_APP_URL
-  ? `${process.env.NEXT_PUBLIC_APP_URL}/images/logo-email.png`
-  : "https://www.resonatemotion.com/images/logo-email.png";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://www.resonatemotion.com";
+
+const LOGO_URL = `${APP_URL}/images/logo-email.png`;
+
+/** I link del footer: colore del testo attenuato, sottolineati perche' in una mail il colore da solo non dice «link». */
+const FOOTER_LINK = {
+  color: BRAND.muted,
+  textDecoration: "underline",
+} as const;
 
 interface EmailLayoutProps {
   preview: string;
@@ -96,17 +103,53 @@ export function EmailLayout({ preview, children }: EmailLayoutProps) {
             {children}
           </Section>
 
-          {/* Footer */}
+          {/*
+            Footer — lo stesso del sito (`src/components/legal/SiteFooter.tsx`),
+            decisione del proprietario del 2026-09-24: quattro voci legali, il
+            profilo Instagram come link nativo e non come handle stampato,
+            l'anno del render. La mail non puo' importare il componente del sito
+            (client React, Tailwind), quindi le voci sono ripetute qui: chi
+            cambia il footer del sito cambia anche questo.
+          */}
           <Section style={{ textAlign: "center" as const, marginTop: "32px" }}>
             <Hr style={{ borderColor: BRAND.cardBorder }} />
             <Text
               style={{
                 color: BRAND.muted,
                 fontSize: "12px",
-                lineHeight: "1.5",
+                lineHeight: "1.8",
+                margin: "12px 0 0",
               }}
             >
-              re:sonate motion music hub
+              <Link href={`${APP_URL}/terms`} style={FOOTER_LINK}>Terms</Link>
+              {"  ·  "}
+              <Link href={`${APP_URL}/refunds`} style={FOOTER_LINK}>Refund policy</Link>
+              {"  ·  "}
+              <Link href={`${APP_URL}/privacy`} style={FOOTER_LINK}>Privacy</Link>
+              {"  ·  "}
+              <Link href="mailto:info@resonatemotion.com" style={FOOTER_LINK}>Contact</Link>
+            </Text>
+            <Text
+              style={{
+                color: BRAND.muted,
+                fontSize: "12px",
+                lineHeight: "1.8",
+                margin: "4px 0 0",
+              }}
+            >
+              <Link href="https://www.instagram.com/resonatemotion" style={FOOTER_LINK}>
+                Follow us on Instagram
+              </Link>
+            </Text>
+            <Text
+              style={{
+                color: BRAND.muted,
+                fontSize: "12px",
+                lineHeight: "1.5",
+                margin: "12px 0 0",
+              }}
+            >
+              &copy; {new Date().getFullYear()} re:sonate. All rights reserved.
             </Text>
           </Section>
         </Container>

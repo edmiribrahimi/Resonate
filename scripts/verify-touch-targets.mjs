@@ -565,6 +565,18 @@ function importClosure(entryRel) {
  */
 const importMapCache = new Map();
 
+/**
+ * Whether `relPath` imports `Link` from `@react-email/components`. Read from
+ * the import clause and never from the element's name alone, for the reason
+ * the docblock above gives: the import is what makes the claim true.
+ */
+const REACT_EMAIL_LINK_RE =
+  /import\s*\{[^}]*\bLink\b[^}]*\}\s*from\s*["']@react-email\/components["']/;
+
+function bindsReactEmailLink(relPath) {
+  return REACT_EMAIL_LINK_RE.test(liveSource(relPath));
+}
+
 function fileImportMap(relPath) {
   const cached = importMapCache.get(relPath);
   if (cached) return cached;
@@ -2367,6 +2379,17 @@ for (const rel of [...inScope].sort()) {
   const row = { path: rel, found: found.length, measured: 0, passed: 0, e2a: 0, e2b: 0, e3: 0, e4: 0, e5: 0, e6: 0, e7: 0, e8: 0, e9: 0, e10: 0, debt: 0, skipped: 0 };
 
   for (const el of found) {
+    // A `Link` bound to `@react-email/components` is the email's link, not
+    // `next/link`: a different component in a different rendering environment,
+    // where no class string applies and nothing is touched — the same sentence
+    // this loop already writes for the email's `Button` just below. Out of the
+    // element set, counted as skipped so it stays visible. Added 2026-09-24,
+    // when the email footer gained the site footer's four links.
+    if (el.name === 'Link' && bindsReactEmailLink(rel)) {
+      row.skipped += 1;
+      continue;
+    }
+
     // A component call site: exemption 2b or 6, and only when the import agrees.
     if (PRIMITIVE_NAMES.has(el.name) || NON_INTERACTIVE_NAMES.has(el.name)) {
       const declared = [...PRIMITIVE_COMPONENTS, ...NON_INTERACTIVE_COMPONENTS].find(

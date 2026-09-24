@@ -435,6 +435,11 @@ export async function POST(request: Request) {
       // sarebbe innocuo nel caso normale e sbagliato in quello in cui l'ordine
       // e' gia' legato a qualcuno.
       let buyerId = ticketOrder.user_id ?? null;
+      // Un ordine nato gia' con un portatore e' un acquisto DA LOGGATO
+      // (`purchaseTicketsGuest`, 2026-09-24): la mail non deve invitare a
+      // completare un account in cui la persona e' gia' dentro. Letto qui,
+      // prima che il passo 3 scriva `user_id` anche per l'ospite.
+      const boughtWithSession = buyerId !== null;
       if (!buyerId) {
         const identity = await resolveGuestIdentity(
           supabase,
@@ -535,6 +540,7 @@ export async function POST(request: Request) {
         const mail = await sendOrderConfirmation({
           orderId: ticketOrder.id,
           serviceClient: supabase,
+          offerPasswordLink: !boughtWithSession,
         });
 
         if (!mail.sent) {

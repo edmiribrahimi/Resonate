@@ -1,6 +1,7 @@
 import QRCode from "qrcode";
 import { notFound } from "next/navigation";
 import { getServiceClient } from "@/lib/supabase/service";
+import HideWhenSignedIn from "./HideWhenSignedIn";
 import { generateTicketToken, verifyTicketToken } from "@/utils/qr";
 import { formatEventDate, formatTime } from "@/utils/formatTime";
 import { redactDbError } from "@/lib/errors/redact";
@@ -332,6 +333,14 @@ export default async function GuestOrderTicketsPage({
   // dopo che il webhook ha risolto l'account. Prima non c'e' niente da
   // completare, e offrirlo manderebbe qualcuno verso una pagina che non puo'
   // servirlo.
+  //
+  // …e non compare a chi sta guardando i propri biglietti **da dentro** un
+  // conto (2026-09-24): un acquisto da loggato apre questa pagina con la
+  // sessione attiva, e «completa il tuo account» a chi ci e' gia' dentro e' un
+  // messaggio falso. **Questa pagina non legge la sessione** — e' il muro che
+  // esiste per non avere, misurato dal controllo G4 di `verify:venue-surfaces`
+  // — quindi la decisione e' presa nel browser da `HideWhenSignedIn`, che
+  // nasconde il riquadro se una sessione c'e' e non tocca nient'altro.
   const completeAccountOffered = order.user_id !== null;
 
   return (
@@ -410,6 +419,7 @@ export default async function GuestOrderTicketsPage({
       </Card>
 
       {completeAccountOffered ? (
+        <HideWhenSignedIn>
         <Card className="mt-4 w-full">
           {/*
             «Completa il tuo account», mai «diventa membro» — decisione del
@@ -435,6 +445,7 @@ export default async function GuestOrderTicketsPage({
             I already have a password
           </Button>
         </Card>
+        </HideWhenSignedIn>
       ) : null}
 
       {event?.slug ? (

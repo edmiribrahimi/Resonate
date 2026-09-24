@@ -130,6 +130,16 @@ import type { UserRole } from "@/types/database";
 
 // L'etichetta del ruolo e' esaustiva per tipo: un quinto ruolo senza voce e' un
 // errore di build, non un'altra ricaduta silenziosa su «Attendee» (difetto 2 di 52-ESITI.md).
+/**
+ * «1 of 2», solo quando l'ordine ha piu' di un biglietto: su un ordine da uno
+ * il numero e' rumore. Stessa grammatica di `formatHolderLabel` («di» o «of»).
+ */
+function holderOf(label: string | null | undefined): string {
+  const m = /^\s*(\d+)\s+(?:di|of)\s+(\d+)\s*$/i.exec(label ?? "");
+  if (!m || Number(m[2]) <= 1) return "";
+  return `${m[1]} of ${m[2]}`;
+}
+
 const ROLE_LABEL: Record<UserRole, string> = {
   master: "Admin",
   organizer: "Organizer",
@@ -279,7 +289,9 @@ export default async function AccountPage({
     const { data } = await supabase
       .from("tickets")
       .select(
-        "id, amount_paid, created_at, party_id, events(title, date, slug, cover_image), ticket_tiers(name), event_parties(title, date, time)"
+        // `holder_label` (2026-09-24): da loggato si comprano piu' biglietti in
+        // un ordine, e tre righe identiche non si distinguono per inoltrarle.
+        "id, amount_paid, created_at, party_id, holder_label, events(title, date, slug, cover_image), ticket_tiers(name), event_parties(title, date, time)"
       )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
@@ -407,6 +419,10 @@ export default async function AccountPage({
               </div>
               <div className="flex items-center gap-2 mt-0.5">
                 {tierData?.name && <Badge>{tierData.name}</Badge>}
+                {/* «1 of 2», solo quando l'ordine ha piu' di un biglietto. */}
+                {holderOf(ticket.holder_label) && (
+                  <Badge className="shrink-0">{holderOf(ticket.holder_label)}</Badge>
+                )}
                 <span className="text-xs text-muted">
                   {eventData
                     ? (() => {

@@ -160,11 +160,24 @@ export default function SumUpCheckoutModal({
   // close the panel out from under the hand reaching for it. Without one — the
   // drinks path — the timer runs exactly as it did, on the same delay, calling
   // the same callback.
+  //
+  // ── E dal 2026-09-24 l'indirizzo si apre da solo ──────────────────────────
+  //
+  // Con un `successOutcome` il pannello restava fermo finche' qualcuno non
+  // toccava un bottone: il proprietario, al suo ordine di prova, l'ha letto
+  // come «devo aspettare che confermino» e come una pagina bloccata. Ora, sullo
+  // stesso ritardo dei drink, la finestra va da sola all'indirizzo dei
+  // biglietti — che e' il ritorno del pagamento, il quale attende l'emissione e
+  // porta ai codici. I due bottoni restano per chi e' piu' veloce del timer o
+  // vuole restare qui.
   useEffect(() => {
     if (status !== "success") return;
-    if (successOutcome) return;
     const timer = setTimeout(() => {
-      onPaymentComplete();
+      if (successOutcome) {
+        window.location.assign(successOutcome.href);
+      } else {
+        onPaymentComplete();
+      }
     }, 2500);
     return () => clearTimeout(timer);
   }, [status, onPaymentComplete, successOutcome]);
@@ -225,11 +238,22 @@ export default function SumUpCheckoutModal({
             is additive and appears only for a caller that says where the thing
             lives.
           */}
-          <p className="mt-1 text-sm text-ink-2">
-            Your ticket is being confirmed...
-          </p>
+          {/*
+            Con un `successOutcome` la frase «being confirmed» non si mostra
+            (2026-09-24): insieme al terzo paragrafo diceva due volte la stessa
+            cosa e suonava come un'attesa senza fine. Al suo posto, cosa sta per
+            succedere.
+          */}
+          {!successOutcome && (
+            <p className="mt-1 text-sm text-ink-2">
+              Your ticket is being confirmed...
+            </p>
+          )}
           {successOutcome && (
-            <p className="mt-3 text-sm text-ink-2">{successOutcome.message}</p>
+            <>
+              <p className="mt-3 text-sm text-ink-2">{successOutcome.message}</p>
+              <p className="mt-3 text-xs text-muted">Taking you to your tickets…</p>
+            </>
           )}
         </div>
       )}

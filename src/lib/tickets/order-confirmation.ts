@@ -166,6 +166,7 @@ export async function sendOrderConfirmation({
   orderId,
   serviceClient,
   trigger = "automatic",
+  offerPasswordLink = true,
 }: {
   orderId: string;
   serviceClient: ReturnType<typeof getServiceClient>;
@@ -175,6 +176,15 @@ export async function sendOrderConfirmation({
    * `"requested"` e' una persona che ha chiesto di riceverla di nuovo.
    */
   trigger?: "automatic" | "requested";
+  /**
+   * Se offrire il blocco «Complete your account» con il link per scegliere la
+   * password. `true` per un ordine senza sessione — un account appena nato o
+   * ritrovato per indirizzo, che una password potrebbe non averla. `false` per
+   * un ordine comprato **da loggato** (2026-09-24): quella persona un account ce
+   * l'ha e ci e' dentro, e invitarla a completarlo e' un messaggio falso, visto
+   * dal proprietario sulla mail del suo ordine di prova.
+   */
+  offerPasswordLink?: boolean;
 }): Promise<OrderConfirmationResult> {
   const fail = (
     reason: OrderConfirmationFailure,
@@ -374,17 +384,19 @@ export async function sendOrderConfirmation({
     // Il fallimento ha la sua categoria e non sparisce — senza error tracking, un
     // messaggio generico qui sarebbe indistinguibile da tutto il resto.
     let completeAccountUrl: string | null = null;
-    const link = await buildPasswordSetLink(
-      serviceClient.auth.admin,
-      buyerEmail,
-      appUrl
-    );
-    if (link.ok) {
-      completeAccountUrl = link.url;
-    } else {
-      console.error(
-        `[tickets.password_link_failed] order=${orderId} reason=${link.reason} detail=${link.detail}`
+    if (offerPasswordLink) {
+      const link = await buildPasswordSetLink(
+        serviceClient.auth.admin,
+        buyerEmail,
+        appUrl
       );
+      if (link.ok) {
+        completeAccountUrl = link.url;
+      } else {
+        console.error(
+          `[tickets.password_link_failed] order=${orderId} reason=${link.reason} detail=${link.detail}`
+        );
+      }
     }
 
     // ── Il nome, quando c'e' ──────────────────────────────────────────────────
