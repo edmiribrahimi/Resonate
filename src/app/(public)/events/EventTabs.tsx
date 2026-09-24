@@ -432,13 +432,20 @@ function EventList({
                   the phone prints on two lines, on one. The place is the
                   same verdict as the venue row below (`venue_label` is null
                   on a secret night, and the lock prints instead). */}
-              <p className="hidden truncate text-sm text-muted md:mb-1 md:block">
-                {WEEKDAYS_SHORT[new Date(event.start_date + "T00:00:00").getDay()]}
+              {/* A flex row, not a line of text: the venue is an inline-flex
+                  box (icon + name) and inside a text line it sits on the
+                  baseline, a few pixels above the words beside it — seen on
+                  the iPad on 2026-09-24. With the whole line flexed and
+                  centred, every piece shares one axis. */}
+              <p className="hidden text-sm text-muted md:mb-1 md:flex md:min-w-0 md:items-center md:gap-1.5">
+                <span className="shrink-0">
+                  {WEEKDAYS_SHORT[new Date(event.start_date + "T00:00:00").getDay()]}
+                </span>
                 {event.venues.length > 0 && (
                   <>
-                    {" · "}
+                    <span aria-hidden="true" className="shrink-0">·</span>
                     {event.venues.map((v, i) => (
-                      <span key={i} className="inline-flex items-center gap-1">
+                      <span key={i} className="inline-flex min-w-0 items-center gap-1 truncate">
                         {i > 0 && <span className="mx-0.5">+</span>}
                         {v.venue_secret ? (
                           <><LockClosedIcon /> Secret Venue</>
@@ -451,9 +458,11 @@ function EventList({
                 )}
                 {event.start_time && (
                   <>
-                    {" · "}
-                    {formatTime(event.start_time)}
-                    {event.end_time && ` – ${formatTime(event.end_time)}`}
+                    <span aria-hidden="true" className="shrink-0">·</span>
+                    <span className="shrink-0">
+                      {formatTime(event.start_time)}
+                      {event.end_time && ` – ${formatTime(event.end_time)}`}
+                    </span>
                   </>
                 )}
               </p>
