@@ -269,7 +269,7 @@ const NAV_RESPONSIVE =
 // the same number — the two are one declaration in two places, on purpose.
 const ROW_PHONE =
   "pointer-events-auto flex h-14 max-w-[calc(100vw-2rem)] items-stretch gap-1 px-1.5 " +
-  "rounded-full border border-line bg-ground/85 shadow-lg backdrop-blur-xl";
+  "rounded-full border border-line bg-ground/75 shadow-lg backdrop-blur-xl";
 
 const ROW_RESPONSIVE =
   `${ROW_PHONE} md:h-full md:max-w-none md:flex-col md:items-stretch md:gap-1 ` +

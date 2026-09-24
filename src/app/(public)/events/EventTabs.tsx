@@ -283,8 +283,8 @@ function EventList({
             <div
               className={`rounded-2xl border border-line p-4 md:flex md:items-center md:gap-5 md:p-5 transition-all hover:border-accent/50 active:scale-[0.98] active:opacity-80 ${
                 isPast
-                  ? "bg-surface/50 opacity-70 hover:opacity-100"
-                  : "bg-surface"
+                  ? "bg-surface/50 opacity-70 backdrop-blur-xl hover:opacity-100"
+                  : "bg-surface/75 backdrop-blur-xl"
               }`}
             >
               {/*

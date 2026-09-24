@@ -42,13 +42,16 @@ import type { HTMLAttributes, ReactNode } from "react";
 interface CardProps extends Omit<HTMLAttributes<HTMLDivElement>, "className"> {
   children: ReactNode;
   className?: string;
+  /** `glass` (owner, 2026-09-24): the surface at 75% over a strong blur, the same glass as the floating pills. A prop, not a caller class: `bg-surface` and `bg-surface/75` are one property twice and the emitted order would decide (WR-05). Default stays solid. */
+  ground?: "solid" | "glass";
 }
 
-export function Card({ children, className = "", ...rest }: CardProps) {
+export function Card({ children, className = "", ground = "solid", ...rest }: CardProps) {
+  const surface = ground === "glass" ? "bg-surface/75 backdrop-blur-xl" : "bg-surface";
   return (
     <div
       {...rest}
-      className={`rounded-2xl border border-line bg-surface p-6 ${className}`.trimEnd()}
+      className={`rounded-2xl border border-line ${surface} p-6 ${className}`.trimEnd()}
     >
       {children}
     </div>

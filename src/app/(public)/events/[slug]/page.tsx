@@ -1569,7 +1569,7 @@ export default async function EventDetailPage({
           const venueRow = venueByParty.get(party.id);
 
           return (
-            <Card key={party.id} className="mb-6">
+            <Card key={party.id} ground="glass" className="mb-6">
               {/* Party header */}
               <div className="mb-3">
                 {/*

@@ -669,7 +669,6 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
         <Link href="/terms" className="inline-flex min-h-11 items-center text-accent">Terms</Link>
         <span>and the</span>
         <Link href="/refunds" className="inline-flex min-h-11 items-center text-accent">Refund policy</Link>
-        <span>.</span>
       </p>
 
       {/*
