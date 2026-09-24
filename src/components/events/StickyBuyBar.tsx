@@ -145,12 +145,17 @@ export function StickyBuyBar({ nights, anchorId }: StickyBuyBarProps) {
     <div aria-hidden style={{ height: barHeight }} />
     <div
       ref={barRef}
-      className="fixed inset-x-0 z-40 border-t border-line bg-ground/90 backdrop-blur-xl ps-[var(--nav-inset-inline-start)]"
+      // A floating pill, like the navigation under it (owner, 2026-09-24):
+      // inset 1rem from the edges, fully rounded, same glass. Its bottom is
+      // the content clearance, which already holds the navigation pill and
+      // 0.75rem of air above it — so the two pills stack with that gap. In
+      // the column form the start inset moves past the column.
+      className="fixed start-4 end-4 z-40 rounded-full border border-line bg-ground/85 shadow-lg backdrop-blur-xl md:start-[calc(var(--nav-inset-inline-start)+1rem)]"
       style={{ bottom: "var(--nav-inset-block-end, 0px)" }}
       role="region"
       aria-label="Tickets on sale"
     >
-      <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-6 py-3">
+      <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 py-1.5 ps-5 pe-1.5">
         <div className="min-w-0">
           <p className="truncate text-base font-bold text-ink">{offer.priceLabel}</p>
           <p className="truncate text-xs text-muted">{offer.when}</p>
