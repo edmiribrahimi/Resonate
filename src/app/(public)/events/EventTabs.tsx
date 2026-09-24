@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { StaggeredList, StaggeredItem } from "@/components/motion/StaggeredList";
 import { FOCUS_RING } from "@/components/ui/Button";
 import { Badge, Chip } from "@/components/ui/Chip";
-import { MapPinIcon, LockClosedIcon } from "@/components/ui/Icons";
+import { MapPinIcon, LockClosedIcon, MusicalNoteIcon } from "@/components/ui/Icons";
 import FormatMarker from "@/components/formats/FormatMarker";
 import { formatTime } from "@/utils/formatTime";
 
@@ -281,22 +281,54 @@ function EventList({
             className={`block min-h-11 ${FOCUS_RING}`}
           >
             <div
-              className={`rounded-2xl border border-line p-4 md:p-6 transition-all hover:border-accent/50 active:scale-[0.98] active:opacity-80 ${
+              className={`rounded-2xl border border-line p-4 md:flex md:items-center md:gap-5 md:p-5 transition-all hover:border-accent/50 active:scale-[0.98] active:opacity-80 ${
                 isPast
                   ? "bg-surface/50 opacity-70 hover:opacity-100"
                   : "bg-surface"
               }`}
             >
-              {event.cover_image && (
-                <Image
-                  src={event.cover_image}
-                  alt=""
-                  width={800}
-                  height={450}
-                  className="mb-2 aspect-video w-full rounded-xl object-cover"
-                />
-              )}
-              <p className="mb-1 text-sm text-muted">
+              {/*
+                ── Two shapes, one markup (owner's decision, 2026-09-24) ────────
+                On a phone the card stacks: poster, date, name, line-up, venue.
+                From the tablet step up it becomes a ROW — a 160px poster, a
+                date tile, the name with its meta line, and a control on the
+                right — the shape a list of nights reads best in when there is
+                room for six of them. The elements that exist only in one
+                shape carry `md:hidden` or `hidden md:…`; nothing is rendered
+                twice with different data.
+              */}
+              <div className="md:w-40 md:shrink-0">
+                {event.cover_image ? (
+                  <Image
+                    src={event.cover_image}
+                    alt=""
+                    width={800}
+                    height={450}
+                    className="mb-2 aspect-video w-full rounded-xl object-cover md:mb-0"
+                  />
+                ) : (
+                  <div
+                    aria-hidden="true"
+                    className="hidden aspect-video w-full items-center justify-center rounded-xl bg-sunk text-muted md:flex"
+                  >
+                    <MusicalNoteIcon className="h-6 w-6" />
+                  </div>
+                )}
+              </div>
+
+              {/* The date tile — the thing an eye looks for first when it
+                  scans a list. Day large, month small, from the first night. */}
+              <div className="hidden md:flex md:w-14 md:shrink-0 md:flex-col md:items-center md:justify-center md:rounded-xl md:bg-sunk md:py-2">
+                <span className="text-xl font-semibold leading-none text-ink">
+                  {new Date(event.start_date + "T00:00:00").getDate()}
+                </span>
+                <span className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-muted">
+                  {MONTHS_SHORT[new Date(event.start_date + "T00:00:00").getMonth()]}
+                </span>
+              </div>
+
+              <div className="md:min-w-0 md:flex-1">
+              <p className="mb-1 text-sm text-muted md:hidden">
                 {formatDateRange(event.start_date, event.end_date)}
                 {event.start_time && (
                   <>
@@ -396,13 +428,42 @@ function EventList({
                 same names in the same order; what a reader loses past the
                 ellipsis is on the night's page, one tap away.
               */}
+              {/* The row's meta line: weekday, place, hours — the same facts
+                  the phone prints on two lines, on one. The place is the
+                  same verdict as the venue row below (`venue_label` is null
+                  on a secret night, and the lock prints instead). */}
+              <p className="hidden truncate text-sm text-muted md:mb-1 md:block">
+                {WEEKDAYS_SHORT[new Date(event.start_date + "T00:00:00").getDay()]}
+                {event.venues.length > 0 && (
+                  <>
+                    {" · "}
+                    {event.venues.map((v, i) => (
+                      <span key={i} className="inline-flex items-center gap-1">
+                        {i > 0 && <span className="mx-0.5">+</span>}
+                        {v.venue_secret ? (
+                          <><LockClosedIcon /> Secret Venue</>
+                        ) : (
+                          <><MapPinIcon /> {v.venue_label}</>
+                        )}
+                      </span>
+                    ))}
+                  </>
+                )}
+                {event.start_time && (
+                  <>
+                    {" · "}
+                    {formatTime(event.start_time)}
+                    {event.end_time && ` – ${formatTime(event.end_time)}`}
+                  </>
+                )}
+              </p>
               {event.lineup.length > 0 && (
-                <p className="mb-2 truncate text-xs font-medium text-accent">
+                <p className="mb-2 truncate text-xs font-medium text-accent md:mb-0">
                   {event.lineup.join(", ")}
                 </p>
               )}
               {event.venues.length > 0 && (
-                <div className="flex items-center gap-1.5 text-sm text-muted flex-wrap">
+                <div className="flex items-center gap-1.5 text-sm text-muted flex-wrap md:hidden">
                   {event.venues.map((v, i) => (
                     <span key={i} className="inline-flex items-center gap-1">
                       {i > 0 && <span className="mx-0.5">+</span>}
@@ -415,6 +476,14 @@ function EventList({
                   ))}
                 </div>
               )}
+              </div>
+
+              {/* The control on the right, tablet up. A span, not a link:
+                  the whole card is already the link, and a link inside a link
+                  is not markup. It says what opening the card gets you. */}
+              <span className="hidden shrink-0 items-center rounded-full border border-control px-4 text-xs font-semibold normal-case tracking-wide text-ink-2 md:inline-flex md:min-h-11">
+                {isPast ? "Details" : "Tickets"}
+              </span>
             </div>
           </Link>
         </StaggeredItem>
