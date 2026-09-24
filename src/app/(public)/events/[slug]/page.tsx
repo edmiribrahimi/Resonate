@@ -1264,6 +1264,29 @@ export default async function EventDetailPage({
         <PageShell width="default">
       {isAuthenticated && <PendingIntentHandler eventSlug={slug} />}
 
+      {/* Draft banner.
+
+          Reachable only because `canSeeDrafts` above let an unpublished night
+          through — anyone else got a 404 before this line. It says two things
+          the operator must not have to remember: nobody else can open this
+          address yet, and nothing on it can be bought (`order-quote.ts` refuses
+          an unpublished night server-side; this sentence is the visible half of
+          that refusal). It is placed above the cover so it survives a screenshot
+          of the top of the page: a preview that can be mistaken for the live
+          page is the failure this banner exists to prevent. */}
+      {!event.is_published && (
+        <div
+          role="status"
+          className="mb-4 rounded-2xl border border-control bg-surface px-4 py-3 text-sm text-ink-2"
+        >
+          <p className="font-semibold text-ink">Draft preview</p>
+          <p className="mt-1">
+            This is how the night will look once published. Only staff can open
+            this page today, and tickets cannot be bought until you publish.
+          </p>
+        </div>
+      )}
+
       {/* Cover */}
       <AnimatedSection className="relative">
         <Link

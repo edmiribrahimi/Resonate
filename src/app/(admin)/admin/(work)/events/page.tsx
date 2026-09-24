@@ -87,7 +87,7 @@ export default async function EventsPage() {
 
   const query = supabase
     .from("events")
-    .select("id, title, date, is_published, created_by")
+    .select("id, slug, title, date, is_published, created_by")
     .order("date", { ascending: false });
 
   // Master sees all; everyone else who reached this page sees their own.

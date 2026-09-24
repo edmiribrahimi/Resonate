@@ -13,6 +13,8 @@ import { Badge } from "@/components/ui/Chip";
 
 interface EventItem {
   id: string;
+  /** The public address of the night, `/events/<slug>` — what Preview opens. */
+  slug: string;
   title: string;
   date: string;
   is_published: boolean;
@@ -276,6 +278,26 @@ export default function EventList({
                 {label}
               </Link>
             ))}
+
+            {/* Preview — the public page itself, not a copy of it.
+
+                `/events/[slug]` already renders a draft to anyone holding
+                `staff.manage` (the same capability that reaches this list) and
+                a 404 to everyone else, and the order quote refuses a night that
+                is not published. So this link opens nothing new: it takes the
+                operator to the page the public will see, with the draft banner
+                that page draws on top. A separate preview route would be a
+                second rendering of the same night, and two renderings drift —
+                the venue module says why that is not survivable. New tab, so
+                the list is still there when they come back to press Publish. */}
+            <a
+              href={`/events/${event.slug}`}
+              target="_blank"
+              rel="noopener"
+              className={`inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-control px-4 text-xs font-semibold normal-case tracking-wide text-ink-2 transition-all hover:text-ink active:scale-95 active:opacity-80 ${FOCUS_RING}`}
+            >
+              {event.is_published ? "View page" : "Preview"}
+            </a>
 
             {/* Publishing a night makes it visible to members, so it keeps the
                 accent it already carried — on the ladder's terms, where an
