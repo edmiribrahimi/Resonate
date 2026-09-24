@@ -1401,6 +1401,7 @@ export default function EventForm({
         placeholder="Event title"
         required
         maxLength={100}
+        hint="Picking a series fills this in with its name — that is the night's name for a satellite. Change it only for a night with a name of its own. On a secret night it is not filled in, because a series' name can carry the venue's."
       />
 
       {/* Description */}
@@ -1447,7 +1448,33 @@ export default function EventForm({
             required: mainTime !== "",
             onChange: (patch) => {
               if (patch.format_id !== undefined) setMainFormatId(patch.format_id);
-              if (patch.series_id !== undefined) setMainSeriesId(patch.series_id);
+              if (patch.series_id !== undefined) {
+                setMainSeriesId(patch.series_id);
+                // ── The title comes from the series (owner's decision, 2026-09-24) ──
+                //
+                // A satellite has no name of its own: «RamaDub x Booze» IS the
+                // night, and the owner had been typing «Booze» into a required
+                // field to get past it — which then printed three times on one
+                // card. So picking a series fills the title with the series'
+                // public name, and only while the title is still empty or still
+                // the previous series' name: a title somebody typed («Club
+                // House») is never overwritten. It stays an editable field.
+                //
+                // NOT on a secret night. A series' name may carry the venue's
+                // («RamaDub x Booze»), and the title travels to the list, the
+                // mail, the pass and the calendar — every surface the secrecy
+                // gate keeps the place off. On a secret night the field stays
+                // as it is and the hint says why.
+                const nextName = seriesById.get(patch.series_id)?.name;
+                const prevName = seriesById.get(mainSeriesId)?.name;
+                if (
+                  nextName &&
+                  !venueSecret &&
+                  (title.trim() === "" || title === prevName)
+                ) {
+                  setTitle(nextName);
+                }
+              }
               if (patch.number !== undefined) setMainNumber(patch.number);
             },
           })}

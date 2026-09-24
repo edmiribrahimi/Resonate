@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect, useTransition } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { StaggeredList, StaggeredItem } from "@/components/motion/StaggeredList";
 import { FOCUS_RING } from "@/components/ui/Button";
@@ -70,12 +71,30 @@ interface CardFormat {
 interface EventCard {
   slug: string;
   title: string;
+  /**
+   * The poster, when one was uploaded. Public material by construction — it is
+   * the artwork the night is announced with — so nothing here decides whether
+   * it may show; `null` simply draws no image. Shown 16:9 whole (D-52.1-19).
+   */
+  cover_image: string | null;
   start_date: string;
   end_date: string;
   venues: VenueInfo[];
   lineup: string[];
   formats: CardFormat[];
   is_draft?: boolean;
+}
+
+/**
+ * Does the title say exactly what the one marker says? True for a satellite
+ * titled with its series' public name («RamaDub x Booze»), false for a night
+ * with a name of its own and for a double bill, where two markers stand and
+ * no single one could be the title. Compared against the name the marker
+ * would PRINT — on a secret night that is the format's name, never the
+ * series' — so this never decides anything about a venue.
+ */
+function titleIsTheMarker(event: EventCard): boolean {
+  return event.formats.length === 1 && event.formats[0].name === event.title;
 }
 
 /**
@@ -259,6 +278,15 @@ function EventList({
                   : "bg-surface"
               }`}
             >
+              {event.cover_image && (
+                <Image
+                  src={event.cover_image}
+                  alt=""
+                  width={800}
+                  height={450}
+                  className="mb-4 aspect-video w-full rounded-xl object-cover"
+                />
+              )}
               <p className="mb-1 text-sm text-muted">
                 {formatDateRange(event.start_date, event.end_date)}
               </p>
@@ -276,7 +304,18 @@ function EventList({
                 a raw internal code, and neither ever reaches this component:
                 the page does not fetch them.
               */}
-              {event.formats.length > 0 && (
+              {/*
+                ── One line when the title IS the series (owner's decision,
+                2026-09-24) ─────────────────────────────────────────────────
+                A satellite's title is its series' public name («RamaDub x
+                Booze»), and until today the card printed that name as the
+                marker and again as the title. When the two are the same words
+                the marker row is skipped and the title below carries the
+                colour square itself, so the reader gets the name once, with its
+                format identity, instead of twice. A night with a name of its
+                own («Club House» under «re:sonate») keeps both rows.
+              */}
+              {event.formats.length > 0 && !titleIsTheMarker(event) && (
                 <div className="mb-1 flex flex-wrap items-center gap-1.5">
                   {event.formats.map((format, i) => (
                     <span
@@ -302,7 +341,16 @@ function EventList({
                 </div>
               )}
               <div className="flex items-center gap-2 mb-2">
-                <h3 className="text-base font-semibold">{event.title}</h3>
+                <h3 className="inline-flex items-center gap-2 text-base font-semibold">
+                  {titleIsTheMarker(event) && (
+                    <span
+                      aria-hidden="true"
+                      className="h-2 w-2 shrink-0 rounded-[2px]"
+                      style={{ background: event.formats[0].color }}
+                    />
+                  )}
+                  {event.title}
+                </h3>
                 {/*
                   A mark, not a target: it states what this night is and cannot
                   be operated, so it is a badge and renders a span — the same

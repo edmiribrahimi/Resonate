@@ -113,6 +113,8 @@ interface EventCard {
   lineup: string[];
   formats: CardFormat[];
   is_draft?: boolean;
+  /** The poster, public material; `null` draws nothing. See `EventTabs.tsx`. */
+  cover_image: string | null;
 }
 
 /**
@@ -327,7 +329,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
     // than hoped for. It is built below.
     const query = supabase
       .from("events")
-      .select("slug, title, date, venue_secret, lineup, is_published, event_parties(id, date, venue_text, sort_order, venue_secret, lineup, format_id, series_id, formats(name, slug, color), party_series!event_parties_series_id_fkey(name))")
+      .select("slug, title, date, venue_secret, lineup, is_published, cover_image, event_parties(id, date, venue_text, sort_order, venue_secret, lineup, format_id, series_id, formats(name, slug, color), party_series!event_parties_series_id_fkey(name))")
       .order("date", { ascending: true });
 
     if (!canSeeDrafts) {
@@ -437,6 +439,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
         venue_secret: boolean;
         lineup: string[] | null;
         is_published: boolean;
+        cover_image: string | null;
         event_parties: { id: string; date: string; venue_text: string | null; sort_order: number; venue_secret: boolean; lineup: string[] | null; format_id: string | null; series_id: string | null; formats: { name: string; slug: string; color: string } | { name: string; slug: string; color: string }[] | null; party_series: { name: string } | { name: string }[] | null }[];
       };
       const parties = evt.event_parties ?? [];
@@ -587,6 +590,9 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
       return {
         slug: evt.slug,
         title: evt.title,
+        // The poster is public material (it is what the night is announced
+        // with), so it crosses to the card as it is; no verdict decides it.
+        cover_image: evt.cover_image ?? null,
         start_date: startDate,
         end_date: endDate,
         venues,

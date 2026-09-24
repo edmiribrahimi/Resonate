@@ -206,6 +206,10 @@ export async function updateArtist(artistId: string, formData: FormData) {
   const supabase = await createClient();
   await assertCatalogueManage();
 
+  const name = (formData.get("name") as string)?.trim();
+  if (!name) {
+    throw new Error("Artist name is required");
+  }
   const bio = (formData.get("bio") as string)?.trim() || null;
   const photoUrl = (formData.get("photo_url") as string)?.trim() || null;
   const instagramUrl = (formData.get("instagram_url") as string)?.trim() || null;
@@ -213,8 +217,36 @@ export async function updateArtist(artistId: string, formData: FormData) {
   const spotifyUrl = (formData.get("spotify_url") as string)?.trim() || null;
   const websiteUrl = (formData.get("website_url") as string)?.trim() || null;
 
+  // ── The name is editable since 2026-09-24, and renaming has a second half ──
+  //
+  // Line-ups are arrays of NAMES on `events` and `event_parties`, and the
+  // public page resolves a pill to an artist by exact name
+  // (`(public)/events/[slug]/page.tsx`, `.in("name", …)`). So a rename that
+  // touched only the catalogue row would leave every line-up pointing at a
+  // name that no longer exists: the pill would still read the old spelling
+  // and would stop opening the artist's page. The old name is read first,
+  // and every line-up carrying it is rewritten after the row — a spelling
+  // fixed in one place and left wrong on the posters' own list is the
+  // brand gate on artists' names, failed by half.
+  //
+  // The SLUG does not change. It is in URLs already shared and on the print
+  // materials' QR codes; a renamed artist keeps their address.
+  const { data: before, error: beforeError } = await supabase
+    .from("artists")
+    .select("name, slug")
+    .eq("id", artistId)
+    .single();
+  if (beforeError || !before) {
+    throw new Error(
+      `Failed to update artist: ${beforeError?.message ?? "artist not found"}`
+    );
+  }
+  const oldName = before.name as string;
+  const slug = before.slug as string;
+
   // Build update object — only include photo_url if a new one is provided
   const updates: Record<string, string | null> = {
+    name,
     bio,
     instagram_url: instagramUrl,
     soundcloud_url: soundcloudUrl,
@@ -232,10 +264,53 @@ export async function updateArtist(artistId: string, formData: FormData) {
     .eq("id", artistId);
 
   if (error) {
+    // `artists_name_unique`: the sentence names the cause, because "failed"
+    // on a rename reads as a network error and sends somebody to retry it.
+    if (error.code === "23505") {
+      throw new Error("An artist with this name already exists");
+    }
     throw new Error(`Failed to update artist: ${error.message}`);
   }
 
+  let lineupsRewritten = 0;
+  if (name !== oldName) {
+    for (const table of ["events", "event_parties"] as const) {
+      const { data: rows, error: rowsError } = await supabase
+        .from(table)
+        .select("id, lineup")
+        .contains("lineup", [oldName]);
+      if (rowsError) {
+        // The rename itself is saved. What is NOT saved is said, with its own
+        // category, rather than folded into a tick: an operator who renamed
+        // an artist and sees a stale pill tomorrow must be able to find why.
+        console.error(
+          `[artist.rename_lineup_unreadable] ${table}: ${rowsError.code ?? "unknown"} ${rowsError.message}`
+        );
+        continue;
+      }
+      for (const row of rows ?? []) {
+        const lineup = ((row.lineup as string[] | null) ?? []).map((n) =>
+          n === oldName ? name : n
+        );
+        const { error: writeError } = await supabase
+          .from(table)
+          .update({ lineup })
+          .eq("id", row.id);
+        if (writeError) {
+          console.error(
+            `[artist.rename_lineup_write_failed] ${table}/${row.id}: ${writeError.code ?? "unknown"} ${writeError.message}`
+          );
+          continue;
+        }
+        lineupsRewritten += 1;
+      }
+    }
+    revalidatePath("/events");
+  }
+
   revalidatePath("/admin/artists");
-  revalidatePath(`/artists/${artistId}`);
-  return { success: true };
+  // By SLUG: the public artist page is `/artists/[slug]`, and this line used
+  // to name the id, which is no page — the cache it meant to clear never was.
+  revalidatePath(`/artists/${slug}`);
+  return { success: true, renamed: name !== oldName, lineupsRewritten };
 }

@@ -97,8 +97,16 @@ async function verifyOrganizerAccess(eventId: string): Promise<string> {
 export async function addGuest(
   eventId: string,
   data: {
-    first_name: string;
-    last_name: string;
+    /**
+     * One field, since 2026-09-24 — the same «Full name» the purchase form
+     * asks, by the owner's decision. The table still has two columns and the
+     * door still reads both (`attendance/route.ts` prints
+     * `first_name last_name`), so the name is split here: the first word is
+     * the first name, the rest is the last name — «Anna Maria Rossi» prints
+     * back as typed. A single word leaves `last_name` empty, which the column
+     * accepts (NOT NULL, no length check) and the door prints as the word.
+     */
+    full_name: string;
     email?: string;
     party_id?: string;
   }
@@ -108,11 +116,13 @@ export async function addGuest(
     const serviceClient = getServiceClient();
 
     // Validate required fields
-    const firstName = data.first_name?.trim();
-    const lastName = data.last_name?.trim();
-    if (!firstName || !lastName) {
-      return { error: "First name and last name are required" };
+    const fullName = data.full_name?.trim().replace(/\s+/g, " ");
+    if (!fullName) {
+      return { error: "Full name is required" };
     }
+    const spaceAt = fullName.indexOf(" ");
+    const firstName = spaceAt === -1 ? fullName : fullName.slice(0, spaceAt);
+    const lastName = spaceAt === -1 ? "" : fullName.slice(spaceAt + 1);
 
     // Normalize email
     let email: string | null = null;

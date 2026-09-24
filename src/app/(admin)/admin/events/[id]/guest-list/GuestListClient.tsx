@@ -81,8 +81,7 @@ export default function GuestListClient({
   const [isPending, startTransition] = useTransition();
 
   // Form state
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [partyId, setPartyId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -105,8 +104,7 @@ export default function GuestListClient({
 
     try {
       const result = await addGuest(eventId, {
-        first_name: firstName,
-        last_name: lastName,
+        full_name: fullName,
         email: email || undefined,
         party_id: partyId || undefined,
       });
@@ -115,8 +113,7 @@ export default function GuestListClient({
         toast(result.error, "error");
       } else {
         toast("Guest added successfully", "success");
-        setFirstName("");
-        setLastName("");
+        setFullName("");
         setEmail("");
         setPartyId("");
         startTransition(() => {
@@ -180,26 +177,20 @@ export default function GuestListClient({
             390px screen minus the gutter — §2.2's middle step is exactly the
             width where a two-up row starts being readable.
           */}
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <Input
-              id="guest-first-name"
-              label="First Name *"
-              type="text"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              required
-              placeholder="First name"
-            />
-            <Input
-              id="guest-last-name"
-              label="Last Name *"
-              type="text"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              required
-              placeholder="Last name"
-            />
-          </div>
+          {/*
+            One field, the same «Full name» the purchase form asks (owner's
+            decision, 2026-09-24). The split into the two stored columns
+            happens in `addGuest`, so the door keeps reading what it reads.
+          */}
+          <Input
+            id="guest-full-name"
+            label="Full name *"
+            type="text"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            required
+            placeholder="Your guest's name"
+          />
 
           {/*
             The sentence under this field is a `hint`, not a loose paragraph: it

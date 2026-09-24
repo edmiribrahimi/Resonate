@@ -240,6 +240,26 @@ export default function EditArtistButton({ artist }: { artist: Artist }) {
             </div>
           </div>
 
+          {/*
+            The name, editable since 2026-09-24 (owner's request). Renaming
+            also rewrites every line-up that carried the old spelling — the
+            action does it, and says so in its result — because a pill is
+            matched to an artist by exact name. The address (`/artists/<slug>`)
+            does not change. Verify the spelling at the source before saving:
+            a wrong name here reaches every card and the printed material's
+            list at once.
+          */}
+          <Input
+            id="artist-name"
+            label="Name"
+            name="name"
+            type="text"
+            required
+            maxLength={100}
+            defaultValue={artist.name}
+            hint="Renaming updates every line-up that carries this name. The page address stays the same."
+          />
+
           <Textarea
             id="artist-bio"
             label="Bio"

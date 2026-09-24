@@ -593,7 +593,6 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
             onChange={(e) => setFullName(e.target.value)}
             disabled={isPending}
             placeholder="Your name"
-            hint="It goes on the account these tickets belong to, never on the tickets."
           />
 
           {/*
@@ -610,11 +609,12 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
             max={quantityMax}
             onChange={setQuantity}
             disabled={isPending}
-            hint={
-              cap > 1
-                ? `Up to ${cap} per order — not per person.`
-                : "One ticket per order on this night."
-            }
+            // The cap is still enforced by `max`; the sentence that restated
+            // it went on 2026-09-24 with the other two hints on this form —
+            // the owner read them as noise to a buyer. The one-ticket case
+            // keeps its line, because there the stepper is locked and a
+            // locked control with no reason reads as broken.
+            hint={cap > 1 ? undefined : "One ticket per order on this night."}
           />
 
           {/*
@@ -633,7 +633,6 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
             onChange={(e) => setEmail(e.target.value)}
             disabled={isPending}
             placeholder="you@example.com"
-            hint="Your tickets and, later, the address arrive here. No account needed."
           />
         </div>
       )}
@@ -657,10 +656,20 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
         che prende il denaro, le pagine legali sono testo che nessuno ha
         accettato. Pubblicate il 2026-09-21, vedi `LegalPage.tsx`.
       */}
-      <p className="mt-3 text-center text-xs text-muted">
-        By buying you accept the{" "}
-        <Link href="/terms" className="inline-flex min-h-11 items-center text-accent">Terms</Link> and the{" "}
-        <Link href="/refunds" className="inline-flex min-h-11 items-center text-accent">Refund policy</Link>.
+      {/*
+        One line, by construction (2026-09-24). The two links keep their 44px
+        height — they are targets — but as inline-flex boxes inside a wrapping
+        paragraph each one stretched its line and the sentence broke in two
+        with a gap the height of a button between them. A flex row that does
+        not wrap gives the row the links' height once, and the sentence stays
+        whole: at 12px it measures under the narrowest content width.
+      */}
+      <p className="mt-3 flex flex-nowrap items-center justify-center gap-1 whitespace-nowrap text-xs text-muted">
+        <span>By buying you accept the</span>
+        <Link href="/terms" className="inline-flex min-h-11 items-center text-accent">Terms</Link>
+        <span>and the</span>
+        <Link href="/refunds" className="inline-flex min-h-11 items-center text-accent">Refund policy</Link>
+        <span>.</span>
       </p>
 
       {/*

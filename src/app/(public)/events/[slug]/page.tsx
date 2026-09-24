@@ -1623,7 +1623,23 @@ export default async function EventDetailPage({
                     />
                   </div>
                 )}
-                <p className="text-ink font-medium">{party.title}</p>
+                {/*
+                  The night's name, unless the marker just said it. Since
+                  2026-09-24 a satellite's title IS its series' name («RamaDub
+                  x Booze»), so on those nights the line under the marker was
+                  the same words in a larger type. The comparison is against
+                  the name the marker actually printed — on a secret night that
+                  is the format's, so a series-named title would still print
+                  here, which is right: the marker did not say it.
+                */}
+                {party.title !==
+                  (party.format
+                    ? isNightSecret(party.venue_secret)
+                      ? party.format.name
+                      : party.series_name ?? party.format.name
+                    : null) && (
+                  <p className="text-ink font-medium">{party.title}</p>
+                )}
                 <div className="flex items-center gap-3 mt-1 text-sm text-muted">
                   <span className="inline-flex items-center gap-1">
                     <CalendarIcon /> {formatPartyDate(party.date)}
