@@ -249,7 +249,7 @@ function EventList({
   return (
     <StaggeredList className="flex flex-col gap-3 md:gap-4">
       {events.map((event) => (
-        <StaggeredItem key={event.slug}>
+        <StaggeredItem key={event.slug} className="@container">
           {/*
             The LINK is the target and the DIV is the box, and they stay two
             elements on purpose.
@@ -281,7 +281,7 @@ function EventList({
             className={`block min-h-11 ${FOCUS_RING}`}
           >
             <div
-              className={`rounded-2xl border border-line p-4 md:flex md:items-center md:gap-5 md:p-5 transition-all hover:border-accent/50 active:scale-[0.98] active:opacity-80 ${
+              className={`rounded-2xl border border-line p-4 @2xl:flex @2xl:items-center @2xl:gap-5 @2xl:p-5 transition-all hover:border-accent/50 active:scale-[0.98] active:opacity-80 ${
                 isPast
                   ? "bg-surface/50 opacity-70 backdrop-blur-xl hover:opacity-100"
                   : "bg-surface/75 backdrop-blur-xl"
@@ -290,26 +290,41 @@ function EventList({
               {/*
                 ── Two shapes, one markup (owner's decision, 2026-09-24) ────────
                 On a phone the card stacks: poster, date, name, line-up, venue.
-                From the tablet step up it becomes a ROW — a 160px poster, a
-                date tile, the name with its meta line, and a control on the
-                right — the shape a list of nights reads best in when there is
-                room for six of them. The elements that exist only in one
-                shape carry `md:hidden` or `hidden md:…`; nothing is rendered
-                twice with different data.
+                With room it becomes a ROW — a 160px poster, a date tile, the
+                name with its meta line, and a control on the right — the
+                shape a list of nights reads best in when there is room for
+                six of them. The elements that exist only in one shape carry
+                `@2xl:hidden` or `hidden @2xl:…`; nothing is rendered twice
+                with different data.
+
+                ── The switch is the CARD's width, not the window's ──────────
+                Until 2026-09-24 the row shape fired at the viewport step `md`
+                (768px). The owner's screenshot that afternoon showed why that
+                is the wrong measure here: a ~770px window is over the step,
+                so the 224px work sidebar is up AND the row fires — into a
+                card of ~500px, a phone's width. Everything on the meta line
+                but the venue is `shrink-0`, so the venue was the one thing
+                squeezed to nothing («Thu · · 18:00 – 22:00», the lock of a
+                secret night gone) and the hours ran under the Tickets pill.
+                `StaggeredItem` above is the `@container`, and `@2xl` (42rem =
+                672px) is the narrowest card the row's fixed parts — poster,
+                tile, three gaps, the pill and a full meta line — fit in with
+                the venue intact. Below that, the card stacks whatever the
+                window says.
               */}
-              <div className="md:w-40 md:shrink-0">
+              <div className="@2xl:w-40 @2xl:shrink-0">
                 {event.cover_image ? (
                   <Image
                     src={event.cover_image}
                     alt=""
                     width={800}
                     height={450}
-                    className="mb-2 aspect-video w-full rounded-xl object-cover md:mb-0"
+                    className="mb-2 aspect-video w-full rounded-xl object-cover @2xl:mb-0"
                   />
                 ) : (
                   <div
                     aria-hidden="true"
-                    className="hidden aspect-video w-full items-center justify-center rounded-xl bg-sunk text-muted md:flex"
+                    className="hidden aspect-video w-full items-center justify-center rounded-xl bg-sunk text-muted @2xl:flex"
                   >
                     <MusicalNoteIcon className="h-6 w-6" />
                   </div>
@@ -318,7 +333,7 @@ function EventList({
 
               {/* The date tile — the thing an eye looks for first when it
                   scans a list. Day large, month small, from the first night. */}
-              <div className="hidden md:flex md:w-14 md:shrink-0 md:flex-col md:items-center md:justify-center md:rounded-xl md:bg-sunk md:py-2">
+              <div className="hidden @2xl:flex @2xl:w-14 @2xl:shrink-0 @2xl:flex-col @2xl:items-center @2xl:justify-center @2xl:rounded-xl @2xl:bg-sunk @2xl:py-2">
                 <span className="text-xl font-semibold leading-none text-ink">
                   {new Date(event.start_date + "T00:00:00").getDate()}
                 </span>
@@ -327,8 +342,8 @@ function EventList({
                 </span>
               </div>
 
-              <div className="md:min-w-0 md:flex-1">
-              <p className="mb-1 text-sm text-muted md:hidden">
+              <div className="@2xl:min-w-0 @2xl:flex-1">
+              <p className="mb-1 text-sm text-muted @2xl:hidden">
                 {formatDateRange(event.start_date, event.end_date)}
                 {event.start_time && (
                   <>
@@ -437,7 +452,7 @@ function EventList({
                   baseline, a few pixels above the words beside it — seen on
                   the iPad on 2026-09-24. With the whole line flexed and
                   centred, every piece shares one axis. */}
-              <p className="hidden text-sm text-muted md:mb-1 md:flex md:min-w-0 md:items-center md:gap-1.5">
+              <p className="hidden text-sm text-muted @2xl:mb-1 @2xl:flex @2xl:min-w-0 @2xl:items-center @2xl:gap-1.5">
                 <span className="shrink-0">
                   {WEEKDAYS_SHORT[new Date(event.start_date + "T00:00:00").getDay()]}
                 </span>
@@ -467,12 +482,12 @@ function EventList({
                 )}
               </p>
               {event.lineup.length > 0 && (
-                <p className="mb-2 truncate text-xs font-medium text-accent md:mb-0">
+                <p className="mb-2 truncate text-xs font-medium text-accent @2xl:mb-0">
                   {event.lineup.join(", ")}
                 </p>
               )}
               {event.venues.length > 0 && (
-                <div className="flex items-center gap-1.5 text-sm text-muted flex-wrap md:hidden">
+                <div className="flex items-center gap-1.5 text-sm text-muted flex-wrap @2xl:hidden">
                   {event.venues.map((v, i) => (
                     <span key={i} className="inline-flex items-center gap-1">
                       {i > 0 && <span className="mx-0.5">+</span>}
@@ -490,7 +505,7 @@ function EventList({
               {/* The control on the right, tablet up. A span, not a link:
                   the whole card is already the link, and a link inside a link
                   is not markup. It says what opening the card gets you. */}
-              <span className="hidden shrink-0 items-center rounded-full border border-control px-4 text-xs font-semibold normal-case tracking-wide text-ink-2 md:inline-flex md:min-h-11">
+              <span className="hidden shrink-0 items-center rounded-full border border-control px-4 text-xs font-semibold normal-case tracking-wide text-ink-2 @2xl:inline-flex @2xl:min-h-11">
                 {isPast ? "Details" : "Tickets"}
               </span>
             </div>

@@ -2837,9 +2837,14 @@ export default function ScannerClient() {
   ];
 
   // ── Party Selector Screen ──
+  // Both screens' outer box is TRANSPARENT (owner's decision, 2026-09-24):
+  // the starry sky lives on `body::before` (`globals.css`) and a full-height
+  // `bg-ground` here was the one thing hiding it on the door. The pinned bar
+  // and the verdict boxes stay opaque — they cover the sky where there is
+  // something to read; the box around them does not need to.
   if (!selectedPartyId) {
     return (
-      <div className="mx-auto w-full max-w-5xl min-h-dvh bg-ground pb-24">
+      <div className="mx-auto w-full max-w-5xl min-h-dvh pb-24">
         <div className="px-6 pt-6 pb-3">
           <h1 className="text-2xl font-bold mb-1">Check-in</h1>
           <p className="text-sm text-muted">Select a party to start</p>
@@ -2956,7 +2961,7 @@ export default function ScannerClient() {
     : null;
 
   return (
-    <div className="mx-auto w-full max-w-5xl min-h-dvh bg-ground pb-24">
+    <div className="mx-auto w-full max-w-5xl min-h-dvh pb-24">
       {/*
         ── The pinned bar, and WHY it holds two things and not nine ───────────
 
