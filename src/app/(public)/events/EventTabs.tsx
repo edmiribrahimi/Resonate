@@ -9,6 +9,7 @@ import { FOCUS_RING } from "@/components/ui/Button";
 import { Badge, Chip } from "@/components/ui/Chip";
 import { MapPinIcon, LockClosedIcon } from "@/components/ui/Icons";
 import FormatMarker from "@/components/formats/FormatMarker";
+import { formatTime } from "@/utils/formatTime";
 
 /**
  * One venue marker on one card — TWO fields, and the four that are missing are
@@ -77,6 +78,14 @@ interface EventCard {
    * it may show; `null` simply draws no image. Shown 16:9 whole (D-52.1-19).
    */
   cover_image: string | null;
+  /**
+   * The whole event's hours, beside the date (owner's request, 2026-09-24):
+   * the first night's opening and the last night's closing, computed on the
+   * server. `end_time` is `null` when the last night stored none, and then
+   * only the start prints. Hours carry no place, so nothing here is gated.
+   */
+  start_time: string | null;
+  end_time: string | null;
   start_date: string;
   end_date: string;
   venues: VenueInfo[];
@@ -289,6 +298,13 @@ function EventList({
               )}
               <p className="mb-1 text-sm text-muted">
                 {formatDateRange(event.start_date, event.end_date)}
+                {event.start_time && (
+                  <>
+                    {" · "}
+                    {formatTime(event.start_time)}
+                    {event.end_time && ` – ${formatTime(event.end_time)}`}
+                  </>
+                )}
               </p>
               {/*
                 The format row sits BETWEEN the date and the title, because the

@@ -115,6 +115,9 @@ interface EventCard {
   is_draft?: boolean;
   /** The poster, public material; `null` draws nothing. See `EventTabs.tsx`. */
   cover_image: string | null;
+  /** First night's opening and last night's closing, `HH:MM[:SS]`; see `EventTabs.tsx`. */
+  start_time: string | null;
+  end_time: string | null;
 }
 
 /**
@@ -329,7 +332,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
     // than hoped for. It is built below.
     const query = supabase
       .from("events")
-      .select("slug, title, date, venue_secret, lineup, is_published, cover_image, event_parties(id, date, venue_text, sort_order, venue_secret, lineup, format_id, series_id, formats(name, slug, color), party_series!event_parties_series_id_fkey(name))")
+      .select("slug, title, date, venue_secret, lineup, is_published, cover_image, event_parties(id, date, time, end_time, venue_text, sort_order, venue_secret, lineup, format_id, series_id, formats(name, slug, color), party_series!event_parties_series_id_fkey(name))")
       .order("date", { ascending: true });
 
     if (!canSeeDrafts) {
@@ -440,12 +443,24 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
         lineup: string[] | null;
         is_published: boolean;
         cover_image: string | null;
-        event_parties: { id: string; date: string; venue_text: string | null; sort_order: number; venue_secret: boolean; lineup: string[] | null; format_id: string | null; series_id: string | null; formats: { name: string; slug: string; color: string } | { name: string; slug: string; color: string }[] | null; party_series: { name: string } | { name: string }[] | null }[];
+        event_parties: { id: string; date: string; time: string; end_time: string | null; venue_text: string | null; sort_order: number; venue_secret: boolean; lineup: string[] | null; format_id: string | null; series_id: string | null; formats: { name: string; slug: string; color: string } | { name: string; slug: string; color: string }[] | null; party_series: { name: string } | { name: string }[] | null }[];
       };
       const parties = evt.event_parties ?? [];
       const sortedDates = parties.map((p) => p.date).sort();
       const startDate = sortedDates[0] ?? evt.date;
       const endDate = sortedDates[sortedDates.length - 1] ?? evt.date;
+
+      // The whole event's hours (owner's request, 2026-09-24): the first
+      // night to open and the last to close, ordered by date then time —
+      // NOT by `sort_order`, which is the order the page lists them in. On a
+      // night in two acts that is 16:00 → 06:00; on one night, its own hours.
+      // A last night without an end time gives no end, and the card prints
+      // only the start: an end nobody stored is not an end.
+      const byStart = [...parties].sort((a, b) =>
+        `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`)
+      );
+      const startTime = byStart[0]?.time ?? null;
+      const endTime = byStart[byStart.length - 1]?.end_time ?? null;
 
       // Build deduplicated venues array from all parties
       const seen = new Set<string>();
@@ -593,6 +608,8 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
         // The poster is public material (it is what the night is announced
         // with), so it crosses to the card as it is; no verdict decides it.
         cover_image: evt.cover_image ?? null,
+        start_time: startTime,
+        end_time: endTime,
         start_date: startDate,
         end_date: endDate,
         venues,
