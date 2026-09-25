@@ -415,9 +415,11 @@ if (!/export const dynamic = "force-dynamic"/.test(ticketSrc)) {
  *   E3. THE NORMALISATION'S DIRECTION. `?? false` — *unknown means public* — must
  *       not return next to the secrecy flag on that page. It was there until
  *       2026-08-22 and it was the wrong way round for an irreversible act.
- *   E4. THE HINT'S SESSION TERM, on the night's own page. The hint is shown only
- *       to a signed-in reader; the branch that says so lives in a client
- *       component, so the value must not be BUILT for a reader with no session.
+ *   E4. THE HINT'S SECRECY TERM, on the night's own page. Until 2026-09-25 this
+ *       was a SESSION term — the hint was for signed-in readers only. The owner
+ *       reversed that: signed in or not, a secret venue reads the same, so the
+ *       hint now crosses for every reader. What E4 still guards is the other
+ *       half: on a night whose venue is public the hint is not built at all.
  *
  * What it does NOT measure: whether a value that legitimately crosses is safe.
  * `venue_label` on a NON-secret night is the venue's real name, and it is meant
@@ -438,6 +440,7 @@ if (!/export const dynamic = "force-dynamic"/.test(ticketSrc)) {
  *   M3a  the normalisation is restated in a second form         → E3, exit 1
  *   M3b  `?? false` returns — *unknown means public*            → E3, exit 1
  *   M4   the hint is built for a reader with no session         → E4, exit 1
+ *        (M4 describes the 2026-08-22 rule; E4 was re-pointed on 2026-09-25 — see E4)
  *
  * M1b is the one that matters most: it is a file that appears in no list in this
  * script, and it is the blind spot check C names in its own docblock. Afterwards
@@ -581,14 +584,13 @@ if (detailSrc === null) {
   process.exit(2);
 }
 
-if (!/venueOnPublicSurface\s*\|\|\s*!isAuthenticated/.test(detailSrc)) {
+if (!/const venueHint = venueOnPublicSurface\s*\?\s*null\s*:\s*party\.venue_secret_hint/.test(detailSrc)) {
   fail(
     "E4",
-    "on the night's page the hint handed to `SecretVenueDialog` is built without a " +
-      "session term. The dialog prints it under `hint && isAuthenticated`, which is " +
-      "correct about the pixel and powerless about the payload: a `\"use client\"` " +
-      "component receives the string in the document, so a reader with no session — " +
-      "the very reader that branch refuses — can read it from view-source."
+    "on the night's page the hint handed to `SecretVenueDialog` is no longer built as " +
+      "`venueOnPublicSurface ? null : party.venue_secret_hint`. Since 2026-09-25 the hint " +
+      "is for every reader (owner's decision), and the one term left is secrecy: a night " +
+      "whose venue is public carries no hint. If the shape changed on purpose, change this check with it."
   );
 }
 

@@ -1554,10 +1554,19 @@ export default async function EventDetailPage({
           // on its own. What is being restored is the product's own decision —
           // the hint is for somebody who signed in — which the payload was
           // quietly overriding.
-          const venueHint =
-            venueOnPublicSurface || !isAuthenticated
-              ? null
-              : party.venue_secret_hint;
+          //
+          // ── REVERSED ON 2026-09-25, BY THE OWNER ───────────────────────────
+          //
+          // *«Chi e' loggato e chi non lo e' deve vedere le stesse cose per
+          // quanto riguarda una secret venue.»* The session term above is gone:
+          // the hint is now for every reader of this page, and the dialog paints
+          // it for everyone too. What remains is the secrecy term — a night whose
+          // venue is public has no hint to hand over. The address itself is
+          // untouched: it still reaches only the holder, by mail and on the
+          // ticket, through `venue-disclosure.ts`.
+          const venueHint = venueOnPublicSurface
+            ? null
+            : party.venue_secret_hint;
 
           // The second verdict, and it stays. `undefined` here is a REFUSAL and
           // not a gap: `public.venue_for_parties` returns a night with its venue
@@ -1763,7 +1772,6 @@ export default async function EventDetailPage({
                       */
                       <SecretVenueDialog
                         hint={venueHint}
-                        isAuthenticated={isAuthenticated}
                         revealHours={venueRevealHours(party.venue_reveal_hours)}
                       />
                     ) : null}

@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { Chip } from "@/components/ui/Chip";
 import { Dialog } from "@/components/ui/Dialog";
 import { LockClosedIcon } from "@/components/ui/Icons";
 
@@ -127,6 +126,11 @@ import { LockClosedIcon } from "@/components/ui/Icons";
  *
  * ── The controls, and why the two roads in are links rather than buttons ─────
  *
+ * *(Historical since 2026-09-25: there are no roads in any more. The owner
+ * decided a secret venue reads the same signed in or not, and the signed-in
+ * dialog never had a chip — so `Close` is the only control, for everybody. The
+ * paragraphs below describe the chips as they were.)*
+ *
  * `Sign up` and `Sign in` navigate inside this application, so they stay
  * elements the router handles: the chip rung renders a typed `next/link`, which
  * keeps client-side navigation, prefetching and the build-time check that the
@@ -159,7 +163,6 @@ export function formatRevealWindow(hours: number): string {
 
 interface SecretVenueDialogProps {
   hint: string | null;
-  isAuthenticated: boolean;
   /** The EFFECTIVE window, already resolved by the server. Never the raw column. */
   /**
    * The night's reveal window, in hours, resolved by the server. Printed
@@ -172,7 +175,6 @@ interface SecretVenueDialogProps {
 
 export default function SecretVenueDialog({
   hint,
-  isAuthenticated,
   revealHours,
 }: SecretVenueDialogProps) {
   const [open, setOpen] = useState(false);
@@ -200,7 +202,12 @@ export default function SecretVenueDialog({
           }
         >
           <div className="space-y-3 text-sm text-muted">
-            {hint && isAuthenticated && (
+            {/*
+              The hint is painted for EVERY reader since 2026-09-25 (owner's
+              decision: signed in or not, a secret venue reads the same). The
+              server still hands over no hint on a night whose venue is public.
+            */}
+            {hint && (
               <p className="italic">
                 Hint: {hint}
               </p>
@@ -208,9 +215,21 @@ export default function SecretVenueDialog({
 
             <div className="space-y-2">
               <p className="font-medium text-ink">How to unlock:</p>
-              {!isAuthenticated ? (
-                <p className="mb-2">Sign in to see how secret venues work.</p>
-              ) : (
+              {/*
+                ── Una spiegazione sola, con o senza sessione (2026-09-25) ────
+
+                Chi non aveva fatto l'accesso leggeva «Sign in to see how
+                secret venues work.» — cioe' niente. Il proprietario ha chiesto
+                che legga la stessa spiegazione di chi e' dentro: e' il COME, non
+                il DOVE, e non c'era ragione di nasconderlo. Chi arriva qui senza
+                sessione e' proprio chi sta decidendo se comprare, ed e' a lui
+                che serve sapere che l'indirizzo va solo a chi viene.
+
+                **Resta dietro la sessione l'indizio** (sopra): e' l'ultima cosa
+                che una superficie pubblica dice sul luogo (`venue-secrecy.md`),
+                e allargarne il pubblico e' un'altra decisione, non presa qui.
+              */}
+              {(
                 /*
                   ── IL TERZO RAMO E' USCITO IL 2026-09-21 (fase 50) ─────────
 
@@ -282,28 +301,14 @@ export default function SecretVenueDialog({
           </div>
 
           {/*
-            ── Un chip solo, dalla fase 50 (D-50-11) ─────────────────────────
+            ── Nessun chip, dal 2026-09-25 ─────────────────────────────────────
 
-            Accanto a `Sign in` c'era `Sign up`, verso la pagina d'iscrizione.
-            Quella pagina non esiste piu': nessuno si iscrive da solo, entra chi
-            compra un biglietto o chi e' invitato da guest list. Un chip che
-            porta a un 404 e' peggio di un chip in meno, perche' promette una
-            strada e la interrompe.
-
-            **Qui non cambia nient'altro, ed e' deliberato.** Questa superficie
-            sta su `venue-secrecy.md`: non cambia la condizione che decide se
-            il dialogo si disegna, non cambia chi lo vede, non cambia cosa
-            dice del luogo. Si toglie un chip — non si tocca il predicato, che
-            vive in `src/lib/venue-reveal/venue-disclosure.ts` e si legge,
-            non si riscrive.
+            Qui c'era `Sign in`, solo per chi non aveva una sessione (fino alla
+            fase 50 anche `Sign up`). Il proprietario ha deciso che chi e' dentro
+            e chi e' fuori vedono lo stesso dialogo, e chi e' dentro non ha mai
+            avuto un chip: quindi non ce l'ha piu' nessuno. Chi ha un biglietto
+            lo raggiunge dal link nella mail o dal menu, non da qui.
           */}
-          {!isAuthenticated && (
-            <div className="mt-5 flex gap-3">
-              <Chip href="/login" className="flex-1">
-                Sign in
-              </Chip>
-            </div>
-          )}
         </Dialog>
       )}
     </>
