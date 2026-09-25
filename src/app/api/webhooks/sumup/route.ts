@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { getCheckout } from "@/lib/sumup";
-import { alertOrganizerPaidNotIssued } from "@/lib/tickets/organizer-alert";
+import {
+  alertOrganizerPaidNotIssued,
+  notifyOrganizerOfSale,
+} from "@/lib/tickets/organizer-alert";
 import { sendEmail } from "@/lib/email";
 import { TicketConfirmationEmail } from "@/emails/ticket-confirmation";
 import { render } from "@react-email/render";
@@ -184,6 +187,23 @@ export async function POST(request: Request) {
         })
         .eq("id", purchase.id);
 
+      // Il riepilogo a info@ (2026-09-25). Dopo l'emissione e prima della mail
+      // all'acquirente; non solleva mai, quindi non tocca l'incasso.
+      await notifyOrganizerOfSale({
+        serviceClient: supabase,
+        ref: purchase.id,
+        eventId: purchase.event_id,
+        partyId: purchase.party_id ?? null,
+        tierId: purchase.tier_id,
+        quantity: 1,
+        amountPaid: Number(checkout.amount),
+        discountCodeId: purchase.discount_code_id ?? null,
+        transactionCode,
+        buyerName: null,
+        buyerEmail: null,
+        buyerUserId: purchase.user_id,
+      });
+
       // Fire-and-forget: send confirmation email with QR code
       try {
         // Fetch user info
@@ -348,7 +368,7 @@ export async function POST(request: Request) {
         // nasce QUI, ore dopo il modulo, quindi il nome raccolto allora vive
         // sulla riga d'ordine e questo e' il solo momento in cui puo'
         // raggiungerlo. Non tocca il biglietto (`D-49-03`).
-        "id, status, buyer_email, buyer_name, user_id, total_amount, quantity, event_id, party_id, error_message"
+        "id, status, buyer_email, buyer_name, user_id, total_amount, quantity, event_id, party_id, tier_id, discount_code_id, error_message"
       )
       .eq("sumup_checkout_id", checkout.id)
       .single();
@@ -562,6 +582,28 @@ export async function POST(request: Request) {
           orderEmailError
         );
       }
+
+      // 5b. IL RIEPILOGO A NOI — info@, decisione del proprietario 2026-09-25.
+      //
+      // Dopo la mail di chi ha comprato, che conta di piu'. Non solleva mai.
+      // Una seconda consegna esce sopra su `completed`; due simultanee le ferma
+      // la chiave di idempotenza del fornitore, dentro il modulo.
+      await notifyOrganizerOfSale({
+        serviceClient: supabase,
+        ref: ticketOrder.id,
+        eventId: ticketOrder.event_id,
+        partyId: ticketOrder.party_id ?? null,
+        tierId: ticketOrder.tier_id,
+        quantity: Array.isArray(idsEmessi) && idsEmessi.length > 0
+          ? idsEmessi.length
+          : ticketOrder.quantity,
+        amountPaid: Number(ticketOrder.total_amount),
+        discountCodeId: ticketOrder.discount_code_id ?? null,
+        transactionCode: orderTransactionCode,
+        buyerName: ticketOrder.buyer_name,
+        buyerEmail: ticketOrder.buyer_email,
+        buyerUserId: buyerId,
+      });
 
       // ═══════════════════════════════════════════════════════════════════════
       // 6. L'INDIRIZZO, SOLO SE LA RIVELAZIONE E' GIA' SCATTATA
