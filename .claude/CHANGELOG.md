@@ -3,6 +3,51 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.27.0] - 2026-09-28
+
+### Changed — il gate *metadata e Open Graph* descrive il modulo che ora esiste: `nextjs-architecture.md`
+
+**Cosa e' cambiato.** Il gate diceva *«oggi `generateMetadata` esiste solo su
+`src/app/layout.tsx` e sulla pagina del menu — le pagine evento non hanno
+metadata proprie»*. Dal 2026-09-28 le hanno:
+`src/app/(public)/events/[slug]/event-metadata.ts`, agganciato da
+`generateMetadata` in `page.tsx` (commit `f11782a2`). La riga ora registra la
+regola che quel modulo applica, non piu' una previsione: **nessuna colonna di
+luogo nelle select** (non `venue_text`, non `venue_id`, non l'indizio), una
+notte non esplicitamente pubblica dice «Secret venue» (default chiuso), la
+citta' non si scrive perche' non tutte le notti sono a Torino, e l'immagine e'
+la **cover** servita dall'ottimizzatore di Next a 1200 px e `q=75` — l'unica
+qualita' che Next 16 accetta — perche' WhatsApp scarta le immagini pesanti (la
+cover della 003 pesa 944 KB, la versione servita 42 KB, misurata con lo user
+agent di WhatsApp). La frase di prima e' citata nella riga, non cancellata.
+
+**Cosa lo ha fatto scattare.** La campagna Instagram della 003: ogni link
+incollato in un gruppo WhatsApp o Facebook mostrava il logo e «motion music
+hub», senza data, e il piano operativo del 28/9 doveva prescrivere la locandina
+allegata a mano. Con la modifica al prodotto, un modulo che si carica su quella
+pagina e ne descriveva l'assenza sarebbe stato *una riga che descrive male il
+prodotto, peggio di una riga assente* (`meta-gates.md`).
+
+**Vincolo nuovo, non di codice.** L'anteprima la cachano terzi e usa la cover:
+da oggi la cover di una serata **non e' mai una foto scattata sul posto**. Sta
+scritto nel gate come vincolo su come si sceglie la cover.
+
+**Scenario di carico e scatto.** File:
+`src/app/(public)/events/[slug]/event-metadata.ts`. Moduli attesi:
+`venue-secrecy.md` (`src/app/(public)/events/**`, primario per
+`meta-gates.md`), `nextjs-architecture.md`, `ticketing-payments.md`
+(`src/app/(public)/events/**`), piu' `CLAUDE.md` e `meta-gates.md`.
+Modifica-tipo che deve far scattare i gate: aggiungere `venue_text` alla
+select delle serate «per mostrare il locale nelle notti pubbliche» — il gate
+*metadata e Open Graph* dice che il modulo non seleziona nessuna colonna di
+luogo, e `venue-secrecy.md`, gate *default chiuso*, dice che il fallback e' il
+segreto. Secondo scenario: sostituire l'URL dell'ottimizzatore con
+`event.cover_image` diretto «perche' e' piu' semplice» — la riga spiega perche'
+no, con la misura.
+
+`npm run verify:persona`: 7/7 verdi, caso peggiore invariato (5 file, 14.031
+token su 15.000). Nessun `paths:` allargato.
+
 ## [1.26.0] - 2026-09-23
 
 ### Changed — la persona smette di descrivere la gallery com'era prima della fase 52: `media-and-storage.md`, `access-gating.md`
