@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
@@ -28,6 +29,7 @@ import {
   EVENT_MEDIA_SIGNATURE_SECONDS,
 } from "@/lib/media/sign-event-media";
 import { formatTime } from "@/utils/formatTime";
+import { buildEventMetadata } from "./event-metadata";
 import { CalendarIcon, ClockIcon, MapPinIcon, LockClosedIcon, MusicalNoteIcon } from "@/components/ui/Icons";
 import type { UserRole, AccessType } from "@/types/database";
 import { venueRevealHours } from "@/utils/datetime";
@@ -366,6 +368,20 @@ function formatDateRange(dates: string[]): string {
   const end = new Date(sorted[sorted.length - 1] + "T00:00:00");
   const fmt = (d: Date) => `${WD_SHORT[d.getDay()]} ${d.getDate()} ${MO_SHORT[d.getMonth()]}`;
   return `${fmt(start)} - ${fmt(end)}`;
+}
+
+/**
+ * The link preview of the night — built in `./event-metadata.ts`, which selects
+ * no column of place. It lives in its own module so that this page's own
+ * selects, the ones `verify:venue-surfaces` reads, keep their shape.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  return buildEventMetadata(slug);
 }
 
 export default async function EventDetailPage({
