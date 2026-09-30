@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { redactDbError } from "@/lib/errors/redact";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -362,4 +363,182 @@ export async function fetchPurchaseFunnel(
     { name: "Tokens", value: tokensResult.count ?? 0, fill: colors[2] },
     { name: "Redeemed", value: redeemedResult.count ?? 0, fill: colors[3] },
   ];
+}
+
+// ---------------------------------------------------------------------------
+// Ticket checkout funnel (CART-01)
+// ---------------------------------------------------------------------------
+
+type TicketFunnelDevice = "mobile" | "desktop" | "unknown" | "unrecorded";
+type TicketFunnelMethod = "apple_pay" | "google_pay" | "card" | "other" | "unrecorded";
+
+export interface TicketFunnel {
+  steps: FunnelStep[];
+  /** (opened − paid − paidNotIssued) / opened, intero; null sotto 10 checkout. */
+  abandonmentPct: number | null;
+  opened: number;
+  /** `failed`: incassato e non emesso. Denaro da emettere, non un abbandono. */
+  paidNotIssued: number;
+  byDevice: Record<TicketFunnelDevice, { opened: number; paid: number }>;
+  byMethod: Record<TicketFunnelMethod, number>;
+}
+
+/** Sotto questa base una percentuale e' un aneddoto: si mostrano solo i conteggi. */
+const TICKET_FUNNEL_MIN_BASE = 10;
+/** Limite di righe per richiesta di PostgREST. */
+const TICKET_FUNNEL_PAGE = 1000;
+/** Tetto di sicurezza: 50 pagine = 50.000 checkout per una serata. */
+const TICKET_FUNNEL_MAX_PAGES = 50;
+
+type TicketFunnelRow = {
+  status: string;
+  closed_reason: string | null;
+  device: string | null;
+  payment_method: string | null;
+};
+
+/**
+ * L'imbuto del checkout dei biglietti, contato dal database.
+ *
+ * **Perche' dal database e non da PostHog (decisione Q1, 2026-09-30).** La
+ * chiave PostHog non esiste in produzione, e aprire un progetto di analisi e'
+ * una decisione di prodotto con un'informativa da cambiare. Le colonne
+ * `closed_reason`, `device`, `payment_method` di `ticket_orders` bastano, e non
+ * portano ne' mail ne' nome: la `select` qui sotto nomina quattro colonne e
+ * nessun dato personale entra nell'imbuto.
+ *
+ * **Il chiamante DEVE passare il client di servizio, e SOLO dopo
+ * `mayManageEvent`.** `ticket_orders` ha una sola policy,
+ * `ticket_orders_select_own`: con il client di sessione un organizer conterebbe
+ * i propri ordini — zero — e l'imbuto vuoto sembrerebbe vero. Il client di
+ * servizio salta la RLS, quindi la guardia e' a monte, nella pagina.
+ *
+ * **Paginata a 1000 righe.** PostgREST restituisce al massimo 1000 righe per
+ * richiesta: una serata oltre quella soglia conterebbe in silenzio solo la
+ * prima pagina — lo stesso zero finto della RLS, in un'altra forma.
+ *
+ * Gli ordini gratuiti (senza `sumup_checkout_id`) non sono un checkout e non
+ * entrano. Un errore di lettura si logga e si rilancia: il pannello lo mostra,
+ * mai uno zero.
+ */
+export async function fetchTicketFunnel(
+  service: SupabaseClient,
+  eventId: string
+): Promise<TicketFunnel> {
+  const rows: TicketFunnelRow[] = [];
+  let truncated = true;
+  for (let page = 0; page < TICKET_FUNNEL_MAX_PAGES; page++) {
+    const from = page * TICKET_FUNNEL_PAGE;
+    const { data, error } = await service
+      .from("ticket_orders")
+      .select("status, closed_reason, device, payment_method")
+      .eq("event_id", eventId)
+      .not("sumup_checkout_id", "is", null)
+      .order("id")
+      .range(from, from + TICKET_FUNNEL_PAGE - 1);
+    if (error) {
+      console.error(
+        `[analytics.ticket_funnel_unreadable] event=${eventId} page=${page} ${redactDbError(error)}`
+      );
+      throw new Error(`ticket_funnel_unreadable: ${error.code ?? "unknown"}`);
+    }
+    const batch = (data ?? []) as TicketFunnelRow[];
+    rows.push(...batch);
+    if (batch.length < TICKET_FUNNEL_PAGE) {
+      truncated = false;
+      break;
+    }
+  }
+  if (truncated) {
+    console.error(
+      `[analytics.ticket_funnel_truncated] event=${eventId} rows=${rows.length} max_pages=${TICKET_FUNNEL_MAX_PAGES}`
+    );
+  }
+
+  let paid = 0;
+  let neverAttempted = 0;
+  let declined = 0;
+  let closedUnrecorded = 0;
+  let stillOpen = 0;
+  let failedPaid = 0;
+
+  const byDevice: TicketFunnel["byDevice"] = {
+    mobile: { opened: 0, paid: 0 },
+    desktop: { opened: 0, paid: 0 },
+    unknown: { opened: 0, paid: 0 },
+    unrecorded: { opened: 0, paid: 0 },
+  };
+  const byMethod: TicketFunnel["byMethod"] = {
+    apple_pay: 0,
+    google_pay: 0,
+    card: 0,
+    other: 0,
+    unrecorded: 0,
+  };
+
+  for (const row of rows) {
+    // NULL = ordine nato prima della colonna: mai sommato a unknown/other.
+    const device: TicketFunnelDevice =
+      row.device === "mobile" || row.device === "desktop" || row.device === "unknown"
+        ? row.device
+        : "unrecorded";
+    byDevice[device].opened++;
+
+    if (row.status === "completed") {
+      paid++;
+      byDevice[device].paid++;
+      const method: TicketFunnelMethod =
+        row.payment_method === "apple_pay" ||
+        row.payment_method === "google_pay" ||
+        row.payment_method === "card" ||
+        row.payment_method === "other"
+          ? row.payment_method
+          : "unrecorded";
+      byMethod[method]++;
+    } else if (row.status === "failed") {
+      failedPaid++;
+    } else if (row.status === "pending") {
+      stillOpen++;
+    } else if (row.status === "expired") {
+      if (row.closed_reason === "never_attempted") neverAttempted++;
+      else if (row.closed_reason === "declined") declined++;
+      else closedUnrecorded++; // chiuso prima che la causa si registrasse
+    }
+  }
+
+  const opened = rows.length;
+  // Un `failed` e' un incasso senza biglietti, non un carrello lasciato:
+  // al numeratore gonfierebbe il tasso proprio quando c'e' denaro da emettere.
+  const abandonmentPct =
+    opened < TICKET_FUNNEL_MIN_BASE
+      ? null
+      : Math.round(((opened - paid - failedPaid) / opened) * 100);
+
+  const steps: FunnelStep[] = [
+    { name: "Checkouts opened", value: opened, fill: "var(--color-accent)" },
+    { name: "Paid", value: paid, fill: "#6366f1" },
+    { name: "Never attempted", value: neverAttempted, fill: "#8b5cf6" },
+    { name: "Card declined", value: declined, fill: "#c084fc" },
+    {
+      name: "Still open (not yet closed by the daily check)",
+      value: stillOpen,
+      fill: "#a1a1aa",
+    },
+  ];
+  if (closedUnrecorded > 0) {
+    steps.push({
+      name: "Closed before tracking (cause not recorded)",
+      value: closedUnrecorded,
+      fill: "#71717a",
+    });
+  }
+
+  return {
+    steps,
+    abandonmentPct,
+    opened,
+    paidNotIssued: failedPaid,
+    byDevice,
+    byMethod,
+  };
 }
