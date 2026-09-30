@@ -25,7 +25,28 @@ import {
   fetchTokenLifecycle,
   fetchMarketInsights,
   fetchPurchaseFunnel,
+  fetchTicketFunnel,
+  type TicketFunnel,
 } from "@/lib/analytics/event-queries";
+import { getServiceClient } from "@/lib/supabase/service";
+
+/** A read that failed is a state of its own, never a panel of zeros. */
+type TicketFunnelResult = { ok: true; funnel: TicketFunnel } | { ok: false };
+
+const DEVICE_LABELS: Record<keyof TicketFunnel["byDevice"], string> = {
+  mobile: "mobile",
+  desktop: "desktop",
+  unknown: "unknown",
+  unrecorded: "before tracking",
+};
+
+const METHOD_LABELS: Record<keyof TicketFunnel["byMethod"], string> = {
+  card: "card",
+  apple_pay: "Apple Pay",
+  google_pay: "Google Pay",
+  other: "other",
+  unrecorded: "before tracking",
+};
 
 /**
  * The analytics of one event — the collapsed surface.
@@ -106,18 +127,56 @@ export default async function AnalyticsPage({
   }
 
   // Fetch all analytics data in parallel
-  const [revenue, velocity, drinkSales, attendance, lifecycle, marketInsights, purchaseFunnel] =
-    await Promise.all([
-      fetchEventRevenue(supabase, eventId),
-      fetchDailyVelocity(supabase, eventId),
-      fetchDrinkSales(supabase, eventId),
-      fetchAttendanceRate(supabase, eventId),
-      fetchTokenLifecycle(supabase, eventId),
-      fetchMarketInsights(supabase, eventId),
-      seesMasterOnlyPanels
-        ? fetchPurchaseFunnel(supabase, eventId)
-        : Promise.resolve(null),
-    ]);
+  //
+  // The ticket checkout funnel (CART-01) is the ONE read on this page that uses
+  // the service client, and the reason is RLS: `ticket_orders` has a single
+  // policy, `ticket_orders_select_own`, so through the session client an
+  // organizer would count their own orders — zero — and an empty funnel would
+  // look true. The service client skips RLS, so the guard is the one above:
+  // this line is reached only after `mayManageEvent(ctx, event.created_by)`
+  // returned true, and only behind `seesMasterOnlyPanels`, like its drinks twin.
+  // The read names four columns and no email or name (see `fetchTicketFunnel`).
+  const [
+    revenue,
+    velocity,
+    drinkSales,
+    attendance,
+    lifecycle,
+    marketInsights,
+    purchaseFunnel,
+    ticketFunnel,
+  ] = await Promise.all([
+    fetchEventRevenue(supabase, eventId),
+    fetchDailyVelocity(supabase, eventId),
+    fetchDrinkSales(supabase, eventId),
+    fetchAttendanceRate(supabase, eventId),
+    fetchTokenLifecycle(supabase, eventId),
+    fetchMarketInsights(supabase, eventId),
+    seesMasterOnlyPanels
+      ? fetchPurchaseFunnel(supabase, eventId)
+      : Promise.resolve(null),
+    seesMasterOnlyPanels
+      ? // Inside `.then` so a missing service key surfaces as the panel's
+        // error state too, not as a synchronous throw that takes the page down.
+        Promise.resolve()
+          .then(() => fetchTicketFunnel(getServiceClient(), eventId))
+          .then(
+          (funnel): TicketFunnelResult => ({ ok: true, funnel }),
+          // A read error is already logged inside the query
+          // (`[analytics.ticket_funnel_unreadable]`); this line also catches a
+          // service client that could not be built. Either way it becomes a
+          // visible state instead of taking the whole page down.
+          (e: unknown): TicketFunnelResult => {
+            console.error(
+              `[analytics.ticket_funnel_panel_failed] event=${eventId} ${
+                e instanceof Error ? e.message : "unknown"
+              }`
+            );
+            return { ok: false };
+          }
+        )
+      : Promise.resolve(null),
+  ]);
 
   return (
     // `wide`, and it is named on §4's CLOSED wide list rather than judged here:
@@ -189,8 +248,63 @@ export default async function AnalyticsPage({
               <PurchaseFunnelChart data={purchaseFunnel} />
             </Card>
           )}
+
+          {/* Ticket checkout funnel — `admin.access` only, counted from the
+              database with the service client after `mayManageEvent` */}
+          {seesMasterOnlyPanels && ticketFunnel && (
+            <Card>
+              <SectionHeading>Ticket checkout</SectionHeading>
+              {ticketFunnel.ok ? (
+                <TicketFunnelPanel funnel={ticketFunnel.funnel} />
+              ) : (
+                <p className="text-sm text-muted" role="status">
+                  Could not read ticket checkouts
+                </p>
+              )}
+            </Card>
+          )}
         </div>
       </AnimatedSection>
     </PageShell>
+  );
+}
+
+/**
+ * The ticket checkout numbers under the funnel. The abandonment rate carries
+ * its base, and below ten checkouts it is not shown at all — a percentage on
+ * nine orders is an anecdote. A paid-but-not-issued order is money, not an
+ * abandoned cart, so it gets its own line and is never counted as abandonment.
+ */
+function TicketFunnelPanel({ funnel }: { funnel: TicketFunnel }) {
+  const devices = (Object.keys(DEVICE_LABELS) as (keyof TicketFunnel["byDevice"])[])
+    .filter((k) => funnel.byDevice[k].opened > 0)
+    .map(
+      (k) =>
+        `${DEVICE_LABELS[k]} ${funnel.byDevice[k].opened}/${funnel.byDevice[k].paid}`
+    );
+  const methods = (Object.keys(METHOD_LABELS) as (keyof TicketFunnel["byMethod"])[])
+    .filter((k) => funnel.byMethod[k] > 0)
+    .map((k) => `${METHOD_LABELS[k]} ${funnel.byMethod[k]}`);
+
+  return (
+    <div className="space-y-3">
+      <PurchaseFunnelChart data={funnel.steps} />
+      <div className="space-y-1 text-sm text-muted">
+        <p>
+          {funnel.abandonmentPct === null
+            ? `Abandonment: not shown below 10 checkouts — ${funnel.opened} so far`
+            : `Abandonment: ${funnel.abandonmentPct}% of ${funnel.opened} checkouts`}
+        </p>
+        {funnel.paidNotIssued > 0 && (
+          <p>
+            {funnel.paidNotIssued} paid but not issued — see Orders without tickets
+          </p>
+        )}
+        {devices.length > 0 && (
+          <p>By device (opened/paid): {devices.join(" · ")}</p>
+        )}
+        {methods.length > 0 && <p>Paid with: {methods.join(" · ")}</p>}
+      </div>
+    </div>
   );
 }
