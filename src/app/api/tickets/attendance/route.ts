@@ -11,6 +11,8 @@ import {
   type DoorSubjectType,
 } from "@/lib/door/outcome";
 import { readNightArm } from "@/lib/door/night-arm";
+import { refundRefusedAtDoor } from "@/lib/door/refund-refusal";
+import { partyStartInstant } from "@/utils/datetime";
 import { judgeAtScanTime } from "@/lib/door/judge-at-scan-time";
 import {
   DOOR_UNRESOLVED_ERROR,
@@ -274,6 +276,18 @@ interface AttendeeItem {
   checkedInBy: string | null;
   /** Present on every item, `null` where there is no refund — so the device never distinguishes "absent" from "not refunded". */
   refundedAt: string | null;
+  /**
+   * RFD-03 (52.2-12). Present on every item, `false` wherever the door must
+   * admit — same rule as `refundedAt`: the device never distinguishes "absent"
+   * from "false". `true` only when `refundRefusedAtDoor` says so, computed
+   * HERE with `partyStartInstant` and never on the phone
+   * (`time-and-scheduling.md`: a stored date+time is converted in one module,
+   * on the server). With `DOOR_REFUSE_REFUNDED_ENABLED` off it is `false`
+   * everywhere. A phone that downloaded the list before the switch was turned
+   * on carries `false` until it downloads again: re-download after activation
+   * is a step of the act in plan 52.2-15.
+   */
+  refundedBeforeNight: boolean;
   isGuestList: boolean;
   hasEmail: boolean;
   ticketType: string;
@@ -333,6 +347,8 @@ interface RefundRow {
   refunded_at: string | null;
   requested_by: string;
   type: "user_request" | "admin_initiated";
+  /** The refund email's provider id (52.2-09); NULL = the holder was not told. */
+  notified_email_id: string | null;
 }
 
 /**
@@ -726,7 +742,7 @@ export async function GET(request: Request) {
         serviceClient
           .from("ticket_refunds")
           .select(
-            "refunded_ticket_id, refunded_party_id, refunded_event_id, refunded_at, requested_by, type",
+            "refunded_ticket_id, refunded_party_id, refunded_event_id, refunded_at, requested_by, type, notified_email_id",
           )
           .eq("status", "approved")
           .not("refunded_ticket_id", "is", null)
@@ -878,6 +894,7 @@ export async function GET(request: Request) {
           checkedInAt: t.checked_in_at,
           checkedInBy: operatorLabel(t.checked_in, t.checked_in_by, profileMap),
           refundedAt: null,
+          refundedBeforeNight: false,
           isGuestList: false,
           hasEmail: true,
           ticketType: t.ticket_type || "purchased",
@@ -900,12 +917,18 @@ export async function GET(request: Request) {
           checkedInAt: g.checked_in_at,
           checkedInBy: operatorLabel(checkedIn, g.checked_in_by, profileMap),
           refundedAt: null,
+          refundedBeforeNight: false,
           isGuestList: true,
           hasEmail: !!g.email,
           ticketType: "guest_list",
           tierName: null,
         };
       });
+
+      // The night's start, from the party already read above — no new query.
+      // The one conversion the online check-in uses too, so the manifest and
+      // the online door answer the same question with the same instant.
+      const nightStart = partyStartInstant(party.date, party.time);
 
       const refundedAttendees: AttendeeItem[] = [...refundsByTicket.values()]
         .filter((row): row is RefundRow & { refunded_ticket_id: string } =>
@@ -921,6 +944,13 @@ export async function GET(request: Request) {
           checkedInAt: null,
           checkedInBy: null,
           refundedAt: row.refunded_at,
+          // RFD-03: the same predicate as the online check-in. The phone only
+          // reads this boolean (52.2-11); it never computes the night's start.
+          refundedBeforeNight: refundRefusedAtDoor({
+            refundedAt: row.refunded_at ? new Date(row.refunded_at) : null,
+            notifiedEmailId: row.notified_email_id ?? null,
+            nightStart,
+          }),
           isGuestList: false,
           // Not claimed: the ticket row is gone and no contact route has been
           // established for this entry.
