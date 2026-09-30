@@ -668,6 +668,42 @@ export interface TicketOrder {
   discount_code_id: string | null;
   status: "pending" | "completed" | "failed" | "expired";
   error_message: string | null;
+  /**
+   * Perche' l'ordine si e' chiuso senza incasso — `20260930120000_ticket_orders_cart.sql`.
+   * `never_attempted`: nessun pagamento tentato; `declined`: il fornitore ha
+   * registrato un tentativo fallito. Una colonna propria invece di un terzo
+   * significato dentro {@link TicketOrder.error_message}.
+   *
+   * `null` su un ordine `expired` significa «chiuso prima della colonna», mai
+   * «causa assente».
+   */
+  closed_reason: "never_attempted" | "declined" | null;
+  /** La parola del fornitore sulla chiusura (`FAILED`, `CANCELLED`), al massimo 64 caratteri. */
+  closed_detail: string | null;
+  /**
+   * Quante volte il checkout e' stato riaperto. `NOT NULL DEFAULT 0`:
+   * l'eccezione dichiarata alla regola «nessun default», perche' zero riprese
+   * sulle righe nate prima della ripresa e' vero.
+   */
+  checkout_attempt: number;
+  /** L'id del fornitore della mail di ripresa programmata (una sola per ordine). */
+  resume_email_id: string | null;
+  /**
+   * Stato della mail di ripresa. `canceled` e' il percorso normale di un ordine
+   * pagato in tempo. `null` = interruttore spento o ordine nato prima della
+   * colonna.
+   */
+  resume_email_state:
+    | "scheduled"
+    | "canceled"
+    | "sent"
+    | "cancel_failed"
+    | "skipped"
+    | null;
+  /** `null` = ordine nato prima della colonna, mai «sconosciuto» (quello e' `unknown`). */
+  device: "mobile" | "desktop" | "unknown" | null;
+  /** `null` = prima della colonna o non ancora pagato, mai «sconosciuto» (quello e' `other`). */
+  payment_method: "apple_pay" | "google_pay" | "card" | "other" | null;
   created_at: string;
   updated_at: string;
 }
@@ -767,6 +803,19 @@ export interface TicketRefund {
   refunded_party_id: string | null;
   refunded_event_id: string | null;
   refunded_at: string | null;
+  /**
+   * L'ordine del biglietto rimborsato — `20260930120100_ticket_refunds_order_notice.sql`.
+   * Senza FK, scritto prima della cancellazione del biglietto. `null` su un
+   * rimborso storico significa *sconosciuto*, non *nessuno*.
+   */
+  refunded_order_id: string | null;
+  /**
+   * L'id del fornitore della mail `ticket_refunded` che ha avvisato il
+   * titolare. Il registro delle consegne non puo' dirlo da solo: il suo
+   * `ticket_id` e' `ON DELETE CASCADE`. `null` su un rimborso storico =
+   * sconosciuto.
+   */
+  notified_email_id: string | null;
 }
 
 export interface PendingPurchase {

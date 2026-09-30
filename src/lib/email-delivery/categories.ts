@@ -39,7 +39,8 @@
  */
 
 /**
- * I dodici messaggi che questo prodotto sa spedire, uno per template.
+ * I messaggi che questo prodotto sa spedire, uno per template (quattordici al
+ * 2026-09-30, contati: `EMAIL_CATEGORIES.length` e' il numero che decide).
  *
  * Aggiungerne uno costa **due modifiche in un commit**: questa unione e il
  * `CHECK` della migration. Una sola delle due produce un invio che parte e non
@@ -160,6 +161,43 @@ export const EMAIL_CATEGORIES = [
    * strada e non lo diventa — vedi il template `src/emails/ticket-order.tsx`.
    */
   "ticket_order_confirmation",
+  /**
+   * La mail che riporta a un ordine rimasto aperto (CART-05) — fase 52.2,
+   * `20260930120200_email_category_resume_refunded.sql`.
+   *
+   * **Una sola per ordine**, per la misura che il Garante indica per le mail di
+   * promemoria del carrello (provvedimento del 17 luglio 2024, doc. web
+   * 10084158), e **prevista nell'informativa** (CART-06): una mail che nessuno
+   * ha annunciato non si manda. **Non porta nessun luogo**: e' un ritorno al
+   * pagamento, non una strada verso la serata.
+   *
+   * **`canceled` e' il suo percorso NORMALE, non un guasto.** La mail si
+   * programma all'apertura del checkout e si annulla quando l'ordine si paga in
+   * tempo — cioe' nella maggior parte dei casi. `interpretLastEvent` pero'
+   * legge `canceled` come `undelivered`, e questo **gonfia il contatore
+   * `undelivered` nella risposta del reconcile** con invii che non dovevano
+   * partire. E' dichiarato qui, non corretto con una semantica per categoria:
+   * lo stato vero della ripresa sta su `ticket_orders.resume_email_state`, ed
+   * e' li' che si legge.
+   *
+   * **Nessuna superficie admin la legge per `ticket_id`**: la mail appartiene a
+   * un ordine che non ha ancora biglietti.
+   */
+  "order_resume",
+  /**
+   * La mail che avvisa il titolare che il suo biglietto e' stato rimborsato —
+   * **la stessa sulle tre strade di rimborso** (RFD-01). Fase 52.2.
+   *
+   * **`ticket_id` e' SEMPRE nullo su questa categoria**, e non e' una svista:
+   * `email_deliveries.ticket_id` e' `ON DELETE CASCADE` e il percorso di
+   * rimborso cancella il biglietto (P-11). Il legame fra la mail e il rimborso
+   * sta su `ticket_refunds.notified_email_id`, la riga che sopravvive — ed e'
+   * quella che la porta legge per dire «il titolare e' stato avvisato».
+   *
+   * `refund_approved` resta nell'elenco come vocabolario delle righe storiche,
+   * con la stessa regola di `rsvp_confirmation`: non e' questa mail.
+   */
+  "ticket_refunded",
 ] as const;
 
 export type EmailCategory = (typeof EMAIL_CATEGORIES)[number];
