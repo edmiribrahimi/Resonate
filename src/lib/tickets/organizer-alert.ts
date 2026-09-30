@@ -363,3 +363,62 @@ export async function notifyOrganizerOfSale(args: {
       <p style="color:#666;font-size:12px">Order ${esc(args.ref)}.</p>`),
   });
 }
+
+/**
+ * Una mail di ripresa che non si e' potuta annullare, su un ordine pagato
+ * (CART-05, fase 52.2).
+ *
+ * La mail dice «Nothing has been charged». Se l'annullamento persistente
+ * (`order-resume.ts`, quattro tentativi in sei secondi) si esaurisce con la mail
+ * ancora in coda, chi ha pagato puo' riceverla fra poco: e' una frase falsa sul
+ * denaro, detta a una persona che ha appena pagato. Non la si puo' piu' fermare
+ * dal prodotto; la si puo' **precedere**, scrivendo all'acquirente.
+ *
+ * Una per ordine: `idempotencyKey` = `resume-not-cancelled/<orderId>`. Il testo
+ * non nomina alcun luogo.
+ */
+export async function alertOrganizerResumeEmailNotCancelled(args: {
+  serviceClient: ServiceClient;
+  orderId: string;
+  eventId: string;
+}): Promise<void> {
+  let night = "an event";
+  let date = "";
+  try {
+    const { data: event } = await args.serviceClient
+      .from("events")
+      .select("title, date")
+      .eq("id", args.eventId)
+      .maybeSingle();
+    night = event?.title ?? night;
+    date = event?.date ? formatEventDate(String(event.date)) : "";
+  } catch (e) {
+    console.error(
+      `[tickets.organizer_alert_resume_not_cancelled_event_unreadable] order=${args.orderId}`,
+      e
+    );
+  }
+
+  const link = `${appBase()}/admin/events/${args.eventId}/tickets`;
+
+  await sendToOrganizer({
+    tag: "organizer_alert_resume_not_cancelled",
+    ref: `order=${args.orderId}`,
+    senderName: "Resonate ALERT",
+    urgent: true,
+    idempotencyKey: `resume-not-cancelled/${args.orderId}`,
+    subject: `⚠️ ACTION NEEDED — Paid order, reminder email may still go out — ${night} — ${shortRef(args.orderId)}`,
+    html: wrap(`
+      <div style="background:#C62828;color:#fff;padding:14px 16px;border-radius:6px;margin-bottom:16px">
+        <div style="font-size:12px;letter-spacing:.08em;font-weight:700">ACTION NEEDED</div>
+        <div style="font-size:18px;font-weight:700;margin-top:4px">A paid order may still receive «your order is still open».</div>
+        <div style="font-size:14px;margin-top:4px">That email says nothing has been charged — which is no longer true.</div>
+      </div>
+      <p>Event: <strong>${esc(night)}</strong>${date ? ` · ${esc(date)}` : ""}</p>
+      <p>The order has been paid, but the scheduled reminder «your order is still open»
+         could not be cancelled with the email provider. If the buyer receives it,
+         write to them that their payment went through and their tickets are valid.</p>
+      <p><a href="${link}" style="display:inline-block;background:#C62828;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;font-weight:600">Open the order</a></p>
+      <p style="color:#666;font-size:12px">${link}<br>Order ${esc(args.orderId)}. This alert is sent once per order.</p>`),
+  });
+}
