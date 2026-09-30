@@ -1,6 +1,10 @@
 "use server";
 
+import { headers } from "next/headers";
 import { createCheckout } from "@/lib/sumup";
+import { CHECKOUT_TTL_MS } from "@/lib/tickets/checkout-window";
+import { scheduleOrderResumeEmail } from "@/lib/tickets/order-resume";
+import { generateTicketToken } from "@/utils/qr";
 import { getServiceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
 import { logMoneyPathFailure } from "@/lib/failure/money-path";
@@ -214,7 +218,17 @@ const GUEST_PURCHASE_ERROR: Record<
 };
 
 type GuestPurchaseResult =
-  | { success: true; checkoutId: string; orderId: string }
+  | {
+      success: true;
+      checkoutId: string;
+      orderId: string;
+      /**
+       * Il token firmato dell'ordine (`generateTicketToken(orderId)`), la stessa
+       * chiave con cui il ritorno dal pagamento apre `/tickets/order/<token>`.
+       * Lo legge il banner di ripresa (piano 52.2-10). Opaco, nessun luogo.
+       */
+      orderToken: string;
+    }
   | { success: false; refusal: GuestPurchaseRefusal; error: string };
 
 /**
@@ -393,6 +407,12 @@ export async function purchaseTicketsGuest(input: {
       checkoutReference: orderId,
       returnUrl,
       redirectUrl: redirectUrl.toString(),
+      // CART-02: ogni checkout di un ordine biglietti nasce con una scadenza
+      // presso SumUp. Oltre `CHECKOUT_TTL_MS` il fornitore non lo accetta piu',
+      // e il cron dei sospesi (`close-pending-orders`) puo' chiuderlo con la
+      // verita' di SumUp invece di aspettarlo per sempre. Drink ed Event Pass
+      // non lo passano: `createCheckout` non ha default (piano 52.2-03).
+      validUntil: new Date(Date.now() + CHECKOUT_TTL_MS).toISOString(),
     });
     checkoutId = response.id;
   } catch (error) {
@@ -409,6 +429,18 @@ export async function purchaseTicketsGuest(input: {
       error: GUEST_PURCHASE_ERROR[GUEST_CHECKOUT_FAILED],
     };
   }
+
+  // Il dispositivo (CART-01): un bit per l'imbuto, non un parser. Lo
+  // user-agent si legge e si butta: **non si salva**, perche' e' un'impronta del
+  // browser di chi compra e l'imbuto non ha bisogno di altro che di
+  // mobile/desktop. Vuoto → `unknown`, non una supposizione.
+  const userAgent = (await headers()).get("user-agent") ?? "";
+  const device: "mobile" | "desktop" | "unknown" =
+    userAgent === ""
+      ? "unknown"
+      : /Mobi|Android|iPhone|iPad/i.test(userAgent)
+        ? "mobile"
+        : "desktop";
 
   // 6. La riga d'ordine. `user_id: null` — **nessun account nasce qui**.
   //
@@ -430,6 +462,7 @@ export async function purchaseTicketsGuest(input: {
     total_amount: quote.totalAmount,
     discount_code_id: quote.discountCodeId,
     status: "pending",
+    device,
   });
 
   if (insertError) {
@@ -446,7 +479,28 @@ export async function purchaseTicketsGuest(input: {
     };
   }
 
-  return { success: true, checkoutId, orderId };
+  // 7. La mail di ripresa (CART-05), programmata QUI — dopo l'insert, perche'
+  //    la funzione rilegge la riga, e PRIMA di restituire il checkout, perche'
+  //    e' da questo ritorno che il browser va a pagare.
+  //
+  //    **Mai nel callback differito di Next (`after`)**: con Apple Pay il
+  //    pagamento puo' chiudersi in pochi secondi, e un webhook che arriva prima
+  //    che `resume_email_id` sia scritto non trova niente da annullare — la mail
+  //    «Nothing has been charged» partirebbe a chi ha appena pagato (P-3).
+  //    Attenderla qui costa qualche centinaio di millisecondi all'acquirente.
+  //
+  //    La funzione non solleva, e ogni suo «non programmata» (interruttore
+  //    spento, ordine gratuito, freno, freno illeggibile, fornitore) e' gia'
+  //    loggato con la sua causa. **Non cambia la risposta**: il denaro conta
+  //    piu' di una mail di cortesia, e l'acquisto prosegue comunque.
+  await scheduleOrderResumeEmail({ serviceClient, orderId });
+
+  return {
+    success: true,
+    checkoutId,
+    orderId,
+    orderToken: generateTicketToken(orderId),
+  };
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
