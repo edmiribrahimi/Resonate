@@ -5,11 +5,68 @@ import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { refundTransaction } from "@/lib/sumup";
 import { sendEmail } from "@/lib/email";
-import { RefundApprovedEmail } from "@/emails/refund-approved";
 import { RefundRejectedEmail } from "@/emails/refund-rejected";
 import { render } from "@react-email/render";
 import { CAP } from "@/lib/capabilities/keys";
 import { getAccessContext } from "@/lib/capabilities/server";
+import {
+  readRefundNoticeRecipient,
+  sendTicketRefundedEmail,
+  type RefundNoticeResult,
+} from "@/lib/tickets/refund-notice";
+
+/**
+ * L'esito della mail di rimborso al titolare, mandata dopo una `delete`
+ * riuscita (RFD-01, fase 52.2). Comune alle tre strade di questo file che
+ * cancellano un biglietto: ognuna chiama `sendTicketRefundedEmail` e poi questa.
+ *
+ * - **Attesa, non fuoco-e-dimentica**: una promessa lasciata correre in una
+ *   Server Action su Vercel puo' essere congelata a risposta inviata.
+ * - **Non solleva mai** e **non annulla nulla**: il denaro e' gia' tornato e il
+ *   biglietto e' gia' sparito. Un fallimento si logga con la sua categoria
+ *   (`[refund.notice_failed]`, `[refund.notice_no_recipient]`) e torna al
+ *   chiamante come `false`, che l'interfaccia mostra all'organizer: non esiste
+ *   error tracking, quindi e' l'unico modo in cui qualcuno lo sapra'.
+ * - **`notified_email_id`** si scrive solo se la mail e' partita: e' cio' che
+ *   la porta leggera' per dire «rimborsato e avvisato» (RFD-03).
+ */
+async function recordRefundNotice({
+  serviceClient,
+  notice,
+  refundRowId,
+  path,
+}: {
+  serviceClient: ReturnType<typeof getServiceClient>;
+  /** `null` = no recipient could be read before the delete. */
+  notice: RefundNoticeResult | null;
+  refundRowId: string;
+  path: "admin" | "approve_free" | "approve_paid";
+}): Promise<boolean> {
+  if (!notice) {
+    console.error(`[refund.notice_no_recipient] path=${path} refund=${refundRowId}`);
+    return false;
+  }
+
+  if (!notice.sent) {
+    console.error(
+      `[refund.notice_failed] path=${path} refund=${refundRowId} reason=${notice.reason}`
+    );
+    return false;
+  }
+
+  // La mail e' partita. Se l'id non si registra la persona e' comunque stata
+  // avvisata: lo si dice nel log, e si risponde `true` perche' e' vero.
+  const { error: idError } = await serviceClient
+    .from("ticket_refunds")
+    .update({ notified_email_id: notice.providerMessageId })
+    .eq("id", refundRowId);
+  if (idError) {
+    console.error(
+      `[refund.notice_id_unrecorded] path=${path} refund=${refundRowId} code=${idError.code ?? "?"}`
+    );
+  }
+  return true;
+}
 
 /**
  * The staff gate on this file's three refund actions, stated once.
@@ -198,6 +255,11 @@ export async function approveRefund(refundId: string) {
     // No payment to refund -- just update records and delete ticket
     const freeProcessedAt = new Date().toISOString();
 
+    // Il titolare si legge ORA, prima della delete: dopo non resta niente da
+    // leggere. Anche il ramo gratuito avvisa (52.2-09, decisione 3): cosi' la
+    // porta rifiuta anche questi biglietti con «refunded», senza un ramo speciale.
+    const recipient = await readRefundNoticeRecipient({ serviceClient, ticketId: ticket.id });
+
     // The four refunded_* columns are the refund's evidence, and they are
     // written HERE, before the delete below, because after it these values are
     // unreadable: the ticket row is gone and there is nowhere left to read them
@@ -223,6 +285,9 @@ export async function approveRefund(refundId: string) {
         // Same instant as processed_at, taken from one variable so the two
         // cannot drift.
         refunded_at: freeProcessedAt,
+        // L'ordine, letto prima della delete: dopo non si ricollega piu'
+        // (RFD-04, e il confronto per transazione del cron).
+        refunded_order_id: recipient?.orderId ?? null,
       })
       .eq("id", refundId);
 
@@ -268,9 +333,24 @@ export async function approveRefund(refundId: string) {
       );
     }
 
+    const notice = recipient
+      ? await sendTicketRefundedEmail({
+          serviceClient,
+          recipient,
+          amount: 0,
+          refundedAt: freeProcessedAt,
+        })
+      : null;
+    const notified = await recordRefundNotice({
+      serviceClient,
+      notice,
+      refundRowId: refundId,
+      path: "approve_free",
+    });
+
     revalidatePath("/events");
     revalidatePath("/admin/events");
-    return { success: true };
+    return { success: true, notified };
   }
 
   // Process SumUp refund
@@ -293,6 +373,10 @@ export async function approveRefund(refundId: string) {
     }
   }
 
+  // The holder -- not `requested_by` -- is read before the delete below: after
+  // it there is nothing left to read the recipient or the order from.
+  const recipient = await readRefundNoticeRecipient({ serviceClient, ticketId: ticket.id });
+
   // Update refund record, evidence included -- written before the delete below,
   // because after it these values are unreadable. See the note in the free
   // branch above for why refunded_ticket_id is not a duplicate of ticket_id.
@@ -309,6 +393,7 @@ export async function approveRefund(refundId: string) {
       refunded_party_id: ticket.party_id,
       refunded_event_id: ticket.event_id,
       refunded_at: processedAt,
+      refunded_order_id: recipient?.orderId ?? null,
     })
     .eq("id", refundId);
 
@@ -355,49 +440,26 @@ export async function approveRefund(refundId: string) {
     );
   }
 
-  // Fire-and-forget: send refund approved email
-  (async () => {
-    try {
-      const { data: requesterProfile } = await serviceClient
-        .from("profiles")
-        .select("email, full_name")
-        .eq("id", refund.requested_by)
-        .single();
-
-      const { data: eventData } = await serviceClient
-        .from("events")
-        .select("title")
-        .eq("id", ticket.event_id)
-        .single();
-
-      if (requesterProfile && eventData) {
-        const html = await render(
-          RefundApprovedEmail({
-            memberName: requesterProfile.full_name || "Attendee",
-            eventTitle: eventData.title,
-            amount: refund.amount,
-          })
-        );
-        await sendEmail({
-          to: requesterProfile.email,
-          subject: `Refund approved for ${eventData.title}`,
-          html,
-          // La categoria e' obbligatoria dal 2026-08-22: e' cio' che rende
-          // questo invio verificabile invece che assunto riuscito. Nessun
-          // importo, nessuno stato e nessun percorso di rimborso e' toccato —
-          // questa e' l'unica riga aggiunta al blocco.
-          category: "refund_approved",
-          userId: refund.requested_by,
-        });
-      }
-    } catch (emailError) {
-      console.error("Refund approved email failed (non-blocking)", emailError);
-    }
-  })();
+  // Awaited, not fire-and-forget: to the holder, with the neutral text shared
+  // by all three refund paths. A mail failure never undoes the refund.
+  const notice = recipient
+    ? await sendTicketRefundedEmail({
+        serviceClient,
+        recipient,
+        amount: Number(refund.amount),
+        refundedAt: processedAt,
+      })
+    : null;
+  const notified = await recordRefundNotice({
+    serviceClient,
+    notice,
+    refundRowId: refundId,
+    path: "approve_paid",
+  });
 
   revalidatePath("/events");
   revalidatePath("/admin/events");
-  return { success: true };
+  return { success: true, notified };
 }
 
 /**
@@ -510,7 +572,7 @@ export async function adminRefund(ticketId: string, reason?: string) {
   // be recovered after the delete at the end of this function.
   const { data: ticket } = await serviceClient
     .from("tickets")
-    .select("id, user_id, amount_paid, sumup_transaction_code, event_id, party_id, ticket_type")
+    .select("id, user_id, order_id, holder_label, amount_paid, sumup_transaction_code, event_id, party_id, ticket_type")
     .eq("id", ticketId)
     .single();
 
@@ -534,11 +596,15 @@ export async function adminRefund(ticketId: string, reason?: string) {
     }
   }
 
+  // The holder and the order are read before the delete below: after it there
+  // is nothing left to read them from.
+  const recipient = await readRefundNoticeRecipient({ serviceClient, ticketId });
+
   // Create refund record, evidence included -- written before the delete below,
   // because after it these values are unreadable. See the note in approveRefund
   // for why refunded_ticket_id is not a duplicate of ticket_id.
   const processedAt = new Date().toISOString();
-  const { error: evidenceError } = await serviceClient
+  const { data: refundRow, error: evidenceError } = await serviceClient
     .from("ticket_refunds")
     .insert({
       ticket_id: ticketId,
@@ -557,18 +623,21 @@ export async function adminRefund(ticketId: string, reason?: string) {
       refunded_party_id: ticket.party_id,
       refunded_event_id: ticket.event_id,
       refunded_at: processedAt,
-    });
+      refunded_order_id: ticket.order_id ?? null,
+    })
+    .select("id")
+    .single();
 
   // The SumUp refund above already moved the money, and this path has no
   // pending-status guard to stop a second attempt -- so the message says not to
   // retry rather than inviting one.
-  if (evidenceError) {
+  if (evidenceError || !refundRow) {
     console.error(
       "[refund/admin] refund record insert failed AFTER the SumUp refund -- ticket deliberately left in place",
       {
         ticketId,
-        code: evidenceError.code,
-        message: evidenceError.message,
+        code: evidenceError?.code,
+        message: evidenceError?.message,
       }
     );
     throw new Error(
@@ -596,7 +665,22 @@ export async function adminRefund(ticketId: string, reason?: string) {
     );
   }
 
+  const notice = recipient
+    ? await sendTicketRefundedEmail({
+        serviceClient,
+        recipient,
+        amount: Number(ticket.amount_paid),
+        refundedAt: processedAt,
+      })
+    : null;
+  const notified = await recordRefundNotice({
+    serviceClient,
+    notice,
+    refundRowId: refundRow.id,
+    path: "admin",
+  });
+
   revalidatePath("/events");
   revalidatePath("/admin/events");
-  return { success: true };
+  return { success: true, notified };
 }
