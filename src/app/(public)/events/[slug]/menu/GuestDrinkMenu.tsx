@@ -58,8 +58,8 @@ import { purchaseDrinksGuest, claimGuestOrders } from "./actions";
  * The import of the disabled sign-in prompt and its render are both commented
  * out in this file, and this conversion re-enables neither. Neither name is
  * spelled in this paragraph on purpose: a docblock that writes the needle
- * inflates the very census that exists to measure it, which is the defect
- * `RefundRequestButton.tsx` recorded in wave 0 of this phase. A visual pass that
+ * inflates the very census that exists to measure it, a defect already
+ * recorded once in wave 0 of this phase. A visual pass that
  * switched a guest feature back on would have shipped a decision nobody took.
  */
 

@@ -18,6 +18,7 @@ import {
   type DoorScanSource,
 } from "@/lib/door/outcome";
 import { readNightArm } from "@/lib/door/night-arm";
+import { refundRefusedAtDoor } from "@/lib/door/refund-refusal";
 import {
   judgeAtScanTime,
   type ScanTimeJudgement,
@@ -155,6 +156,8 @@ interface LegacyFields {
   checked_in_at?: string | null;
   ticket_party_id?: string | null;
   ticket_event_id?: string | null;
+  /** Only on `not_valid` / `refunded` (52.2-12): the screen prints the date. */
+  refunded_at?: string | null;
 }
 
 type ScanEventInsert = Omit<DoorScanEvent, "id">;
@@ -811,7 +814,9 @@ export async function POST(request: Request) {
       // deliberately not foreign keys (20260805120000_door_scan_events.sql:188-204).
       const { data: refund, error: refundError } = await serviceClient
         .from("ticket_refunds")
-        .select("id, refunded_at, refunded_party_id, refunded_event_id")
+        .select(
+          "id, refunded_at, refunded_party_id, refunded_event_id, notified_email_id",
+        )
         .eq("refunded_ticket_id", ticketId)
         .eq("status", "approved")
         .order("refunded_at", { ascending: false })
@@ -840,6 +845,38 @@ export async function POST(request: Request) {
           ? new Date(refund.refunded_at)
           : null;
 
+        // RFD-03 (owner decision of 2026-09-30): a refund approved before the
+        // night began, whose refund email left (`notified_email_id`), is a
+        // refusal — but only with `DOOR_REFUSE_REFUNDED_ENABLED` on. The
+        // predicate is the one the offline manifest uses
+        // (`@/lib/door/refund-refusal`), with the same `nightStart` from
+        // `partyStartInstant`, so the two paths cannot disagree. It goes
+        // through `respond()`: the `door_scan_events` row is written before the
+        // answer, `not_valid` with cause `refunded_before_night`.
+        // With the switch off this `if` is never taken and the branches below
+        // are the door's behaviour as it has always been.
+        if (
+          refundRefusedAtDoor({
+            refundedAt,
+            notifiedEmailId: refund.notified_email_id ?? null,
+            nightStart,
+          })
+        ) {
+          return respond(
+            { outcome: "not_valid", reason: "refunded" },
+            {
+              ticket_id: null,
+              subject_user_id: null,
+              cause: "refunded_before_night",
+            },
+            {
+              event_title: eventTitle,
+              party_title: party.title || "",
+              refunded_at: refund.refunded_at,
+            },
+          );
+        }
+
         let cause: DoorScanCause | null;
         let flags: DoorFlag[] | undefined;
 
@@ -857,9 +894,12 @@ export async function POST(request: Request) {
           cause = null;
           flags = ["refunded_before_night"];
         } else if (refundedAt < nightStart) {
-          // FIX-09: the holder is standing there and a red screen is a false
-          // refusal on data they cannot argue with. Admit, and flag it for the
-          // night's review list.
+          // FIX-09, as rewritten on 2026-09-30: reaching this branch means the
+          // refusal above did not apply — the switch is off, or the refund
+          // email never left (`notified_email_id` NULL). A holder who was not
+          // told cannot be refused in front of a queue on data they cannot
+          // argue with: admit, and flag it for the night's review list. With
+          // the switch off, this is the branch it has always been.
           cause = "refunded_before_night";
           flags = ["refunded_before_night"];
         } else {
