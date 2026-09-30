@@ -692,7 +692,7 @@ rifiutato → il cron lo chiude con la causa giusta e senza *Retry issuing*.
 **Depends on:** Phase 52 (la porta a cinque linguette), Phase 51 (FIX-09 e il
 manifest con `refundedAt`). **Indipendente dalla 52.1**: l'ordine fra le due lo
 decide il proprietario.
-**Plans:** 11/17 plans executed
+**Plans:** 12/17 plans executed
 
 Plans:
 - [x] 52.2-01-PLAN.md — le procedure PRE-LAB e A-F scritte prima del codice; VALIDATION onesta
@@ -706,7 +706,7 @@ Plans:
 - [x] 52.2-09-PLAN.md — RFD-01/02: le tre strade di rimborso avvisano, il cron per transazione contro il registro
 - [x] 52.2-10-PLAN.md — CART-04/RFD-04: ripresa dello stesso ordine, pagina «Refunded», banner sullo stesso dispositivo
 - [x] 52.2-11-PLAN.md — RFD-03: vocabolario della porta e ramo offline
-- [ ] 52.2-12-PLAN.md — RFD-03: predicato unico dietro DOOR_REFUSE_REFUNDED_ENABLED, porta online e manifest
+- [x] 52.2-12-PLAN.md — RFD-03: predicato unico dietro DOOR_REFUSE_REFUNDED_ENABLED, porta online e manifest
 - [ ] 52.2-13-PLAN.md — il laboratorio al codice della fase e le procedure A-F percorse → 52.2-ESITI.md
 - [ ] 52.2-14-PLAN.md — atto 1: migration in produzione e deploy (mail di ripresa e porta spente)
 - [ ] 52.2-15-PLAN.md — atto 2: Q2 riletto e rifiuto alla porta acceso, dopo RFD-01
