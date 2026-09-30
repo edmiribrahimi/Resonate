@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "Completato 52-17-PLAN.md — verifica approvata alle 19:13:29Z; fase 52 eseguita 19/19, resta verifica e chiusura"
+stopped_at: "PAUSA il 2026-09-30 alle 11:31Z (il proprietario esce). Fase 52.2 in esecuzione: onde 1-3 unite su main e tracciate (piani 01-07 completi; build, persona e venue-surfaces verdi). Onda 4 (piani 08 e 09) era in corso in due worktree (worktree-agent-a94296e5e33de7294 = 08, worktree-agent-a5b2a0ea80e45a9fa = 09): alla ripresa controllare git worktree list e i loro commit; se hanno il SUMMARY committato si uniscono con worktree.cleanup-wave, altrimenti si rimuovono e si rilancia /gsd-execute-phase 52.2, che riprende dai piani senza SUMMARY. Decisione aperta per l'onda 6: stringere la policy refunds_insert_own (riga di rimborso solo in attesa, campi del server vietati). Fase 52.3 inserita e ricerca fatta: 4 decisioni aperte per il proprietario (cover, secret venue, Mixcloud, player in basso)."
 last_updated: "2026-09-30T11:08:19.106Z"
 last_activity: 2026-09-30
 progress:
