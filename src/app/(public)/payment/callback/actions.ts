@@ -4,6 +4,16 @@ import type { Route } from "next";
 import { getServiceClient } from "@/lib/supabase/service";
 import { getCheckout } from "@/lib/sumup";
 import { generateTicketToken } from "@/utils/qr";
+import { cancelOrderResumeEmail } from "@/lib/tickets/order-resume";
+
+/**
+ * Gli stati in cui la mail di ripresa e' ancora annullabile — lo stesso insieme
+ * del webhook (`src/app/api/webhooks/sumup/route.ts`, `RESUME_CANCELLABLE`, I2).
+ */
+const RESUME_CANCELLABLE: ReadonlySet<string> = new Set([
+  "scheduled",
+  "cancel_failed",
+]);
 
 export type PaymentCallbackStatus =
   | "PENDING"
@@ -143,7 +153,10 @@ async function checkTicketOrderStatus(
 ): Promise<PaymentCallbackResult> {
   const { data: order, error } = await supabase
     .from("ticket_orders")
-    .select("id, status, sumup_checkout_id")
+    // `event_id`, `resume_email_id`, `resume_email_state` dalla fase 52.2
+    // (CART-05): servono solo all'annullamento qui sotto. Identificativi opachi
+    // — di Resend e dell'evento — e nessun luogo; nell'allow-list G2.
+    .select("id, status, sumup_checkout_id, event_id, resume_email_id, resume_email_state")
     .eq("id", orderId)
     .maybeSingle();
 
@@ -153,6 +166,28 @@ async function checkTicketOrderStatus(
 
   const status = mapOrderStatus(order.status);
   if (status === "PAID") {
+    // ── Una seconda rete per la mail di ripresa (fase 52.2, CART-05) ────────
+    //
+    // Il webhook annulla per primo, con i suoi tentativi. Qui un tentativo
+    // solo (`single`): la pagina interroga fino a 8 volte ogni 2 s, quindi la
+    // chiamata si ripete da se', e `single` non scrive `cancel_failed` e non
+    // avvisa — dichiarare un fallimento e' del webhook e del cron. Da qui non
+    // si manda nulla. Non solleva, e il suo esito non cambia la risposta:
+    // l'ordine e' pagato comunque.
+    if (
+      order.resume_email_id &&
+      RESUME_CANCELLABLE.has(order.resume_email_state ?? "")
+    ) {
+      await cancelOrderResumeEmail({
+        serviceClient: supabase,
+        orderId: order.id,
+        eventId: order.event_id,
+        emailId: order.resume_email_id,
+        trigger: "callback",
+        mode: "single",
+      });
+    }
+
     // La firma si conia qui e non si porta nell'URL di ritorno del fornitore:
     // quell'indirizzo passa per una superficie di terzi, e una credenziale che
     // apre dei biglietti non ha ragione di attraversarla.
