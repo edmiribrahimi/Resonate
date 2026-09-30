@@ -4,6 +4,66 @@ import { getCheckout } from "@/lib/sumup";
 import type { getServiceClient } from "@/lib/supabase/service";
 
 /**
+ * L'unico POST interno al webhook che consegna un checkout pagato.
+ *
+ * ── Perche' una funzione sola ────────────────────────────────────────────────
+ *
+ * Tre percorsi trovano un PAID che il webhook di SumUp non ha (ancora)
+ * consegnato: il rigioco di un `failed` (`replayPaidOrderDelivery`, qui sotto),
+ * il cron dei sospesi (`close-pending-orders`, piano 52.2-06) e la ripresa
+ * dell'acquirente (`resume-order`, piano 52.2-10). Nessuno dei tre emette: tutti
+ * consegnano al webhook lo stesso corpo che SumUp gli consegna, e il webhook
+ * resta **l'unico percorso che emette biglietti**. Tre `fetch` scritti a mano
+ * sarebbero tre corpi che prima o poi divergono.
+ *
+ * ── Perche' e' sicuro chiamarla da un cron ───────────────────────────────────
+ *
+ * Il corpo **non e' creduto**. `status: "PAID"` e' li' per somiglianza con la
+ * notifica di SumUp, non perche' il webhook lo legga: il webhook prende solo
+ * `id` e **rilegge lo stato con `GET checkout`** (`api/webhooks/sumup/route.ts`,
+ * *«never trust webhook body for status»*). Su un checkout non pagato non emette
+ * nulla; su un ordine gia' `completed` e' idempotente (`.eq("status",
+ * "pending")` e la RPC di prenotazione). Una doppia consegna — il cron e SumUp
+ * nello stesso minuto — produce un'emissione sola.
+ *
+ * `replayed_by` dice nei log chi ha consegnato. **Non solleva**: un errore di
+ * rete torna come `{ ok: false, status: null }`, una risposta non-2xx come
+ * `{ ok: false, status: <http> }`, e il chiamante decide cosa farne.
+ */
+export async function deliverPaidCheckoutToWebhook(
+  checkoutId: string,
+  replayedBy: "replay-order-delivery" | "close-pending-orders" | "resume-order"
+): Promise<{ ok: true } | { ok: false; detail: string; status: number | null }> {
+  const base = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/+$/, "");
+  try {
+    const res = await fetch(`${base}/api/webhooks/sumup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: checkoutId,
+        event_type: "CHECKOUT_STATUS_CHANGED",
+        status: "PAID",
+        replayed_by: replayedBy,
+      }),
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      console.error(
+        `[tickets.webhook_delivery_failed] replayed_by=${replayedBy} status=${res.status}`
+      );
+      return { ok: false, detail: `http ${res.status}`, status: res.status };
+    }
+    return { ok: true };
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
+    console.error(
+      `[tickets.webhook_delivery_failed] replayed_by=${replayedBy} status=none: ${detail}`
+    );
+    return { ok: false, detail, status: null };
+  }
+}
+
+/**
  * Rigioca la consegna del webhook per un ordine d'ospite `failed`.
  *
  * ── Perche' rigiocare e non riscrivere ───────────────────────────────────────
@@ -31,7 +91,11 @@ import type { getServiceClient } from "@/lib/supabase/service";
  *    nullabilita' nuova non si propaga ai chiamanti (SUMMARY del piano 50-03).
  *    Un ordine gratuito che fallisce si ripara dov'e' nato, non qui.
  * 1. L'ordine deve essere `failed`. Un `pending` lo gestisce SumUp o il cron
- *    dei sospesi; un `completed` non ha nulla da rigiocare.
+ *    dei sospesi (`src/app/api/cron/close-pending-orders/route.ts`, piano
+ *    52.2-06), o la ripresa dell'acquirente (`resume-actions.ts`, piano
+ *    52.2-10): entrambi consegnano un PAID trovato in ritardo con
+ *    `deliverPaidCheckoutToWebhook`, qui sotto — lo stesso POST, non un
+ *    secondo. Un `completed` non ha nulla da rigiocare.
  * 2. Il fornitore deve dire **PAID**, letto adesso — mai dedotto dallo stato
  *    locale (`ticketing-payments.md`, *mai fidarsi dell'annuncio*). Un ordine
  *    `failed` con checkout non pagato non si rimette in attesa: emetterebbe su
@@ -44,6 +108,9 @@ import type { getServiceClient } from "@/lib/supabase/service";
  * Non corregge la causa. Se la mail sull'ordine e' vuota (`identity_email_missing`)
  * il webhook fallira' di nuovo con la stessa causa, e l'esito lo dice. La
  * correzione della mail e' un atto dell'organizer, non di questa funzione.
+ *
+ * Non pulisce nemmeno il prefisso `retrying:` che lascia su `error_message`:
+ * quella pulizia, a emissione riuscita, e' del webhook (Q4, piano 52.2-08).
  */
 export type ReplayOutcome =
   | { ok: true; status: "completed"; tickets: number }
@@ -132,26 +199,20 @@ export async function replayPaidOrderDelivery(args: {
     .select("id");
   if (!reset || reset.length === 0) return { ok: false, reason: "reset_lost" };
 
-  const base = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/+$/, "");
-  try {
-    const res = await fetch(`${base}/api/webhooks/sumup`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: order.sumup_checkout_id,
-        event_type: "CHECKOUT_STATUS_CHANGED",
-        status: "PAID",
-        replayed_by: "replay-order-delivery",
-      }),
-      cache: "no-store",
-    });
-    if (!res.ok) {
-      console.error(`[tickets.replay_webhook_http] order=${orderId} http=${res.status}`);
+  // Il comportamento resta quello di prima dell'estrazione: una risposta HTTP
+  // non-2xx si logga e si prosegue a rileggere l'ordine (il webhook puo' aver
+  // scritto la sua causa prima di rispondere male); un webhook irraggiungibile
+  // — nessuna risposta — chiude qui con la sua causa.
+  const delivery = await deliverPaidCheckoutToWebhook(
+    order.sumup_checkout_id,
+    "replay-order-delivery"
+  );
+  if (!delivery.ok) {
+    if (delivery.status === null) {
+      console.error(`[tickets.replay_webhook_unreachable] order=${orderId}: ${delivery.detail}`);
+      return { ok: false, reason: "webhook_unreachable", detail: delivery.detail };
     }
-  } catch (e) {
-    const detail = e instanceof Error ? e.message : String(e);
-    console.error(`[tickets.replay_webhook_unreachable] order=${orderId}: ${detail}`);
-    return { ok: false, reason: "webhook_unreachable", detail };
+    console.error(`[tickets.replay_webhook_http] order=${orderId} http=${delivery.status}`);
   }
 
   const { data: after } = await serviceClient
