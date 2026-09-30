@@ -91,6 +91,13 @@ export interface ClassifiedEntry {
   subjectId: string | null;
   /** The classification. NULL means no rule reached it — see `deriveCause`. */
   cause: DoorScanCause | null;
+  /**
+   * The stored `door_scan_events.outcome`, carried through because one cause
+   * now has two readings (plan 52.2-11): `refunded_before_night` on a
+   * `recorded` row is a historical admission with a flag, on a `not_valid` row
+   * it is the new refusal. The prose picks its sentence by this field.
+   */
+  outcome: DoorScanEvent["outcome"];
   /** Device clock: when the phone read the code. Evidence, never authority. */
   scannedAt: string;
   /** Server clock: when the row was durably held. Hours later on the offline path. */
@@ -328,6 +335,7 @@ export function classifyNight(rows: DoorScanEvent[]): NightClassification {
       subjectType: row.subject_type,
       subjectId: row.ticket_id ?? row.guest_entry_id ?? row.subject_user_id,
       cause,
+      outcome: row.outcome,
       scannedAt: row.scanned_at,
       recordedAt: row.recorded_at,
       operatorId: row.operator_id,

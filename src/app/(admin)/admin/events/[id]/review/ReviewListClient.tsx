@@ -133,8 +133,13 @@ const PROSE: Record<DoorScanCause, (entry: ClassifiedEntry) => string> = {
     "a code this system could not honour was presented — either it carried no valid signature, or it named a ticket that no longer exists",
   not_in_cache: () =>
     "admitted while offline; the ticket was not in the list downloaded to that device",
-  refunded_before_night: () =>
-    "admitted; this ticket had been refunded before the night",
+  // One cause, two readings, chosen by the stored outcome (plan 52.2-11): a
+  // `recorded` row is a historical admission-with-flag, a `not_valid` row is
+  // the refusal the door learnt on 2026-09-30.
+  refunded_before_night: (e) =>
+    e.outcome === "not_valid"
+      ? "refused: refunded before the night"
+      : "admitted; this ticket had been refunded before the night",
   wrong_night: () => "a ticket for another night was presented",
   // Neither of the two below reaches a listed row — `classifyNight` hides a
   // double read and files a refund issued after the night under accounting. They
@@ -157,7 +162,7 @@ const COUNTER_LABEL: Record<DoorScanCause, string> = {
   invalid_signature: "codes this system could not honour",
   not_in_cache: "admitted from a device that had not downloaded the ticket",
   wrong_night: "tickets for another night",
-  refunded_before_night: "admitted after a refund made before the night",
+  refunded_before_night: "refunded before the night (admitted with a flag, or refused)",
   refunded_after_night: "refunded after the night began (accounting)",
 };
 

@@ -48,6 +48,7 @@ import {
 // already follow. It wraps `createBrowserClient`, which caches a module-level
 // singleton, so every call returns the same client (D-38-16).
 import { createClient } from "@/lib/supabase/client";
+import { turinWallClock } from "@/utils/datetime";
 import {
   REALTIME_SUBSCRIBE_STATES,
   type RealtimeChannel,
@@ -92,6 +93,13 @@ const NOT_VALID_MESSAGE: Record<DoorNotValidReason, string> = {
   // it is about this device's authorisation for that night.
   no_assignment_at_scan:
     "This device had no door assignment for that night — recorded, not admitted",
+  // The sixth (plan 52.2-11, RFD-03, decided 2026-09-30): a refund approved
+  // before the night AND notified by email. Online it is the server's answer;
+  // offline it is the manifest's server-computed `refundedBeforeNight`. A bundle
+  // older than this one, receiving `"refunded"`, falls to
+  // UNRECOGNISED_REASON_MESSAGE — red, a correct refusal with a generic
+  // sentence, never an admission (T-52.2-30).
+  refunded: "Refunded — not valid",
 };
 
 /** A reason from a bundle this one does not know. Its own sentence, not one of the four. */
@@ -136,6 +144,23 @@ function serverFaultMessage(status: number, body?: unknown): string {
   if (status === 503) return "The scan was not written to the record — scan again";
   if (status >= 500) return "The server could not complete this scan";
   return `The server answered in a way this app does not understand (HTTP ${status})`;
+}
+
+/**
+ * "Refunded on 12 Sep, 14:30", in Turin wall-clock time whatever the phone's
+ * zone — through `turinWallClock`, never `toLocaleString` (`time-and-scheduling.md`).
+ * `null` when the stored instant will not parse: the caller then says nothing
+ * about a date rather than printing a plausible wrong one.
+ */
+const REFUND_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function refundedOnLabel(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const wall = turinWallClock(iso);
+  if (!wall) return null;
+  const [, month, day] = wall.date.split("-").map(Number);
+  const monthName = REFUND_MONTHS[month - 1];
+  if (!monthName || !day) return null;
+  return `Refunded on ${day} ${monthName}, ${wall.time}`;
 }
 
 function formatClock(iso: string): string | null {
@@ -238,6 +263,9 @@ const FAILURE_REASON_MESSAGE: Record<string, string> = {
   unknown_code: "nothing matched this code",
   wrong_night: "the code was for another night",
   no_party_selected: "no party was selected when it was scanned",
+  // Not total, so written by hand (plan 52.2-11): the scan was admitted offline
+  // and the server, at sync, knew of a notified refund before the night.
+  refunded: "the ticket had been refunded before the night",
   unexpected_response: "the server never accepted it",
 };
 
@@ -2216,12 +2244,18 @@ export default function ScannerClient() {
         // refusal is the worst place of all for a name — it invites the operator
         // to argue with the person about who they are, on a screen that has
         // already said the code is not good for tonight (D-51-05).
+        const notValidReason = readString(parsed, "reason");
+        // A refusal for a refund (plan 52.2-11) carries its date when the answer
+        // has one: the person in front of the door was told by email, and the
+        // date is what lets staff say "you were refunded on…" instead of arguing.
         showFlash(
           "error",
           sentence,
-          readString(parsed, "reason") === "wrong_night" && night
+          notValidReason === "wrong_night" && night
             ? `That code belongs to ${night}`
-            : undefined
+            : notValidReason === "refunded"
+              ? refundedOnLabel(readString(parsed, "refunded_at")) ?? undefined
+              : undefined
         );
         addScanRecord({
           id: ticketId,
