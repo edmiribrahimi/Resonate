@@ -508,7 +508,7 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
           <p className="text-ink-2">You started an order for this night on this device.</p>
           <Link
             href={`/tickets/order/${encodeURIComponent(openOrderToken)}`}
-            className={`mt-2 inline-block font-semibold text-accent underline ${FOCUS_RING}`}
+            className={`mt-2 inline-flex min-h-11 items-center font-semibold text-accent underline ${FOCUS_RING}`}
           >
             Open your order
           </Link>
