@@ -3,6 +3,46 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.28.0] - 2026-09-30
+
+### Added — *Gate una sola comunicazione di ripresa*: `comms-analytics.md`
+
+**Cosa e' cambiato.** Fra i Quality Gates di `comms-analytics.md` c'e' un gate
+nuovo: senza una vendita avvenuta il soft spam dell'art. 130 c. 4 non si
+applica, ed e' ammessa **una** mail con il link all'ordine aperto, contestuale
+all'abbandono, senza offerte ne' sconti, prevista nell'informativa (Garante,
+provv. 17 luglio 2024, doc. web 10084158). Una seconda mail, uno sconto o
+un'urgenza inventata sono marketing senza consenso. La mail non si accende
+(`ORDER_RESUME_EMAIL_ENABLED`) prima che l'informativa sia in produzione. Il
+gate cita il percorso che la fase 52.2 costruisce:
+`src/lib/tickets/order-resume.ts`, `src/emails/order-resume.tsx`. Nuovo
+imperativo: *When tempted to send a second reminder or a discount: don't*.
+
+Il **Gate PII negli eventi** porta una riga datata: dal 2026-09-30 PostHog non
+e' configurato in produzione (fase 52.2, Q1, verificato sui nomi delle
+variabili Vercel), e l'imbuto dei biglietti si conta dal database
+(`ticket_orders.device`, `payment_method`, `closed_reason`). La frase su
+PostHog in istanza EU resta: descrive la scelta per quando verra' acceso.
+
+**Cosa lo ha fatto scattare.** CART-06, fase 52.2: la mail di ripresa del
+carrello (CART-05) e il paragrafo dell'informativa che la prevede
+(`src/app/(public)/privacy/page.tsx`, stesso piano 52.2-04). Il vincolo
+legale e' registrato con la data della risposta del professionista (via
+libera, 2026-09-30, `52.2-CONTEXT.md`) — `legal-compliance.md`, gate *una
+domanda legale non si risponde qui*: la persona cita la risposta, non la
+produce.
+
+**Scenario di carico e scatto.** File: `src/emails/order-resume.tsx`. Moduli
+attesi: `comms-analytics.md` (`src/emails/**`, primario per `meta-gates.md`),
+`CLAUDE.md`, `meta-gates.md`. Modifica-tipo che deve far scattare il gate:
+aggiungere al template un codice sconto, o una seconda mail di ripresa «a 24
+ore se non ha ancora pagato» in `src/lib/tickets/order-resume.ts` — il gate
+dice che e' marketing e che al checkout non si raccoglie il consenso.
+
+`npm run verify:persona`: 7/7 verdi dopo la modifica, caso peggiore
+invariato (`src/app/(admin)/admin/(work)/venues/[slug]/page.tsx`, 5 file,
+14.031 token su 15.000). Nessun `paths:` allargato.
+
 ## [1.27.0] - 2026-09-28
 
 ### Changed — il gate *metadata e Open Graph* descrive il modulo che ora esiste: `nextjs-architecture.md`
