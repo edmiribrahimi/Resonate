@@ -80,6 +80,16 @@ import { Textarea } from "@/components/ui/Input";
  *     owns that decision.
  */
 
+/**
+ * The refund went through but the email to the holder did not (phase 52.2,
+ * RFD-01). It is not a failure of the action -- the money is back and the
+ * ticket is gone -- but it must not close in silence: the holder still believes
+ * they have a valid ticket, and the door will refuse it. There is no error
+ * tracking, so this is where the organizer finds out.
+ */
+const NOT_NOTIFIED_MESSAGE =
+  "Refunded. The holder could not be emailed — tell them before the night: the ticket is no longer valid.";
+
 interface RefundActionsProps {
   refundId?: string;
   ticketId?: string;
@@ -90,6 +100,7 @@ export default function RefundActions({ refundId, ticketId, isDirectRefund }: Re
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [notNotified, setNotNotified] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [rejectNote, setRejectNote] = useState("");
   const [showReject, setShowReject] = useState(false);
@@ -104,9 +115,22 @@ export default function RefundActions({ refundId, ticketId, isDirectRefund }: Re
   function closeConfirm() {
     setError(null);
     setShowConfirm(false);
+    // The refund went through even though the email did not: once the notice
+    // has been read, the row is done.
+    if (notNotified) setDone(true);
   }
 
   if (done) {
+    if (notNotified) {
+      return (
+        <div>
+          <Badge>Done</Badge>
+          <p role="alert" className="mt-2 text-xs text-sem-crit">
+            {NOT_NOTIFIED_MESSAGE}
+          </p>
+        </div>
+      );
+    }
     return <Badge>Done</Badge>;
   }
 
@@ -123,7 +147,13 @@ export default function RefundActions({ refundId, ticketId, isDirectRefund }: Re
             open
             onClose={closeConfirm}
             title="Confirm Refund"
-            status={error ? { tone: "crit", message: error } : null}
+            status={
+              error
+                ? { tone: "crit", message: error }
+                : notNotified
+                  ? { tone: "crit", message: NOT_NOTIFIED_MESSAGE }
+                  : null
+            }
             actions={
               <div className="flex gap-3">
                 <Button
@@ -139,12 +169,18 @@ export default function RefundActions({ refundId, ticketId, isDirectRefund }: Re
                 <Button
                   variant="destructive"
                   className="flex-1"
-                  disabled={isPending}
+                  // After a refund that could not be emailed the dialog stays
+                  // open to say so, and this control must not refund twice.
+                  disabled={isPending || notNotified}
                   onClick={() => {
                     setError(null);
                     startTransition(async () => {
                       try {
-                        await adminRefund(ticketId, refundReason);
+                        const result = await adminRefund(ticketId, refundReason);
+                        if (result.notified === false) {
+                          setNotNotified(true);
+                          return;
+                        }
                         setDone(true);
                       } catch (err) {
                         setError(err instanceof Error ? err.message : "Failed");
@@ -238,7 +274,8 @@ export default function RefundActions({ refundId, ticketId, isDirectRefund }: Re
                 setError(null);
                 startTransition(async () => {
                   try {
-                    await approveRefund(refundId);
+                    const result = await approveRefund(refundId);
+                    if (result.notified === false) setNotNotified(true);
                     setDone(true);
                   } catch (err) {
                     setError(err instanceof Error ? err.message : "Failed");
