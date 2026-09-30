@@ -18,6 +18,18 @@ export const metadata: Metadata = {
  * tracciamento, quindi nessun banner), pass Apple Wallet generato su richiesta.
  * La cancellazione dell'account la fa un organizer dall'app su richiesta: non
  * esiste un tasto self-service, e la pagina non lo promette.
+ *
+ * Aggiunto il 2026-09-30 (fase 52.2, CART-06): la mail di ripresa — una sola,
+ * `order_resume`, piano 52.2-05 — e le colonne `device` / `payment_method` su
+ * `ticket_orders` (CART-01, contate dal database, Q1). Via libera del
+ * professionista del 2026-09-30, registrato in `52.2-CONTEXT.md` (Garante,
+ * provv. 17 luglio 2024, doc. web 10084158). «may send» perche' il freno per
+ * indirizzo e il tetto giornaliero possono saltare l'invio; «not sent if you
+ * pay in the meantime» e' vera per costruzione: il webhook annulla la mail
+ * dell'ordine pagato prima di emettere, e su `completed` annulla anche quelle
+ * degli altri ordini aperti dello stesso indirizzo per la stessa serata (piani
+ * 52.2-05 e 52.2-08). La mail non si accende (`ORDER_RESUME_EMAIL_ENABLED`)
+ * prima che questo testo sia in produzione.
  */
 export default async function PrivacyPage() {
   // La navigazione, come su ogni pagina pubblica: il wrapper dichiara lo
@@ -47,6 +59,22 @@ export default async function PrivacyPage() {
           you ordered and when, and the payment confirmation from SumUp (a transaction reference,
           never your card details). We need these to issue your tickets, send them to you, let you
           in at the door and handle any refund.
+        </p>
+        <p>
+          <strong>If you start an order and don&apos;t finish paying:</strong> about an hour later
+          we may send you one email with a link back to that same order, so you can complete it if
+          you still want to. It is a service message about the order you opened, not marketing: it
+          contains no offer or discount, it is sent at most once per order and never followed by
+          another, and it is not sent if you pay in the meantime. We rely on our
+          legitimate interest in letting you complete a purchase you started, within the limits set by the
+          Italian data protection authority for a single message of this kind (Garante per la
+          protezione dei dati personali, decision of 17 July 2024, doc. web 10084158).
+        </p>
+        <p>
+          <strong>How an order was placed:</strong> on each order we also record whether it was
+          opened from a phone or a computer and how it was paid (card or Apple Pay). We use this
+          only as counts — how many orders are opened, paid or left unfinished — to see where
+          checkout gets stuck.
         </p>
         <p>
           <strong>When you have an account:</strong> the same, plus your sign-in details and the
