@@ -86,6 +86,12 @@ const NOT_VALID_REASONS: Record<DoorNotValidReason, true> = {
   // review saying *"this device was not assigned"* and saying *"something went
   // wrong"*.
   no_assignment_at_scan: true,
+  // The sixth (plan 52.2-11, RFD-03). A scan admitted offline and synced after
+  // the ticket was refunded — and the refund notified — comes back here. It goes
+  // to `failedCheckins` under its own name: the person is already inside, and
+  // the night's review shows *"refused: refunded before the night"* instead of
+  // a generic failure.
+  refunded: true,
 };
 
 /**

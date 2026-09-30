@@ -123,7 +123,27 @@ export type DoorNotValidReason =
   | "unknown_code"
   | "wrong_night"
   | "no_party_selected"
-  | "no_assignment_at_scan";
+  | "no_assignment_at_scan"
+  /**
+   * The sixth, added by plan 52.2-11 (RFD-03, decided by the owner on
+   * 2026-09-30: *"a ticket refunded before the night becomes a refusal, once the
+   * refunded person has received the email"*).
+   *
+   * It is born **only** on a refund that is approved, whose `refunded_at` falls
+   * before the night's start, **and** whose refund email has actually left
+   * (`notified_email_id` set) — and only while `DOOR_REFUSE_REFUNDED_ENABLED` is
+   * on. Absent the switch, the same ticket is admitted with the
+   * `refunded_before_night` flag, exactly as before this plan.
+   *
+   * It is a `not_valid` and not a flag by that decision: a person who was told
+   * "you have been refunded" is not holding a ticket any more. The
+   * `door_scan_events` row it writes carries `cause = refunded_before_night`,
+   * which the table's `CHECK` already allows — so, like `no_assignment_at_scan`,
+   * no migration. The phone never decides it by comparing clocks: online it is
+   * the server's answer, offline it is the manifest's server-computed
+   * `refundedBeforeNight` boolean, and a missing boolean admits.
+   */
+  | "refunded";
 
 /**
  * An admission that was recorded but is not ordinary.
@@ -131,6 +151,13 @@ export type DoorNotValidReason =
  * Both mean "admitted, and someone should look at this afterwards" — the door's
  * asymmetry (a false refusal happens in front of a queue; a false admission is
  * a number in a report) makes admit-and-flag the correct default.
+ *
+ * `refunded_before_night` stays a **flag** after plan 52.2-11 for every case
+ * that is not a certain, notified refund: historical admissions recorded
+ * before the refusal existed, a cached ticket carrying `refundedAt` without the
+ * server's boolean (older manifest), refunds whose email never left, and every
+ * refund while `DOOR_REFUSE_REFUNDED_ENABLED` is off. The certain case is the
+ * `"refunded"` reason of {@link DoorNotValidReason}.
  */
 export type DoorFlag = "refunded_before_night" | "not_in_cache";
 
