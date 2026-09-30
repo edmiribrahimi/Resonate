@@ -119,6 +119,18 @@ const CALLBACK_ACTIONS_REL = "src/app/(public)/payment/callback/actions.ts";
 const ORDER_PAGE = join(ROOT, ORDER_PAGE_REL);
 const CALLBACK_ACTIONS = join(ROOT, CALLBACK_ACTIONS_REL);
 
+/**
+ * Two more roads out of the product toward a guest, added on 2026-09-30 (phase
+ * 52.2, plan 05): the one email that resumes an abandoned order, and the one
+ * neutral refund email for all three refund paths. Both reach a buyer's inbox —
+ * a surface that is forwarded as readily as the order link — so they are
+ * measured by the same check G, with the same positive allow-list.
+ */
+const ORDER_RESUME_REL = "src/lib/tickets/order-resume.ts";
+const REFUND_NOTICE_REL = "src/lib/tickets/refund-notice.ts";
+const ORDER_RESUME = join(ROOT, ORDER_RESUME_REL);
+const REFUND_NOTICE = join(ROOT, REFUND_NOTICE_REL);
+
 const failures = [];
 const notes = [];
 
@@ -1058,6 +1070,30 @@ const GUEST_SURFACES = [
   // into SumUp, printed nowhere, carrying no place. Weighed and admitted on
   // 2026-09-23; the gate had been red on it since phase 50's verification.
   [CALLBACK_ACTIONS_REL, CALLBACK_ACTIONS, "id, status, sumup_checkout_id, ticket_id", 3],
+  // The resume email's owner, joined on 2026-09-30 (phase 52.2, plan 05). It
+  // reads the order (buyer, tier, status, the provider's checkout id to exclude
+  // free orders, and its own resume-email columns), the event and night title
+  // and CIVIL date, and the tier name — no column that describes a place. Nine
+  // select literals: order, two throttle counts, event, tier, night, the row
+  // read before a cancel, the guarded update's returning id, the sibling read.
+  // Weighed and admitted on 2026-09-30.
+  [
+    ORDER_RESUME_REL,
+    ORDER_RESUME,
+    "buyer_email, date, event_id, id, name, party_id, resume_email_id, resume_email_state, status, sumup_checkout_id, tier_id, title, user_id",
+    9,
+  ],
+  // The neutral refund email's owner, joined on 2026-09-30 (phase 52.2, plan
+  // 05). It reads the ticket's holder (user, order, holder label, event, night,
+  // amount), the holder's email from the profile or the buyer's from the order,
+  // and the event title. The refund date comes from the caller, never from a
+  // row. Weighed and admitted on 2026-09-30.
+  [
+    REFUND_NOTICE_REL,
+    REFUND_NOTICE,
+    "amount_paid, buyer_email, email, event_id, holder_label, id, order_id, party_id, title, user_id",
+    4,
+  ],
 ];
 
 for (const [rel, abs, expectedColumns, expectedSelects] of GUEST_SURFACES) {
