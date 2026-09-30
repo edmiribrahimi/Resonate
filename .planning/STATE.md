@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "2026-09-30 22:12Z — Fase 52.2: PIANO 14 CHIUSO, ATTO 1 ESAURITO: quattro migration in produzione (22:00Z, versioni 20260930220015/17/20/22), push 968844e8..712c9d20 (101 commit) e deploy READY alle 22:11:22Z, /privacy con 10084158, ORDER_RESUME_EMAIL_ENABLED e DOOR_REFUSE_REFUNDED_ENABLED ASSENTI in produzione (spenti per disegno), 8 cron. Domattina 07:05 UTC il cron chiude l'ordine del 28/9 senza mail; esito da rileggere nel 17. PROSSIMO: piano 15 (Atto 2, DOOR_REFUSE_REFUNDED_ENABLED: rilettura dei rimborsi reali e domanda mail-e-accendi/non-ora), poi 16 (Atto 3, ORDER_RESUME_EMAIL_ENABLED), poi 17 (verifica). Laboratorio chiuso (piano 13 con SUMMARY). Il ramo lab e' a 06c1ce9a."
-last_updated: "2026-09-30T22:12:00.000Z"
+stopped_at: "2026-09-30 22:43Z — Fase 52.2: PIANI 14 e 15 CHIUSI. In produzione: codice 712c9d20 (deploy 22:11Z), quattro migration, DOOR_REFUSE_REFUNDED_ENABLED=true dal redeploy delle 22:41:53Z (RFD-03 acceso). Dati di prova tolti in produzione sotto atti datati: 3 ticket_refunds (22:21Z) e 2 ticket_orders del 24/09 (22:36Z); restano 3 ordini (2 pagati con biglietto vivo, 1 aperto del 28/9 che il cron chiude alle 07:05 UTC). ORDER_RESUME_EMAIL_ENABLED ancora ASSENTE: e' il piano 16 (Atto 3, dopo che il proprietario legge l'informativa pubblicata). Poi 17 (verifica, persona, VERIFICATION). SUMMARY dei piani 14 e 15 da scrivere. origin/main e' a f2d8cb6b (22:13Z): i commit di documentazione dopo NON sono spinti (push fuori perimetro degli atti 15 e TESTDATA); si spingono con la chiusura della fase."
+last_updated: "2026-09-30T22:43:00.000Z"
 last_activity: 2026-09-30
 progress:
   total_phases: 15
