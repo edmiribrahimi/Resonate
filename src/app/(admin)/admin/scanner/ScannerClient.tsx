@@ -2306,6 +2306,40 @@ export default function ScannerClient() {
           return;
         }
 
+        // FIX-09, rewritten by plan 52.2-11 (RFD-03, decided by the owner on
+        // 2026-09-30: a ticket refunded before the night becomes a refusal once
+        // the refunded person has received the email).
+        //
+        // The phone does not decide it. `refundedBeforeNight` is computed by the
+        // server when the manifest is built — refund approved, `refunded_at`
+        // before the night's start, email sent, `DOOR_REFUSE_REFUNDED_ENABLED`
+        // on — and this device only reads it. No clock comparison happens here:
+        // a night's start is a Turin wall-clock time, and a phone set to another
+        // zone would refuse valid guests (`time-and-scheduling.md`).
+        //
+        // Only `=== true` refuses. `refundedAt` without the boolean (a manifest
+        // older than this bundle), or with it `false`, falls through to the
+        // admit-and-flag below, exactly as before.
+        //
+        // Declared limits, not hidden ones:
+        // - a refund made after this device last downloaded the list is not known
+        //   here; the scan is admitted, and the drain brings it back as
+        //   `refunded` into `failedCheckins` and the night's review;
+        // - `refuse()` offline writes no `door_scan_events` row, as for
+        //   `wrong_night`: the refusal is on this screen and in its history;
+        // - after the switch is turned on, the list must be downloaded again for
+        //   the boolean to reach this cache.
+        if (cached.refundedBeforeNight === true) {
+          const refundedOn = refundedOnLabel(cached.refundedAt);
+          refuse(
+            "refunded",
+            ticketId,
+            cached.ticketType === "guest_list" ? "guest" : "ticket",
+            refundedOn ? `${refundedOn} · Offline` : "Offline"
+          );
+          return;
+        }
+
         await checkInLocally(partyId, "ticket", ticketId, {
           // FIX-10: the full signed string, exactly as scanned. The id above was
           // derived for the lookup; nothing here discards the signature.
@@ -2313,7 +2347,8 @@ export default function ScannerClient() {
           name: cached.name,
         });
 
-        // A refund known at download time produces the same admit-and-flag
+        // A refund known at download time that the server did NOT mark as a
+        // refusal (boolean false or absent) produces the same admit-and-flag
         // locally as the server produces online (FIX-09).
         const flagged = Boolean(cached.refundedAt);
         const subtitle = [

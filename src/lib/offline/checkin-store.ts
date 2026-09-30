@@ -176,6 +176,15 @@ export interface AttendeeRecord {
   checkedInBy?: string;
   /** A refund known at download time, so it produces the same admit-and-flag locally. */
   refundedAt?: string;
+  /**
+   * The server's verdict that this refund is a refusal (plan 52.2-11, RFD-03):
+   * approved, `refunded_at` before the night's start (computed server-side with
+   * `partyStartInstant`, never on the phone), refund email sent, and
+   * `DOOR_REFUSE_REFUNDED_ENABLED` on. Only `true` refuses. Absent — an older
+   * manifest, or a row cached before this field existed — admits with the flag,
+   * as before: refusing a valid guest is worse than admitting a double.
+   */
+  refundedBeforeNight?: boolean;
   guestListEntryId?: string;
   /** ISO of the last refresh that saw this row. Only {@link pruneParty} reads it. */
   lastSeenAt: string;
@@ -790,6 +799,8 @@ export interface AttendeeRow {
   checkedInAt?: string | null;
   checkedInBy?: string | null;
   refundedAt?: string | null;
+  /** Server-computed; see {@link CachedAttendee.refundedBeforeNight}. Missing = admit. */
+  refundedBeforeNight?: boolean;
   isGuestList?: boolean;
 }
 
@@ -947,6 +958,9 @@ export async function mergeAttendees(
         ? (localWins.checkedInBy ?? THIS_DEVICE_LABEL)
         : (row.checkedInBy ?? undefined),
       refundedAt: row.refundedAt ?? undefined,
+      // Strictly `=== true`: a missing field (older manifest) is false, and
+      // false admits (plan 52.2-11).
+      refundedBeforeNight: row.refundedBeforeNight === true,
       lastSeenAt: now,
     });
     merged++;
