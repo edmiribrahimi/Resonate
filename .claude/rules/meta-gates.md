@@ -61,6 +61,8 @@ Quando piu' moduli coprono lo stesso file, vince il **piu' specifico**.
 | `src/app/**/scanner/**`, `src/components/scanner/**` | checkin-offline | access-gating, nextjs-architecture |
 | `src/app/(admin)/door/**` | checkin-offline | access-gating, nextjs-architecture |
 | `src/utils/qr.ts` | checkin-offline | access-gating |
+| `src/lib/door/**` | checkin-offline | access-gating |
+| `src/lib/tickets/**` | ticketing-payments | comms-analytics, venue-secrecy |
 | `supabase/migrations/**` | supabase-data | access-gating (per le policy) |
 | `src/emails/venue-reveal.tsx` | venue-secrecy | comms-analytics |
 | `src/emails/**` (gli altri) | comms-analytics | — |

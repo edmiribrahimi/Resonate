@@ -3,6 +3,56 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.29.0] - 2026-09-30
+
+### Changed — la persona rilegge il prodotto spedito dalla fase 52.2: `ticketing-payments.md`, `checkin-offline.md`, `meta-gates.md`, `CLAUDE.md`
+
+**Cosa e' cambiato.** Due `paths:` allargati — `src/lib/tickets/**` in
+`ticketing-payments.md` e `src/lib/door/**` in `checkin-offline.md` — con le
+righe corrispondenti nell'indice di `CLAUDE.md` e nella tabella «Priorita' di
+dominio per path» di `meta-gates.md` (controllo G, 27 righe). Tre gate:
+**Gate un sospeso si chiude con la verita' del fornitore** (nuovo:
+`close-pending-orders` chiede il checkout a SumUp, un PAID emette, un `GET`
+fallito lascia aperto, la causa va in `closed_reason`; la pagina di ritorno dice
+«declined» solo se il fornitore dice `FAILED`/`EXPIRED`); il **Gate
+riconciliazione** con la riga datata su `events[]`, il confronto per
+transazione, il parziale non attribuibile che non cancella e avvisa, le guardie
+A-C, il ramo drink cieco, e `refunds_insert_own` tolta (D-52.2-05); il **Gate
+cron non atomico** con gli otto cron per nome. In `checkin-offline.md` il **Gate
+il rimborsato si rifiuta solo dopo la mail**: interruttore, rimborso prima
+della serata, `notified_email_id`; **acceso in produzione dal 2026-09-30,
+22:41:53Z**; la lista si riscarica la sera; i rimborsi del giorno dall'app; il
+rifiuto offline senza riga `door_scan_events` dichiarato come debito. Quattro
+Imperative Behaviors nuovi. `meta-gates.md` diceva gia' «otto» (1.28.1): non
+riscritto.
+
+**Perche'.** Piano 52.2-17, task 1 (I6): chi carica la persona domani deve
+leggere il prodotto spedito oggi — tre atti esauriti fra le 22:00Z e le 22:48Z
+(`52.2-AUTHORISATION*.md`). Senza `src/lib/tickets/**` e `src/lib/door/**` nei
+`paths:`, il cron dei sospesi, la mail di ripresa e il predicato della porta
+si sarebbero modificati senza che i loro gate si caricassero.
+
+**Caso peggiore rimisurato, dopo tutte le aggiunte di prosa.** E' **cambiato
+file**: da `src/app/(admin)/admin/(work)/venues/[slug]/page.tsx` (14.031 token,
+1.28.0) a **`src/app/(admin)/admin/scanner/DoorSurface.tsx`** — 5 file
+(`CLAUDE.md`, `meta-gates`, `access-gating`, `checkin-offline`,
+`nextjs-architecture`), **52.729 byte ≈ 14.647 token su 15.000, margine 353**.
+Il gate nuovo di `checkin-offline.md` e' cio' che lo ha spostato, come il piano
+prevedeva. **Il margine e' stretto**: la prossima riga di prosa in uno di quei
+cinque file si paga tagliando descrizione, non regola (`ai-engineering.md`).
+`npm run verify:persona`: 7/7 verdi dopo le modifiche.
+
+**Scenario di carico e scatto.** File
+`src/app/api/cron/close-pending-orders/route.ts` → moduli attesi
+`ticketing-payments.md` (primario), `meta-gates.md`, `CLAUDE.md`;
+modifica-tipo: chiudere un ordine su un `GET` del checkout fallito. File
+`src/app/api/tickets/checkin/route.ts` → `checkin-offline.md` primario;
+modifica-tipo: rifiutare un rimborso senza `notified_email_id`. File
+`src/lib/tickets/order-resume.ts` → `ticketing-payments.md` e (per il
+template) `comms-analytics.md`; modifica-tipo: programmare una seconda mail di
+ripresa. File `src/lib/door/refund-refusal.ts` → `checkin-offline.md`;
+modifica-tipo: rifiutare senza guardare l'interruttore.
+
 ## [1.28.1] - 2026-09-30
 
 ### Fixed — *Controllo zero fallimenti silenziosi* conta otto cron: `meta-gates.md`
