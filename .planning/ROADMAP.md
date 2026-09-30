@@ -82,6 +82,7 @@ per assecondare una decisione presa dopo che e' stata citata.
 - [x] **51** — Via le superfici da socio, e la porta (`MEM`) — chiusa il 2026-09-23: VERIFICATION passed, spinta e dispiegata
 - [x] **52** — La barra di navigazione e i ritocchi (`NAV`) — chiusa il 2026-09-23: 19 piani, VERIFICATION passed (approvata dal proprietario), in produzione dal 18:28:33Z; debito dichiarato → fase 52.1
 - [ ] **52.1** — Chiusura del debito della fase 52 (`DBT`) — **inserita il 2026-09-23**: il debito di `52-VERIFICATION.md` e gli avvisi di `52-REVIEW.md`, DBT-04..07, 09, 10, 13, 14 (DBT-01/02/03/08/11/12 ritirati alle 20:30Z: via la gallery)
+- [ ] **52.2** — Il carrello che non si chiude, e il rimborsato alla porta (`CART`, `RFD`) — **inserita il 2026-09-30**: sospesi chiusi con la verita' di SumUp, ripresa dello stesso ordine, una sola mail a +1h (Garante), rimborsato avvisato e poi rifiutato alla porta; indipendente dalla 52.1
 - [ ] **53** — TASK (`TASK`)
 - [ ] **54** — Location, alla pari con il tracker (`LOC`)
 - [ ] **55** — Visual, una pagina per format (`VIS`)
@@ -619,6 +620,81 @@ Plans:
 > (`meta-gates.md`, «misura due volte»); DBT-06/07 sono ritocchi; DBT-04/05
 > vogliono un telefono e il laboratorio. Nessuna scrittura in produzione senza
 > un atto datato, come per la 52.
+
+### Phase 52.2: Il carrello che non si chiude, e il rimborsato alla porta (INSERTED)
+
+**Inserita il 2026-09-30, decisione del proprietario**, dopo un ordine di 10 €
+rimasto «Checkout never confirmed» sulla card *Orders without tickets* e dopo
+una ricerca (materiale in `.firecrawl/cart-recovery/`, fuori dal repo). Tre
+fatti misurati quel giorno la governano:
+
+- **Nulla chiude un ordine `pending`.** Nessun `valid_until` sul checkout, il
+  webhook ignora `FAILED` ed `EXPIRED`, nessun cron rilegge i sospesi; chiudere
+  il modulo carta butta via il checkout e il Buy successivo crea un **nuovo**
+  ordine. Non esiste alcun evento di analytics sull'inizio o la fine di un
+  checkout biglietti: il tasso di abbandono e' ignoto.
+- **La mail di recupero e' vincolata nella forma, non nel gusto.** Garante
+  privacy, provv. 17 luglio 2024, doc. web 10084158: senza una vendita
+  effettiva il soft spam (art. 130 c. 4) non si applica; senza intento
+  promozionale e' ammessa **una sola** comunicazione con il link di ripresa,
+  contestuale all'abbandono, senza offerte, prevista nell'informativa. Una
+  seconda mail, o uno sconto, e' marketing e vuole un consenso che al checkout
+  non si raccoglie.
+- **I piani decidono il meccanismo.** Vercel e' **Hobby** (cron solo
+  giornalieri, con scarto fino a 59 minuti); Resend e' **free** (100 mail al
+  giorno) e accetta l'invio programmato con annullamento — verificato il
+  2026-09-30 con due mail di prova al master, entrambe annullate: nei primi
+  ~2 secondi dopo la programmazione l'annullamento risponde «Email is not
+  scheduled». Supabase e' free, `pg_cron` disponibile ma **non scelto**: uno
+  scheduler fuori da `vercel.json` fallisce in silenzio.
+
+**Goal:** un ordine aperto e non pagato ha una scadenza, un numero e una sola
+via di ritorno; un biglietto rimborsato viene detto a chi lo aveva, e **poi**
+rifiutato alla porta. Niente di questo allarga chi entra: cambia solo cio' che
+il prodotto sa dire di cio' che e' gia' successo.
+
+| ID | Requisito |
+|---|---|
+| **CART-01** | **Il checkout si misura.** Due eventi PostHog sui biglietti — *checkout aperto* e *checkout pagato* — con dispositivo e metodo di pagamento (carta, Apple Pay), senza email ne' nome nell'evento. Da qui esce il tasso di abbandono, che oggi non esiste. |
+| **CART-02** | **Ogni checkout ha una scadenza.** `valid_until` a 30 minuti alla creazione (la ricerca della fase 6 lo chiedeva; mai fatto). Dopo, quel checkout non e' piu' pagabile: chi riprende ne apre uno nuovo sullo stesso ordine. |
+| **CART-03** | **Un sospeso si chiude con la verita' di SumUp (Critical: denaro).** Un cron giornaliero rilegge gli ordini `pending` piu' vecchi di 30 minuti con `GET checkout` e la lista dei tentativi: mai tentato → `expired`; tentativo rifiutato → chiuso con la causa, **distinto** da «pagato e non emesso», che resta l'unico caso con il bottone *Retry issuing*; `PAID` trovato in ritardo → **emette**, per lo stesso percorso del webhook, mai il contrario. La card *Orders without tickets* smette di dire «non sappiamo». |
+| **CART-04** | **Lo stesso ordine si riprende.** La pagina dell'ordine con token, per un `pending`, offre *Riprendi il pagamento*: riapre il pagamento sullo stesso ordine, con gli stessi dati, senza riscrivere nulla (nuovo checkout se il precedente e' scaduto). Mai l'indirizzo, come sul biglietto (`venue-secrecy.md`). |
+| **CART-05** | **Una sola mail, a un'ora, annullabile (Critical: comms, legale).** Alla creazione dell'ordine si programma su Resend la mail *«il tuo ordine e' rimasto aperto»* a +1h con il link di ripresa; alla conferma del pagamento il webhook la **annulla**, riprovando perche' nei primi secondi Resend la dichiara non ancora programmata; un annullamento fallito e' loggato con categoria propria e avvisa l'organizer. Contenuto: titolo, data, tier, link. **Niente sconto, niente urgenza inventata, niente indirizzo.** Una per ordine per costruzione, tracciata in `email_deliveries`, e **non parte** finche' CART-06 non e' in produzione. |
+| **CART-06** | **L'informativa prevede la comunicazione.** La privacy policy del prodotto dichiara la mail di ripresa dell'ordine come comunicazione di servizio, una sola. Il testo lo porta il proprietario, con il professionista, e la risposta si registra con la data (`legal-compliance.md`, gate *una domanda legale non si risponde qui*). `comms-analytics.md` acquista il vincolo del Garante come gate. |
+| **RFD-01** | **Ogni rimborso avvisa il titolare (Critical: denaro).** Oggi la mail parte solo quando lo staff approva una richiesta; il rimborso diretto da admin — la strada usata per i tre biglietti di prova del 2026-09-28 — **non avvisa nessuno**. Manda la stessa mail; e la manda anche il cron che scopre un rimborso fatto sulla dashboard SumUp. Categoria propria. |
+| **RFD-02** | **Il cron dei rimborsi legge dove SumUp scrive.** Per una transazione rimborsata per intero, l'endpoint che il cron interroga risponde `SUCCESSFUL` con importo rimborsato **nullo**: il rimborso compare solo negli eventi della transazione. Verificato sui documenti SumUp, poi il cron guarda li'. Finche' non lo fa, un rimborso dalla dashboard lascia il biglietto valido. |
+| **RFD-03** | **Rimborsato prima della serata = rifiuto (Critical: porta).** *(Decisione del proprietario, 2026-09-30: «un biglietto rimborsato prima della serata diventa un rifiuto, una volta che il rimborsato riceve la mail».)* Online e offline, un QR il cui biglietto ha un rimborso approvato datato prima dell'inizio serata e' **rifiutato** con la ragione *Refunded*, al posto dell'attuale «ammesso con flag» (FIX-09). Il manifest offline porta gia' `refundedAt`. **Va in produzione solo dopo RFD-01**, mai insieme e mai prima: si rifiuta solo chi e' stato avvisato (`checkin-offline.md`, asimmetria della porta). Il rimborso dopo l'inizio serata resta com'e', dichiarato. |
+| **RFD-04** | **L'ordine di un rimborsato dice la verita'.** La pagina dell'ordine non dice piu' «i biglietti stanno arrivando» quando sono stati rimborsati: dice rimborsato, con la data. Oggi l'ordine resta `completed` senza traccia ed e' indistinguibile da un webhook che non ha emesso. |
+
+**Decisioni gia' prese (D-52.2):**
+
+- **D-52.2-01** — Il meccanismo della mail e' l'invio programmato di Resend con
+  annullamento, non un cron ogni 5 minuti (servirebbe Vercel Pro, che non si
+  compra per questo) e non `pg_cron` (scheduler invisibile).
+- **D-52.2-02** — Niente sconti, niente sequenze, niente SMS o WhatsApp: i primi
+  due per il Garante e perche' il prezzo di un tier e' pubblico e uguale per
+  tutti (`community-membership.md`, gate *stessa regola per tutti*); il terzo
+  perche' il telefono e' un dato in piu' senza ragione dichiarata.
+- **D-52.2-03** — Nessun timer «riservato per N minuti»: un ordine aperto non
+  riserva posti, e la promessa sarebbe falsa.
+- **D-52.2-04** — Per l'ordine del 2026-09-28 non si scrive a mano: nessun
+  tentativo di pagamento, e una mail non prevista dall'informativa e' il caso
+  Iliad in piccolo.
+
+**Verifica, in un repo senza test:** `npm run build`, piu' procedure scritte e
+percorse **sul laboratorio**: (A) ordine aperto e abbandonato → dopo un'ora
+arriva una sola mail con il link → dal link si paga; (B) ordine pagato con
+Apple Pay entro pochi secondi → **nessuna** mail; (C) rimborso da admin → mail
+al titolare → il QR e' rifiutato online e offline; (D) ordine con tentativo
+rifiutato → il cron lo chiude con la causa giusta e senza *Retry issuing*.
+
+**Depends on:** Phase 52 (la porta a cinque linguette), Phase 51 (FIX-09 e il
+manifest con `refundedAt`). **Indipendente dalla 52.1**: l'ordine fra le due lo
+decide il proprietario.
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 52.2 to break down)
 
 ### Phase 53: TASK
 
