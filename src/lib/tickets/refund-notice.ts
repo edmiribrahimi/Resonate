@@ -10,15 +10,17 @@ import { redactDbError } from "@/lib/errors/redact";
 import type { getServiceClient } from "@/lib/supabase/service";
 
 /**
- * refund-notice.ts — la mail di rimborso, una sola per tre strade (RFD-01,
+ * refund-notice.ts — la mail di rimborso, una sola per due strade (RFD-01,
  * fase 52.2).
  *
- * Le strade sono la richiesta approvata (`approveRefund`), l'organizer che
- * rimborsa dall'app (`adminRefund`) e il cron che trova su SumUp un rimborso
- * fatto dalla dashboard (`reconcile-refunds`). Fino a questa fase solo la prima
- * mandava una mail, a chi aveva **chiesto** il rimborso, con un testo — «your
- * refund request has been approved» — falso per le altre due. I collegamenti li
- * scrive il piano 52.2-09.
+ * Le strade sono entrambe dello staff: l'organizer che rimborsa dall'app
+ * (`adminRefund`) e il cron che trova su SumUp un rimborso fatto dalla
+ * dashboard (`reconcile-refunds`). Fino al 2026-09-30 ce n'era una terza, la
+ * richiesta del cliente approvata dallo staff: e' uscita con D-52.2-05 (nessun
+ * cliente chiede un rimborso) e D-52.2-06 (nessuno approva). Prima di questa
+ * fase solo quella mandava una mail, a chi aveva **chiesto** il rimborso, con
+ * un testo — «your refund request has been approved» — falso per le altre. I
+ * collegamenti li scrive il piano 52.2-09.
  *
  * ── A chi ────────────────────────────────────────────────────────────────────
  *

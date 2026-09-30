@@ -122,7 +122,8 @@ const CALLBACK_ACTIONS = join(ROOT, CALLBACK_ACTIONS_REL);
 /**
  * Two more roads out of the product toward a guest, added on 2026-09-30 (phase
  * 52.2, plan 05): the one email that resumes an abandoned order, and the one
- * neutral refund email for all three refund paths. Both reach a buyer's inbox —
+ * neutral refund email for both refund paths (three until D-52.2-06 removed
+ * the approval of a client's request). Both reach a buyer's inbox —
  * a surface that is forwarded as readily as the order link — so they are
  * measured by the same check G, with the same positive allow-list.
  */

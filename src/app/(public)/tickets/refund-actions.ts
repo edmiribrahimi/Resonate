@@ -3,9 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { getServiceClient } from "@/lib/supabase/service";
 import { refundTransaction } from "@/lib/sumup";
-import { sendEmail } from "@/lib/email";
-import { RefundRejectedEmail } from "@/emails/refund-rejected";
-import { render } from "@react-email/render";
 import { CAP } from "@/lib/capabilities/keys";
 import { getAccessContext } from "@/lib/capabilities/server";
 import {
@@ -16,8 +13,10 @@ import {
 
 /**
  * L'esito della mail di rimborso al titolare, mandata dopo una `delete`
- * riuscita (RFD-01, fase 52.2). Comune alle tre strade di questo file che
- * cancellano un biglietto: ognuna chiama `sendTicketRefundedEmail` e poi questa.
+ * riuscita (RFD-01, fase 52.2). La chiama l'unica strada di questo file che
+ * cancella un biglietto, `adminRefund`, dopo `sendTicketRefundedEmail`. (Fino
+ * al 2026-09-30 erano tre: approvazione e rifiuto di una richiesta sono usciti
+ * con D-52.2-06. L'altra strada viva e' il cron `reconcile-refunds`.)
  *
  * - **Attesa, non fuoco-e-dimentica**: una promessa lasciata correre in una
  *   Server Action su Vercel puo' essere congelata a risposta inviata.
@@ -39,7 +38,7 @@ async function recordRefundNotice({
   /** `null` = no recipient could be read before the delete. */
   notice: RefundNoticeResult | null;
   refundRowId: string;
-  path: "admin" | "approve_free" | "approve_paid";
+  path: "admin";
 }): Promise<boolean> {
   if (!notice) {
     console.error(`[refund.notice_no_recipient] path=${path} refund=${refundRowId}`);
@@ -68,13 +67,14 @@ async function recordRefundNotice({
 }
 
 /**
- * The staff gate on this file's three refund actions, stated once.
+ * The staff gate on this file's refund action, stated once.
  *
- * `approveRefund`, `rejectRefund` and `adminRefund` each opened with an
+ * `adminRefund` — and, until 2026-09-30, the approval and rejection of a
+ * client's refund request, removed with D-52.2-06 — opened with an
  * `auth.getUser()` followed by a read of the caller's own role column out of
  * `public.profiles`, and refused anyone who was neither master nor organizer.
- * Three copies of one rule, each costing two round trips. Each now resolves the
- * access context once and asks one capability.
+ * Three copies of one rule, each costing two round trips. The one that remains
+ * resolves the access context once and asks one capability.
  *
  * The predicate and the column read are deliberately NOT spelled as literals
  * anywhere in this file: the phase gate counts them with `grep`, and a doc
@@ -130,9 +130,9 @@ async function recordRefundNotice({
  *
  * ── The failure shape is preserved exactly ───────────────────────────────────
  *
- * These actions threw before and throw after, with the same two messages. They
- * are not converted to a tagged result: that pattern is for a category a client
- * must branch on, and no client of these three does. A resolve failure throws
+ * The action threw before and throws after, with the same two messages. It is
+ * not converted to a tagged result: that pattern is for a category a client
+ * must branch on, and its client does not. A resolve failure throws
  * its own distinct `capabilities.resolve_failed:` category and is never
  * collapsed into "Forbidden".
  *
@@ -144,362 +144,24 @@ async function recordRefundNotice({
  * `20260930120300_refunds_no_client_insert.sql` removed the INSERT policy that
  * let any signed-in account write a `ticket_refunds` row: rows are written by
  * the service role alone, and since phase 52.2 the door reads them.
- * `approveRefund` / `rejectRefund` stay for rows already in the table.
+ *
+ * ── No staff approves one either (D-52.2-06, owner decision of 2026-09-30) ───
+ *
+ * With no client able to ask, the approve and reject actions had nothing left
+ * to act on — production held zero `pending` rows when they were removed — and
+ * the owner removed them, with the request list and its buttons in admin. Two
+ * refund paths remain, both the staff's: `adminRefund` below (the Refund
+ * button) and the `reconcile-refunds` cron, which records a refund issued from
+ * the SumUp dashboard. Both notify the holder. `requested_by` and
+ * `status = 'pending'` stay in the schema for historical rows: no migration.
  */
-
-/**
- * Admin/organizer approves a refund request.
- * Processes refund via SumUp and deletes the ticket.
- */
-export async function approveRefund(refundId: string) {
-  // One resolve for this invocation. See the block comment above
-  // `approveRefund` (the staff gate, stated once) for the key choice and for why it is resolved once.
-  const { capabilities, userId } = await getAccessContext();
-
-  if (!userId) {
-    throw new Error("Not authenticated");
-  }
-
-  if (!capabilities.has(CAP.STAFF_MANAGE)) {
-    throw new Error("Forbidden");
-  }
-
-  const serviceClient = getServiceClient();
-
-  // Fetch refund with ticket data
-  const { data: refund, error: refundError } = await serviceClient
-    .from("ticket_refunds")
-    .select("id, ticket_id, amount, status, requested_by")
-    .eq("id", refundId)
-    .single();
-
-  if (refundError || !refund) {
-    throw new Error("Refund request not found");
-  }
-
-  if (refund.status !== "pending") {
-    throw new Error("This refund has already been processed");
-  }
-
-  // Fetch ticket for SumUp transaction code.
-  // party_id and event_id are selected because the refund's evidence is written
-  // from them: after the delete below they cannot be recovered from anywhere.
-  const { data: ticket } = await serviceClient
-    .from("tickets")
-    .select("id, sumup_transaction_code, event_id, party_id, amount_paid, ticket_type")
-    .eq("id", refund.ticket_id)
-    .single();
-
-  if (!ticket) {
-    throw new Error("Ticket not found");
-  }
-
-  // Guard: skip SumUp refund for free/guest list tickets
-  if (ticket.amount_paid === 0 || ticket.ticket_type === "guest_list") {
-    // No payment to refund -- just update records and delete ticket
-    const freeProcessedAt = new Date().toISOString();
-
-    // Il titolare si legge ORA, prima della delete: dopo non resta niente da
-    // leggere. Anche il ramo gratuito avvisa (52.2-09, decisione 3): cosi' la
-    // porta rifiuta anche questi biglietti con «refunded», senza un ramo speciale.
-    const recipient = await readRefundNoticeRecipient({ serviceClient, ticketId: ticket.id });
-
-    // The four refunded_* columns are the refund's evidence, and they are
-    // written HERE, before the delete below, because after it these values are
-    // unreadable: the ticket row is gone and there is nowhere left to read them
-    // from. That ordering is the whole reason the columns exist.
-    //
-    // ticket_id and refunded_ticket_id are not a duplication to tidy up. The
-    // first is the live foreign key and the database sets it to NULL on the
-    // delete (20260805120000_door_scan_events.sql:184-186); the second is not a
-    // foreign key at all and is the durable copy the door reads to admit a
-    // refunded holder, and the finance figures read to count the refund.
-    const { error: evidenceError } = await serviceClient
-      .from("ticket_refunds")
-      .update({
-        status: "approved",
-        processed_by: userId,
-        sumup_status: null,
-        processed_at: freeProcessedAt,
-        refunded_ticket_id: ticket.id,
-        // NULL is a legitimate value here: an event-level ticket belongs to no
-        // party. It is not coerced.
-        refunded_party_id: ticket.party_id,
-        refunded_event_id: ticket.event_id,
-        // Same instant as processed_at, taken from one variable so the two
-        // cannot drift.
-        refunded_at: freeProcessedAt,
-        // L'ordine, letto prima della delete: dopo non si ricollega piu'
-        // (RFD-04, e il confronto per transazione del cron).
-        refunded_order_id: recipient?.orderId ?? null,
-      })
-      .eq("id", refundId);
-
-    // If the evidence did not land, the ticket must not be deleted: deleting it
-    // now would destroy the only place those values could still be read from.
-    // No money moved on this branch, so retrying is safe.
-    if (evidenceError) {
-      console.error(
-        "[refund/approve/free] refund evidence write failed -- ticket deliberately left in place",
-        {
-          refundId,
-          ticketId: ticket.id,
-          code: evidenceError.code,
-          message: evidenceError.message,
-        }
-      );
-      throw new Error(
-        "The refund could not be recorded, so the ticket was left valid on purpose. Nothing changed -- you can retry."
-      );
-    }
-
-    const { error: deleteError } = await serviceClient
-      .from("tickets")
-      .delete()
-      .eq("id", ticket.id);
-
-    // A blocked delete used to be invisible: the Supabase client returns the
-    // error rather than throwing, this branch discarded it, and the action
-    // returned success while the ticket still admitted its holder at the door.
-    // Money and access disagreeing is the failure this check exists to stop.
-    if (deleteError) {
-      console.error(
-        "[refund/approve/free] ticket delete failed -- refund is approved but the ticket is still valid",
-        {
-          refundId,
-          ticketId: ticket.id,
-          code: deleteError.code,
-          message: deleteError.message,
-        }
-      );
-      throw new Error(
-        `The refund was recorded but the ticket could NOT be removed (${deleteError.code ?? "unknown error"}): it is still valid at the door. Do not retry -- remove the ticket manually and tell the door.`
-      );
-    }
-
-    const notice = recipient
-      ? await sendTicketRefundedEmail({
-          serviceClient,
-          recipient,
-          amount: 0,
-          refundedAt: freeProcessedAt,
-        })
-      : null;
-    const notified = await recordRefundNotice({
-      serviceClient,
-      notice,
-      refundRowId: refundId,
-      path: "approve_free",
-    });
-
-    revalidatePath("/events");
-    revalidatePath("/admin/events");
-    return { success: true, notified };
-  }
-
-  // Process SumUp refund
-  let sumupStatus: "completed" | "failed" = "completed";
-  if (ticket.sumup_transaction_code) {
-    try {
-      await refundTransaction(ticket.sumup_transaction_code, refund.amount);
-    } catch {
-      sumupStatus = "failed";
-      // Update refund record with failure
-      await serviceClient
-        .from("ticket_refunds")
-        .update({
-          processed_by: userId,
-          sumup_status: "failed",
-          processed_at: new Date().toISOString(),
-        })
-        .eq("id", refundId);
-      throw new Error("SumUp refund failed. Please try again or process manually.");
-    }
-  }
-
-  // The holder -- not `requested_by` -- is read before the delete below: after
-  // it there is nothing left to read the recipient or the order from.
-  const recipient = await readRefundNoticeRecipient({ serviceClient, ticketId: ticket.id });
-
-  // Update refund record, evidence included -- written before the delete below,
-  // because after it these values are unreadable. See the note in the free
-  // branch above for why refunded_ticket_id is not a duplicate of ticket_id.
-  const processedAt = new Date().toISOString();
-  const { error: evidenceError } = await serviceClient
-    .from("ticket_refunds")
-    .update({
-      status: "approved",
-      processed_by: userId,
-      sumup_status: sumupStatus,
-      processed_at: processedAt,
-      refunded_ticket_id: ticket.id,
-      // May legitimately be NULL for an event-level ticket. Not coerced.
-      refunded_party_id: ticket.party_id,
-      refunded_event_id: ticket.event_id,
-      refunded_at: processedAt,
-      refunded_order_id: recipient?.orderId ?? null,
-    })
-    .eq("id", refundId);
-
-  // The money already left through SumUp above, and that is not reversed here:
-  // a payment state moves forward only (meta-gates.md, monotone guards). What
-  // must not happen is deleting the ticket on top of a lost record -- that
-  // would leave a refund with no evidence and no ticket.
-  if (evidenceError) {
-    console.error(
-      "[refund/approve/paid] refund evidence write failed AFTER the SumUp refund -- ticket deliberately left in place",
-      {
-        refundId,
-        ticketId: ticket.id,
-        code: evidenceError.code,
-        message: evidenceError.message,
-      }
-    );
-    throw new Error(
-      "The money was returned through SumUp but the refund record could not be updated. Do not retry -- the refund would be attempted a second time. Fix the refund record and remove the ticket manually."
-    );
-  }
-
-  // Delete the ticket
-  const { error: deleteError } = await serviceClient
-    .from("tickets")
-    .delete()
-    .eq("id", ticket.id);
-
-  // Same silent failure as the free branch, with money already moved: without
-  // this check the organizer saw a successful refund while the holder kept a
-  // ticket that still scans.
-  if (deleteError) {
-    console.error(
-      "[refund/approve/paid] ticket delete failed -- money returned, ticket still valid",
-      {
-        refundId,
-        ticketId: ticket.id,
-        code: deleteError.code,
-        message: deleteError.message,
-      }
-    );
-    throw new Error(
-      `The money was returned and the refund recorded, but the ticket could NOT be removed (${deleteError.code ?? "unknown error"}): it is still valid at the door. Do not retry -- remove the ticket manually and tell the door.`
-    );
-  }
-
-  // Awaited, not fire-and-forget: to the holder, with the neutral text shared
-  // by all three refund paths. A mail failure never undoes the refund.
-  const notice = recipient
-    ? await sendTicketRefundedEmail({
-        serviceClient,
-        recipient,
-        amount: Number(refund.amount),
-        refundedAt: processedAt,
-      })
-    : null;
-  const notified = await recordRefundNotice({
-    serviceClient,
-    notice,
-    refundRowId: refundId,
-    path: "approve_paid",
-  });
-
-  revalidatePath("/events");
-  revalidatePath("/admin/events");
-  return { success: true, notified };
-}
-
-/**
- * Admin/organizer rejects a refund request.
- */
-export async function rejectRefund(refundId: string, adminNote?: string) {
-  // One resolve for this invocation. See the block comment above
-  // `approveRefund` (the staff gate, stated once) for the key choice and for why it is resolved once.
-  const { capabilities, userId } = await getAccessContext();
-
-  if (!userId) {
-    throw new Error("Not authenticated");
-  }
-
-  if (!capabilities.has(CAP.STAFF_MANAGE)) {
-    throw new Error("Forbidden");
-  }
-
-  const serviceClient = getServiceClient();
-
-  // Verify refund exists and is pending
-  const { data: refund } = await serviceClient
-    .from("ticket_refunds")
-    .select("id, status, requested_by, ticket_id")
-    .eq("id", refundId)
-    .single();
-
-  if (!refund || refund.status !== "pending") {
-    throw new Error("Refund request not found or already processed");
-  }
-
-  await serviceClient
-    .from("ticket_refunds")
-    .update({
-      status: "rejected",
-      processed_by: userId,
-      admin_note: adminNote?.trim() || null,
-      processed_at: new Date().toISOString(),
-    })
-    .eq("id", refundId);
-
-  // Fire-and-forget: send refund rejected email
-  (async () => {
-    try {
-      const { data: ticket } = await serviceClient
-        .from("tickets")
-        .select("event_id")
-        .eq("id", refund.ticket_id)
-        .single();
-
-      const { data: requesterProfile } = await serviceClient
-        .from("profiles")
-        .select("email, full_name")
-        .eq("id", refund.requested_by)
-        .single();
-
-      if (ticket && requesterProfile) {
-        const { data: eventData } = await serviceClient
-          .from("events")
-          .select("title")
-          .eq("id", ticket.event_id)
-          .single();
-
-        if (eventData) {
-          const html = await render(
-            RefundRejectedEmail({
-              memberName: requesterProfile.full_name || "Attendee",
-              eventTitle: eventData.title,
-              adminNote: adminNote?.trim() || undefined,
-            })
-          );
-          await sendEmail({
-            to: requesterProfile.email,
-            subject: `Refund update for ${eventData.title}`,
-            html,
-            category: "refund_rejected",
-            userId: refund.requested_by,
-          });
-        }
-      }
-    } catch (emailError) {
-      console.error("Refund rejected email failed (non-blocking)", emailError);
-    }
-  })();
-
-  revalidatePath("/events");
-  revalidatePath("/admin/events");
-  return { success: true };
-}
 
 /**
  * Admin/organizer initiates a direct refund (no user request needed).
  */
 export async function adminRefund(ticketId: string, reason?: string) {
-  // One resolve for this invocation. See the block comment above
-  // `approveRefund` (the staff gate, stated once) for the key choice and for why it is resolved once.
+  // One resolve for this invocation. See the block comment above (the staff
+  // gate, stated once) for the key choice and for why it is resolved once.
   const { capabilities, userId } = await getAccessContext();
 
   if (!userId) {
@@ -545,8 +207,13 @@ export async function adminRefund(ticketId: string, reason?: string) {
   const recipient = await readRefundNoticeRecipient({ serviceClient, ticketId });
 
   // Create refund record, evidence included -- written before the delete below,
-  // because after it these values are unreadable. See the note in approveRefund
-  // for why refunded_ticket_id is not a duplicate of ticket_id.
+  // because after it these values are unreadable.
+  //
+  // ticket_id and refunded_ticket_id are not a duplication to tidy up. The
+  // first is the live foreign key and the database sets it to NULL on the
+  // delete (20260805120000_door_scan_events.sql:184-186); the second is not a
+  // foreign key at all and is the durable copy the door reads to refuse a
+  // refunded holder, and the finance figures read to count the refund.
   const processedAt = new Date().toISOString();
   const { data: refundRow, error: evidenceError } = await serviceClient
     .from("ticket_refunds")

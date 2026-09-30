@@ -5,12 +5,13 @@ import { EmailLayout, BRAND } from "./components/email-layout";
 /**
  * ticket-refunded.tsx — la mail di rimborso, **neutra** (RFD-01, fase 52.2).
  *
- * La stessa mail parte dalle tre strade del rimborso — la richiesta approvata,
- * l'organizer che rimborsa dall'app, il cron che trova il rimborso fatto su
- * SumUp — e la manda `src/lib/tickets/refund-notice.ts` al **titolare del
- * biglietto**. Per questo non dice «your refund request has been approved»
- * (`refund-approved.tsx`): per due strade su tre nessuno ha chiesto niente, e
- * una frase falsa sul denaro e' peggio di nessuna frase.
+ * La stessa mail parte dalle due strade del rimborso — l'organizer che
+ * rimborsa dall'app, il cron che trova il rimborso fatto su SumUp — e la manda
+ * `src/lib/tickets/refund-notice.ts` al **titolare del biglietto**. Per questo
+ * non dice «your refund request has been approved» (`refund-approved.tsx`):
+ * nessuno ha chiesto niente — dal 2026-09-30 nessun cliente puo' chiederlo
+ * (D-52.2-05, D-52.2-06) — e una frase falsa sul denaro e' peggio di nessuna
+ * frase.
  *
  * Il titolo e' in `BRAND.foreground`: il verde del template d'origine non e' un
  * colore della palette.
