@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase/service";
-import { getCheckout } from "@/lib/sumup";
+import { getCheckout, paymentMethodFromEntryMode } from "@/lib/sumup";
 import {
   alertOrganizerPaidNotIssued,
   notifyOrganizerOfSale,
@@ -15,11 +15,42 @@ import { resolveGuestIdentity } from "@/lib/tickets/guest-identity";
 import { sendOrderConfirmation } from "@/lib/tickets/order-confirmation";
 import { redactDbError } from "@/lib/errors/redact";
 import {
+  cancelOrderResumeEmail,
+  cancelSiblingResumeEmails,
+} from "@/lib/tickets/order-resume";
+import {
   revealPartyVenueForOrder,
   type VenueRevealFailureKind,
 } from "@/lib/venue-reveal/reveal-party-venue";
 import { hasRevealFired, isNightSecret } from "@/lib/venue-reveal/venue-disclosure";
 import type { SupabaseClient } from "@supabase/supabase-js";
+
+/**
+ * Sessanta secondi, dichiarati invece che ereditati (fase 52.2, CART-05).
+ *
+ * L'annullamento persistente della mail di ripresa ritenta a 0 · 1,5 · 3 · 6 s
+ * (`order-resume.ts`), e le sorelle dello stesso acquirente per la stessa
+ * serata ne fanno uno a testa, in sequenza. Sono secondi che si sommano a
+ * identita', RPC, conferma e rivelazione tardiva: il default del piano Vercel
+ * non e' garantito, e una funzione interrotta a meta' **dopo** aver preso il
+ * denaro e prima di aver emesso e' esattamente l'incidente che questo file
+ * esiste per evitare.
+ */
+export const maxDuration = 60;
+
+/**
+ * Gli stati in cui la mail di ripresa di un ordine e' ancora annullabile.
+ *
+ * Scritti **una volta** (I2) e usati da una sola condizione. `cancel_failed`
+ * c'e' apposta: una seconda consegna di SumUp e' un secondo tentativo gratuito
+ * se il primo si e' arreso — e la guardia dell'update dentro
+ * `cancelOrderResumeEmail` accetta lo stesso insieme (piano 52.2-05). Lo stesso
+ * insieme sta nel ritorno dal pagamento (`payment/callback/actions.ts`).
+ */
+const RESUME_CANCELLABLE: ReadonlySet<string> = new Set([
+  "scheduled",
+  "cancel_failed",
+]);
 
 /**
  * Quali esiti della rivelazione tardiva lasciano **chi ha pagato senza
@@ -368,15 +399,70 @@ export async function POST(request: Request) {
         // nasce QUI, ore dopo il modulo, quindi il nome raccolto allora vive
         // sulla riga d'ordine e questo e' il solo momento in cui puo'
         // raggiungerlo. Non tocca il biglietto (`D-49-03`).
-        "id, status, buyer_email, buyer_name, user_id, total_amount, quantity, event_id, party_id, tier_id, discount_code_id, error_message"
+        // `resume_email_id` e `resume_email_state` sono aggiunti dalla fase
+        // 52.2 (CART-05): servono all'annullamento della mail di ripresa, che
+        // sta PRIMA dell'uscita su `completed`. Identificativi opachi, nessun
+        // luogo.
+        "id, status, buyer_email, buyer_name, user_id, total_amount, quantity, event_id, party_id, tier_id, discount_code_id, error_message, resume_email_id, resume_email_state"
       )
       .eq("sumup_checkout_id", checkout.id)
       .single();
 
     if (ticketOrder) {
-      // 1. L'USCITA IDEMPOTENTE, PRIMA DI TUTTO — stessa forma del ramo sopra.
+      // 0. LA MAIL DI RIPRESA SI ANNULLA PRIMA DI TUTTO (fase 52.2, CART-05).
+      //
+      // Prima dell'uscita su `completed`, di `resolveGuestIdentity` e della RPC,
+      // e per tre ragioni (RESEARCH §4):
+      //
+      //   1. **Il denaro e' preso a prescindere dall'emissione.** Se l'identita'
+      //      o la riserva falliscono sotto, l'ordine va a `failed` — ma chi ha
+      //      pagato ha pagato, e la mail programmata gli direbbe «Nothing has
+      //      been charged». Annullarla non puo' dipendere dal successo di cio'
+      //      che segue.
+      //   2. **Il `catch` globale risponde 200 e SumUp non ritenta** (P-5): un
+      //      annullamento posto dopo un punto che solleva andrebbe perso per
+      //      sempre, e la mail partirebbe all'ora programmata.
+      //   3. **Prima dell'uscita su `completed`**, una seconda consegna e' un
+      //      secondo tentativo gratuito se il primo si era arreso in
+      //      `cancel_failed` — ed e' per questo che l'insieme lo comprende.
+      //
+      // `persistent`: ritenta a 0 · 1,5 · 3 · 6 s, e solo a tentativi esauriti
+      // scrive `cancel_failed`, logga la sua categoria e avvisa l'organizer —
+      // dentro `cancelOrderResumeEmail`, che non solleva mai. Da qui non si
+      // manda nulla: si annulla soltanto.
+      if (
+        ticketOrder.resume_email_id &&
+        RESUME_CANCELLABLE.has(ticketOrder.resume_email_state ?? "")
+      ) {
+        await cancelOrderResumeEmail({
+          serviceClient: supabase,
+          orderId: ticketOrder.id,
+          eventId: ticketOrder.event_id,
+          emailId: ticketOrder.resume_email_id,
+          trigger: "webhook",
+          mode: "persistent",
+        });
+      }
+
+      // 1. L'USCITA IDEMPOTENTE — stessa forma del ramo sopra. Dopo
+      //    l'annullamento, non prima: vedi il punto 0, ragione 3.
       if (ticketOrder.status === "completed") {
         return NextResponse.json({ received: true });
+      }
+
+      // 1b. UN PAID SU UN ORDINE SCADUTO EMETTE COMUNQUE (CART-03).
+      //
+      // Il cron dei sospesi puo' aver portato l'ordine a `expired` mentre la
+      // persona pagava. Il `GET checkout` qui sopra dice PAID, e **il PAID
+      // vince**: la RPC rifiuta solo `completed`, quindi si prosegue sullo
+      // stesso percorso — nessun ramo nuovo esce. E' una guardia monotona
+      // (`meta-gates.md`): lo stato va avanti verso l'incasso, mai indietro.
+      // L'incidente pero' si dice, con la sua categoria, perche' vuol dire che
+      // un ordine e' stato chiuso troppo presto.
+      if (ticketOrder.status === "expired") {
+        console.error(
+          `[tickets.order_paid_after_expiry] order=${ticketOrder.id}`
+        );
       }
 
       // Un ordine che va a `failed` porta la causa **scritta sulla riga**, non
@@ -531,6 +617,53 @@ export async function POST(request: Request) {
         return NextResponse.json({ received: true });
       }
 
+      // 4b. IL METODO DI PAGAMENTO, E LA PULIZIA DI `retrying:` (fase 52.2).
+      //
+      // Un solo update, con la guardia `status = 'completed'`: scrive solo su
+      // un ordine che la RPC ha appena chiuso, e non tocca lo stato.
+      //
+      // `payment_method` (CART-01) viene dall'`entry_mode` della transazione
+      // SUCCESSFUL del checkout letto con GET — mai dal corpo del webhook.
+      //
+      // ── `error_message`, e perche' si azzera qui (Q4) ──────────────────────
+      //
+      // `replay-order-delivery.ts` rimette un ordine `failed` in `pending`
+      // scrivendo `retrying: <causa>` su `error_message`, e la RPC non la
+      // azzera. Un ordine riemesso con successo restava quindi `completed` con
+      // un `error_message` non nullo — cioe' nell'insieme «Paid, address never
+      // sent» della superficie dei venduti, che legge proprio quella colonna.
+      // Si azzera **solo** se inizia con `retrying:`: ogni altro valore su un
+      // `completed` e' la traccia di `segnaAssenza`, scritta piu' sotto, e non
+      // si tocca. Lo stesso patto e' scritto nell'altro posto che tocca la
+      // colonna, `src/lib/tickets/replay-order-delivery.ts`.
+      //
+      // Un errore qui non e' denaro: si logga con la sua categoria e si
+      // prosegue verso la mail.
+      {
+        const successful = checkout.transactions?.find(
+          (t) => t.status === "SUCCESSFUL"
+        );
+        const methodUpdate: {
+          payment_method: ReturnType<typeof paymentMethodFromEntryMode>;
+          error_message?: null;
+        } = {
+          payment_method: paymentMethodFromEntryMode(successful?.entry_mode),
+        };
+        if (ticketOrder.error_message?.startsWith("retrying:")) {
+          methodUpdate.error_message = null;
+        }
+        const { error: methodError } = await supabase
+          .from("ticket_orders")
+          .update(methodUpdate)
+          .eq("id", ticketOrder.id)
+          .eq("status", "completed");
+        if (methodError) {
+          console.error(
+            `[tickets.order_method_unrecorded] order=${ticketOrder.id} ${redactDbError(methodError)}`
+          );
+        }
+      }
+
       // 5. LA MAIL — UNA SOLA, E NON DUE. Dentro un `try` che non puo' far
       //    fallire l'incasso.
       //
@@ -604,6 +737,37 @@ export async function POST(request: Request) {
         buyerEmail: ticketOrder.buyer_email,
         buyerUserId: buyerId,
       });
+
+      // 5c. LE SORELLE (fase 52.2, W1 — decisione 5 del piano 52.2-05).
+      //
+      // Chi ha abbandonato l'ordine A e paga l'ordine B della stessa serata non
+      // deve ricevere «A is still open». E' cio' che rende vera **per
+      // costruzione** la frase dell'informativa, «it is not sent if you pay in
+      // the meantime» (piano 52.2-04).
+      //
+      // Dopo la RPC riuscita, e dopo la conferma a chi ha comprato: l'ordine
+      // stesso si e' annullato al punto 0 perche' e' la precondizione del
+      // denaro; le sorelle sono cortesia e non ritardano ne' l'emissione ne'
+      // la mail dei biglietti. Ogni sorella al piu' ~6 s (con il freno di 24 h
+      // per indirizzo sono una o due): coperto da `maxDuration`. Non solleva;
+      // un fallimento per sorella e' gia' loggato e avvisato dentro.
+      {
+        const siblings = await cancelSiblingResumeEmails({
+          serviceClient: supabase,
+          paidOrderId: ticketOrder.id,
+          buyerEmail: ticketOrder.buyer_email,
+          eventId: ticketOrder.event_id,
+          partyId: ticketOrder.party_id ?? null,
+        });
+        if (siblings.considered > 0 || siblings.unreadable) {
+          console.log(
+            `[tickets.order_resume_siblings] order=${ticketOrder.id} ` +
+              `considered=${siblings.considered} canceled=${siblings.canceled} ` +
+              `sent=${siblings.sent} cancel_failed=${siblings.cancelFailed} ` +
+              `unreadable=${siblings.unreadable}`
+          );
+        }
+      }
 
       // ═══════════════════════════════════════════════════════════════════════
       // 6. L'INDIRIZZO, SOLO SE LA RIVELAZIONE E' GIA' SCATTATA

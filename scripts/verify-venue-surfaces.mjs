@@ -1069,7 +1069,16 @@ const GUEST_SURFACES = [
   // `failed`). It is the provider's checkout identifier — an opaque reference
   // into SumUp, printed nowhere, carrying no place. Weighed and admitted on
   // 2026-09-23; the gate had been red on it since phase 50's verification.
-  [CALLBACK_ACTIONS_REL, CALLBACK_ACTIONS, "id, status, sumup_checkout_id, ticket_id", 3],
+  // `event_id`, `resume_email_id`, `resume_email_state` joined on 2026-09-30
+  // (phase 52.2, plan 08): the PAID branch cancels the order's resume email
+  // once. Weighed and admitted: opaque identifiers of Resend and of the event,
+  // no place. No new select literal, so the count stays 3.
+  [
+    CALLBACK_ACTIONS_REL,
+    CALLBACK_ACTIONS,
+    "event_id, id, resume_email_id, resume_email_state, status, sumup_checkout_id, ticket_id",
+    3,
+  ],
   // The resume email's owner, joined on 2026-09-30 (phase 52.2, plan 05). It
   // reads the order (buyer, tier, status, the provider's checkout id to exclude
   // free orders, and its own resume-email columns), the event and night title
