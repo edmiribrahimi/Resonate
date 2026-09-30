@@ -41,6 +41,19 @@ import { Button } from "@/components/ui/Button";
 
 type ViewStatus = "checking" | PaymentCallbackStatus;
 
+/**
+ * ── Quando si chiede al fornitore (fase 52.2, D) ─────────────────────────────
+ *
+ * Fino al 2026-09-30 la pagina leggeva il catalogo 8 volte a 2 s e poi si
+ * fermava su «Payment processing…». Con una carta rifiutata l'ordine e'
+ * `pending` per trenta minuti, e la persona restava li'. Ora: 16 letture, e
+ * alla **8ª e alla 16ª** la lettura porta `verifyIfPending`, che chiede al
+ * fornitore se ha rifiutato. Due domande, non sedici — e alla 16ª l'ultima
+ * parola e' comunque del fornitore, non del catalogo.
+ */
+const MAX_POLLS = 16;
+const VERIFY_AT_POLL: ReadonlySet<number> = new Set([8, 16]);
+
 function PaymentCallbackContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -87,6 +100,7 @@ function PaymentCallbackContent() {
           id: id!,
           slug,
           party,
+          verifyIfPending: VERIFY_AT_POLL.has(pollCountRef.current),
         });
         if (cancelled) return;
 
@@ -95,7 +109,7 @@ function PaymentCallbackContent() {
           return;
         }
 
-        if (result.status === "PENDING" && pollCountRef.current < 8) {
+        if (result.status === "PENDING" && pollCountRef.current < MAX_POLLS) {
           setStatus("PENDING");
           pollCountRef.current += 1;
           timerRef.current = setTimeout(poll, 2000);
@@ -156,8 +170,13 @@ function PaymentCallbackContent() {
           </>
         )}
 
-        {/* Failed / Expired */}
-        {(status === "FAILED" || status === "EXPIRED") && (
+        {/*
+          Failed / Expired / Declined. `DECLINED` (fase 52.2, D) e' il rifiuto
+          confermato dal fornitore su un ordine ancora aperto da noi: nulla e'
+          stato addebitato, e lo si dice — e' l'unica delle tre in cui la
+          persona sa con certezza di poter riprovare.
+        */}
+        {(status === "FAILED" || status === "EXPIRED" || status === "DECLINED") && (
           <>
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-sem-crit/20">
               <svg aria-hidden="true" className="h-6 w-6 text-sem-crit" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -165,12 +184,14 @@ function PaymentCallbackContent() {
               </svg>
             </div>
             <PageTitle>
-              Payment {status === "EXPIRED" ? "expired" : "failed"}
+              Payment {status === "EXPIRED" ? "expired" : status === "DECLINED" ? "declined" : "failed"}
             </PageTitle>
             <p className="mt-2 text-sm text-muted">
               {status === "EXPIRED"
                 ? "The payment session has expired. Please try again."
-                : "Something went wrong with your payment. Please try again."}
+                : status === "DECLINED"
+                  ? "Your bank did not approve the payment. Nothing has been charged. You can try again, with this card or another."
+                  : "Something went wrong with your payment. Please try again."}
             </p>
             <Button href={eventUrl} size="lg" variant="primary" className="mt-4 w-full">
               Try again

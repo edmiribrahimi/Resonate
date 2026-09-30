@@ -30,7 +30,16 @@ export type PaymentCallbackStatus =
    * L'ordine e' `failed` e il fornitore non ha risposto: non sappiamo se ha
    * incassato. La sola cosa sicura da dire e' «non ripagare prima di guardare».
    */
-  | "UNCONFIRMED";
+  | "UNCONFIRMED"
+  /**
+   * L'ordine e' ancora `pending` da noi, ma il fornitore dice `FAILED`: la
+   * carta e' stata rifiutata e **nulla e' stato addebitato**. Misurato in
+   * laboratorio il 2026-09-30 (`52.2-ESITI.md`, D passo 1): senza questo
+   * stato la pagina restava su «Payment processing…» per sempre, perche'
+   * leggeva solo il catalogo, dove un rifiuto non lascia traccia finche' il
+   * cron `close-pending-orders` non chiude l'ordine (30 minuti dopo).
+   */
+  | "DECLINED";
 
 export interface PaymentCallbackResult {
   status: PaymentCallbackStatus;
@@ -63,17 +72,25 @@ export async function checkPaymentStatus(params: {
   id: string;
   slug?: string;
   party?: string;
+  /**
+   * Se l'ordine e' ancora `pending`, chiedere al fornitore se ha **rifiutato**.
+   * La pagina lo alza solo quando le sue letture del catalogo sono esaurite:
+   * una domanda al fornitore ogni 2 s non serve a nessuno, una alla fine dice
+   * a chi ha la carta rifiutata che nulla e' stato addebitato.
+   */
+  verifyIfPending?: boolean;
 }): Promise<PaymentCallbackResult> {
   const supabase = getServiceClient();
+  const verify = params.verifyIfPending === true;
 
   if (params.ctx === "ticket_order") {
-    return checkTicketOrderStatus(supabase, params.id);
+    return checkTicketOrderStatus(supabase, params.id, verify);
   }
 
   if (params.ctx === "drink") {
     const { data: order, error } = await supabase
       .from("drink_orders")
-      .select("status")
+      .select("status, sumup_checkout_id")
       .eq("id", params.id)
       .maybeSingle();
 
@@ -82,6 +99,9 @@ export async function checkPaymentStatus(params: {
     }
 
     const status = mapOrderStatus(order.status);
+    if (status === "PENDING" && verify) {
+      return { status: await declinedAtProvider("drink", params.id, order.sumup_checkout_id) };
+    }
     if (status === "PAID" && params.slug) {
       // Built with `URLSearchParams` instead of `new URL(...).pathname +
       // .search`, so the value keeps a literal type. Same encoding, same two
@@ -101,7 +121,7 @@ export async function checkPaymentStatus(params: {
   // ticket
   const { data: purchase, error } = await supabase
     .from("pending_purchases")
-    .select("status, ticket_id")
+    .select("status, ticket_id, sumup_checkout_id")
     .eq("id", params.id)
     .maybeSingle();
 
@@ -110,6 +130,9 @@ export async function checkPaymentStatus(params: {
   }
 
   const status = mapOrderStatus(purchase.status);
+  if (status === "PENDING" && verify) {
+    return { status: await declinedAtProvider("ticket", params.id, purchase.sumup_checkout_id) };
+  }
   if (status === "PAID" && purchase.ticket_id) {
     return {
       status,
@@ -117,6 +140,57 @@ export async function checkPaymentStatus(params: {
     };
   }
   return { status };
+}
+
+/**
+ * Un ordine ancora `pending` da noi: il fornitore l'ha rifiutato?
+ *
+ * ── Perche' si chiede solo alla fine, e solo questo ──────────────────────────
+ *
+ * Misurato in laboratorio il 2026-09-30 (`52.2-ESITI.md`, D passo 1): una
+ * carta bloccata torna dal modulo di SumUp **senza una parola**, il checkout e'
+ * `FAILED` dal fornitore dopo 34 secondi, e da noi l'ordine resta `pending`
+ * fino al cron `close-pending-orders`, trenta minuti dopo. Questa pagina
+ * leggeva solo il catalogo, e a chi era stato rifiutato diceva «Payment
+ * processing… This may take a moment» — per sempre. Un «ho pagato?» senza
+ * risposta, alle 23, davanti a una porta.
+ *
+ * La stessa regola del webhook — *ask the provider, never believe the
+ * announcement* — vale anche al contrario: **solo il fornitore puo' dire
+ * «rifiutato»**. Qui si chiede una volta, quando la pagina ha esaurito le
+ * letture, e si risponde `DECLINED` **soltanto** su `FAILED` o `EXPIRED` del
+ * fornitore: nessun addebito, e la persona puo' riprovare. Ogni altra risposta
+ * — `PENDING`, `PAID` con il webhook in ritardo, un errore di rete — resta
+ * `PENDING`: la pagina non promette nulla che il fornitore non abbia
+ * confermato, e l'ordine lo chiude il cron, che e' l'unico a scrivere.
+ *
+ * Non scrive niente: `closed_reason='declined'` e' del cron, con la parola del
+ * fornitore (CART-03). Due scrittori sullo stesso ordine sarebbero una gara.
+ */
+async function declinedAtProvider(
+  ctx: "drink" | "ticket" | "ticket_order",
+  id: string,
+  checkoutId: string | null
+): Promise<"PENDING" | "DECLINED"> {
+  // Senza checkout non c'e' un fornitore a cui chiedere (ordine a totale zero).
+  if (!checkoutId) return "PENDING";
+  try {
+    const checkout = await getCheckout(checkoutId);
+    if (checkout.status === "FAILED" || checkout.status === "EXPIRED") {
+      console.warn(
+        `[tickets.callback_declined] ctx=${ctx} order=${id} provider=${checkout.status}: ` +
+          "the provider refused the payment; the buyer was told nothing was charged"
+      );
+      return "DECLINED";
+    }
+    return "PENDING";
+  } catch (verifyError) {
+    console.error(
+      `[tickets.callback_verify_pending_failed] ctx=${ctx} order=${id}: could not read the checkout from the provider`,
+      verifyError
+    );
+    return "PENDING";
+  }
 }
 
 /**
@@ -149,7 +223,8 @@ export async function checkPaymentStatus(params: {
  */
 async function checkTicketOrderStatus(
   supabase: ReturnType<typeof getServiceClient>,
-  orderId: string
+  orderId: string,
+  verifyIfPending: boolean
 ): Promise<PaymentCallbackResult> {
   const { data: order, error } = await supabase
     .from("ticket_orders")
@@ -165,6 +240,11 @@ async function checkTicketOrderStatus(
   }
 
   const status = mapOrderStatus(order.status);
+  if (status === "PENDING" && verifyIfPending) {
+    return {
+      status: await declinedAtProvider("ticket_order", order.id, order.sumup_checkout_id),
+    };
+  }
   if (status === "PAID") {
     // ── Una seconda rete per la mail di ripresa (fase 52.2, CART-05) ────────
     //
