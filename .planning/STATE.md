@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "2026-09-30 22:43Z — Fase 52.2: PIANI 14 e 15 CHIUSI. In produzione: codice 712c9d20 (deploy 22:11Z), quattro migration, DOOR_REFUSE_REFUNDED_ENABLED=true dal redeploy delle 22:41:53Z (RFD-03 acceso). Dati di prova tolti in produzione sotto atti datati: 3 ticket_refunds (22:21Z) e 2 ticket_orders del 24/09 (22:36Z); restano 3 ordini (2 pagati con biglietto vivo, 1 aperto del 28/9 che il cron chiude alle 07:05 UTC). ORDER_RESUME_EMAIL_ENABLED ancora ASSENTE: e' il piano 16 (Atto 3, dopo che il proprietario legge l'informativa pubblicata). Poi 17 (verifica, persona, VERIFICATION). SUMMARY dei piani 14 e 15 da scrivere. origin/main e' a f2d8cb6b (22:13Z): i commit di documentazione dopo NON sono spinti (push fuori perimetro degli atti 15 e TESTDATA); si spingono con la chiusura della fase."
-last_updated: "2026-09-30T22:43:00.000Z"
+stopped_at: "2026-09-30 22:48Z — Fase 52.2: PIANI 14, 15, 16 CHIUSI, TRE ATTI ESAURITI. Produzione: codice 712c9d20 (deploy 22:11Z, redeploy 22:41Z e 22:47Z), quattro migration, DOOR_REFUSE_REFUNDED_ENABLED=true (22:41:53Z), ORDER_RESUME_EMAIL_ENABLED=true (22:47:26Z), ritardo 60 min di default. Dati di prova tolti sotto atto: 3 ticket_refunds (22:21Z), 2 ticket_orders (22:36Z); restano 3 ordini (2 pagati, 1 aperto del 28/9 che il cron chiude alle 07:05 UTC del 2026-10-01 senza mail). RESTA IL PIANO 17: rilettura del cron del mattino, persona (ticketing-payments.md con src/lib/tickets/**), 52.2-VERIFICATION.md con file:riga, checkpoint «approvata» del proprietario; SUMMARY 14/15/16 scritti. origin/main a f2d8cb6b: i commit di documentazione dopo NON sono spinti, si spingono con la chiusura."
+last_updated: "2026-09-30T22:48:00.000Z"
 last_activity: 2026-09-30
 progress:
   total_phases: 15
