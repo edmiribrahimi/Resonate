@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { refundTransaction } from "@/lib/sumup";
 import { sendEmail } from "@/lib/email";
@@ -136,72 +135,17 @@ async function recordRefundNotice({
  * must branch on, and no client of these three does. A resolve failure throws
  * its own distinct `capabilities.resolve_failed:` category and is never
  * collapsed into "Forbidden".
- */
-
-/**
- * User requests a refund for their ticket.
  *
- * NOT converted, deliberately: this is not a staff gate. The `auth.getUser()`
- * below anchors an **ownership** check — `.eq("user_id", user.id)` on the
- * ticket, read under row-level security — which is a different question from
- * "may this person operate the staff surfaces". It reads no header and no
- * `profiles.role`, so it is outside this plan's conversion.
+ * ── No client asks for a refund (D-52.2-05, owner decision of 2026-09-30) ────
+ *
+ * The client-side request action and its button were removed on 2026-09-30:
+ * a refund exists only as the policy says — the night is cancelled and we
+ * issue it. No page mounted them, and migration
+ * `20260930120300_refunds_no_client_insert.sql` removed the INSERT policy that
+ * let any signed-in account write a `ticket_refunds` row: rows are written by
+ * the service role alone, and since phase 52.2 the door reads them.
+ * `approveRefund` / `rejectRefund` stay for rows already in the table.
  */
-export async function requestRefund(ticketId: string, reason: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    throw new Error("Not authenticated");
-  }
-
-  // Verify ticket ownership
-  const { data: ticket, error: ticketError } = await supabase
-    .from("tickets")
-    .select("id, user_id, amount_paid, sumup_transaction_code")
-    .eq("id", ticketId)
-    .eq("user_id", user.id)
-    .single();
-
-  if (ticketError || !ticket) {
-    throw new Error("Ticket not found");
-  }
-
-  // Check no existing pending refund
-  const serviceClient = getServiceClient();
-  const { data: existingRefund } = await serviceClient
-    .from("ticket_refunds")
-    .select("id")
-    .eq("ticket_id", ticketId)
-    .eq("status", "pending")
-    .maybeSingle();
-
-  if (existingRefund) {
-    throw new Error("A refund request is already pending for this ticket");
-  }
-
-  // Create refund request
-  const { error: insertError } = await serviceClient
-    .from("ticket_refunds")
-    .insert({
-      ticket_id: ticketId,
-      requested_by: user.id,
-      reason: reason.trim() || null,
-      amount: ticket.amount_paid,
-      status: "pending",
-      type: "user_request",
-    });
-
-  if (insertError) {
-    throw new Error(`Failed to create refund request: ${insertError.message}`);
-  }
-
-  revalidatePath(`/tickets/${ticketId}`);
-  return { success: true };
-}
 
 /**
  * Admin/organizer approves a refund request.
@@ -209,7 +153,7 @@ export async function requestRefund(ticketId: string, reason: string) {
  */
 export async function approveRefund(refundId: string) {
   // One resolve for this invocation. See the block comment above
-  // `requestRefund` for the key choice and for why it is resolved once.
+  // `approveRefund` (the staff gate, stated once) for the key choice and for why it is resolved once.
   const { capabilities, userId } = await getAccessContext();
 
   if (!userId) {
@@ -467,7 +411,7 @@ export async function approveRefund(refundId: string) {
  */
 export async function rejectRefund(refundId: string, adminNote?: string) {
   // One resolve for this invocation. See the block comment above
-  // `requestRefund` for the key choice and for why it is resolved once.
+  // `approveRefund` (the staff gate, stated once) for the key choice and for why it is resolved once.
   const { capabilities, userId } = await getAccessContext();
 
   if (!userId) {
@@ -555,7 +499,7 @@ export async function rejectRefund(refundId: string, adminNote?: string) {
  */
 export async function adminRefund(ticketId: string, reason?: string) {
   // One resolve for this invocation. See the block comment above
-  // `requestRefund` for the key choice and for why it is resolved once.
+  // `approveRefund` (the staff gate, stated once) for the key choice and for why it is resolved once.
   const { capabilities, userId } = await getAccessContext();
 
   if (!userId) {

@@ -1,0 +1,38 @@
+-- ===========================================================================
+-- 20260930120300_refunds_no_client_insert.sql
+-- Fase 52.2, D-52.2-05 — nessun cliente scrive una riga di rimborso.
+-- ===========================================================================
+--
+-- 2026-09-30, decisione del proprietario: «nessun cliente deve poter chiedere
+-- rimborso ticket. il rimborso esiste solo come scritto nelle policy ovvero se
+-- l'evento e' annullato e lo inviamo noi, ma nessuno deve poterlo richiedere».
+--
+-- Perche' la policy va tolta e non solo il pulsante:
+--
+--   * `refunds_insert_own` (20260227200000_ticket_refunds.sql, riscritta da
+--     20260807020000_wrap_auth_uid.sql:245-248) lasciava a QUALUNQUE account
+--     autenticato inserire righe in `public.ticket_refunds`, con il solo vincolo
+--     `requested_by = auth.uid()` — tutte le altre colonne, comprese quelle
+--     d'evidenza (`refunded_ticket_id`, `refunded_at`, `status`,
+--     `notified_email_id`), a valori arbitrari, via PostgREST, senza passare da
+--     nessuna pagina. Il middleware e' UX, la RLS e' sicurezza.
+--   * dalla fase 52.2 la PORTA legge queste righe (check-in online e manifest
+--     offline) per dire «rimborsato, non entra». Una riga scritta da un client
+--     diventerebbe un rifiuto alla porta per il biglietto di un altro.
+--   * nessun percorso del prodotto inserisce con la chiave di un client: le
+--     scritture (`approveRefund`, `adminRefund`, il cron `reconcile-refunds`,
+--     il backfill della mail) usano tutte la chiave di servizio, che bypassa la
+--     RLS. Il pulsante di richiesta e la sua azione sono stati rimossi nello
+--     stesso piano (52.2-12), e nessuna pagina li montava.
+--
+-- Dopo questa migration `ticket_refunds` non ha ALCUNA policy di INSERT: con la
+-- RLS attiva, un client non puo' inserire. Le righe le scrive solo il server.
+--
+-- NON cambia: `refunds_select_own`, `refunds_select_admin`,
+-- `refunds_update_admin` restano come sono. Nessuna colonna, nessun dato.
+--
+-- Idempotente: `DROP POLICY IF EXISTS`.
+-- Laboratorio: onda 6 del 52.2. Produzione: atto 1 del piano 52.2-14, insieme
+-- alle altre tre migration della fase, a un secondo di distanza l'una dall'altra.
+
+DROP POLICY IF EXISTS refunds_insert_own ON public.ticket_refunds;

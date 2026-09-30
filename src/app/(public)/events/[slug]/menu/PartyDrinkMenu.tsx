@@ -418,9 +418,9 @@ export default function PartyDrinkMenu({
         closed and a token already paid for can still be redeemed for another
         hour. It kept its wording and gained two things — the semantic amber
         instead of a raw palette hue, and `role="status"`, so it is not carried
-        by colour alone. The shape is the one
-        `(public)/tickets/[id]/RefundRequestButton.tsx:128-130` already uses for
-        a money-adjacent warning panel; the radius is §9's container rung.
+        by colour alone. The shape is the project's money-adjacent warning
+        panel (`border-sem-warn/30 bg-sem-warn/10`, `role="status"`); the
+        radius is §9's container rung.
       */}
       {menuStatus === "grace" && (
         <div
