@@ -23,8 +23,10 @@ import {
   reconcileDeliveries,
 } from "@/lib/email-delivery/ledger";
 /**
- * Ticket tiers, discount codes, sold tickets and pending refunds — the two
- * former pages, collapsed into one (D-34-05).
+ * Ticket tiers, discount codes and sold tickets — the two former pages,
+ * collapsed into one (D-34-05). The pending-refund list that stood here left
+ * on 2026-09-30 with the approve and reject actions (D-52.2-06): no client
+ * can ask for a refund any more (D-52.2-05), so there is nothing to approve.
  *
  * ── This is a route collapse, and nothing on the money path moved ────────────
  *
@@ -73,7 +75,7 @@ import {
  *
  * ── The service-role read, and what is actually holding it ───────────────────
  *
- * Buyer names, buyer emails and pending refunds are read below through
+ * Buyer names and buyer emails are read below through
  * `getServiceClient()`, which bypasses every row-level policy
  * (`access-gating.md`, gate *service role*). On that path THE CODE IS THE ONLY
  * BOUNDARY — there is no RLS behind a service-role read to catch a mistake. So
@@ -311,21 +313,6 @@ export default async function TicketTiersPage({ params }: PageProps) {
     .eq("event_id", eventId)
     .order("created_at", { ascending: false });
 
-  // Fetch pending refund requests. The row set is identical to the twin's — same
-  // `.in(ticketIds)`, same `.eq("status","pending")`, same order — so this is a
-  // narrower projection of the same rows, not a different set of refunds.
-  const ticketIds = (soldTickets ?? []).map((t: { id: string }) => t.id);
-  let pendingRefunds: { id: string; ticket_id: string; reason: string | null; amount: number; created_at: string }[] = [];
-  if (ticketIds.length > 0) {
-    const { data } = await serviceClient
-      .from("ticket_refunds")
-      .select("id, ticket_id, reason, amount, created_at")
-      .in("ticket_id", ticketIds)
-      .eq("status", "pending")
-      .order("created_at", { ascending: true });
-    pendingRefunds = data ?? [];
-  }
-
   // I nomi dei compratori, con una seconda lettura e a blocchi di 100: una
   // serata in target sta fra 150 e 300 persone, e 300 uuid in un `in()` sono
   // ~11 KB di URL.
@@ -347,12 +334,6 @@ export default async function TicketTiersPage({ params }: PageProps) {
       break;
     }
     for (const pr of profili ?? []) profiloDi.set(pr.id, { full_name: pr.full_name, email: pr.email });
-  }
-
-  const ticketBuyerMap = new Map<string, string>();
-  for (const t of soldTickets ?? []) {
-    const profile = t.user_id ? profiloDi.get(t.user_id) : undefined;
-    ticketBuyerMap.set(t.id, profile?.full_name || profile?.email || "Unknown");
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -685,39 +666,6 @@ export default async function TicketTiersPage({ params }: PageProps) {
               </div>
             );
           })
-        )}
-
-        {/* Pending Refund Requests */}
-        {pendingRefunds.length > 0 && (
-          <div className="space-y-4">
-            {/*
-              The heading is the channel. This block used to be drawn in a raw
-              warning hue, which D-41.1-25 retires — the word is what says a
-              refund is waiting, and D-41.1-29 measured that the semantic fills
-              are 1.23 : 1 apart and could not carry it as colour anyway. The
-              block still renders only when there is something in it.
-            */}
-            <SectionHeading>Pending Refund Requests</SectionHeading>
-            <div className="space-y-3">
-              {pendingRefunds.map((refund) => (
-                <Card key={refund.id}>
-                  <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
-                    <p className="text-sm font-semibold text-ink">
-                      {ticketBuyerMap.get(refund.ticket_id) || "Unknown"}
-                    </p>
-                    {/* The money mark — D-41.1-13. */}
-                    <p className="text-sm font-semibold text-ink">
-                      {formatPrice(refund.amount)}
-                    </p>
-                  </div>
-                  {refund.reason && (
-                    <p className="text-xs text-muted mb-3">&ldquo;{refund.reason}&rdquo;</p>
-                  )}
-                  <RefundActions refundId={refund.id} />
-                </Card>
-              ))}
-            </div>
-          </div>
         )}
 
         {/*

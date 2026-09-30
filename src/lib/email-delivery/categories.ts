@@ -127,7 +127,11 @@ export const EMAIL_CATEGORIES = [
   "account_invitation",
   /** L'esito positivo di una richiesta di rimborso. */
   "refund_approved",
-  /** L'esito negativo di una richiesta di rimborso. */
+  /**
+   * L'esito negativo di una richiesta di rimborso. Nessun percorso la spedisce
+   * piu' dal 2026-09-30 (D-52.2-06); la categoria resta per le righe storiche
+   * del registro.
+   */
   "refund_rejected",
   /**
    * La mail che porta l'indirizzo di una serata segreta.
@@ -186,7 +190,8 @@ export const EMAIL_CATEGORIES = [
   "order_resume",
   /**
    * La mail che avvisa il titolare che il suo biglietto e' stato rimborsato —
-   * **la stessa sulle tre strade di rimborso** (RFD-01). Fase 52.2.
+   * **la stessa sulle due strade di rimborso** — `adminRefund` e il cron
+   * `reconcile-refunds` (RFD-01, D-52.2-06). Fase 52.2.
    *
    * **`ticket_id` e' SEMPRE nullo su questa categoria**, e non e' una svista:
    * `email_deliveries.ticket_id` e' `ON DELETE CASCADE` e il percorso di
