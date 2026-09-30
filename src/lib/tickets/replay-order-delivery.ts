@@ -189,6 +189,13 @@ export async function replayPaidOrderDelivery(args: {
     // La traccia resta: il webhook non legge `error_message` su un `pending`,
     // ma il suo `failOrder` la legge, per NON riavvisare l'organizzazione a
     // ogni rigioco fallito (`organizer-alert.ts`, paletto 2).
+    //
+    // E il prefisso `retrying:` e' un patto con il webhook (fase 52.2, Q4): a
+    // emissione riuscita `src/app/api/webhooks/sumup/route.ts` (passo 4b) lo
+    // azzera **solo** se `error_message` inizia con `retrying:`, cosi' un
+    // ordine riemesso esce dall'insieme «Paid, address never sent» della
+    // superficie dei venduti. Cambiare il prefisso qui senza cambiarlo li'
+    // lascia ogni ordine riemesso nell'insieme sbagliato.
     .update({
       status: "pending",
       error_message: `retrying: ${order.error_message ?? "no cause"}`.slice(0, 500),
