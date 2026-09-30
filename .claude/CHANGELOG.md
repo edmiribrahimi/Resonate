@@ -3,6 +3,34 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.28.1] - 2026-09-30
+
+### Fixed — *Controllo zero fallimenti silenziosi* conta otto cron: `meta-gates.md`
+
+**Cosa e' cambiato.** La riga diceva *«I **sei** cron girano di prima
+mattina»*. Ora dice **otto**, con un riquadro datato: `vercel.json` ne
+dichiarava gia' sette (`retry-failed-orders`, 07:15 UTC) e la fase 52.2
+aggiunge `close-pending-orders` (07:05 UTC, CART-03). Contati su entrambe le
+fonti prima di scrivere: otto voci in `vercel.json`, otto directory sotto
+`src/app/api/cron/`. La fascia e' descritta come orari **dichiarati** fra le
+06:00 e le 09:00 UTC, ognuno con il proprio scarto del piano Hobby — non come
+una finestra aggregata calcolata su un solo orario.
+
+**Perche'.** Vincolo 3 di `52.2-CONTEXT.md` e decisione W8-A
+dell'orchestratore: la riga si corregge **nello stesso commit** che aggiunge
+l'ottava voce a `vercel.json`. Una riga che conta male i cron e' esattamente
+il precedente del 2026-08-25 — un numero sbagliato in un modulo sempre
+caricato ha gia' fatto formulare al proprietario una domanda su una premessa
+falsa — e non deve vivere nemmeno per le onde che separano il piano 52.2-06
+dal 52.2-17.
+
+**Scenario di carico e scatto.** File: `vercel.json`. Moduli attesi:
+`time-and-scheduling.md` (primario per `meta-gates.md`),
+`ticketing-payments.md`, `meta-gates.md` (sempre caricato). Modifica-tipo che
+deve far scattare il gate: aggiungere una voce `crons` senza aggiornare il
+conteggio di `meta-gates.md` — o aggiungerla con un orario fra le 22:00 e le
+06:00 locali, che e' una notte re:sonate.
+
 ## [1.28.0] - 2026-09-30
 
 ### Added — *Gate una sola comunicazione di ripresa*: `comms-analytics.md`

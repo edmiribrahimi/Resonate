@@ -30,6 +30,10 @@
     {
       "path": "/api/cron/retry-failed-orders",
       "schedule": "15 7 * * *"
+    },
+    {
+      "path": "/api/cron/close-pending-orders",
+      "schedule": "5 7 * * *"
     }
   ]
 }
