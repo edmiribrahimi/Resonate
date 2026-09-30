@@ -8,7 +8,7 @@ import { formatEventDate, formatTime } from "@/utils/formatTime";
  * organizer-alert.ts — le mail che il prodotto manda A NOI, alla casella
  * dell'organizzazione (`ORGANIZER_ALERT_EMAIL`, su Vercel = info@).
  *
- * Sono due, e nascono dallo stesso bisogno: questo progetto non ha error
+ * Sono quattro, e nascono dallo stesso bisogno: questo progetto non ha error
  * tracking (`meta-gates.md`), quindi cio' che deve raggiungere un essere umano
  * ci arriva per posta o non ci arriva.
  *
@@ -16,6 +16,10 @@ import { formatEventDate, formatTime } from "@/utils/formatTime";
  *      (2026-09-08).
  *   2. {@link notifyOrganizerOfSale} — il riepilogo di ogni vendita pagata
  *      (2026-09-25).
+ *   3. {@link alertOrganizerResumeEmailNotCancelled} — una mail «still open»
+ *      che non si e' potuta annullare su un ordine pagato (2026-09-30).
+ *   4. {@link alertOrganizerRefundUnattributed} — un rimborso parziale su
+ *      SumUp che non corrisponde a un biglietto (2026-09-30).
  *
  * ── In inglese, come tutta la piattaforma ────────────────────────────────────
  *
@@ -361,5 +365,131 @@ export async function notifyOrganizerOfSale(args: {
       </table>
       <p><a href="${link}">${link}</a></p>
       <p style="color:#666;font-size:12px">Order ${esc(args.ref)}.</p>`),
+  });
+}
+
+/**
+ * Una mail di ripresa che non si e' potuta annullare, su un ordine pagato
+ * (CART-05, fase 52.2).
+ *
+ * La mail dice «Nothing has been charged». Se l'annullamento persistente
+ * (`order-resume.ts`, quattro tentativi in sei secondi) si esaurisce con la mail
+ * ancora in coda, chi ha pagato puo' riceverla fra poco: e' una frase falsa sul
+ * denaro, detta a una persona che ha appena pagato. Non la si puo' piu' fermare
+ * dal prodotto; la si puo' **precedere**, scrivendo all'acquirente.
+ *
+ * Una per ordine: `idempotencyKey` = `resume-not-cancelled/<orderId>`. Il testo
+ * non nomina alcun luogo.
+ */
+export async function alertOrganizerResumeEmailNotCancelled(args: {
+  serviceClient: ServiceClient;
+  orderId: string;
+  eventId: string;
+}): Promise<void> {
+  let night = "an event";
+  let date = "";
+  try {
+    const { data: event } = await args.serviceClient
+      .from("events")
+      .select("title, date")
+      .eq("id", args.eventId)
+      .maybeSingle();
+    night = event?.title ?? night;
+    date = event?.date ? formatEventDate(String(event.date)) : "";
+  } catch (e) {
+    console.error(
+      `[tickets.organizer_alert_resume_not_cancelled_event_unreadable] order=${args.orderId}`,
+      e
+    );
+  }
+
+  const link = `${appBase()}/admin/events/${args.eventId}/tickets`;
+
+  await sendToOrganizer({
+    tag: "organizer_alert_resume_not_cancelled",
+    ref: `order=${args.orderId}`,
+    senderName: "Resonate ALERT",
+    urgent: true,
+    idempotencyKey: `resume-not-cancelled/${args.orderId}`,
+    subject: `⚠️ ACTION NEEDED — Paid order, reminder email may still go out — ${night} — ${shortRef(args.orderId)}`,
+    html: wrap(`
+      <div style="background:#C62828;color:#fff;padding:14px 16px;border-radius:6px;margin-bottom:16px">
+        <div style="font-size:12px;letter-spacing:.08em;font-weight:700">ACTION NEEDED</div>
+        <div style="font-size:18px;font-weight:700;margin-top:4px">A paid order may still receive «your order is still open».</div>
+        <div style="font-size:14px;margin-top:4px">That email says nothing has been charged — which is no longer true.</div>
+      </div>
+      <p>Event: <strong>${esc(night)}</strong>${date ? ` · ${esc(date)}` : ""}</p>
+      <p>The order has been paid, but the scheduled reminder «your order is still open»
+         could not be cancelled with the email provider. If the buyer receives it,
+         write to them that their payment went through and their tickets are valid.</p>
+      <p><a href="${link}" style="display:inline-block;background:#C62828;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;font-weight:600">Open the order</a></p>
+      <p style="color:#666;font-size:12px">${link}<br>Order ${esc(args.orderId)}. This alert is sent once per order.</p>`),
+  });
+}
+
+/**
+ * Un rimborso parziale su SumUp che non corrisponde a un biglietto (RFD-02,
+ * fase 52.2).
+ *
+ * Il cron dei rimborsi raggruppa per transazione: quando l'importo rimborsato
+ * sul fornitore non si spiega con biglietti interi, **non cancella niente** —
+ * indovinare quale biglietto togliere significherebbe respingere alla porta una
+ * persona valida, l'errore che costa di piu' (`checkin-offline.md`). Ma un
+ * rimborso non attribuito che resta solo in un log e' un fallimento silenzioso:
+ * questo avviso lo porta a un essere umano.
+ *
+ * `transactionRef` e' il codice della transazione: nell'oggetto ne va solo la
+ * coda (ultimi sei caratteri), il codice intero sta nel corpo. Una per
+ * transazione e importo: `idempotencyKey` = `refund-unattributed/<tx>/<importo>`,
+ * cosi' un rimborso ulteriore sulla stessa transazione riavvisa. Nessun luogo.
+ */
+export async function alertOrganizerRefundUnattributed(args: {
+  serviceClient: ServiceClient;
+  eventId: string;
+  transactionRef: string;
+  refundedTotal: number;
+  explained: number;
+  liveAmount: number;
+}): Promise<void> {
+  let night = "an event";
+  let date = "";
+  try {
+    const { data: event } = await args.serviceClient
+      .from("events")
+      .select("title, date")
+      .eq("id", args.eventId)
+      .maybeSingle();
+    night = event?.title ?? night;
+    date = event?.date ? formatEventDate(String(event.date)) : "";
+  } catch (e) {
+    console.error(
+      `[tickets.organizer_alert_refund_unattributed_event_unreadable] tx=${args.transactionRef.slice(-6)}`,
+      e
+    );
+  }
+
+  const link = `${appBase()}/admin/events/${args.eventId}/tickets`;
+  const txShort = args.transactionRef.slice(-6).toUpperCase();
+
+  await sendToOrganizer({
+    tag: "organizer_alert_refund_unattributed",
+    ref: `tx=…${txShort}`,
+    senderName: "Resonate ALERT",
+    urgent: true,
+    idempotencyKey: `refund-unattributed/${args.transactionRef}/${args.refundedTotal}`,
+    subject: `⚠️ ACTION NEEDED — Partial refund on SumUp not matched to a ticket — ${night} — …${txShort}`,
+    html: wrap(`
+      <div style="background:#C62828;color:#fff;padding:14px 16px;border-radius:6px;margin-bottom:16px">
+        <div style="font-size:12px;letter-spacing:.08em;font-weight:700">ACTION NEEDED</div>
+        <div style="font-size:18px;font-weight:700;margin-top:4px">A refund on SumUp does not match whole tickets.</div>
+        <div style="font-size:14px;margin-top:4px">No ticket was cancelled: refund the specific ticket from the app, or cancel it by hand.</div>
+      </div>
+      <p>Event: <strong>${esc(night)}</strong>${date ? ` · ${esc(date)}` : ""}</p>
+      <p>Refunded on SumUp: <strong>${esc(euro(args.refundedTotal))}</strong><br>
+         Explained by tickets already refunded: ${esc(euro(args.explained))}<br>
+         Paid for tickets still valid: ${esc(euro(args.liveAmount))}</p>
+      <p>The difference cannot be matched to one ticket, so nothing was removed from the door list.</p>
+      <p><a href="${link}" style="display:inline-block;background:#C62828;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;font-weight:600">Open the tickets</a></p>
+      <p style="color:#666;font-size:12px">${link}<br>SumUp transaction <code>${esc(args.transactionRef)}</code>.</p>`),
   });
 }
