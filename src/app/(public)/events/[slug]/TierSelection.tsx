@@ -12,6 +12,7 @@ import { QuantityStepper } from "@/components/ui/QuantityStepper";
 import { computeTierStatuses, type PublicTier, type TierStatus } from "@/lib/tickets/tier-status";
 import { SectionHeading } from "@/components/ui/Typography";
 import SumUpCheckoutModal from "./SumUpCheckoutModal";
+import { logMoneyPathFailure } from "@/lib/failure/money-path";
 
 /**
  * ── IL NOME SI CHIEDE, E VA ALL'ACCOUNT — RISCRITTO IL 2026-09-21 ────────────
@@ -238,6 +239,83 @@ function CountdownDisplay({ targetDate }: { targetDate: Date }) {
   );
 }
 
+// ── L'ordine lasciato aperto su questo dispositivo (fase 52.2, CART-04) ─────
+//
+// Versione a basso costo, decisa nel piano 52.2-10: dopo un acquisto avviato,
+// il **token firmato** dell'ordine (mai l'email) resta in `localStorage` per la
+// serata, con l'istante in cui e' nato. Chi chiude il modulo carta e torna alla
+// pagina della serata trova un banner verso la pagina del suo ordine, che dice
+// lo stato leggendolo dal database. Il banner **non afferma** che l'ordine sia
+// aperto: puo' essere stato pagato altrove, o scaduto. La voce si toglie al
+// pagamento nella stessa scheda, e dopo 48 ore.
+//
+// Rimandato e dichiarato: il Buy che SOSTITUISCE l'ordine aperto (confronto di
+// tier e quantita'), `52.2-CONTEXT.md` §Deferred.
+const OPEN_ORDER_KEY_PREFIX = "resonate_ticket_order_";
+const OPEN_ORDER_MAX_AGE_MS = 48 * 60 * 60 * 1000;
+
+function openOrderKey(partyId: string): string {
+  return `${OPEN_ORDER_KEY_PREFIX}${partyId}`;
+}
+
+function safeStorageError(caught: unknown) {
+  return {
+    code: caught instanceof Error ? caught.name : null,
+    message: caught instanceof Error ? caught.message : null,
+  };
+}
+
+function rememberOpenOrder(partyId: string, orderToken: string): void {
+  try {
+    localStorage.setItem(
+      openOrderKey(partyId),
+      JSON.stringify({ token: orderToken, createdAt: new Date().toISOString() })
+    );
+  } catch (caught) {
+    // Non blocca il pagamento: il link dell'ordine arriva comunque per mail.
+    logMoneyPathFailure("tickets.open_order_store_failed", safeStorageError(caught));
+  }
+}
+
+function forgetOpenOrder(partyId: string): void {
+  try {
+    localStorage.removeItem(openOrderKey(partyId));
+  } catch (caught) {
+    logMoneyPathFailure("tickets.open_order_forget_failed", safeStorageError(caught));
+  }
+}
+
+/** Assente → null; illeggibile o piu' vecchia di 48 ore → tolta e null. */
+function readOpenOrderToken(partyId: string): string | null {
+  let raw: string | null;
+  try {
+    raw = localStorage.getItem(openOrderKey(partyId));
+  } catch (caught) {
+    logMoneyPathFailure("tickets.open_order_read_failed", safeStorageError(caught));
+    return null;
+  }
+  if (raw === null) return null;
+  try {
+    const parsed = JSON.parse(raw) as { token?: unknown; createdAt?: unknown };
+    const createdAtMs =
+      typeof parsed.createdAt === "string" ? Date.parse(parsed.createdAt) : NaN;
+    if (
+      typeof parsed.token !== "string" ||
+      parsed.token === "" ||
+      !Number.isFinite(createdAtMs) ||
+      Date.now() - createdAtMs > OPEN_ORDER_MAX_AGE_MS
+    ) {
+      forgetOpenOrder(partyId);
+      return null;
+    }
+    return parsed.token;
+  } catch {
+    // Illeggibile: si toglie, e il banner non compare. Il link resta nella mail.
+    forgetOpenOrder(partyId);
+    return null;
+  }
+}
+
 export default function TierSelection({ partyId, tiers, label, isAuthenticated = true, eventSlug, maxTicketsPerOrder = 1 }: TierSelectionProps) {
   const [selectedTierId, setSelectedTierId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -296,6 +374,13 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [guestOrderId, setGuestOrderId] = useState<string | null>(null);
+  const [openOrderToken, setOpenOrderToken] = useState<string | null>(null);
+
+  // Letta al montaggio, mai sul server: `localStorage` esiste solo qui.
+  useEffect(() => {
+    if (!partyId) return;
+    setOpenOrderToken(readOpenOrderToken(partyId));
+  }, [partyId]);
   const quantityFieldId = useId();
   const emailFieldId = useId();
   const nameFieldId = useId();
@@ -386,6 +471,7 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
         });
 
         if (result.success) {
+          rememberOpenOrder(partyId, result.orderToken);
           setGuestOrderId(result.orderId);
           setCheckoutId(result.checkoutId);
           return;
@@ -416,6 +502,18 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
   return (
     <div>
       <SectionHeading>{label ?? "Get Your Ticket"}</SectionHeading>
+
+      {openOrderToken && (
+        <div role="status" className="mb-4 rounded-2xl border border-line bg-surface p-4 text-sm">
+          <p className="text-ink-2">You started an order for this night on this device.</p>
+          <Link
+            href={`/tickets/order/${encodeURIComponent(openOrderToken)}`}
+            className={`mt-2 inline-block font-semibold text-accent underline ${FOCUS_RING}`}
+          >
+            Open your order
+          </Link>
+        </div>
+      )}
 
       {/*
         The refusal keeps its position and its condition; only its ink and its
@@ -748,7 +846,12 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
         <SumUpCheckoutModal
           checkoutId={checkoutId}
           onClose={() => setCheckoutId(null)}
+          onPaid={() => {
+            // Pagato in questa scheda: l'ordine non e' piu' «lasciato aperto».
+            if (partyId) forgetOpenOrder(partyId);
+          }}
           onPaymentComplete={() => {
+            if (partyId) forgetOpenOrder(partyId);
             setCheckoutId(null);
             window.location.reload();
           }}
