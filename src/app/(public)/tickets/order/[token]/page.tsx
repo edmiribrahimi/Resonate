@@ -11,6 +11,9 @@ import { PageTitle } from "@/components/ui/Typography";
 import { formatHolderLabel } from "@/lib/tickets/holder-label";
 import { Button } from "@/components/ui/Button";
 import ResendTicketsForm from "./ResendTicketsForm";
+import ResumePayment from "./ResumePayment";
+import { cancelOrderResumeEmail } from "@/lib/tickets/order-resume";
+import { turinWallClock } from "@/utils/datetime";
 
 /**
  * I biglietti di un ordine comprato senza account, aperti da una firma.
@@ -115,6 +118,28 @@ function Unavailable({ title, body }: { title: string; body: string }) {
   );
 }
 
+/**
+ * Un ordine non pagato che si puo' riprendere (CART-04).
+ *
+ * Stessa forma di `Unavailable`, con il pulsante della ripresa sopra il ritorno
+ * alla lista. Il pulsante non promette che il tier sia ancora in vendita: lo
+ * decide il preventivo, al click, con la sua frase.
+ */
+function ResumableOrder({ title, body, token }: { title: string; body: string; token: string }) {
+  return (
+    <PageShell width="focus">
+      <Card className="text-center">
+        <PageTitle>{title}</PageTitle>
+        <p className="mt-2 text-sm text-muted">{body}</p>
+        <ResumePayment token={token} />
+        <Button href="/events" size="lg" variant="secondary" className="mt-3 w-full">
+          Back to events
+        </Button>
+      </Card>
+    </PageShell>
+  );
+}
+
 export default async function GuestOrderTicketsPage({
   params,
 }: {
@@ -164,7 +189,9 @@ export default async function GuestOrderTicketsPage({
   // il 2026-09-06.
   const { data: order, error: orderError } = await service
     .from("ticket_orders")
-    .select("id, status, quantity, event_id, party_id, tier_id, user_id")
+    .select(
+      "id, status, quantity, event_id, party_id, tier_id, user_id, resume_email_id, resume_email_state"
+    )
     .eq("id", orderId)
     .maybeSingle();
 
@@ -214,20 +241,29 @@ export default async function GuestOrderTicketsPage({
   //
   // `error_message` esiste sulla riga e **non viene selezionato**: e' un testo
   // scritto per chi ripara, e questa pagina si apre con un link che si inoltra.
+  //
+  // ── Dal 2026-09-30 (fase 52.2, CART-04) `pending` ed `expired` si riprendono ─
+  //
+  // Il pulsante riapre il pagamento sullo STESSO ordine (`resume-actions.ts`):
+  // stessi biglietti, stesso prezzo. Se il tier non e' piu' in vendita lo dice
+  // il preventivo, al click — non questa pagina, che non lo legge. Nessun titolo
+  // di serata e nessuna colonna di luogo su un ordine non pagato.
   if (order.status !== "completed") {
     if (order.status === "pending") {
       return (
-        <Unavailable
-          title="Your payment is still in progress"
-          body="Nothing to redo: as soon as the payment is confirmed your tickets appear here. Reload in a minute, and keep this link — it's the permanent link to your order."
+        <ResumableOrder
+          title="Your order is still open"
+          body="Nothing has been charged yet. You can pick up where you left off — same tickets, same price."
+          token={token}
         />
       );
     }
     if (order.status === "expired") {
       return (
-        <Unavailable
-          title="The payment session has expired"
-          body="Nothing was charged and no ticket was issued. You can start again from the event page."
+        <ResumableOrder
+          title="This order was not completed"
+          body="Nothing was charged. You can still complete it — same tickets, same price, while they are on sale."
+          token={token}
         />
       );
     }
@@ -245,9 +281,99 @@ export default async function GuestOrderTicketsPage({
   // webhook abbia emesso le righe, ed e' anche la forma che avrebbe un'emissione
   // fallita. Una pagina vuota li renderebbe indistinguibili e sembrerebbe un
   // guasto neutro; qui e' uno stato **progettato**, con la sua riga di log.
+  // Con almeno un rimborso, invece, zero biglietti e' la verita' dell'ordine.
   const tickets = [...(ticketRows ?? [])].sort(
     (a, b) => ordinalOf(a.holder_label) - ordinalOf(b.holder_label)
   );
+
+  // ── Pagato: la terza rete della mail di ripresa (CART-05) ──────────────────
+  //
+  // Webhook (persistente) e ritorno dal pagamento (un tentativo) la annullano
+  // gia'; questa pagina e' la terza rete, **un tentativo solo** e nessun avviso,
+  // sulla stessa condizione degli altri due (piano 52.2-08). Una mail «riprendi
+  // il tuo ordine» a chi ha gia' pagato e' la frase piu' falsa che il prodotto
+  // possa mandare.
+  if (
+    order.resume_email_id &&
+    (order.resume_email_state === "scheduled" || order.resume_email_state === "cancel_failed")
+  ) {
+    try {
+      await cancelOrderResumeEmail({
+        serviceClient: service,
+        orderId,
+        eventId: order.event_id,
+        emailId: order.resume_email_id,
+        trigger: "order_page",
+        mode: "single",
+      });
+    } catch (cancelError) {
+      console.error(
+        `[tickets.order_page_resume_cancel_failed] order=${orderId} ` +
+          `${cancelError instanceof Error ? cancelError.message : "errore non-Error"}`
+      );
+    }
+  }
+
+  // ── I rimborsi di questo ordine (RFD-04) ───────────────────────────────────
+  //
+  // Un biglietto rimborsato viene CANCELLATO, e la riga di `ticket_refunds`
+  // porta l'ordine (`refunded_order_id`, scritto da tutte e tre le strade di
+  // rimborso, piano 52.2-09). Senza questa lettura un ordine tutto rimborsato
+  // cadeva nel ramo «your tickets are on their way»: una promessa falsa a chi
+  // ha gia' riavuto l'incasso e alla porta non entrera'.
+  //
+  // Lettura fallita → si prosegue come prima, con la sua riga di log: la pagina
+  // non puo' dire «rimborsato» su una lettura che non ha risposto.
+  const { data: refundRows, error: refundsError } = await service
+    .from("ticket_refunds")
+    .select("refunded_at")
+    .eq("refunded_order_id", orderId)
+    .eq("status", "approved");
+
+  if (refundsError) {
+    console.error(
+      `[tickets.order_page_refunds_unreadable] order=${orderId} ${redactDbError(refundsError)}`
+    );
+  }
+  const refunds = refundsError ? [] : (refundRows ?? []);
+
+  // La data dell'ultimo rimborso, sull'orologio di Torino. `formatEventDate`
+  // accetta solo `YYYY-MM-DD` e su un timestamp stampa «NaN»: prima si porta
+  // l'istante a una data civile con `turinWallClock`, poi la si formatta.
+  // Istante illeggibile → la frase lo dice, e nessuna data viene inventata.
+  let refundDateLabel: string | null = null;
+  if (refunds.length > 0) {
+    const latestIso = refunds
+      .map((row) => row.refunded_at as string | null)
+      .filter((value): value is string => typeof value === "string" && value !== "")
+      .sort((a, b) => Date.parse(b) - Date.parse(a))[0];
+    const wall = latestIso ? turinWallClock(latestIso) : null;
+    if (wall) {
+      refundDateLabel = formatEventDate(wall.date);
+    } else {
+      console.error(`[tickets.order_page_refund_date_unreadable] order=${orderId}`);
+    }
+  }
+  const refundedWhen = refundDateLabel
+    ? `were refunded on ${refundDateLabel}`
+    : "were refunded (we could not read the refund date)";
+
+  if (tickets.length === 0 && refunds.length > 0) {
+    console.log(`[tickets.order_page_refunded] order=${orderId} refunds=${refunds.length}`);
+    return (
+      <Unavailable
+        title="Refunded"
+        body={`The tickets of this order ${refundedWhen}. They are no longer valid at the door.`}
+      />
+    );
+  }
+
+  const partialRefundLine =
+    refunds.length > 0
+      ? `${refunds.length} ticket${refunds.length === 1 ? "" : "s"} of this order ${refundedWhen} and ${
+          refunds.length === 1 ? "is" : "are"
+        } no longer valid.`
+      : null;
 
   if (tickets.length === 0) {
     console.error(
@@ -388,6 +514,12 @@ export default async function GuestOrderTicketsPage({
         all'acquisto, e nessuno viene mostrato come se fosse un controllo
         d'identita'.
       */}
+      {partialRefundLine ? (
+        <p role="status" className="mt-4 w-full text-center text-sm text-muted">
+          {partialRefundLine}
+        </p>
+      ) : null}
+
       <div className="mt-4 grid w-full gap-4">
         {codes.map((code) => (
           <div
