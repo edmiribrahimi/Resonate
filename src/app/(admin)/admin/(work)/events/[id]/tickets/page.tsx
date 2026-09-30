@@ -13,6 +13,7 @@ import RefundActions from "@/app/(admin)/admin/events/[id]/tickets/RefundActions
 import { FOCUS_RING } from "@/components/ui/Button";
 import { retryFailedOrder } from "@/app/(admin)/admin/events/[id]/tickets/actions";
 import { Card } from "@/components/ui/Card";
+import { CHECKOUT_TTL_MS } from "@/lib/tickets/checkout-window";
 import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle, SectionHeading } from "@/components/ui/Typography";
 
@@ -433,7 +434,7 @@ export default async function TicketTiersPage({ params }: PageProps) {
   const { data: ordini, error: ordiniError } = await serviceClient
     .from("ticket_orders")
     .select(
-      "id, status, buyer_email, quantity, total_amount, error_message, created_at"
+      "id, status, buyer_email, quantity, total_amount, error_message, created_at, updated_at, closed_reason, closed_detail, sumup_checkout_id"
     )
     .eq("event_id", eventId)
     .order("created_at", { ascending: false });
@@ -445,39 +446,67 @@ export default async function TicketTiersPage({ params }: PageProps) {
     console.error(`[tickets.orders_unreadable] ${redactDbError(ordiniError)}`);
   }
 
-  /**
-   * Quanto puo' restare `pending` un ordine prima di meritare una riga.
-   *
-   * Trenta minuti, e la finestra e' **dichiarata** invece che scelta di volta in
-   * volta: un checkout si paga in pochi minuti, quindi mezz'ora e' abbastanza
-   * lunga da non mostrare chi sta ancora digitando la carta e abbastanza corta
-   * da far comparire prima della serata un ordine comprato lo stesso pomeriggio.
-   */
-  const FINESTRA_PENDING_MS = 30 * 60 * 1000;
+  // Quanto puo' restare `pending` un ordine prima di meritare una riga:
+  // `CHECKOUT_TTL_MS` (`src/lib/tickets/checkout-window.ts`, dove sta il
+  // perche' dei trenta minuti). E' la stessa finestra del checkout SumUp e del
+  // cron `close-pending-orders`: una costante sola, non quattro numeri uguali.
   const adesso = Date.now();
+  /** Gli ordini chiusi dal cron restano visibili una settimana, non per sempre. */
+  const FINESTRA_CHIUSI_MS = 7 * 24 * 60 * 60 * 1000;
 
-  // I due insiemi NON si fondono, e la distinzione e' la sostanza.
+  type OrdineSenzaBiglietti = {
+    id: string;
+    status: string;
+    buyer_email: string;
+    quantity: number;
+    total_amount: number;
+    error_message: string | null;
+    created_at: string;
+    updated_at: string | null;
+    closed_reason: "never_attempted" | "declined" | null;
+    closed_detail: string | null;
+    sumup_checkout_id: string | null;
+  };
+  const tuttiGliOrdini = (ordini ?? []) as OrdineSenzaBiglietti[];
+  const toccatoIl = (o: OrdineSenzaBiglietti) =>
+    new Date(o.updated_at ?? o.created_at).getTime();
+
+  // Quattro insiemi, e NON si fondono: la distinzione e' la sostanza.
   //
-  //   `falliti`  — il fornitore ha confermato l'incasso e i biglietti non sono
-  //                nati. **Denaro preso, niente biglietto.** Ha una causa
-  //                scritta, ed e' la riga che deve gridare.
-  //   `sospesi`  — nessuno sa se siano stati pagati. Un carrello abbandonato ha
-  //                esattamente questo aspetto, e anche un pagamento il cui
-  //                messaggio non e' mai arrivato. **Il database non puo'
-  //                distinguerli: solo il fornitore lo sa.** Disegnarli con la
-  //                stessa voce dei falliti sarebbe rumore su ogni carrello
-  //                abbandonato — e il rumore nasconde l'unica riga che conta.
+  //   `falliti`    — il fornitore ha confermato l'incasso e i biglietti non
+  //                  sono nati. **Denaro preso, niente biglietto.** Ha una
+  //                  causa scritta, ed e' l'unico insieme con un'azione:
+  //                  Retry issuing.
+  //   `sospesi`    — checkout aperto da piu' di trenta minuti (per
+  //                  `updated_at`: una ripresa rinnova). Dalla fase 52.2 non e'
+  //                  piu' «non sappiamo»: il cron del mattino
+  //                  `close-pending-orders` lo chiede a SumUp e lo chiude, o
+  //                  consegna il PAID al webhook. Un ordine **gratuito** pending
+  //                  (senza checkout) il cron non lo tocca mai: ha la sua voce.
+  //   `rifiutati`  — chiusi dal cron: tentativo fatto, carta rifiutata, niente
+  //                  addebitato. La parola del fornitore sta in `closed_detail`.
+  //   `maiTentati` — chiusi dal cron: checkout scaduto senza un tentativo.
   //
-  // Gli ordini `expired` non compaiono: sono checkout scaduti senza pagamento,
-  // cioe' il funzionamento normale, non un guasto.
-  const ordiniFalliti = (ordini ?? []).filter(
-    (o: { status: string }) => o.status === "failed"
+  // Gli ultimi due solo per sette giorni: la card non diventa un elenco di
+  // carrelli. Gli `expired` senza `closed_reason` (storici, prima della fase
+  // 52.2) restano nascosti come prima.
+  const ordiniFalliti = tuttiGliOrdini.filter((o) => o.status === "failed");
+  const ordiniSospesi = tuttiGliOrdini.filter(
+    (o) => o.status === "pending" && adesso - toccatoIl(o) > CHECKOUT_TTL_MS
   );
-  const ordiniSospesi = (ordini ?? []).filter(
-    (o: { status: string; created_at: string }) =>
-      o.status === "pending" &&
-      adesso - new Date(o.created_at).getTime() > FINESTRA_PENDING_MS
+  const chiusoDiRecente = (o: OrdineSenzaBiglietti) =>
+    o.status === "expired" && adesso - toccatoIl(o) <= FINESTRA_CHIUSI_MS;
+  const ordiniRifiutati = tuttiGliOrdini.filter(
+    (o) => chiusoDiRecente(o) && o.closed_reason === "declined"
   );
+  const ordiniMaiTentati = tuttiGliOrdini.filter(
+    (o) => chiusoDiRecente(o) && o.closed_reason === "never_attempted"
+  );
+  const ordiniSenzaBiglietti =
+    ordiniFalliti.length +
+    ordiniSospesi.length +
+    ordiniRifiutati.length +
+    ordiniMaiTentati.length;
 
   // ── IL TERZO INSIEME: PAGATI, INDIRIZZO NON PARTITO (fase 49, piano 09) ────
   //
@@ -701,21 +730,15 @@ export default async function TicketTiersPage({ params }: PageProps) {
           Il titolo e' il canale, non il colore (D-41.1-25): la parola dice cosa
           e' successo anche a chi non distingue le tinte.
         */}
-        {(ordiniFalliti.length > 0 || ordiniSospesi.length > 0) && (
+        {ordiniSenzaBiglietti > 0 && (
           <div className="space-y-4">
             <SectionHeading>
-              Orders without tickets ({ordiniFalliti.length + ordiniSospesi.length})
+              Orders without tickets ({ordiniSenzaBiglietti})
             </SectionHeading>
 
             <div className="space-y-3">
               {ordiniFalliti.map(
-                (o: {
-                  id: string;
-                  buyer_email: string;
-                  quantity: number;
-                  total_amount: number;
-                  error_message: string | null;
-                }) => (
+                (o) => (
                   <Card key={o.id}>
                     <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
                       <p className="text-sm font-semibold text-ink">
@@ -766,42 +789,64 @@ export default async function TicketTiersPage({ params }: PageProps) {
                 )
               )}
 
-              {ordiniSospesi.map(
-                (o: {
-                  id: string;
-                  buyer_email: string;
-                  quantity: number;
-                  total_amount: number;
-                  created_at: string;
-                }) => (
-                  <Card key={o.id}>
-                    <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
-                      <p className="text-sm font-semibold text-ink">
-                        {o.buyer_email}
-                      </p>
-                      <p className="text-sm font-semibold text-ink">
-                        {formatPrice(o.total_amount)}
-                      </p>
-                    </div>
-                    {/*
-                      La voce piu' bassa, di proposito. Un carrello abbandonato
-                      ha questo stesso aspetto, e cosi' un pagamento il cui
-                      messaggio non e' mai arrivato: **il database non li
-                      distingue, solo SumUp lo sa**. Dire «non pagato» sarebbe
-                      inventare un fatto; dire «non consegnato» sarebbe
-                      inventarne un altro. Si dice cosa non si sa, e dove si va
-                      a saperlo.
-                    */}
-                    <p className="text-xs text-sem-warn">
-                      Checkout never confirmed, {o.quantity}{" "}
-                      {o.quantity === 1 ? "ticket" : "tickets"}. We do not know
-                      whether it was paid — an abandoned cart looks exactly like
-                      this. Check the checkout on SumUp before treating it as a
-                      problem.
+              {ordiniSospesi.map((o) => (
+                <Card key={o.id}>
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+                    <p className="text-sm font-semibold text-ink">
+                      {o.buyer_email}
                     </p>
-                  </Card>
-                )
-              )}
+                    <p className="text-sm font-semibold text-ink">
+                      {formatPrice(o.total_amount)}
+                    </p>
+                  </div>
+                  {/*
+                    Senza form: su un checkout aperto non c'e' denaro da
+                    emettere. Decide il cron del mattino, chiedendo a SumUp —
+                    mai lo stato locale. Un ordine gratuito non ha checkout e il
+                    cron non lo tocca: promettergli una chiusura sarebbe falso.
+                  */}
+                  <p className="text-xs text-sem-warn">
+                    {o.quantity} {o.quantity === 1 ? "ticket" : "tickets"} ·{" "}
+                    {o.sumup_checkout_id
+                      ? "Checkout open — the daily check closes it"
+                      : "Free order not completed — no payment involved"}
+                  </p>
+                </Card>
+              ))}
+
+              {ordiniRifiutati.map((o) => (
+                <Card key={o.id}>
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+                    <p className="text-sm font-semibold text-ink">
+                      {o.buyer_email}
+                    </p>
+                    <p className="text-sm font-semibold text-ink">
+                      {formatPrice(o.total_amount)}
+                    </p>
+                  </div>
+                  <p className="text-xs text-muted">
+                    {o.quantity} {o.quantity === 1 ? "ticket" : "tickets"} ·{" "}
+                    {`Card declined (${(o.closed_detail ?? "no detail").toLowerCase()}) — nothing charged`}
+                  </p>
+                </Card>
+              ))}
+
+              {ordiniMaiTentati.map((o) => (
+                <Card key={o.id}>
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+                    <p className="text-sm font-semibold text-ink">
+                      {o.buyer_email}
+                    </p>
+                    <p className="text-sm font-semibold text-ink">
+                      {formatPrice(o.total_amount)}
+                    </p>
+                  </div>
+                  <p className="text-xs text-muted">
+                    {o.quantity} {o.quantity === 1 ? "ticket" : "tickets"} ·{" "}
+                    Never attempted — checkout expired
+                  </p>
+                </Card>
+              ))}
             </div>
           </div>
         )}
