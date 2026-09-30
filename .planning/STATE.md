@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
-status: planning
+status: executing
 stopped_at: "Completato 52-17-PLAN.md — verifica approvata alle 19:13:29Z; fase 52 eseguita 19/19, resta verifica e chiusura"
-last_updated: "2026-09-30T08:41:31.915Z"
-last_activity: 2026-09-23
+last_updated: "2026-09-30T10:21:35.939Z"
+last_activity: 2026-09-30
 progress:
-  total_phases: 14
+  total_phases: 15
   completed_phases: 6
-  total_plans: 75
+  total_plans: 92
   completed_plans: 79
-  percent: 43
+  percent: 40
 ---
 
 # State: Resonate
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Fase 52 chiusa — **prossima 52.2** (il carrello che non si chiude, e il rimborsato alla porta — inserita il 2026-09-30; il proprietario ha scelto «prima la 52.2»), poi 52.1 (chiusura del debito della 52), poi 53 (TASK)
+**Current Focus:** Fase 52 chiusa — **prossima 52.2** (il carrello che non si chiude, e il rimborsato alla porta — inserita il 2026-09-30; il proprietario ha scelto «prima la 52.2»), poi 52.1 (chiusura del debito della 52), poi 53 (TASK) **52.3 inserita il 2026-09-30** (pagina Music, dopo la 52.2, prima della 52.1).
 
 ## Current Position
 
@@ -319,7 +319,7 @@ SUMMARY su quindici: la fase e' eseguita.** Il piano 37-13 ha chiuso l'onda 7 il
 sostituite, e undici voci `human_needed` consolidate nel suo SUMMARY. Le onde 8 e
 9 (piani 37-14 e 37-15) hanno chiuso i reperti del code review: CR-01, WR-01,
 WR-03, WR-05, WR-06, WR-07, WR-08 e la voce 4 di `deferred-items.md`.
-Status: Ready to plan
+Status: Ready to execute
 scritto «riportato come avvenuto, non misurato da me» — ed era la cosa giusta da
 scrivere dalla sua posizione. La misura pero' esiste, ed e' dell'orchestratore
 che gliel'aveva riportato:
@@ -400,7 +400,7 @@ Note:
         organizer/approved, organizer/pending seminato a mano, staff, member —
         ne chiude la maggior parte. La fase 36 costruisce superfici pubbliche
         sopra quel modello: il debito non e' suo, ma le sta sotto.
-Last activity: 2026-09-23
+Last activity: 2026-09-30
 
 **Phase 31: EXECUTED, NOT VERIFIED.** 13 of 13 plans, 61 commits on
 `gsd/phase-31-live-defects-at-the-door-and-the-bar`. One of its four blocking
@@ -742,3 +742,4 @@ does not exist on this machine, though GSD's own generated text uses it.
 
 - Phase 52.1 inserted after Phase 52: Chiusura del debito della fase 52: la tabella del debito di 52-VERIFICATION.md piu' gli 8 WR e le 8 IN di 52-REVIEW.md, DBT-01..10 (decisione del proprietario: «chiudiamo tutto il debito») (URGENT)
 - Phase 52.2 inserted after Phase 52: Il carrello che non si chiude, e il rimborsato alla porta (URGENT)
+- Phase 52.3 inserted after Phase 52.2: La pagina Music: i LiveCut delle nostre serate (URGENT)

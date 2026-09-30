@@ -83,6 +83,7 @@ per assecondare una decisione presa dopo che e' stata citata.
 - [x] **52** — La barra di navigazione e i ritocchi (`NAV`) — chiusa il 2026-09-23: 19 piani, VERIFICATION passed (approvata dal proprietario), in produzione dal 18:28:33Z; debito dichiarato → fase 52.1
 - [ ] **52.1** — Chiusura del debito della fase 52 (`DBT`) — **inserita il 2026-09-23**: il debito di `52-VERIFICATION.md` e gli avvisi di `52-REVIEW.md`, DBT-04..07, 09, 10, 13, 14 (DBT-01/02/03/08/11/12 ritirati alle 20:30Z: via la gallery)
 - [ ] **52.2** — Il carrello che non si chiude, e il rimborsato alla porta (`CART`, `RFD`) — **inserita il 2026-09-30**: sospesi chiusi con la verita' di SumUp, ripresa dello stesso ordine, una sola mail a +1h (Garante), rimborsato avvisato e poi rifiutato alla porta; indipendente dalla 52.1
+- [ ] **52.3** — La pagina Music: i LiveCut delle nostre serate (`MUS`) — **inserita il 2026-09-30**: ricerca con screenshot prima della forma, pagina pubblica per serata e slot, un player caricato al play, niente genere e niente venue segreto, prima sul laboratorio; i diritti al legale prima del primo LiveCut reale
 - [ ] **53** — TASK (`TASK`)
 - [ ] **54** — Location, alla pari con il tracker (`LOC`)
 - [ ] **55** — Visual, una pagina per format (`VIS`)
@@ -711,6 +712,74 @@ Plans:
 - [ ] 52.2-15-PLAN.md — atto 2: Q2 riletto e rifiuto alla porta acceso, dopo RFD-01
 - [ ] 52.2-16-PLAN.md — atto 3: ORDER_RESUME_EMAIL_ENABLED acceso con l'informativa gia' pubblicata
 - [ ] 52.2-17-PLAN.md — persona (otto cron, sospesi, rimborsi, porta) e 52.2-VERIFICATION.md con l'approvazione
+
+### Phase 52.3: La pagina Music: i LiveCut delle nostre serate (INSERTED)
+
+**Inserita il 2026-09-30, decisione del proprietario:** *«vorrei aggiungere
+sull'app una pagina dove i visitatori trovano tutta la musica che noi facciamo
+(come i livecut che sono su soundcloud)»*, e poi: *«facciamo che farlo prima in
+lab cosi' posso vedere effettivamente come verrebbe. […] dev'essere una cosa
+fatta bene e professionale e in linea con la nostra app. prima esegui una nuova
+deep research sui competitors»*. Un'anteprima disegnata su canvas e' stata
+giudicata *«molto grossolana»*: il giudizio si da' sulla pagina vera, servita
+dal laboratorio.
+
+**Goal:** una pagina pubblica dove chi non ci conosce ascolta cio' che abbiamo
+gia' fatto, costruita con la stessa disciplina delle altre superfici del
+prodotto: le registrazioni delle nostre serate, una per slot della timetable,
+senza un aggettivo sul suono e senza un indirizzo che non sia gia' pubblico.
+
+> **Cio' che governa la pagina sta in tre moduli che si consultano a mano.**
+> `production-calendar.md`: **LiveCut non e' Podcast** — il LiveCut discende da
+> una serata, uno per slot, un b2b e' una puntata sola; il Podcast e' il mix di
+> un candidato, non esiste ancora, e pubblicato accanto ai materiali di un
+> format viene letto come un annuncio di line-up. `sound-manifesto.md`: nessun
+> format ha un manifesto scritto, quindi **la pagina non allude al genere**.
+> `brand-visual-system.md`: `re:sonate` con la e normale, RamaDub `#6E8BFF`
+> piatto, MotionLab neutro, date in inglese britannico, il nome del locale in
+> tipografia e mai il suo logo.
+
+| ID | Requisito |
+|---|---|
+| **MUS-01** | **La ricerca precede la forma.** Una ricerca sui riferimenti — pagine musica di club, collettivi, listening bar, radio e festival — con **testo e screenshot** di ogni pagina, e un giudizio su cosa le rende professionali. La pagina si disegna dopo, e la ricerca vive in `52.3-RESEARCH.md` con i nomi dei siti (sono pubblici) e mai con materiale nostro non annunciato. |
+| **MUS-02** | **Una pagina pubblica `/music`**, aperta ai visitatori, nella navigazione pubblica accanto a Events e Artists, con anteprima del link (Open Graph) come le serate. |
+| **MUS-03** | **La serata con i suoi slot.** I LiveCut sono raggruppati **per serata**, nell'ordine della timetable, con la chiave della serata, la data, l'orario e il numero di puntate. Un b2b e' una scheda sola. Filtri per format e per artista. |
+| **MUS-04** | **La scheda porta:** copertina 1:1 (la cover del martedi', 2000×2000), artista collegato alla sua pagina esistente, fascia oraria dello slot, durata, titolo nella grammatica gia' decisa (`<artista> @ <format>, 17 Oct 26`). Il nome del locale compare solo dove il format lo porta gia' nel nome. |
+| **MUS-05** | **Niente genere, niente venue segreto.** Nessun tag di genere, nessun aggettivo sul suono, nessuna descrizione che alluda a una scena. Un LiveCut di una notte a sede segreta non porta il venue in copertina, titolo o descrizione, prima e dopo la serata (`venue-secrecy.md`; `verify:venue-surfaces` esteso alla pagina). |
+| **MUS-06** | **Un solo player, caricato al play.** Un player persistente per la pagina, alimentato dalle schede; nessun iframe di terzi finche' l'utente non preme play (`site-speed`: la pagina resta leggera); nessun autoplay; ogni scheda ha «Open on SoundCloud». |
+| **MUS-07** | **I dati sono nostri.** Una tabella dei LiveCut legata a serata, slot e artista, con l'indirizzo SoundCloud, la durata e la cover; RLS nella stessa migration; lettura pubblica solo dei pezzi pubblicati; scrittura di master e organizer. Lo staff li inserisce **dalla pagina della serata** in admin. |
+| **MUS-08** | **Podcast: uno spazio, non un contenuto.** La struttura prevede la seconda famiglia separata per costruzione, **invisibile** finche' il formato non esiste; nessun mix di candidati entra in questa fase. |
+| **MUS-09** | **Prima sul laboratorio.** La pagina si costruisce sul ramo `lab`, si serve da `lab.resonatemotion.com` con dati di prova dichiarati (artisti fittizi o gia' pubblici, nessuna data non annunciata), si mostra al proprietario con screenshot e numeri, e va in produzione **solo su «vai»** — con la stessa disciplina del `verify:venue-surfaces` e del build. |
+| **MUS-10** | **I diritti prima della prima pubblicazione (legale).** Tre domande al professionista, registrate con la data: il consenso scritto del dj alla registrazione e alla pubblicazione (riga del brief di booking), gli adempimenti SIAE/SCF per un set suonato in un locale e pubblicato online, la copertura della registrazione nell'accordo col locale. L'informativa acquista il paragrafo sul player di terzi caricato al play. Nessun LiveCut reale va in produzione prima delle tre risposte. |
+
+**Decisioni gia' prese (D-52.3):**
+
+- **D-52.3-01** — SoundCloud resta la casa dei LiveCut; Mixcloud e' una seconda
+  casa possibile (licenziato, niente takedown), decisa in fase se costa una
+  pubblicazione in piu' il martedi'. **Niente feed podcast verso Apple e
+  Spotify**: un episodio scaricabile e' distribuzione dei brani altrui, e le
+  fonti riportano rimozioni e sospensioni.
+- **D-52.3-02** — Il player legge i nostri dati, non l'API SoundCloud (lo stato
+  del `client_id` pubblico non e' certo); l'oEmbed di SoundCloud si usa al piu'
+  in admin per verificare un link.
+- **D-52.3-03** — La grammatica dei titoli e' quella gia' decisa il 2026-08-15
+  per SoundCloud; la pagina la mostra, non la reinventa.
+- **D-52.3-04** — Il canvas del 2026-09-30 non e' il riferimento visivo: e' un
+  ordine di lettura (titolo, una frase, ascolta altrove, filtri, serata con i
+  suoi slot, player in fondo). Il riferimento visivo e' l'app com'e' oggi.
+
+**Verifica, in un repo senza test:** `npm run build`, `npm run
+verify:venue-surfaces` esteso, e la prova sul laboratorio davanti al
+proprietario: pagina desktop e telefono, un play che apre il player senza
+ricaricare la pagina, un LiveCut di una serata a sede segreta senza indirizzo
+in nessuna superficie, la scheda che porta all'artista.
+
+**Depends on:** Phase 52.2 (ordine deciso dal proprietario: *«subito dopo la
+52.2»*), Phase 52 (la barra di navigazione). La 52.1 resta in coda dopo.
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 52.3 to break down)
 
 ### Phase 53: TASK
 
