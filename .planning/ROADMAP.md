@@ -692,13 +692,13 @@ rifiutato → il cron lo chiude con la causa giusta e senza *Retry issuing*.
 **Depends on:** Phase 52 (la porta a cinque linguette), Phase 51 (FIX-09 e il
 manifest con `refundedAt`). **Indipendente dalla 52.1**: l'ordine fra le due lo
 decide il proprietario.
-**Plans:** 1/17 plans executed
+**Plans:** 4/17 plans executed
 
 Plans:
 - [x] 52.2-01-PLAN.md — le procedure PRE-LAB e A-F scritte prima del codice; VALIDATION onesta
-- [ ] 52.2-02-PLAN.md — tre migration (ordini, rimborsi, categorie), tipi, vocabolario; applicate al laboratorio [BLOCKING]
-- [ ] 52.2-03-PLAN.md — i mattoni SumUp: valid_until opzionale, disattivazione, rimborsi da events[], un solo POST al webhook
-- [ ] 52.2-04-PLAN.md — CART-06: il paragrafo dell'informativa e il gate del Garante nella persona
+- [x] 52.2-02-PLAN.md — tre migration (ordini, rimborsi, categorie), tipi, vocabolario; applicate al laboratorio [BLOCKING]
+- [x] 52.2-03-PLAN.md — i mattoni SumUp: valid_until opzionale, disattivazione, rimborsi da events[], un solo POST al webhook
+- [x] 52.2-04-PLAN.md — CART-06: il paragrafo dell'informativa e il gate del Garante nella persona
 - [ ] 52.2-05-PLAN.md — le due mail nel layout condiviso, order-resume.ts (freni, annullamento), refund-notice.ts, due avvisi all'organizer
 - [ ] 52.2-06-PLAN.md — CART-03: il cron close-pending-orders (ottavo) e la card che smette di dire «non sappiamo»
 - [ ] 52.2-07-PLAN.md — CART-01 dal database: fetchTicketFunnel dietro mayManageEvent
