@@ -4,7 +4,7 @@ milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
 stopped_at: "Completato 52-17-PLAN.md — verifica approvata alle 19:13:29Z; fase 52 eseguita 19/19, resta verifica e chiusura"
-last_updated: "2026-09-30T10:21:35.939Z"
+last_updated: "2026-09-30T11:08:19.106Z"
 last_activity: 2026-09-30
 progress:
   total_phases: 15
@@ -30,12 +30,12 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Fase 52 chiusa — **prossima 52.2** (il carrello che non si chiude, e il rimborsato alla porta — inserita il 2026-09-30; il proprietario ha scelto «prima la 52.2»), poi 52.1 (chiusura del debito della 52), poi 53 (TASK) **52.3 inserita il 2026-09-30** (pagina Music, dopo la 52.2, prima della 52.1).
+**Current Focus:** Phase 52.2 — il-carrello-che-non-si-chiude-e-il-rimborsato-alla-porta
 
 ## Current Position
 
-Phase: 52.2 (il carrello che non si chiude, e il rimborsato alla porta) — in roadmap con CART-01..06, RFD-01..04 e D-52.2-01..04; ricerca fatta il 2026-09-30 (`.firecrawl/cart-recovery/`, fuori dal repo); nessun CONTEXT, nessun piano ancora. La 52.1 resta in coda dopo, invariata.
-Plan: nessuno ancora
+Phase: 52.2 (il-carrello-che-non-si-chiude-e-il-rimborsato-alla-porta) — EXECUTING
+Plan: 1 of 17
 Next: `/gsd-plan-phase 52.2` — deciso dal proprietario il 2026-09-30 («prima la 52.2»). Poi, quando il budget lo permette, `/gsd-plan-phase 52.1 --research` con il perimetro di ROADMAP (DBT-04/05/06/07/09/10/13/14); la richiesta di addendum della 52.1 e' scritta per intero nella conversazione del 2026-09-23 (sezioni A «via la gallery: inventario e ordine» e B «la cover passa dal server»). Nulla della 52.1 blocca la creazione della serata 003.
 
 **52-17 chiuso: verifica approvata dal proprietario (`approvata`, 2026-09-23T19:13:29Z).** Persona 1.26.0 (`media-and-storage`, `access-gating` rilette dal codice, con data; `verify:persona` 7/7 dopo; caso peggiore `DoorSurface.tsx` 13.812/15.000, moderazione 13.280). Sonda di cache dopo la finestra **senza soggetto** in produzione (18:48:05Z, 0 righe, 0 oggetti): residuo zero per costruzione, l'unico misurato e' del laboratorio. `52-VERIFICATION.md` `status: passed`: NAV-01..07 chiusi, D-52-01..31 senza contraddizioni. Le 9 istantanee locali del laboratorio (15 file) cancellate per nome alle 19:13:29Z; le 6 `.env.attendances-snapshot.*` della fase 51 restano, fuori perimetro. Commit `a33e40ec`, `25248cc0`, `d7531634`, `5798e07a`. Nulla spinto.
@@ -319,7 +319,7 @@ SUMMARY su quindici: la fase e' eseguita.** Il piano 37-13 ha chiuso l'onda 7 il
 sostituite, e undici voci `human_needed` consolidate nel suo SUMMARY. Le onde 8 e
 9 (piani 37-14 e 37-15) hanno chiuso i reperti del code review: CR-01, WR-01,
 WR-03, WR-05, WR-06, WR-07, WR-08 e la voce 4 di `deferred-items.md`.
-Status: Ready to execute
+Status: Executing Phase 52.2
 scritto «riportato come avvenuto, non misurato da me» — ed era la cosa giusta da
 scrivere dalla sua posizione. La misura pero' esiste, ed e' dell'orchestratore
 che gliel'aveva riportato:
