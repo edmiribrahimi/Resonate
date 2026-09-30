@@ -131,6 +131,14 @@ const REFUND_NOTICE_REL = "src/lib/tickets/refund-notice.ts";
 const ORDER_RESUME = join(ROOT, ORDER_RESUME_REL);
 const REFUND_NOTICE = join(ROOT, REFUND_NOTICE_REL);
 
+/**
+ * Phase 52.2, plan 10 (2026-09-30): the action behind «Resume payment» on the
+ * order page. It opens from the same forwarded signature as the page, so it is
+ * measured by the same check G.
+ */
+const RESUME_ACTIONS_REL = "src/app/(public)/tickets/order/[token]/resume-actions.ts";
+const RESUME_ACTIONS = join(ROOT, RESUME_ACTIONS_REL);
+
 const failures = [];
 const notes = [];
 
@@ -1058,11 +1066,28 @@ const GUEST_SURFACES = [
   // whether a sentence names a place: that guard is the hint under the box
   // (`src/components/tickets/tier-description.ts`) and the column comment in
   // `20260924100000_tier_description.sql`. Weighed and admitted deliberately.
+  // `resume_email_id`, `resume_email_state` and `refunded_at` joined on
+  // 2026-09-30 (phase 52.2, plan 10): the paid branch cancels the order's
+  // resume email once (opaque Resend identifiers), and a sixth select reads
+  // `ticket_refunds.refunded_at` filtered on `refunded_order_id` so a refunded
+  // order says «Refunded on …» instead of «on their way». A timestamp and two
+  // mail identifiers, no place. Weighed and admitted on 2026-09-30.
   [
     ORDER_PAGE_REL,
     ORDER_PAGE,
-    "date, description, end_time, event_id, holder_label, id, name, party_id, quantity, slug, status, tier_id, time, title, user_id",
-    5,
+    "date, description, end_time, event_id, holder_label, id, name, party_id, quantity, refunded_at, resume_email_id, resume_email_state, slug, status, tier_id, time, title, user_id",
+    6,
+  ],
+  // The resume action, joined on 2026-09-30 (phase 52.2, plan 10). It reads the
+  // order's own choice (event, night, tier, quantity, discount, total), its
+  // status, the provider's checkout id and attempt counter, and the guarded
+  // update's returning id. No buyer email, no place. Two select literals.
+  // Weighed and admitted on 2026-09-30.
+  [
+    RESUME_ACTIONS_REL,
+    RESUME_ACTIONS,
+    "checkout_attempt, discount_code_id, event_id, id, party_id, quantity, status, sumup_checkout_id, tier_id, total_amount",
+    2,
   ],
   // `sumup_checkout_id` joined on 2026-09-08 (phase 49, P-WH-4: the callback
   // asks the provider whether it collected, instead of trusting the local

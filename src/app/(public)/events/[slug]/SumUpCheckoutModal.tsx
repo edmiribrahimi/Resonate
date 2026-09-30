@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 
 import { SumUpCardWidget } from "@/components/SumUpCardWidget";
 import { Button } from "@/components/ui/Button";
@@ -120,6 +120,13 @@ interface SumUpCheckoutModalProps {
   onClose: () => void;
   onPaymentComplete: () => void;
   readonly successOutcome?: CheckoutSuccessOutcome;
+  /**
+   * Called once, the moment the widget reports success — before any redirect.
+   * Optional (2026-09-30, phase 52.2): the event page uses it to forget the
+   * "order left open on this device" entry in the same tab. It must not
+   * navigate; the panel keeps its own behaviour.
+   */
+  readonly onPaid?: () => void;
 }
 
 type ModalStatus = "loading" | "ready" | "success" | "error";
@@ -129,9 +136,14 @@ export default function SumUpCheckoutModal({
   onClose,
   onPaymentComplete,
   successOutcome,
+  onPaid,
 }: SumUpCheckoutModalProps) {
   const [status, setStatus] = useState<ModalStatus>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const onPaidRef = useRef(onPaid);
+  useEffect(() => {
+    onPaidRef.current = onPaid;
+  }, [onPaid]);
 
   const handleLoad = useCallback(() => {
     setStatus("ready");
@@ -140,6 +152,9 @@ export default function SumUpCheckoutModal({
   const handleSuccess = useCallback(
     (_body: Record<string, unknown>) => {
       setStatus("success");
+      // Through a ref, so that a caller's inline arrow does not change this
+      // callback's identity and remount the card widget mid-payment.
+      onPaidRef.current?.();
     },
     []
   );
