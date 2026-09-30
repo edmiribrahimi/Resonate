@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "2026-09-30 22:00Z — Fase 52.2: LABORATORIO CHIUSO (piano 13 con SUMMARY, commit 2862760b): sei procedure passate, C anche sul telefono vero in aereo, D con il difetto della pagina di ritorno corretto in corsa (D-52.2-08, commit 06c1ce9a, servito e riverificato sul lab), E provata su totale e parziale; 3,00 € su 3,00 € rimborsati, 0 scritture in produzione. Decisioni: D-52.2-07 (entrato-poi-rimborsato non e' un caso), D-52.2-08. Nella 52.1: DBT-15 (carrelli abbandonati per l'analisi), DBT-16 (i tre rossi di npm run verify, tutti di prima). PIANO 14 IN CORSO: 52.2-AUTHORISATION.md SCRITTA, NON CONCESSA — la domanda (tutto/niente) e' posta al proprietario; nessuna scrittura in produzione finche' non risponde. Poi 15 (porta), 16 (mail), 17 (verifica). Nulla di oggi e' su origin/main; il ramo lab e' a 06c1ce9a."
-last_updated: "2026-09-30T22:00:00.000Z"
+stopped_at: "2026-09-30 22:12Z — Fase 52.2: PIANO 14 CHIUSO, ATTO 1 ESAURITO: quattro migration in produzione (22:00Z, versioni 20260930220015/17/20/22), push 968844e8..712c9d20 (101 commit) e deploy READY alle 22:11:22Z, /privacy con 10084158, ORDER_RESUME_EMAIL_ENABLED e DOOR_REFUSE_REFUNDED_ENABLED ASSENTI in produzione (spenti per disegno), 8 cron. Domattina 07:05 UTC il cron chiude l'ordine del 28/9 senza mail; esito da rileggere nel 17. PROSSIMO: piano 15 (Atto 2, DOOR_REFUSE_REFUNDED_ENABLED: rilettura dei rimborsi reali e domanda mail-e-accendi/non-ora), poi 16 (Atto 3, ORDER_RESUME_EMAIL_ENABLED), poi 17 (verifica). Laboratorio chiuso (piano 13 con SUMMARY). Il ramo lab e' a 06c1ce9a."
+last_updated: "2026-09-30T22:12:00.000Z"
 last_activity: 2026-09-30
 progress:
   total_phases: 15
