@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getServiceClient } from "@/lib/supabase/service";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { mayManageEvent } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
@@ -9,96 +8,72 @@ import TierCard from "@/components/tickets/TierCard";
 import AddTierForm from "@/components/tickets/AddTierForm";
 import AddDiscountCodeForm from "@/components/tickets/AddDiscountCodeForm";
 import DiscountCodeCard from "@/components/tickets/DiscountCodeCard";
-import RefundActions from "@/app/(admin)/admin/events/[id]/tickets/RefundActions";
 import { FOCUS_RING } from "@/components/ui/Button";
-import { retryFailedOrder } from "@/app/(admin)/admin/events/[id]/tickets/actions";
 import { Card } from "@/components/ui/Card";
-import { CHECKOUT_TTL_MS } from "@/lib/tickets/checkout-window";
 import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle, SectionHeading } from "@/components/ui/Typography";
 
-import { redactDbError } from "@/lib/errors/redact";
-import {
-  readTicketDeliveryMarks,
-  reconcileDeliveries,
-} from "@/lib/email-delivery/ledger";
 /**
- * Ticket tiers, discount codes and sold tickets — the two former pages,
- * collapsed into one (D-34-05). The pending-refund list that stood here left
- * on 2026-09-30 with the approve and reject actions (D-52.2-06): no client
- * can ask for a refund any more (D-52.2-05), so there is nothing to approve.
+ * Manage tickets — the ticket tiers (per night and Event Pass) and the
+ * discount codes of one event. It configures; it does not tell what was sold.
  *
- * ── This is a route collapse, and nothing on the money path moved ────────────
+ * ── DBT-17, 2026-10-01: «Manage tickets configura, Sales racconta» ───────────
  *
- * `actions.ts` (tiers and discount codes) and `RefundActions.tsx` stayed at
- * `src/app/(admin)/admin/events/[id]/tickets/`, outside `(work)` —
- * R-WORK-ROUTES, declared in plan 34-07. A route group governs routing and
- * nothing else, so a non-route module gains nothing by entering it while moving
- * it would change the specifier in six files this plan does not own, one of them
- * `components/events/SalesDashboard.tsx` — the second mount of `RefundActions`,
- * and a sibling plan's file in this same wave. That is why the import above is
- * absolute. **Neither of those two files was renamed and neither has a hunk in
- * this plan's diff**, which is the claim being made here: not that the refund
- * path still works — there is no test runner for this product — but that not one
- * of its lines changed.
+ * Until this date the page also carried three sections that report rather than
+ * configure — the sold-ticket list (with a Refund button per ticket), the card
+ * of orders that produced no tickets (with Retry issuing) and the card of paid
+ * orders whose venue address never went out. They moved to
+ * Sales (`(work)/events/[id]/sales/page.tsx`, rendered by
+ * `src/app/(admin)/admin/events/[id]/sales/SalesSections.tsx`, read by
+ * `sales-sections-data.ts` beside it), on the owner's decision D-52.1-22. The
+ * Refund lived in two places — here and in `SalesDashboard`'s buyer table — and
+ * two controls on the same charge drift; it now lives once, on Sales.
  *
- * ── Which of the two versions decided each difference ────────────────────────
+ * **Nothing about the data changed in the move**: the same readers, the same
+ * clients (the service role stayed the service role), the same
+ * `mayManageEvent` guard on both pages. What this page no longer does is read
+ * with the service role at all — buyer names, emails and orders were its only
+ * service-role reads, and they left with the sections. Every read below is the
+ * cookie client, under RLS, after the guard.
  *
- * 138 lines differed across 13 hunks, and the fuller file did NOT win by being
- * fuller. The verdicts, in short:
+ * The tier counts stay here: `TierCard` shows how many of a tier are sold,
+ * which is configuration (is it sold out? raise the quantity?), not reporting.
+ *
+ * ── Which of the two versions decided each difference (D-34-05) ──────────────
+ *
+ * This page is the collapse of two former twins, `/admin` and `/organizer`.
  *
  *  - **The guard is `organizer.access`**, because that is the key
  *    `/admin/events/[id]/tickets` is bound to in
  *    `src/lib/routes/capability-routes.ts` — the same entry the middleware reads
  *    (D-34-09). Granted to `master` and `organizer`
- *    (`20260807000000_capability_model.sql:411-412`). The `/admin` twin guarded
- *    on `admin.access`, granted to `master` alone (`:408`); the `/organizer` twin
- *    guarded on `organizer.access`. **No audience gains anything**: an organizer
- *    holding `organizer.access` already opened this exact surface at
+ *    (`20260807000000_capability_model.sql:411-412`). An organizer holding
+ *    `organizer.access` already opened this exact surface at
  *    `/organizer/events/[id]/tickets`, which now answers with a redirect here.
  *    The address collapsed; the entitlement did not move.
  *
  *  - **The ownership branch below came from the `/organizer` twin and is kept**,
  *    because it is the more restrictive of the two behaviours and D-34-06 forbids
  *    resolving a divergence towards *more* without a grant that already says so.
- *    The `/admin` twin had **no ownership check at all** — it did not need one
- *    while `admin.access` made `master` its only visitor. On `organizer.access`
- *    it is load-bearing, and it is the reason this collapse does not widen a
- *    service-role read.
  *
  *  - **There is no master-only control on this surface**, and none was invented.
  *    `master.manage` appears exactly once, as the short-circuit that lets a
- *    master skip the ownership read — the reserved-operation question
- *    (`keys.ts`), asked as `capabilities.has(CAP.MASTER_MANAGE)` and never as a
- *    role string. Both twins already agreed on that; there is no `role ===`
- *    comparison in this file.
+ *    master skip the ownership read — asked as `capabilities.has(CAP.MASTER_MANAGE)`
+ *    and never as a role string.
  *
- * ── The service-role read, and what is actually holding it ───────────────────
- *
- * Buyer names and buyer emails are read below through
- * `getServiceClient()`, which bypasses every row-level policy
- * (`access-gating.md`, gate *service role*). On that path THE CODE IS THE ONLY
- * BOUNDARY — there is no RLS behind a service-role read to catch a mistake. So
- * the ownership branch is not defence in depth here: together with the
- * capability check it is the whole of the defence, and it must stay **above**
- * the service client, where it is.
- *
- * The `/organizer` twin built that client inline from the two environment
- * variables; this file uses the shared `getServiceClient()` helper the `/admin`
- * twin used. Byte-equivalent (`src/lib/supabase/service.ts:3-8`) — the same two
- * variables, in the same order — so this is not a privilege change but a
- * question of how many places construct a service client.
+ * `actions.ts` (tiers, discount codes, Retry issuing) and the refund control
+ * stay at `src/app/(admin)/admin/events/[id]/tickets/`, outside `(work)` —
+ * R-WORK-ROUTES. Neither has a hunk in DBT-17's move beyond `retryFailedOrder`'s
+ * revalidation, which now names Sales.
  *
  * ── Both navs are gone from this file ────────────────────────────────────────
  *
  * `admin/(work)/layout.tsx` resolves the access context once for the whole tree
- * and mounts `StaffNav` and `AppNav` (D-34-07), so the `AppNav` mount and
- * the `as UserRole` cast both twins carried is deleted here. A second cast
- * stood beside it, on the approval axis, until Phase 50 removed the axis.
- * `getAccessContext` is `cache()`-scoped per request, so the guard below costs
- * no second round trip. It **throws** `capabilities.resolve_failed` and is
- * deliberately not wrapped: an infrastructure fault dressed as a permission
- * denial is a silent failure with an alibi (D-34-08, state 3).
+ * and mounts `StaffNav` and `AppNav` (D-34-07). `getAccessContext` is
+ * `cache()`-scoped per request, so the guard below costs no second round trip.
+ * It **throws** `capabilities.resolve_failed` and is deliberately not wrapped:
+ * an infrastructure fault dressed as a permission denial is a silent failure
+ * with an alibi (D-34-08, state 3).
  */
 
 interface PageProps {
@@ -273,299 +248,11 @@ export default async function TicketTiersPage({ params }: PageProps) {
     discountsByParty.get(dc.party_id)!.push(dc);
   }
 
-  // Fetch sold tickets with buyer info.
-  //
-  // The narrower of the two column lists, kept deliberately. The `/organizer`
-  // twin also selected `tickets.party_id` and, on the refund read below,
-  // `ticket_refunds.status` and `ticket_refunds.requested_by` — none of the three
-  // is rendered by either twin. They are dead payload on a **service-role** read
-  // of buyer identities, and `requested_by` is a person's id. D-34-06 resolves a
-  // divergence towards the more restrictive side; here the more restrictive side
-  // is also the smaller one.
-  const serviceClient = getServiceClient();
-  const { data: soldTickets } = await serviceClient
-    .from("tickets")
-    // Niente `profiles(...)`: `tickets.user_id` referenzia `auth.users`, non
-    // `public.profiles`, quindi PostgREST rifiuta l'incorporamento con
-    // `PGRST200` — e qui l'errore era scartato nella destrutturazione, quindi la
-    // lista dei venduti sarebbe stata VUOTA senza dirlo. I nomi si risolvono
-    // sotto, con una seconda lettura.
-    //
-    // ── Due colonne aggiunte dalla fase 49, con la loro ragione ──────────────
-    //
-    // La lista qui sopra e' la piu' stretta delle due gemelle, e resta il
-    // criterio: si aggiunge solo cio' che qualcosa disegna.
-    //
-    //   `order_id`     — dice se questo biglietto viene da un ordine comprato
-    //                    senza account. Senza, il segno della posta qui sotto
-    //                    cercherebbe la conferma sbagliata e disegnerebbe
-    //                    «nessun invio registrato» su OGNI biglietto d'ospite:
-    //                    un allarme falso su ogni riga, che e' il modo in cui
-    //                    si nasconde l'unica riga vera.
-    //   `holder_label` — «2 di 6». Sei biglietti di uno stesso ordine hanno lo
-    //                    stesso acquirente e lo stesso prezzo: senza
-    //                    l'etichetta sono sei righe IDENTICHE, ognuna con il
-    //                    proprio bottone di rimborso, e chi ne rimborsa uno non
-    //                    sa quale. Nessuna delle due porta un dato di nessuno.
-    .select(
-      "id, user_id, amount_paid, tier_id, created_at, order_id, holder_label, ticket_tiers(name)"
-    )
-    .eq("event_id", eventId)
-    .order("created_at", { ascending: false });
-
-  // I nomi dei compratori, con una seconda lettura e a blocchi di 100: una
-  // serata in target sta fra 150 e 300 persone, e 300 uuid in un `in()` sono
-  // ~11 KB di URL.
-  const idsCompratori = [
-    ...new Set(
-      (soldTickets ?? [])
-        .map((t: { user_id: string | null }) => t.user_id)
-        .filter((id): id is string => Boolean(id))
-    ),
-  ];
-  const profiloDi = new Map<string, { full_name: string | null; email: string | null }>();
-  for (let i = 0; i < idsCompratori.length; i += 100) {
-    const { data: profili, error: profiliError } = await serviceClient
-      .from("profiles")
-      .select("id, full_name, email")
-      .in("id", idsCompratori.slice(i, i + 100));
-    if (profiliError) {
-      console.error(`[tickets.buyer_names_unreadable] ${redactDbError(profiliError)}`);
-      break;
-    }
-    for (const pr of profili ?? []) profiloDi.set(pr.id, { full_name: pr.full_name, email: pr.email });
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // L'ESITO DELLA CONFERMA — SI CHIEDE, NON SI ASSUME
-  // ═══════════════════════════════════════════════════════════════════════════
-  //
-  // Aggiunto il 2026-08-22. `sendEmail` poteva tornare «riuscito» per un
-  // messaggio che il fornitore non avrebbe mai consegnato: la sua lista di
-  // soppressione accetta la chiamata, restituisce `error` nullo e un
-  // identificativo regolare, e salta la consegna. Un indirizzo ci finisce dopo
-  // un rimbalzo duro — che puo' nascere da un refuso scritto una volta sola — e
-  // da li' in poi ogni biglietto sparisce in silenzio.
-  //
-  // ── PERCHE' LA RICONCILIAZIONE GIRA QUI E NON SOLO NEL CRON ────────────────
-  //
-  // Il cron gira alle 11:00 di Torino. Un biglietto comprato alle 19:00 per una
-  // serata che apre alle 22:00 non ha una notte davanti: un verdetto che arriva
-  // domani mattina arriva dopo la fila. Qui il verdetto si chiede **quando
-  // qualcuno lo sta guardando**, che e' il solo momento in cui serve.
-  //
-  // ── COSA QUESTA CHIAMATA E' E COSA NON E' ──────────────────────────────────
-  //
-  // E' una GET verso il fornitore della posta e un `UPDATE` per riga sul
-  // registro. **Non spedisce niente**, non rispedisce niente, non tocca ne'
-  // biglietti ne' denaro, ed e' idempotente: rieseguirla riscrive lo stesso
-  // verdetto. E' ristretta ai biglietti di questa serata e alle sole righe
-  // ancora senza esito, quindi una superficie gia' riconciliata non paga niente.
-  //
-  // Non lancia: `reconcileDeliveries` cattura le proprie cause e le conta. Un
-  // fornitore irraggiungibile lascia le righe a «not verified», che e' la verita'
-  // ed e' uno stato disegnato qui sotto.
-  const ticketIdsPerConsegna = (soldTickets ?? []).map((t: { id: string }) => t.id);
-  await reconcileDeliveries({ kind: "tickets", ticketIds: ticketIdsPerConsegna });
-  // La categoria e' esplicita da quando il registro ne contiene undici: il
-  // promemoria della serata vive nella stessa tabella e sullo stesso biglietto,
-  // e un lettore senza categoria disegnerebbe un esito giusto sotto la domanda
-  // sbagliata.
-  const consegneDi = await readTicketDeliveryMarks(
-    ticketIdsPerConsegna,
-    "ticket_confirmation"
-  );
-
-  // Il promemoria del giorno prima, dallo stesso registro e sugli stessi
-  // biglietti. La riconciliazione qui sopra li ha gia' coperti: e' ristretta per
-  // `ticket_id` e non per categoria, quindi le righe del promemoria hanno gia'
-  // il loro verdetto.
-  //
-  // ── Perche' il promemoria si disegna SOLO quando e' andato storto ──────────
-  //
-  // La conferma parte all'acquisto: ogni biglietto venduto ne ha una, e
-  // l'assenza di una riga e' un'informazione («non lo sappiamo»). Il promemoria
-  // parte **24 ore prima della serata**: la stragrande maggioranza dei
-  // biglietti, quasi sempre, non ne ha ancora uno — e non e' un problema, e'
-  // presto. Disegnare «nessun promemoria registrato» su ogni riga sarebbe
-  // rumore su ogni riga, e il rumore nasconde l'unica riga che conta.
-  const promemoriaDi = await readTicketDeliveryMarks(
-    ticketIdsPerConsegna,
-    "event_reminder"
-  );
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // GLI ORDINI — E QUELLI CHE NON HANNO PRODOTTO BIGLIETTI
-  // ═══════════════════════════════════════════════════════════════════════════
-  //
-  // ── Perche' e' un requisito e non un abbellimento ──────────────────────────
-  //
-  // Dalla fase 49 si compra **senza account**, e il pagamento diventa biglietti
-  // dentro il webhook. Quando quel percorso si ferma a meta' — l'identita' non
-  // si e' potuta risolvere, la RPC ha rifiutato per capienza o per tetto —
-  // l'ordine resta con la sua causa scritta addosso e **nessun biglietto**.
-  //
-  // Questo prodotto **non ha error tracking** (`meta-gates.md`, verificato
-  // 2026-08-05): quella riga oggi non raggiungerebbe nessun essere umano da
-  // sola. La persona si presenterebbe alla porta senza sapere di non avere
-  // niente — e rifiutare qualcuno che ha pagato e' l'errore che
-  // `checkin-offline.md` dichiara il piu' costoso, perche' avviene davanti a una
-  // fila. **L'effetto osservabile e' questa sezione**, e chi lavora la serata la
-  // vede prima che qualcuno si presenti.
-  const { data: ordini, error: ordiniError } = await serviceClient
-    .from("ticket_orders")
-    .select(
-      "id, status, buyer_email, quantity, total_amount, error_message, created_at, updated_at, closed_reason, closed_detail, sumup_checkout_id"
-    )
-    .eq("event_id", eventId)
-    .order("created_at", { ascending: false });
-
-  if (ordiniError) {
-    // Distinta dalle altre cause, come ogni lettura di questa pagina. Una
-    // sezione vuota per un errore di lettura si legge «va tutto bene», che e'
-    // la bugia peggiore che questa sezione possa dire.
-    console.error(`[tickets.orders_unreadable] ${redactDbError(ordiniError)}`);
-  }
-
-  // Quanto puo' restare `pending` un ordine prima di meritare una riga:
-  // `CHECKOUT_TTL_MS` (`src/lib/tickets/checkout-window.ts`, dove sta il
-  // perche' dei trenta minuti). E' la stessa finestra del checkout SumUp e del
-  // cron `close-pending-orders`: una costante sola, non quattro numeri uguali.
-  const adesso = Date.now();
-  /** Gli ordini chiusi dal cron restano visibili una settimana, non per sempre. */
-  const FINESTRA_CHIUSI_MS = 7 * 24 * 60 * 60 * 1000;
-
-  type OrdineSenzaBiglietti = {
-    id: string;
-    status: string;
-    buyer_email: string;
-    quantity: number;
-    total_amount: number;
-    error_message: string | null;
-    created_at: string;
-    updated_at: string | null;
-    closed_reason: "never_attempted" | "declined" | null;
-    closed_detail: string | null;
-    sumup_checkout_id: string | null;
-  };
-  const tuttiGliOrdini = (ordini ?? []) as OrdineSenzaBiglietti[];
-  const toccatoIl = (o: OrdineSenzaBiglietti) =>
-    new Date(o.updated_at ?? o.created_at).getTime();
-
-  // Quattro insiemi, e NON si fondono: la distinzione e' la sostanza.
-  //
-  //   `falliti`    — il fornitore ha confermato l'incasso e i biglietti non
-  //                  sono nati. **Denaro preso, niente biglietto.** Ha una
-  //                  causa scritta, ed e' l'unico insieme con un'azione:
-  //                  Retry issuing.
-  //   `sospesi`    — checkout aperto da piu' di trenta minuti (per
-  //                  `updated_at`: una ripresa rinnova). Dalla fase 52.2 non e'
-  //                  piu' «non sappiamo»: il cron del mattino
-  //                  `close-pending-orders` lo chiede a SumUp e lo chiude, o
-  //                  consegna il PAID al webhook. Un ordine **gratuito** pending
-  //                  (senza checkout) il cron non lo tocca mai: ha la sua voce.
-  //   `rifiutati`  — chiusi dal cron: tentativo fatto, carta rifiutata, niente
-  //                  addebitato. La parola del fornitore sta in `closed_detail`.
-  //   `maiTentati` — chiusi dal cron: checkout scaduto senza un tentativo.
-  //
-  // Gli ultimi due solo per sette giorni: la card non diventa un elenco di
-  // carrelli. Gli `expired` senza `closed_reason` (storici, prima della fase
-  // 52.2) restano nascosti come prima.
-  const ordiniFalliti = tuttiGliOrdini.filter((o) => o.status === "failed");
-  const ordiniSospesi = tuttiGliOrdini.filter(
-    (o) => o.status === "pending" && adesso - toccatoIl(o) > CHECKOUT_TTL_MS
-  );
-  const chiusoDiRecente = (o: OrdineSenzaBiglietti) =>
-    o.status === "expired" && adesso - toccatoIl(o) <= FINESTRA_CHIUSI_MS;
-  const ordiniRifiutati = tuttiGliOrdini.filter(
-    (o) => chiusoDiRecente(o) && o.closed_reason === "declined"
-  );
-  const ordiniMaiTentati = tuttiGliOrdini.filter(
-    (o) => chiusoDiRecente(o) && o.closed_reason === "never_attempted"
-  );
-  const ordiniSenzaBiglietti =
-    ordiniFalliti.length +
-    ordiniSospesi.length +
-    ordiniRifiutati.length +
-    ordiniMaiTentati.length;
-
-  // ── IL TERZO INSIEME: PAGATI, INDIRIZZO NON PARTITO (fase 49, piano 09) ────
-  //
-  // ── Lo strappo semantico, dichiarato qui come nel codice che scrive ────────
-  //
-  // `error_message` ha sempre voluto dire **«perche' l'ordine e' fallito»**, e
-  // queste righe **non sono fallite**: `status` e' `completed`, i biglietti
-  // esistono, il denaro e' buono, il codice QR apre la porta. Cio' che manca e'
-  // l'indirizzo di una serata segreta, per chi ha comprato **dopo** che la
-  // rivelazione era gia' scattata — l'unico ramo in cui quella mail e' l'unica
-  // strada, perche' la pagina del biglietto rimanda al login e un ospite non ha
-  // una password.
-  //
-  // Il commento sulla colonna direbbe questo, ma cambiarlo e' una migration.
-  // Sta quindi scritto **in entrambi i posti che la toccano**: qui, che la
-  // legge, e in `src/app/api/webhooks/sumup/route.ts` (`segnaAssenza`), che la
-  // scrive.
-  //
-  // ── PERCHE' SEPARATO E NON FUSO CON I FALLITI ─────────────────────────────
-  //
-  // Fusi, chi legge non saprebbe piu' se «errore» voglia dire *nessun
-  // biglietto* o *nessun indirizzo* — e sono **due telefonate diverse a due
-  // persone diverse**: alla prima si dice che non ha niente, alla seconda dove
-  // andare. Un insieme solo trasformerebbe la riga che grida in una riga da
-  // interpretare.
-  //
-  // ── E PERCHE' NESSUNA ALTRA SUPERFICIE LO MOSTREREBBE ─────────────────────
-  //
-  // Il pannello della rivelazione conta *«N non ancora raggiunti»* con lo stesso
-  // limite temporale che il cron usa: su una serata rivelata **a mano**, chi ha
-  // comprato dopo e' escluso da quel conteggio. Il pannello direbbe *zero
-  // rimasti* mentre una persona che ha pagato non sa dove andare. Questa
-  // sezione e' la sola che lo dice.
-  const ordiniIndirizzoNonPartito = (ordini ?? []).filter(
-    (o: { status: string; error_message: string | null }) =>
-      o.status === "completed" && Boolean(o.error_message)
-  );
-
-  // ── L'esito della mail d'ordine, e perche' si legge PER ORDINE ─────────────
-  //
-  // La conferma d'ordine e' **una** mail per N biglietti, e il registro la
-  // attacca al PRIMO biglietto dell'ordine — `email_deliveries` ha `ticket_id`,
-  // non `order_id` (debito `D-49-05-DEF-06`). Letto per biglietto, gli altri N-1
-  // risulterebbero «nessun invio registrato»: vero alla lettera, e falso per chi
-  // legge, perche' si legge come *nessuno ha guardato*.
-  //
-  // Qui il segno si risolve **per ordine** e vale per tutti i suoi biglietti,
-  // che e' la lettura giusta: l'invio e' uno, non sei.
-  //
-  // La riconciliazione qui sopra li ha gia' coperti — e' ristretta per
-  // `ticket_id` e **non per categoria**, quindi le righe della conferma
-  // d'ordine hanno gia' il loro verdetto senza una seconda chiamata al
-  // fornitore.
-  const consegneOrdineDi = await readTicketDeliveryMarks(
-    ticketIdsPerConsegna,
-    "ticket_order_confirmation"
-  );
-
-  const segnoPerOrdine = new Map<
-    string,
-    ReturnType<typeof consegneOrdineDi.get>
-  >();
-  for (const t of soldTickets ?? []) {
-    const oid = (t as { order_id: string | null }).order_id;
-    if (!oid || segnoPerOrdine.has(oid)) continue;
-    const segno = consegneOrdineDi.get(t.id);
-    if (segno) segnoPerOrdine.set(oid, segno);
-  }
-
   function formatPartyDate(dateStr: string): string {
     const d = new Date(dateStr + "T00:00:00");
     const WD = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
     const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     return `${WD[d.getDay()]} ${d.getDate()} ${M[d.getMonth()]}`;
-  }
-
-  function formatPrice(price: number) {
-    return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(price);
   }
 
   return (
@@ -666,377 +353,6 @@ export default async function TicketTiersPage({ params }: PageProps) {
               </div>
             );
           })
-        )}
-
-        {/*
-          ── ORDINI SENZA BIGLIETTI ────────────────────────────────────────────
-
-          La sezione si disegna solo quando ha qualcosa dentro, come quella dei
-          rimborsi in attesa: una sezione vuota permanente e' un elemento che si
-          impara a saltare, e il giorno che parla nessuno la guarda piu'.
-
-          Il titolo e' il canale, non il colore (D-41.1-25): la parola dice cosa
-          e' successo anche a chi non distingue le tinte.
-        */}
-        {ordiniSenzaBiglietti > 0 && (
-          <div className="space-y-4">
-            <SectionHeading>
-              Orders without tickets ({ordiniSenzaBiglietti})
-            </SectionHeading>
-
-            <div className="space-y-3">
-              {ordiniFalliti.map(
-                (o) => (
-                  <Card key={o.id}>
-                    <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
-                      <p className="text-sm font-semibold text-ink">
-                        {o.buyer_email}
-                      </p>
-                      {/* The money mark — D-41.1-13. */}
-                      <p className="text-sm font-semibold text-ink">
-                        {formatPrice(o.total_amount)}
-                      </p>
-                    </div>
-                    <p className="text-xs font-medium text-sem-crit">
-                      Paid, and {o.quantity === 1 ? "the ticket was" : `all ${o.quantity} tickets were`}{" "}
-                      never issued. They have nothing at the door — reach out
-                      before the night.
-                    </p>
-                    {/*
-                      IL MESSAGGIO, NON UN'ICONA. La causa distinta e' l'unica
-                      diagnosi che esistera' — questo progetto non ha error
-                      tracking — e riassumerla in un simbolo la butterebbe via
-                      proprio nel momento in cui serve.
-                    */}
-                    <p className="mt-1 break-words text-xs text-muted">
-                      {o.error_message ?? "No cause recorded — that is itself the problem."}
-                    </p>
-                    {/*
-                      RETRY, NON RIPARAZIONE A MANO. 2026-09-08, 49-ESITI.md
-                      P-WH-4: la scheda diceva «reach out» e la riparazione era
-                      due update sul catalogo. Il pulsante rimette l'ordine in
-                      attesa e rigioca la consegna al webhook, dopo aver
-                      riletto su SumUp che il checkout e' PAID. Se la causa e'
-                      ancora li' (mail vuota), la scheda resta, con la causa.
-                    */}
-                    <form
-                      action={retryFailedOrder.bind(null, eventId, o.id)}
-                      className="mt-3"
-                    >
-                      <button
-                        type="submit"
-                        className={`inline-flex min-h-11 items-center justify-center rounded-full border border-line px-4 text-sm font-semibold text-ink ${FOCUS_RING}`}
-                      >
-                        Retry issuing
-                      </button>
-                      <span className="ml-3 text-xs text-muted">
-                        Re-checks the payment with SumUp, then replays the delivery. Nothing is charged.
-                      </span>
-                    </form>
-                  </Card>
-                )
-              )}
-
-              {ordiniSospesi.map((o) => (
-                <Card key={o.id}>
-                  <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
-                    <p className="text-sm font-semibold text-ink">
-                      {o.buyer_email}
-                    </p>
-                    <p className="text-sm font-semibold text-ink">
-                      {formatPrice(o.total_amount)}
-                    </p>
-                  </div>
-                  {/*
-                    Senza form: su un checkout aperto non c'e' denaro da
-                    emettere. Decide il cron del mattino, chiedendo a SumUp —
-                    mai lo stato locale. Un ordine gratuito non ha checkout e il
-                    cron non lo tocca: promettergli una chiusura sarebbe falso.
-                  */}
-                  <p className="text-xs text-sem-warn">
-                    {o.quantity} {o.quantity === 1 ? "ticket" : "tickets"} ·{" "}
-                    {o.sumup_checkout_id
-                      ? "Checkout open — the daily check closes it"
-                      : "Free order not completed — no payment involved"}
-                  </p>
-                </Card>
-              ))}
-
-              {ordiniRifiutati.map((o) => (
-                <Card key={o.id}>
-                  <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
-                    <p className="text-sm font-semibold text-ink">
-                      {o.buyer_email}
-                    </p>
-                    <p className="text-sm font-semibold text-ink">
-                      {formatPrice(o.total_amount)}
-                    </p>
-                  </div>
-                  <p className="text-xs text-muted">
-                    {o.quantity} {o.quantity === 1 ? "ticket" : "tickets"} ·{" "}
-                    {`Card declined (${(o.closed_detail ?? "no detail").toLowerCase()}) — nothing charged`}
-                  </p>
-                </Card>
-              ))}
-
-              {ordiniMaiTentati.map((o) => (
-                <Card key={o.id}>
-                  <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
-                    <p className="text-sm font-semibold text-ink">
-                      {o.buyer_email}
-                    </p>
-                    <p className="text-sm font-semibold text-ink">
-                      {formatPrice(o.total_amount)}
-                    </p>
-                  </div>
-                  <p className="text-xs text-muted">
-                    {o.quantity} {o.quantity === 1 ? "ticket" : "tickets"} ·{" "}
-                    Never attempted — checkout expired
-                  </p>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/*
-          ── PAGATI, INDIRIZZO NON PARTITO ────────────────────────────────────
-
-          Sezione **propria**, non una voce in piu' dentro «Orders without
-          tickets»: quel titolo sarebbe falso qui, perche' questi ordini i
-          biglietti ce li hanno. Cio' che manca e' il luogo.
-
-          Si disegna solo quando ha qualcosa dentro, come le altre due.
-        */}
-        {ordiniIndirizzoNonPartito.length > 0 && (
-          <div className="space-y-4">
-            <SectionHeading>
-              Paid, address never sent ({ordiniIndirizzoNonPartito.length})
-            </SectionHeading>
-
-            <div className="space-y-3">
-              {ordiniIndirizzoNonPartito.map(
-                (o: {
-                  id: string;
-                  buyer_email: string;
-                  quantity: number;
-                  total_amount: number;
-                  error_message: string | null;
-                }) => (
-                  <Card key={o.id}>
-                    <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
-                      <p className="text-sm font-semibold text-ink">
-                        {o.buyer_email}
-                      </p>
-                      {/* The money mark — D-41.1-13. */}
-                      <p className="text-sm font-semibold text-ink">
-                        {formatPrice(o.total_amount)}
-                      </p>
-                    </div>
-                    {/*
-                      La frase dice ESATTAMENTE cosa c'e' e cosa manca, perche'
-                      e' l'opposto della sezione qui sopra e confonderle e' il
-                      danno: qui il biglietto esiste e apre la porta.
-
-                      E dice anche **cosa fare**, senza scriverlo qui: il
-                      rimedio e' il bottone della rivelazione sulla pagina della
-                      serata, non un indirizzo copiato in una chat — e questa
-                      pagina, che chiunque organizzi apre, non e' un posto dove
-                      stampare il luogo di una serata segreta.
-                    */}
-                    <p className="text-xs font-medium text-sem-crit">
-                      Paid, {o.quantity === 1 ? "1 ticket" : `${o.quantity} tickets`}{" "}
-                      issued and valid — but the venue address never reached
-                      them. They can get in and do not know where to go. Send it
-                      from the night&apos;s reveal panel, before the night.
-                    </p>
-                    <p className="mt-1 break-words text-xs text-muted">
-                      {o.error_message ??
-                        "No cause recorded — that is itself the problem."}
-                    </p>
-                  </Card>
-                )
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Sold Tickets */}
-        {(soldTickets ?? []).length > 0 && (
-          <div className="space-y-4">
-            <SectionHeading>
-              Sold Tickets ({(soldTickets ?? []).length})
-            </SectionHeading>
-            <div className="space-y-2">
-              {(soldTickets ?? []).map((ticket: { id: string; user_id: string | null; amount_paid: number; created_at: string; order_id: string | null; holder_label: string | null; ticket_tiers: unknown }) => {
-                const profile = ticket.user_id ? profiloDi.get(ticket.user_id) ?? null : null;
-                const rawTier = ticket.ticket_tiers as unknown;
-                const tier = (Array.isArray(rawTier) ? rawTier[0] : rawTier) as { name: string } | null;
-                return (
-                  <Card
-                    key={ticket.id}
-                    className="flex flex-wrap items-center justify-between gap-3"
-                  >
-                    <div>
-                      <p className="text-sm font-semibold text-ink">
-                        {profile?.full_name || profile?.email || "Unknown"}
-                      </p>
-                      <p className="text-xs text-muted">
-                        {tier?.name}
-                        {/*
-                          «2 di 6». Il biglietto e' AL PORTATORE (D-49-03) e
-                          nessun nome si chiede all'acquisto, quindi sei
-                          biglietti di un ordine hanno lo stesso acquirente e lo
-                          stesso prezzo: senza questa etichetta sono sei righe
-                          identiche, ognuna con il proprio bottone di rimborso.
-                          Non e' una rifinitura — e' cio' che permette di
-                          rimborsare quello giusto.
-                        */}
-                        {ticket.order_id && ticket.holder_label
-                          ? ` · ${ticket.holder_label}`
-                          : ""}
-                      </p>
-                      {/*
-                        ── IL SEGNO, E I QUATTRO STATI CHE NON SI COLLASSANO ───
-
-                        `meta-gates.md`: questo progetto non ha error tracking,
-                        quindi un log non e' un effetto osservabile. Questa riga
-                        e' l'effetto osservabile — la sola cosa che, quando la
-                        conferma di un biglietto non arriva, lo dice a un essere
-                        umano prima che la persona si presenti all'ingresso.
-
-                        Quattro stati e non due, e ognuno ha la sua frase:
-
-                          consegnata      -> nulla. Un segno su ogni riga
-                                             sarebbe rumore, e il rumore
-                                             nasconde l'unica riga che conta.
-                          NON consegnata  -> rosso, con la causa e con cosa
-                                             fare.
-                          non verificata  -> il fornitore non ha ancora deciso.
-                                             Non e' un problema.
-                          nessun invio    -> non lo sappiamo, e non e' la stessa
-                             registrato      cosa di «non consegnata». Ci
-                                             finisce un biglietto emesso prima
-                                             che il registro esistesse, o uno la
-                                             cui registrazione e' fallita.
-
-                        Il colore non e' l'unico canale: ogni stato porta la sua
-                        parola.
-                      */}
-                      {(() => {
-                        // ── LA CATEGORIA GIUSTA PER QUESTO BIGLIETTO ────────
-                        //
-                        // Due percorsi d'acquisto, due mail, due categorie nel
-                        // registro. Un biglietto nato da un ORDINE non ha mai
-                        // avuto una `ticket_confirmation`: la sua conferma e' la
-                        // mail dell'ordine. Leggere la categoria vecchia su di
-                        // lui restituirebbe sempre l'assenza, cioe' «nessun
-                        // invio registrato» su OGNI biglietto d'ospite — un
-                        // allarme falso su ogni riga, che e' esattamente il
-                        // rumore che il commento qui sopra dice di non fare.
-                        //
-                        // E si legge PER ORDINE, non per biglietto: la mail e'
-                        // una per N, e il registro la attacca al primo. Cosi'
-                        // tutti e sei portano l'esito vero invece di uno solo.
-                        const consegna = ticket.order_id
-                          ? segnoPerOrdine.get(ticket.order_id)
-                          : consegneDi.get(ticket.id);
-                        const etichetta = ticket.order_id
-                          ? "Order email"
-                          : "Email";
-
-                        if (!consegna) {
-                          return (
-                            <p className="mt-1 text-xs text-muted">
-                              {etichetta}: no send recorded — the outcome is
-                              unknown, which is not the same as undelivered.
-                              Assume they may not have it.
-                            </p>
-                          );
-                        }
-
-                        if (consegna.outcome === "delivered") return null;
-
-                        if (consegna.outcome === "undelivered") {
-                          return (
-                            <p className="mt-1 text-xs font-medium text-sem-crit">
-                              {etichetta} NOT delivered — {consegna.reason} Tell
-                              them their ticket is on the tickets page; the QR
-                              code there is what gets them in.
-                            </p>
-                          );
-                        }
-
-                        if (consegna.outcome === "unknown") {
-                          return (
-                            <p className="mt-1 text-xs text-sem-warn">
-                              {etichetta} outcome unknown — {consegna.reason}{" "}
-                              Treat it as possibly not delivered.
-                            </p>
-                          );
-                        }
-
-                        return (
-                          <p className="mt-1 text-xs text-muted">
-                            {etichetta} sent — outcome not settled yet.
-                          </p>
-                        );
-                      })()}
-                      {/*
-                        ── IL PROMEMORIA, CHE PARLA SOLO QUANDO E' ANDATO STORTO
-
-                        Stesso registro, stesso biglietto, categoria diversa —
-                        e una regola di disegno diversa, per una ragione di
-                        tempo e non di stile.
-
-                        La conferma esiste per ogni biglietto venduto, quindi
-                        l'assenza di una sua riga e' un fatto da dire. Il
-                        promemoria parte **24 ore prima della serata**: fino a
-                        quel momento non esiste per nessuno, ed e' normale.
-                        Quattro stati qui sarebbero quattro righe su ogni
-                        biglietto tutti i giorni tranne uno — cioe' rumore, e
-                        il rumore nasconde l'unica riga che conta.
-
-                        Restano quindi i due che chiedono qualcosa a un essere
-                        umano. `delivered`, `unverified` e l'assenza non
-                        disegnano niente.
-                      */}
-                      {(() => {
-                        const promemoria = promemoriaDi.get(ticket.id);
-                        if (!promemoria) return null;
-
-                        if (promemoria.outcome === "undelivered") {
-                          return (
-                            <p className="mt-1 text-xs font-medium text-sem-crit">
-                              Reminder NOT delivered — {promemoria.reason} They
-                              may not know the night is tomorrow.
-                            </p>
-                          );
-                        }
-
-                        if (promemoria.outcome === "unknown") {
-                          return (
-                            <p className="mt-1 text-xs text-sem-warn">
-                              Reminder outcome unknown — {promemoria.reason}{" "}
-                              Treat it as possibly not delivered.
-                            </p>
-                          );
-                        }
-
-                        return null;
-                      })()}
-                    </div>
-                    {/* The money mark — D-41.1-13. It used to sit in the meta
-                        line beside the tier name, at the recessed ink. */}
-                    <p className="text-sm font-semibold text-ink">
-                      {formatPrice(ticket.amount_paid)}
-                    </p>
-                    <RefundActions ticketId={ticket.id} isDirectRefund />
-                  </Card>
-                );
-              })}
-            </div>
-          </div>
         )}
       </div>
     </PageShell>
