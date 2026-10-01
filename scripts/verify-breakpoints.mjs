@@ -5,7 +5,9 @@
  *
  * WHAT IT ASSERTS, in one sentence: **`xl:` and `2xl:` have ZERO occurrences in
  * the live lines under `src/`, and `sm:` appears only in the files `REMAINING`
- * declares, never more times than it records.**
+ * declares, never more times than it records.** And since plan 52.1-02: **a
+ * CONTAINER variant `@<tier>:` is not a viewport prefix, and appears only in a
+ * file that declares the `@container` it measures.**
  *
  * `41-UI-SPEC.md` §2.1 fixes the tiers on **two** of Tailwind's five defaults —
  * phone unprefixed, tablet `md:` (768px, the portrait-tablet edge exactly),
@@ -49,7 +51,7 @@
  *     `min-sm:` ARE counted (see the matching note). Any other arbitrary variant
  *     that reaches 640px by another spelling is not.
  *
- * ── THE TWO CHECKS ──────────────────────────────────────────────────────────
+ * ── THE THREE CHECKS ────────────────────────────────────────────────────────
  *
  *   A. **No fourth prefix, anywhere.** `xl:` and `2xl:` have zero occurrences.
  *      No exemption, and none is coming: both were measured at zero on this
@@ -75,6 +77,32 @@
  *      off. A missing or unknown tag is a **refusal**, not a failure: see
  *      `GROUP_TAGS`.
  *
+ *   C. **A container variant only where its container is declared** (plan
+ *      52.1-02, DBT-16, D-52.1-21, 2026-10-01). Tailwind 4 ships container
+ *      queries in core: `@container` marks an element, and `@2xl:flex` applies
+ *      when THAT ELEMENT is at least 42rem wide
+ *      (tailwindcss.com/docs/responsive-design, *Container queries*). It is a
+ *      width of a box, not of the viewport, so it is not a fourth breakpoint of
+ *      §2.1 — and until this plan check A read every `@2xl:` in
+ *      `src/app/(public)/events/EventTabs.tsx` as a `2xl:`, red on 29 correct
+ *      uses from 2026-09-28. **The decision is taken on the gate, not on the
+ *      code**: the card adapts to the column it sits in, which is what a
+ *      container query is for, and rewriting it to viewport prefixes would
+ *      make it wrong in the narrow column of a wide screen.
+ *
+ *      Two halves, both needed. The leading guard of `prefixPattern` now also
+ *      refuses `@`, so `@2xl:` no longer counts as `2xl:` — but a bare `2xl:`
+ *      is still exactly as red as before. And a container variant is counted
+ *      per file and FAILS where the same file carries no `@container` class:
+ *      with no container in the file, `@2xl:` resolves against whatever
+ *      ancestor happens to declare one, or against nothing at all, and that is
+ *      a layout nobody wrote down. The `@` is not a free pass around check A.
+ *
+ *      What it does NOT see: a container declared in a PARENT component file.
+ *      Today the only file with container variants declares its own, and the
+ *      strict reading costs nothing; if a split ever moves the `@container` to
+ *      a parent, the red is the moment to write that down.
+ *
  * ── ON EXEMPTING PHASE 42'S PATHS, WHICH THIS GATE DOES NOT DO ──────────────
  *
  * §0 rule 7 asks every gate in this phase to exempt `src/app/(admin)/**\/scanner/**`,
@@ -91,8 +119,9 @@
  *
  * ── THE BOUNDARY GUARDS, AND THE FILE THAT PROVED THEY ARE BOTH NEEDED ──────
  *
- * The pattern is `(?<![a-zA-Z0-9-])(?:max-|min-)?NAME:(?=[a-z!\[-])`, and each
- * of the three parts was earned:
+ * The pattern is `(?<![a-zA-Z0-9@-])(?:max-|min-)?NAME:(?=[a-z!\[-])`, and each
+ * of the three parts was earned (the `@` in the leading guard by plan 52.1-02 —
+ * see check C: `@2xl:` is a container variant, not the viewport prefix `2xl:`):
  *
  * LEADING, zero-width. Without `(?<![a-zA-Z0-9-])`, the name `xl` is found
  * inside `2xl:hidden` and every `2xl:` is counted twice, once under each name.
@@ -718,8 +747,20 @@ export function liveLines(relPath) {
  */
 export function prefixPattern(name) {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`(?<![a-zA-Z0-9-])(?:max-|min-)?${escaped}:(?=[a-z!\\[-])`, 'g');
+  return new RegExp(`(?<![a-zA-Z0-9@-])(?:max-|min-)?${escaped}:(?=[a-z!\\[-])`, 'g');
 }
+
+/**
+ * A Tailwind 4 container variant: `@<tier>:`, `@max-<tier>:`, `@min-<tier>:`,
+ * an arbitrary `@[30rem]:`, each optionally naming its container (`@md/card:`).
+ * The tiers are Tailwind's container scale, `@3xs` to `@7xl`. Same trailing
+ * guard as `prefixPattern`, for the same `Skeleton.tsx` reason. Check C.
+ */
+export const CONTAINER_VARIANT_RE =
+  /(?<![a-zA-Z0-9@-])@(?:max-|min-)?(?:[2-7]?xl|[23]?xs|sm|md|lg|\[[^\]\s]+\])(?:\/[a-zA-Z0-9_-]+)?:(?=[a-z!\[-])/g;
+
+/** The class that declares a container: `@container`, optionally named. */
+export const CONTAINER_CLASS_RE = /(?<![a-zA-Z0-9-])@container(?:\/[a-zA-Z0-9_-]+)?(?![a-zA-Z0-9-])/;
 
 /** Every use of `name` in `relPath`'s live lines, as `{ line, source }`. */
 export function findPrefixUses(relPath, name) {
@@ -1009,11 +1050,64 @@ if (stale.length > 0) {
   );
 }
 
+// ── check C — a container variant only where its container is declared ──────
+
+const containerFiles = [];
+for (const file of files) {
+  const lines = liveLines(file);
+  const hits = [];
+  lines.forEach((line, i) => {
+    const matches = line.match(CONTAINER_VARIANT_RE);
+    if (!matches) return;
+    for (let k = 0; k < matches.length; k += 1) hits.push({ line: i + 1, source: line.trim() });
+  });
+  if (hits.length === 0) continue;
+  const declared = lines.some((line) => CONTAINER_CLASS_RE.test(line));
+  containerFiles.push({ file, hits, declared });
+}
+
+console.log('  check C — container variants (@<tier>:), each in a file declaring @container:\n');
+if (containerFiles.length === 0) {
+  console.log('      no container variant under src/\n');
+}
+for (const { file, hits, declared } of containerFiles) {
+  console.log(
+    `    ${declared ? '·' : '✗'}  ${String(hits.length).padStart(3)}  ${file}` +
+      `   (@container ${declared ? 'declared' : 'NOT declared'})`
+  );
+}
+if (containerFiles.length > 0) console.log('');
+
+const undeclaredContainers = containerFiles.filter(({ declared }) => !declared);
+if (undeclaredContainers.length > 0) {
+  failures.push('C');
+  console.log(
+    `  ✗ C  ${undeclaredContainers.length} file(s) carry container variants and declare no @container:\n`
+  );
+  for (const { file, hits } of undeclaredContainers) {
+    for (const hit of hits) {
+      console.log(`       ${file}:${hit.line}`);
+      console.log(`         ${hit.source}`);
+    }
+  }
+  console.log(
+    '\n       A container variant measures the nearest element marked @container. With none in\n' +
+      '       this file it resolves against whatever ancestor happens to declare one, or against\n' +
+      '       nothing — a layout nobody wrote down. Declare the container here, or use md:/lg:.\n'
+  );
+} else {
+  const total = containerFiles.reduce((n, { hits }) => n + hits.length, 0);
+  console.log(
+    `  ✓ C  ${total} container variant(s) in ${containerFiles.length} file(s), every file declaring its\n` +
+      '       @container — a box width, not a fourth viewport breakpoint (DBT-16)\n'
+  );
+}
+
 // ── verdict ────────────────────────────────────────────────────────────────
 console.log('');
 if (failures.length === 0) {
   console.log(
-    `  BREAKPOINTS_OK — both checks passed. ${measured.size} file(s) still carry sm:, ` +
+    `  BREAKPOINTS_OK — all three checks passed. ${measured.size} file(s) still carry sm:, ` +
       `${measuredTotal} use(s).`
   );
   console.log(

@@ -2698,9 +2698,12 @@ const NAV_PROPERTY_SITE_DIGESTS = [
   ],
   [
     'src/components/ui/PageShell.tsx', 164,
-    '8f9c39ad4e2711c6c39e515bc420c51b3524effe52bdf1eb8b30e349d38823e0',
+    'f5e856d351021cf8a6e8a92c5a33b01dfb177943461c36f0a7f1e9ba4f750f76',
     'the default and wide inner container — the block-end inset plus 16px. Same ' +
-      'reason: below the focus branch\'s return, unreachable from the focus form',
+      'reason: below the focus branch\'s return, unreachable from the focus form. ' +
+      'Re-frozen 2026-10-01 by plan 52.1-02 (DBT-16): commit 8ac347df of 2026-09-24 ' +
+      'changed the top padding of this line to pt-6 md:pt-12 and nobody re-froze it; ' +
+      're-read on the tree, the line still sits after the focus return at :151-157',
   ],
 ];
 
@@ -2736,9 +2739,17 @@ if (permittedSitesNamingAnotherFile.length > 0) {
  * commit, after checking that the changed line does not put a clearance on the
  * focus form. The gate prints the found digest on every run, so the update is a
  * copy; the check above is what stops the copy from being a blessing.
+ *
+ * Re-frozen 2026-10-01 by plan 52.1-02 (DBT-16, D-52.1-21). The one change since
+ * the previous freeze is commit 8ac347df of 2026-09-24, and it is one line —
+ * `PageShell.tsx:164`, `pt-12` → `pt-6 md:pt-12` on the default and wide inner
+ * container (`git show 8ac347df -- src/components/ui/PageShell.tsx`, re-read).
+ * That line sits after the focus branch returns at `:151-157`, so it puts no
+ * clearance on the focus form; the permitted-site entry for `:164` above is
+ * re-frozen in the same commit, on the same evidence read separately.
  */
 const SHELL_CODE_OUTSIDE_WINDOW_DIGEST =
-  '73adc18b822ace6679b5d0f22b7b1e442dc2d7718619d08e46c87ee14acc754f';
+  'fc3dbfc2661ee4a9cb89cef0fa89032ab0c497723cb3d631b12f6e01f1d9fec8';
 
 const shellCodeOutsideWindow = [];
 shellLines.forEach((line, i) => {
