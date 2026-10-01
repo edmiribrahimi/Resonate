@@ -6,6 +6,8 @@ import { getAccessContext } from "@/lib/capabilities/server";
 import { mayManageEvent } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
 import SalesDashboard from "@/components/events/SalesDashboard";
+import SalesSections from "@/app/(admin)/admin/events/[id]/sales/SalesSections";
+import { readSalesSections } from "@/app/(admin)/admin/events/[id]/sales/sales-sections-data";
 import { FOCUS_RING } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { PageShell } from "@/components/ui/PageShell";
@@ -38,12 +40,31 @@ import { PageTitle } from "@/components/ui/Typography";
  * ── The money question, asked before the merge and answered here ─────────────
  *
  * Neither version showed a refund control, a takings figure or a payout detail
- * the other did not. Both mounted `SalesDashboard` with the same six props, and
- * `SalesDashboard` mounts `RefundActions` for every buyer row unconditionally
- * (`SalesDashboard.tsx:215,255`) — so the refund control was already on both,
- * and this merge neither adds nor removes it. The one difference was the
- * **guest-list tile**, which the organizer version had and the `/admin` one did
- * not; it is kept, and the grant that permits it is named at its own comment.
+ * the other did not. Both mounted `SalesDashboard` with the same six props. The
+ * one difference was the **guest-list tile**, which the organizer version had
+ * and the `/admin` one did not; it is kept, and the grant that permits it is
+ * named at its own comment.
+ *
+ * ── DBT-17, 2026-10-01: Sales tells, and the Refund lives here once ──────────
+ *
+ * *«Manage tickets configura, Sales racconta»* (D-52.1-22). Three sections came
+ * here from Manage tickets — «Sold Tickets», «Orders without tickets» and
+ * «Paid, address never sent» — moved, not rewritten: their readers are in
+ * `src/app/(admin)/admin/events/[id]/sales/sales-sections-data.ts` and their
+ * markup in `SalesSections.tsx` beside it, outside `(work)` (R-WORK-ROUTES).
+ *
+ * **Until this date the Refund control was on two lists**: `SalesDashboard`
+ * mounted `RefundActions` on every buyer row, and Manage tickets mounted it on
+ * every sold-ticket card. Bringing «Sold Tickets» here would have put both on
+ * one page — two controls on the same charge, which drift. So the buyer table
+ * **lost its Refund column** and stays the searchable summary (search,
+ * discount code, date), and the Refund sits once per ticket on the «Sold
+ * Tickets» card, next to the delivery marks a refunder needs. No refund logic
+ * changed: `RefundActions` and `adminRefund` were not opened.
+ *
+ * The order on the page: takings and tiers (the dashboard's top) → the three
+ * sections → the searchable buyer table → discount codes. The sections reach
+ * the dashboard as a slot, so the one client component keeps its layout.
  *
  * ── Reachability: the more restrictive of the two, not the fuller one ────────
  *
@@ -108,6 +129,12 @@ export default async function SalesPage({
   if (!mayManageEvent(ctx, event.created_by)) {
     redirect("/admin/events");
   }
+
+  // DBT-17 — the three sections moved from Manage tickets. Their reads use the
+  // service-role client, so they are asked HERE, below the ownership `if`
+  // above and never before it: on that path the `if` is the only boundary
+  // (`sales-sections-data.ts` asks no question of its own, and says so).
+  const salesSections = await readSalesSections(eventId);
 
   // Fetch tiers
   const { data: tiers } = await supabase
@@ -282,6 +309,7 @@ export default async function SalesPage({
         totalRevenue={totalRevenue}
         totalSold={totalSold}
         discountSummary={discountSummaryData}
+        sections={<SalesSections eventId={eventId} data={salesSections} />}
       />
     </PageShell>
   );

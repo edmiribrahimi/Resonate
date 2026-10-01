@@ -1,8 +1,7 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useId, useMemo, useState, type ReactNode } from "react";
 
-import RefundActions from "@/app/(admin)/admin/events/[id]/tickets/RefundActions";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Chip";
 import { DataTable, type DataColumn } from "@/components/ui/DataTable";
@@ -39,9 +38,22 @@ import { SectionHeading } from "@/components/ui/Typography";
  * above 640 px and a card list below it, each naming its own fields, its own
  * container, its own empty block and its own copy of the refund control. That
  * is the construction `DataTable`'s own docblock exists to end. Both branches
- * are deleted whole; the branch boundary is now the contract's single one, and
- * the refund control is mounted once by the actions apparatus rather than
- * twice by two branches that could drift.
+ * are deleted whole; the branch boundary is now the contract's single one.
+ *
+ * ── The Refund is not here any more (DBT-17, 2026-10-01) ─────────────────────
+ *
+ * This table used to mount the refund control on every buyer row. When «Sold
+ * Tickets» moved from Manage tickets to Sales (D-52.1-22), the same tickets
+ * would have had two Refund buttons on one page — two controls on one charge,
+ * which drift. **The Refund lives on the «Sold Tickets» card**, once per
+ * ticket, beside the confirmation and reminder delivery marks a refunder needs
+ * (`src/app/(admin)/admin/events/[id]/sales/SalesSections.tsx`). This table
+ * stays the searchable summary: search, tier, discount code, date.
+ *
+ * Those sections reach this component through the `sections` slot, drawn
+ * between the tier breakdown and the buyer table, so the takings stay first on
+ * the surface. A slot of server-rendered nodes: this client component neither
+ * reads nor sees the data behind it.
  *
  * ── The three empty states are still three, and one of them is a claim ───────
  *
@@ -96,9 +108,7 @@ import { SectionHeading } from "@/components/ui/Typography";
  * No query changed, no column added, no capability check touched, no action
  * payload altered. **No status transition, no refund amount, no idempotency key
  * and no webhook path is read, written or reshaped by this file** — it renders
- * props and mounts the refund control, which was converted once, elsewhere, as
- * spine, and is not opened here. Every user-visible string is the one that was
- * here.
+ * props. Every user-visible string is the one that was here.
  */
 
 interface TierSalesData {
@@ -133,6 +143,8 @@ interface SalesDashboardProps {
   totalRevenue: number;
   totalSold: number;
   discountSummary?: DiscountSummary[];
+  /** DBT-17: Sales' sold-ticket and order sections, drawn after the tiers. */
+  sections?: ReactNode;
 }
 
 function formatEUR(amount: number) {
@@ -173,10 +185,10 @@ function formatDate(dateStr: string) {
  *              whose whole contract is that its facts are labelled.
  *   date     → a labelled detail, marked as a figure so a column of timestamps
  *              aligns.
- *   refund   → not a column. It is the actions apparatus, so it is mounted once
- *              for both branches.
+ *   refund   → gone (DBT-17). It lives once per ticket on the «Sold Tickets»
+ *              card, not on this table.
  *
- * Nothing is dropped: six columns went in and six things come out.
+ * Five columns, five things out.
  */
 const columns: DataColumn<BuyerData>[] = [
   {
@@ -219,6 +231,7 @@ export default function SalesDashboard({
   totalRevenue,
   totalSold,
   discountSummary,
+  sections,
 }: SalesDashboardProps) {
   const [search, setSearch] = useState("");
   const searchId = useId();
@@ -336,6 +349,8 @@ export default function SalesDashboard({
         </div>
       </div>
 
+      {sections}
+
       {/* Buyer List */}
       <div>
         <SectionHeading>Buyers</SectionHeading>
@@ -360,20 +375,6 @@ export default function SalesDashboard({
           rowKey={(buyer) => buyer.id}
           caption="Buyers of this event, with the tier each one holds, any discount code used, and when the purchase was made"
           empty={emptyNode}
-          actions={{
-            /* The column has a name for a screen reader and no word on screen:
-               it had a blank header, which is a column labelled by nothing, and
-               giving it a visible one would be introducing copy on a money
-               surface. */
-            header: <span className="sr-only">Actions</span>,
-            /* The density argument is deliberately not read. §6.3's one
-               permitted shrink applies to a row action drawn by this primitive,
-               and the control below draws its own at the unconditional floor —
-               measured in plan 41.1-17, which converted it. */
-            render: (buyer) => (
-              <RefundActions ticketId={buyer.id} isDirectRefund />
-            ),
-          }}
         />
       </div>
 

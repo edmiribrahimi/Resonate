@@ -186,7 +186,7 @@ export async function alertOrganizerPaidNotIssued(args: {
     console.error(`[tickets.organizer_alert_event_unreadable] order=${args.orderId}`, e);
   }
 
-  const link = `${appBase()}/admin/events/${args.eventId}/tickets`;
+  const link = `${appBase()}/admin/events/${args.eventId}/sales`;
   const amount = euro(args.totalAmount);
 
   // ── Non deve perdersi fra i riepiloghi ─────────────────────────────────────
@@ -403,7 +403,7 @@ export async function alertOrganizerResumeEmailNotCancelled(args: {
     );
   }
 
-  const link = `${appBase()}/admin/events/${args.eventId}/tickets`;
+  const link = `${appBase()}/admin/events/${args.eventId}/sales`;
 
   await sendToOrganizer({
     tag: "organizer_alert_resume_not_cancelled",
@@ -468,7 +468,7 @@ export async function alertOrganizerRefundUnattributed(args: {
     );
   }
 
-  const link = `${appBase()}/admin/events/${args.eventId}/tickets`;
+  const link = `${appBase()}/admin/events/${args.eventId}/sales`;
   const txShort = args.transactionRef.slice(-6).toUpperCase();
 
   await sendToOrganizer({
