@@ -141,7 +141,11 @@ export default async function SalesPage({
     .from("ticket_tiers")
     .select("id, name, price, quantity")
     .eq("event_id", eventId)
-    .order("created_at");
+    // 2026-10-01 — DBT-18, D-52.1-23 D4 — un solo ordinamento in tutti i lettori:
+    // la posizione decisa in admin, poi il prezzo, poi l'anzianita'.
+    .order("sort_order", { ascending: true })
+    .order("price", { ascending: true })
+    .order("created_at", { ascending: true });
 
   // Compute sold counts per tier
   const tierSalesData = await Promise.all(

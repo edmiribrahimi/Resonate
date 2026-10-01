@@ -1717,7 +1717,11 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
     .from("ticket_tiers")
     .select("id, price, quantity, starts_at, expires_at")
     .eq("event_id", eventId)
-    .order("price", { ascending: true });
+    // 2026-10-01 — DBT-18, D-52.1-23 D4 — un solo ordinamento in tutti i lettori:
+    // la posizione decisa in admin, poi il prezzo, poi l'anzianita'.
+    .order("sort_order", { ascending: true })
+    .order("price", { ascending: true })
+    .order("created_at", { ascending: true });
 
   if (tier.party_id) {
     tierQuery.eq("party_id", tier.party_id);

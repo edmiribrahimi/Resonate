@@ -455,7 +455,11 @@ export async function buildOrderQuote(
     .select("id, price, quantity, starts_at, expires_at")
     .eq("event_id", party.event_id)
     .eq("party_id", party.id)
-    .order("price", { ascending: true });
+    // 2026-10-01 — DBT-18, D-52.1-23 D4 — un solo ordinamento in tutti i lettori:
+    // la posizione decisa in admin, poi il prezzo, poi l'anzianita'.
+    .order("sort_order", { ascending: true })
+    .order("price", { ascending: true })
+    .order("created_at", { ascending: true });
 
   const { data: allTiers, error: allTiersError } = await tierChainQuery;
 

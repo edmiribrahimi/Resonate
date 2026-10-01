@@ -178,6 +178,10 @@ export default async function TicketTiersPage({ params }: PageProps) {
     .from("ticket_tiers")
     .select("*")
     .eq("event_id", eventId)
+    // 2026-10-01 — DBT-18, D-52.1-23 D4 — un solo ordinamento in tutti i lettori:
+    // la posizione decisa in admin, poi il prezzo, poi l'anzianita'.
+    .order("sort_order", { ascending: true })
+    .order("price", { ascending: true })
     .order("created_at", { ascending: true });
 
   const tiersWithSold = await Promise.all(

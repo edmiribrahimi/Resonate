@@ -652,7 +652,11 @@ export default async function EventDetailPage({
           .from("ticket_tiers")
           .select("*")
           .eq("party_id", party.id)
-          .order("price", { ascending: true });
+          // 2026-10-01 — DBT-18, D-52.1-23 D4 — un solo ordinamento in tutti i lettori:
+          // la posizione decisa in admin, poi il prezzo, poi l'anzianita'.
+          .order("sort_order", { ascending: true })
+          .order("price", { ascending: true })
+          .order("created_at", { ascending: true });
 
         // ── CR-01: un livello a prezzo zero non si disegna su una serata a
         //    pagamento ────────────────────────────────────────────────────────
@@ -998,7 +1002,11 @@ export default async function EventDetailPage({
       .select("*")
       .eq("event_id", event.id)
       .is("party_id", null)
-      .order("price", { ascending: true });
+      // 2026-10-01 — DBT-18, D-52.1-23 D4 — un solo ordinamento in tutti i lettori:
+      // la posizione decisa in admin, poi il prezzo, poi l'anzianita'.
+      .order("sort_order", { ascending: true })
+      .order("price", { ascending: true })
+      .order("created_at", { ascending: true });
 
     eventTiers = await Promise.all(
       (rawEventTiers ?? []).map(async (tier: { id: string; name: string; description?: string | null; price: number; quantity: number | null; show_remaining?: boolean; starts_at?: string | null; expires_at?: string | null }) => {
