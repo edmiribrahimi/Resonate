@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "Completato 52-17-PLAN.md — verifica approvata alle 19:13:29Z; fase 52 eseguita 19/19, resta verifica e chiusura"
+stopped_at: "2026-10-01 10:50Z — FASE 52.1 IN ESECUZIONE: onde 1-2 chiuse (01-06 fusi su main locale), build 0 e verify 24/24 sulla punta. ATTENZIONE: main NON va spinto su origin finche' l'atto 1 (piano 11) non lo autorizza — Vercel pubblica da origin/main. Onda 3 (08 lettori dei tier + reorderTiers, 09 corsa U1 sul lab) in corso."
 last_updated: "2026-10-01T10:31:56.951Z"
 last_activity: 2026-10-01
 progress:
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 52.1 (chiusura-del-debito-della-fase-52) — EXECUTING
-Plan: 2 of 30
+Plan: 6 of 30
 Next: `/gsd-execute-phase 52.1` (prima `/clear`). Onda 1 = 01 (procedure) + 02 (DBT-16, verify verde: precondizione di deploy). L'ordine del proprietario (19, 20, 17, 18) e' l'atto 1 e l'atto 2; porta e cover sono l'atto 3; i carrelli (DBT-15) l'atto 4 e possono slittare. La 52.2 e' COMPLETE e osservata in produzione (prima mattina del 2026-10-01 in `52.2-VERIFICATION.md`).
 
 **52.2 chiusa e osservata (2026-10-01 08:28Z).** `close-pending-orders` 08:01Z: 1 considerato, `never_attempted`, checkout disattivato; `reconcile-refunds` 08:13Z: silenzio = nulla da riconciliare (non logga un riepilogo quando non fa nulla: nota per la 52.1); 0 pending residui, 0 refunds, 0 mail. CART-03 e RFD-02 osservati.
