@@ -584,11 +584,16 @@ export async function retryFailedOrder(eventId: string, orderId: string) {
     .maybeSingle();
   if (!order) {
     console.error(`[tickets.retry_refused_wrong_event] order=${orderId} event=${eventId}`);
-    revalidatePath(`/admin/events/${eventId}/tickets`);
+    revalidatePath(`/admin/events/${eventId}/sales`);
     return;
   }
 
   const outcome = await replayPaidOrderDelivery({ orderId, serviceClient });
   console.log(`[tickets.retry_by_organizer] order=${orderId} by=${ctx.userId} → ${JSON.stringify(outcome)}`);
+  // DBT-17 (2026-10-01): the «Orders without tickets» card — where this button
+  // lives — moved to Sales, so Sales is the page to redraw. Manage tickets is
+  // redrawn too: a retry that issues tickets changes the sold count `TierCard`
+  // shows there.
+  revalidatePath(`/admin/events/${eventId}/sales`);
   revalidatePath(`/admin/events/${eventId}/tickets`);
 }
