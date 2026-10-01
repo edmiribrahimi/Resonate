@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "2026-10-01 11:55Z — FASE 52.1: PIANO 09 CHIUSO (3/3), «va bene tutto» del proprietario alle 11:51Z registrato in 52.1-ESITI.md. Piani 01-09 fusi su main LOCALE (9/30); main NON spinto su origin (Vercel pubblica da li'). ALLA RIPRESA (rete assente dalle 14:15 CEST): onda 4 = piano 10 (Reorder con @dnd-kit) + piano 11 (ATTO 1: push di U1 = 322c6c49 su origin main, con atto datato; NON la punta di main, che porta il piano 08 e legge sort_order ancora assente in produzione). Nessuna correzione pendente."
+stopped_at: "2026-10-01 12:14Z — FASE 52.1: ATTO 1 FATTO. U1 = 322c6c49 in produzione (deploy READY 12:12Z), atto ESAURITO; piani 01-09 e 11 chiusi (10/30). main locale e' avanti (08, 09, 11, docs) e NON si spinge fino all'atto 2 (piano 15, dopo M-A in produzione). ALLA RIPRESA (rete assente dalle 14:15 CEST): 1) controllo da telefono in produzione di card e «Add several», da registrare nel §4 di 52.1-AUTHORISATION-ONDA1.md; 2) onda 4 = piano 10 (Reorder con @dnd-kit); poi onda 5 (12 corsa U2 sul lab, 13 cover, 14 porta)."
 last_updated: "2026-10-01T10:31:56.951Z"
 last_activity: 2026-10-01
 progress:
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 52.1 (chiusura-del-debito-della-fase-52) — EXECUTING
-Plan: 9 of 30
+Plan: 10 of 30
 Next: `/gsd-execute-phase 52.1` (prima `/clear`). Onda 1 = 01 (procedure) + 02 (DBT-16, verify verde: precondizione di deploy). L'ordine del proprietario (19, 20, 17, 18) e' l'atto 1 e l'atto 2; porta e cover sono l'atto 3; i carrelli (DBT-15) l'atto 4 e possono slittare. La 52.2 e' COMPLETE e osservata in produzione (prima mattina del 2026-10-01 in `52.2-VERIFICATION.md`).
 
 **52.2 chiusa e osservata (2026-10-01 08:28Z).** `close-pending-orders` 08:01Z: 1 considerato, `never_attempted`, checkout disattivato; `reconcile-refunds` 08:13Z: silenzio = nulla da riconciliare (non logga un riepilogo quando non fa nulla: nota per la 52.1); 0 pending residui, 0 refunds, 0 mail. CART-03 e RFD-02 osservati.
