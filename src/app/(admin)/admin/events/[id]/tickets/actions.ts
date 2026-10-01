@@ -9,6 +9,7 @@ import {
 } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
 import { replayPaidOrderDelivery } from "@/lib/tickets/replay-order-delivery";
+import { redactDbError } from "@/lib/errors/redact";
 
 // Service-role client for operations where RLS blocks legitimate access
 // (e.g., master managing tiers for events they don't own)
@@ -123,9 +124,39 @@ export async function createTier(eventId: string, partyId: string | null, formDa
     ? getServiceClient()
     : supabase;
 
+  // 2026-10-01 — DBT-18, D-52.1-23. Un tier nuovo va IN CODA alla sua lista
+  // (la serata, o gli Event Pass dell'evento quando `party_id` e' nullo, D5).
+  // ASSUNZIONE da confermare al proprietario nella corsa P-521-D (piano
+  // 52.1-12): il default della colonna e' 0 solo perche' e' NOT NULL, e un
+  // tier a 0 salirebbe in testa alla vetrina pubblica senza che nessuno l'abbia
+  // deciso. Letto con lo stesso client che inserisce, cosi' vede le stesse
+  // righe. Il tier RSVP automatico (`admin/events/actions.ts`) resta a 0: e'
+  // l'unico tier di una serata gratuita.
+  const listPartyId = partyId || null;
+  const lastQuery = client
+    .from("ticket_tiers")
+    .select("sort_order")
+    .eq("event_id", eventId)
+    .order("sort_order", { ascending: false })
+    .limit(1);
+  const { data: lastRows, error: lastError } = await (listPartyId
+    ? lastQuery.eq("party_id", listPartyId)
+    : lastQuery.is("party_id", null));
+
+  if (lastError) {
+    // Non si indovina una posizione: un tier creato a 0 per una lettura fallita
+    // finirebbe davanti a tutti, in vetrina, in silenzio.
+    console.error(
+      `[tickets.create_tail_unreadable] event=${eventId} ${redactDbError(lastError)}`
+    );
+    throw new Error(`Failed to create tier: could not read the list order`);
+  }
+
+  const sortOrder = ((lastRows?.[0] as { sort_order?: number } | undefined)?.sort_order ?? 0) + 1;
+
   const { error } = await client.from("ticket_tiers").insert({
     event_id: eventId,
-    party_id: partyId || null,
+    party_id: listPartyId,
     name,
     description,
     price,
@@ -133,6 +164,7 @@ export async function createTier(eventId: string, partyId: string | null, formDa
     show_remaining: showRemaining,
     starts_at,
     expires_at,
+    sort_order: sortOrder,
   });
 
   if (error) {
@@ -141,6 +173,105 @@ export async function createTier(eventId: string, partyId: string | null, formDa
 
   revalidatePath(`/admin/events/${eventId}/tickets`);
   return { success: true };
+}
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export type ReorderTiersResult =
+  | { ok: true; count: number }
+  | { ok: false; reason: "stale_list" | "forbidden" | "failed" };
+
+/**
+ * Salva l'ordine INTERO di una lista di tier — una serata, oppure gli Event
+ * Pass dell'evento quando `partyId` e' `null` (D-52.1-23, D3/D4/D5; DBT-18).
+ *
+ * **Una scrittura sola.** La lista va per intero a
+ * `public.reorder_ticket_tiers` (migration `20261001120000_tier_sort_order.sql`),
+ * che la confronta col perimetro e scrive SOLO `sort_order` in un'unica
+ * `UPDATE`: mai a meta', mai prezzo o quantita'. L'anti-modello e'
+ * `reorderDrinkItems` (N update in parallelo, errori ignorati): qui non
+ * c'e' alcun ciclo di scritture, e ogni esito ha la sua categoria.
+ *
+ * **Tre esiti distinti**, restituiti e non lanciati — un errore lanciato da una
+ * Server Action arriva redatto in produzione, e il client deve poter dire tre
+ * cose diverse:
+ *   - `forbidden`  — la guardia ha detto no (o non ha potuto rispondere);
+ *   - `stale_list` — la lista non e' quella di adesso (un tier creato o
+ *                    cancellato da un altro telefono, un doppione, un id di
+ *                    un'altra serata): si ricarica e si rifa';
+ *   - `failed`     — qualunque altro errore, compreso `reorder.partial` (la RLS
+ *                    ha fermato una parte delle righe).
+ *
+ * Guardia identica a `createTier`: `assertStaffManage` una volta, poi
+ * `assertMayManageEvent`; client di servizio solo per `master.manage`. Sotto,
+ * la funzione e' `SECURITY INVOKER`: il confine resta `ticket_tiers_update`.
+ */
+export async function reorderTiers(
+  eventId: string,
+  partyId: string | null,
+  tierIds: string[]
+): Promise<ReorderTiersResult> {
+  const supabase = await createClient();
+
+  let ctx: Awaited<ReturnType<typeof assertStaffManage>>;
+  try {
+    ctx = await assertStaffManage();
+    await assertMayManageEvent(supabase, eventId, ctx);
+  } catch (err) {
+    console.error(
+      `[tickets.reorder_forbidden] event=${eventId} ${err instanceof Error ? err.message : redactDbError(err)}`
+    );
+    return { ok: false, reason: "forbidden" };
+  }
+
+  // La forma della lista si controlla prima di chiamare: un array vuoto, un
+  // elemento non stringa o un id che non e' un uuid non possono essere il
+  // perimetro di nessuna serata, quindi sono una lista sbagliata come una
+  // vecchia — stesso esito, stessa azione per chi la riceve (ricaricare).
+  const listPartyId = partyId || null;
+  const shapeOk =
+    Array.isArray(tierIds) &&
+    tierIds.length > 0 &&
+    tierIds.every((id) => typeof id === "string" && UUID_RE.test(id)) &&
+    (listPartyId === null || UUID_RE.test(listPartyId));
+  if (!shapeOk) {
+    console.error(
+      `[tickets.reorder_stale_list] event=${eventId} lista malformata (${Array.isArray(tierIds) ? tierIds.length : "non-array"} elementi)`
+    );
+    return { ok: false, reason: "stale_list" };
+  }
+
+  const client = ctx.capabilities.has(CAP.MASTER_MANAGE)
+    ? getServiceClient()
+    : supabase;
+
+  const { data, error } = await client.rpc("reorder_ticket_tiers", {
+    p_event_id: eventId,
+    p_party_id: listPartyId,
+    p_tier_ids: tierIds,
+  });
+
+  if (error) {
+    if ((error.message ?? "").includes("reorder.stale_list")) {
+      console.error(
+        `[tickets.reorder_stale_list] event=${eventId} ${redactDbError(error)}`
+      );
+      return { ok: false, reason: "stale_list" };
+    }
+    console.error(
+      `[tickets.reorder_failed] event=${eventId} ${redactDbError(error)}`
+    );
+    return { ok: false, reason: "failed" };
+  }
+
+  revalidatePath(`/admin/events/${eventId}/tickets`);
+  revalidatePath(`/admin/events/${eventId}/sales`);
+  // La vetrina pubblica legge lo stesso ordine (D4). Il pattern rinfresca ogni
+  // pagina di serata: costa una rigenerazione, e non serve leggere lo slug.
+  revalidatePath("/events/[slug]", "page");
+
+  return { ok: true, count: typeof data === "number" ? data : tierIds.length };
 }
 
 /**
