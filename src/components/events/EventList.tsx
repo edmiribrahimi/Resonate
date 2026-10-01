@@ -27,7 +27,9 @@ interface EventListProps {
   /**
    * Who is looking. Since 2026-09-24 the list holds every night, not only the
    * viewer's own, and a row's controls follow ownership: `created_by ===
-   * viewerId`, or `canManageAll` (the `master.manage` grant). The database
+   * viewerId`, or `canManageAll` (the `staff.manage` grant — the same
+   * capability `mayManageEvent` decides on since 2026-09-24, so an organizer
+   * sees the controls on every night). The database
    * draws the same line — `events_update_own`, `events_delete_own` — so a
    * control hidden here is one the policies would refuse anyway; hiding it
    * spares the operator a refusal, it does not protect anything.
@@ -38,7 +40,7 @@ interface EventListProps {
 }
 
 /**
- * ── The tree-prefix prop is gone, and the six hrefs below stay UNANNOTATED ────
+ * ── The tree-prefix prop is gone, and the hrefs below stay UNANNOTATED ───────
  *
  * There were two events surfaces and this component was shared by both, so it
  * took the tree it was being drawn in as a prop. Plan 34-01 narrowed that prop
@@ -47,7 +49,7 @@ interface EventListProps {
  * vary is an option nobody has, and options nobody has are where the next
  * divergence starts — so the one surviving address is inlined instead.
  *
- * That inlining is what makes the six hrefs checkable, and the check is
+ * That inlining is what makes every href in `ROW_CONTROLS` checkable, and the check is
  * `<Link>`'s inference rather than an annotation. Measured 2026-08-09 against
  * the generated `.next/types/link.d.ts` of `next@16.1.6`: the bare route type is
  * parameterised by `string`, and `RouteImpl`'s dynamic arm collapses to `never`
@@ -68,9 +70,9 @@ interface EventListProps {
  * Plans 34-03 and 34-06 both recorded the same self-inflicted failure: a
  * criterion a comment can defeat is a criterion nobody can run.
  *
- * ── The six became one, and the reason is a measurement (plan 41.1-07) ───────
+ * ── Many links became one, and the reason is a measurement (plan 41.1-07) ───
  *
- * `41-UI-SPEC.md` §6.4 names this row: six controls on one line, none of them
+ * `41-UI-SPEC.md` §6.4 names this row: a line of controls, none of them
  * reaching the 44px floor, on the surface a person operates a night from. The
  * fix is the floor; what carries it needed deciding.
  *
@@ -95,17 +97,31 @@ interface EventListProps {
  * *should `Chip` be generic over its route so a dynamic address can be a chip?*
  * — is written into this plan's summary as owed, not decided here.
  *
- * **One `<Link>`, rendered six times.** The class string is therefore written
- * once and written literally inside the attribute, which is also the only form
- * the touch-target gate can read: it does not resolve a module constant, and
+ * **One `<Link>`, rendered once per entry of `ROW_CONTROLS`.** The class
+ * string is therefore written once and written literally inside the
+ * attribute, which is also the only form the touch-target gate can read: it does not resolve a module constant, and
  * says so in its own exemption list. The segments are a literal union, so each
- * of the six addresses is still checked by inference at build time — a segment
+ * address in the tuple is still checked by inference at build time — a segment
  * that stops being a route is a build error here, exactly as it was when these
- * were six hand-written hrefs. Still no annotation, still no cast.
+ * were hand-written hrefs. Still no annotation, still no cast.
+ *
+ * ── A page nobody links does not exist (2026-10-01, DBT-19, D-52.1-24) ──────
+ *
+ * The owner could not find «Who works»: no link reached it, and «Door review»
+ * had none either, while «Drink Menu» was reachable only from a chip at the
+ * bottom of Edit. The tuple now names every work page under
+ * `(work)/events/[id]/`, ordered from before the night to after it, and the
+ * prose no longer counts them in words — a count written as a word goes stale
+ * at the next addition. The guarantee is mechanical: check `[4/4]` of
+ * `npm run verify:routes` fails when a `page.tsx` under that directory has no
+ * inbound link from a live line. «Media» stays here until plan 52.1-16 removes
+ * it IN THE SAME COMMIT that deletes its page (DBT-13): the card says what
+ * exists at every commit — no page without a door, no door without a page.
  */
 
 /**
- * The six addresses a night is operated from, and the label each carries.
+ * The addresses a night is operated from, and the label each carries — the
+ * label is the page's own title, so the link and the page say the same word.
  *
  * `as const` is load-bearing: without it the segment widens to `string`, the
  * template stops matching any dynamic route, and the build fails loudly. It
@@ -117,6 +133,9 @@ const ROW_CONTROLS = [
   { segment: "tickets", label: "Manage Tickets" },
   { segment: "sales", label: "Sales" },
   { segment: "guest-list", label: "Guest List" },
+  { segment: "assignments", label: "Who works" },
+  { segment: "drinks", label: "Drink Menu" },
+  { segment: "review", label: "Door review" },
   { segment: "media", label: "Media" },
   { segment: "analytics", label: "Analytics" },
 ] as const;
@@ -277,15 +296,15 @@ export default function EventList({
 
           {/* The row of controls.
 
-              Every one of the eight is at the 44px floor now, and none of them
+              Every control in this row is at the 44px floor, and none of them
               shrinks: the shrink allow-list is closed at one item and this row
-              is not on it. Where the eight no longer fit on one line at phone
+              is not on it. Where they no longer fit on one line at phone
               width they WRAP — the row already wrapped, and no breakpoint
               prefix is introduced to hide the width they need. */}
           <div className="mt-3 flex items-center gap-2 flex-wrap">
-            {/* The six work addresses, only on a night the viewer may manage.
+            {/* The work addresses, only on a night the viewer may manage.
                 On anyone else's night the row keeps Preview / View page alone:
-                every one of these six pages re-checks ownership on the server
+                every page this tuple names re-checks its guard on the server
                 and would refuse, so offering the link would offer a refusal. */}
             {canManage(event) && ROW_CONTROLS.map(({ segment, label }) => (
               <Link
