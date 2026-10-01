@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * verify-routes.mjs — the two route categories `npm run build` cannot see.
+ * verify-routes.mjs — the route checks `npm run build` cannot perform.
  *
  * ── Which half of CAP-02 lives here, and which half lives in the compiler ─────
  *
@@ -21,7 +21,7 @@
  *
  *   1. database ↔ `CAP`        `npm run verify:capabilities`   (needs a database)
  *   2. `CAP` ↔ the map         `next build`                    (two type errors)
- *   3. the map ↔ the disk      THIS SCRIPT                     (two checks below)
+ *   3. the map ↔ the disk      THIS SCRIPT                     (checks 1-2 below)
  *
  * `34-RESEARCH.md` proposed link 3 as "a module-load `throw` comparing the two
  * sets". That is not writable: the set of files on disk does not exist at module
@@ -104,7 +104,34 @@
  * A green means every statically visible literal names a declared address. It
  * does not mean every `revalidatePath` in this repository is correct.
  *
- * Zero dependencies, Node built-ins only. Exit 1 when either check fails.
+ * ── Check 4: every work page of a night has a way in (2026-10-01, DBT-19) ───
+ *
+ * *«non vedo Who works, dove si trova esattamente?»* — the owner, 2026-10-01.
+ * The page existed, was declared in the map, passed checks 1-3 and the build,
+ * and nobody could reach it: no link pointed at it. «Door review» was in the
+ * same state. A page nobody links does not exist (D-52.1-24).
+ *
+ * The compiler cannot see this for the reason stated at the top: the dynamic
+ * routes under `/admin/events/[id]/` are not in the bare route union, so no
+ * type says "this address is unreachable". And the census of check 2 proves a
+ * page is BOUND, not that it is LINKED. So this check walks every `page.tsx`
+ * under `src/app/(admin)/admin/(work)/events/[id]/` and asks, for each segment,
+ * for at least one inbound link from a LIVE line (comments blanked):
+ *
+ *   · an entry `segment: "<seg>"` inside `ROW_CONTROLS` of
+ *     `src/components/events/EventList.tsx` — and the tuple only counts while
+ *     the card still renders it, i.e. while a live `href` there composes
+ *     `/admin/events/${…}/${segment}`;
+ *   · or an `href` attribute in a `.tsx` under `src/` composing
+ *     `` `/admin/events/${…}/<seg>` `` followed by a backtick, `?` or `/`.
+ *
+ * Not an inbound link: a link from the page to itself (any file under a
+ * `events/[id]/<seg>/` directory, in either route tree), `revalidatePath`,
+ * `redirect`, `router.push`, and links in e-mails — none of those is a place
+ * a person clicks inside the app to arrive. A page with no way in fails, unless
+ * it is named in INBOUND_EXEMPT with the reason it lives without a door.
+ *
+ * Zero dependencies, Node built-ins only. Exit 1 when any check fails.
  *
  * Usage:  npm run verify:routes
  *         node scripts/verify-routes.mjs --print-patterns
@@ -150,6 +177,24 @@ const PUBLIC_ALLOW = [
   // turned into a rubber stamp.
   ["/tickets/[id]", "a member's own ticket — src/app/(public)/tickets/[id]/page.tsx, gated by ownership in the page, not by a route rule"],
 ];
+
+/**
+ * Work pages of a night that may live WITHOUT an inbound link, each with the
+ * reason — the same `[entry, reason]` form as PUBLIC_ALLOW.
+ *
+ * Born EMPTY on 2026-10-01 (plan 52.1-03, DBT-19): «Door review» was the one
+ * candidate, and it got a link in the card instead of an exemption — a page to
+ * open after the night is still a page someone has to find. Every future entry
+ * names why a page lives with no door; an unexplained entry is the hole this
+ * check exists to close (`.claude/rules/ai-engineering.md`, *un gate deve poter
+ * fallire*). The list is printed on every run, so it cannot grow unseen.
+ */
+const INBOUND_EXEMPT = [
+  // ["<segment>", "<why this page lives without an inbound link>"],
+];
+
+const EVENT_WORK_DIR = join(ROOT, "src/app/(admin)/admin/(work)/events/[id]");
+const EVENT_CARD_FILE = join(ROOT, "src/components/events/EventList.tsx");
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Comment blanking. Positions are preserved (comments become spaces, newlines
@@ -469,7 +514,7 @@ const offenders = literals.filter(
   (call) => !matchesAny(call.value, patterns) && !matchesAny(call.value, allowPatterns)
 );
 
-console.log("[1/2] revalidatePath arguments");
+console.log("[1/4] revalidatePath arguments");
 console.log(`  files scanned:                 ${fileCount}`);
 console.log(`  literal arguments read:        ${literals.length}`);
 console.log(`  non-literal arguments skipped: ${opaque.length}  (invisible to this parse)`);
@@ -493,7 +538,7 @@ console.log("");
 const census = censusAddresses();
 const unbound = census.filter((page) => !matchesAny(page.address, patterns));
 
-console.log("[2/2] route census — src/app/(admin)");
+console.log("[2/4] route census — src/app/(admin)");
 console.log(`  pages found:                   ${census.length}`);
 console.log(
   `  patterns under /admin:         ${
@@ -513,7 +558,7 @@ if (unbound.length === 0) {
 console.log("");
 
 /* ────────────────────────────────────────────────────────────────────────────
- * [3/3] IL RIMBALZO E L'ELENCO DI CIO' CHE E' AMMESSO NON POSSONO DIVERGERE
+ * [3/4] IL RIMBALZO E L'ELENCO DI CIO' CHE E' AMMESSO NON POSSONO DIVERGERE
  *
  * Blocker **D7**, chiuso il 2026-08-26: il middleware rimbalzava chi non ha una
  * sessione scrivendo `?redirect=`, e la pagina di accesso legge `?next=`. I due
@@ -535,7 +580,7 @@ console.log("");
  * su un flusso che usano tutti mentre si chiude un difetto di comodita'.
  * ──────────────────────────────────────────────────────────────────────────── */
 
-console.log("[3/3] il rimbalzo e l'elenco di cio' che e' ammesso");
+console.log("[3/4] il rimbalzo e l'elenco di cio' che e' ammesso");
 
 const { PROTECTED_PREFIXES, resolveNext, DEFAULT_NEXT } = await import(
   pathToFileURL(join(ROOT, "src", "lib", "routes", "next-redirect.ts")).href
@@ -641,6 +686,99 @@ if (scritto === null || letto === null) {
 if (ammessiRossi > 0 || rifiutiRossi > 0) failed = true;
 console.log("");
 
+/* ── Check 4 — inbound links (DBT-19, D-52.1-24; see the docblock) ─────────── */
+
+console.log("[4/4] inbound links — (work)/events/[id]");
+
+const workSegments = readdirSync(EVENT_WORK_DIR)
+  .filter((entry) => statSync(join(EVENT_WORK_DIR, entry)).isDirectory())
+  .filter((entry) => {
+    try {
+      return statSync(join(EVENT_WORK_DIR, entry, "page.tsx")).isFile();
+    } catch {
+      return false;
+    }
+  })
+  .sort();
+
+const escapeRe = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/** `[{ file, line }]` per segment: the first inbound link found wins the print. */
+const inbound = new Map(workSegments.map((segment) => [segment, []]));
+
+// (a) the card. The tuple counts only while a live href renders it.
+const cardOriginal = readFileSync(EVENT_CARD_FILE, "utf8");
+const cardSource = blankComments(cardOriginal);
+const cardRelative = EVENT_CARD_FILE.slice(ROOT.length + 1);
+const tupleStart = cardSource.indexOf("const ROW_CONTROLS = [");
+const tupleEnd = tupleStart === -1 ? -1 : cardSource.indexOf("] as const", tupleStart);
+const cardRenders = /href\s*=\s*\{\s*`\/admin\/events\/\$\{[^}`]*\}\/\$\{\s*segment\s*\}`/.test(cardSource);
+
+if (tupleStart === -1 || tupleEnd === -1) {
+  failed = true;
+  console.log(`  FAIL — ROW_CONTROLS not found in ${cardRelative}: the parse, not the card, is`);
+  console.log("      broken — fix it here rather than dropping the card as a source of links.");
+} else if (!cardRenders) {
+  console.log(`  note — ${cardRelative} no longer renders ROW_CONTROLS as an href:`);
+  console.log("      its entries are not counted as inbound links.");
+} else {
+  const tuple = cardSource.slice(tupleStart, tupleEnd);
+  for (const match of tuple.matchAll(/segment:\s*"([^"\n]+)"/g)) {
+    const list = inbound.get(match[1]);
+    if (list) list.push({ file: cardRelative, line: lineOf(cardSource, tupleStart + match.index) });
+  }
+}
+
+// (b) every live `href` under src/ naming the segment directly.
+for (const file of walkFiles(SRC_DIR, [".tsx"])) {
+  const relative = file.slice(ROOT.length + 1);
+  const source = blankComments(readFileSync(file, "utf8"));
+  for (const segment of workSegments) {
+    // A page linking to itself is not a way in — in either route tree.
+    if (relative.includes(`/events/[id]/${segment}/`)) continue;
+    const pattern = new RegExp(
+      "href\\s*=\\s*\\{\\s*`\\/admin\\/events\\/\\$\\{[^}`]*\\}\\/" +
+        escapeRe(segment) +
+        "(?=[`?/])",
+      "g"
+    );
+    for (const match of source.matchAll(pattern)) {
+      inbound.get(segment).push({ file: relative, line: lineOf(source, match.index) });
+    }
+  }
+}
+
+const exemptSegments = new Map(INBOUND_EXEMPT);
+console.log(`  pages found:                   ${workSegments.length}`);
+console.log(`  exemptions (INBOUND_EXEMPT):    ${exemptSegments.size}`);
+for (const [segment, reason] of exemptSegments) {
+  console.log(`      exempt   ${segment} — ${reason}`);
+}
+const doorless = [];
+for (const segment of workSegments) {
+  const links = inbound.get(segment);
+  if (links.length > 0) {
+    const first = links[0];
+    const more = links.length > 1 ? `  (+${links.length - 1})` : "";
+    console.log(`      ${segment.padEnd(12)} <- ${first.file}:${first.line}${more}`);
+  } else if (exemptSegments.has(segment)) {
+    console.log(`      ${segment.padEnd(12)} <- none, exempt`);
+  } else {
+    doorless.push(segment);
+    console.log(`      ${segment.padEnd(12)} <- NONE`);
+  }
+}
+if (doorless.length === 0) {
+  console.log("  ok — every work page of a night has an inbound link from a live line.");
+} else {
+  failed = true;
+  console.log(`  FAIL — ${doorless.length} page(s) nobody can reach by clicking: ${doorless.join(", ")}`);
+  console.log("      Link them from the card (ROW_CONTROLS) or from a page that leads there,");
+  console.log("      or name them in INBOUND_EXEMPT with the reason. A page nobody links does");
+  console.log("      not exist (plan 52.1-03, DBT-19, D-52.1-24).");
+}
+console.log("");
+
 if (failed) {
   console.log("FAIL — see above.");
   console.log(
@@ -649,10 +787,14 @@ if (failed) {
   console.log(
     "  is that worklist. Do not widen PUBLIC_ALLOW or the pattern slice to make it green."
   );
+  console.log(
+    "  A red check 4 is a work page with no way in (plan 52.1-03, DBT-19): link it, do not"
+  );
+  console.log("  exempt it to make the run green.");
   process.exit(1);
 }
 
-console.log("PASS — tutti e tre i controlli verdi.");
+console.log("PASS — tutti e quattro i controlli verdi.");
 console.log(
   "  This means every statically visible literal names a declared address, not that every"
 );
