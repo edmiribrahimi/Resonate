@@ -617,7 +617,7 @@ saltati sono percorsi; gli avvisi della review sono chiusi.
 | **DBT-20** — **aggiunto il 2026-10-01 (il proprietario: «se mi arriva una lista di 15 nomi per la guestlist devo aggiungerli uno alla volta?»)** | **La guest list si incolla, non si ribatte.** Nella pagina Guest List, accanto ad «Add Guest», un riquadro **«Add several»**: un nome per riga, con l'email facoltativa dopo una virgola o uno spazio (`Nome Cognome, nome@dominio`), serata scelta una volta per tutta la lista. Prima di salvare, un'**anteprima** riga per riga: cosa e' stato letto come nome e cosa come email, le righe che non si capiscono segnate e **non** salvate, i doppioni gia' in lista segnalati. Al salvataggio ogni riga passa dalla **stessa** azione di oggi (`addGuest`, `guest-list/actions.ts:97`): stessa attribuzione `added_by`, stessa mail d'invito per chi ha l'email, stesso conteggio — l'import e' una comodita' di inserimento, **non** una via nuova d'ingresso (`ticketing-payments.md`, gate guest list; `community-membership.md`, gate nessuna corsia grigia). Esito finale: quante aggiunte, quante saltate e perche'. Provato sul laboratorio con una lista di 15 righe, di cui due sbagliate apposta. |
 
 **Depends on:** Phase 52
-**Plans:** 6/30 plans executed
+**Plans:** 8/30 plans executed
 
 Plans:
 
@@ -628,8 +628,8 @@ Plans:
 - [x] 52.1-05-PLAN.md — DBT-17: Manage tickets configura, Sales racconta, un solo Refund, mail a /sales
 - [x] 52.1-06-PLAN.md — DBT-18: M-A `sort_order` + `reorder_ticket_tiers`, applicata al laboratorio [BLOCKING]
 - [ ] 52.1-07-PLAN.md — DBT-15: la domanda al professionista sui dati degli ordini mai pagati, consegnata dopo l'atto 3 e prima del codice della cancellazione (onda 12)
-- [ ] 52.1-08-PLAN.md — DBT-18: un solo ordinamento in tutti i lettori, `createTier` in coda, `reorderTiers`
-- [ ] 52.1-09-PLAN.md — laboratorio U1: P-521-A/B/C da telefono, misura «prima» della porta, approvazione visiva
+- [x] 52.1-08-PLAN.md — DBT-18: un solo ordinamento in tutti i lettori, `createTier` in coda, `reorderTiers`
+- [x] 52.1-09-PLAN.md — laboratorio U1: P-521-A/B/C da telefono, misura «prima» della porta, approvazione visiva
 - [ ] 52.1-10-PLAN.md — DBT-18: «Reorder» con `@dnd-kit` (maniglia, 500 ms, Done/Cancel)
 - [ ] 52.1-11-PLAN.md — atto 1: U1 in produzione, nessuna migration
 - [ ] 52.1-12-PLAN.md — laboratorio U2: P-521-D da iPhone, iPad e desktop; le due assunzioni confermate
