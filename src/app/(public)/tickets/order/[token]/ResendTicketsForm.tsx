@@ -59,7 +59,7 @@ export default function ResendTicketsForm() {
       <label htmlFor={inputId} className="sr-only">
         Email used for the order
       </label>
-      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+      <div className="mt-3 flex flex-col gap-2 md:flex-row">
         <input
           id={inputId}
           type="email"

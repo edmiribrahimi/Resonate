@@ -5,7 +5,7 @@
  *
  * WHAT IT ASSERTS, in one sentence: **every `<table` under `src/` is either
  * inside the `DataTable` primitive, on a declared list that can only shrink, or
- * the one named exemption; the primitive switches between its two trees at
+ * one of the named exemptions (two since plan 52.1-02); the primitive switches between its two trees at
  * exactly one breakpoint and never transforms either of them; and no file that
  * imports the primitive introduces a second breakpoint for the same switch.**
  *
@@ -59,7 +59,7 @@
  * ── THE THREE CHECKS ────────────────────────────────────────────────────────
  *
  *   A. **One table implementation.** Every `<table` under `src/` lives in the
- *      primitive, on `REMAINING`, or in the one exemption. A file carrying one
+ *      primitive, on `REMAINING`, or in a named exemption. A file carrying one
  *      and named by none of the three FAILS. **The literal count is printed**,
  *      so the gate says what it counted rather than only whether it was happy.
  *
@@ -388,7 +388,7 @@ const DISPLAY_OVERRIDE_RE = new RegExp(
 );
 
 /* ────────────────────────────────────────────────────────────────────────────
- * The one exemption — a named constant, with its reason, before the first run
+ * The exemptions — named constants, each with its reason, before the first run
  * ──────────────────────────────────────────────────────────────────────────── */
 
 /**
@@ -434,6 +434,45 @@ export const REVIEW_GRID_REASON =
   '41.1-09: the undeclared eleven-pixel type is gone and the grid takes the label/data size ' +
   'at 6.78:1, and it scrolls slightly more for it';
 
+/**
+ * The organizer mail. **Exempt from check A, permanently** — the second
+ * declared exemption, added by plan 52.1-02 (DBT-16, D-52.1-21, 2026-10-01).
+ *
+ * `src/lib/tickets/organizer-alert.ts` builds the order summary that reaches the
+ * organisation's own inbox as a string of HTML **for a mail client**. A mail
+ * client runs no React and honours almost no layout CSS, so `DataTable` — a
+ * React component switching at `md:` — cannot render there at all; a `<table>`
+ * is the one layout that holds in Outlook and Gmail. It was in production from
+ * 2026-09-25 and this gate read it as a hand-rolled table from that day on: a
+ * red that measured the wrong thing for days is a red nobody reads.
+ *
+ * **Why a second constant and not a `REMAINING` entry tagged `exempt`.** The
+ * same argument as `REVIEW_GRID_FILE` above, and the plan's declared choice:
+ * an exemption and a debt are different kinds of thing. `REMAINING` is a list
+ * that can only shrink and is empty today, so `MIGRATION_CLOSED` is what this
+ * gate reads; one entry that will never convert would put that closure back
+ * behind a list that can never reach zero. It is treated exactly like the first
+ * exemption: its file must exist on disk (a refusal otherwise), it may never
+ * also sit on `REMAINING`, and it is printed with its reason on every run.
+ */
+export const ORGANIZER_MAIL_FILE = 'src/lib/tickets/organizer-alert.ts';
+
+export const ORGANIZER_MAIL_REASON =
+  'exempt from check A — HTML for a mail client, not for the app: mail clients run no React ' +
+  'and honour almost no layout CSS, so DataTable cannot render there, and a <table> is the one ' +
+  'layout that holds in Outlook and Gmail (DBT-16, D-52.1-21, plan 52.1-02, 2026-10-01)';
+
+/**
+ * Every declared exemption, in the order they are printed. Each is a named
+ * constant above with its reason; this list only enumerates them so that the
+ * existence check, the both-places refusal, the print and the skip in check A
+ * cannot drift apart from one another.
+ */
+export const EXEMPTIONS = [
+  [REVIEW_GRID_FILE, REVIEW_GRID_REASON],
+  [ORGANIZER_MAIL_FILE, ORGANIZER_MAIL_REASON],
+];
+
 /* ────────────────────────────────────────────────────────────────────────────
  * The group tag — a closed vocabulary, validated at load
  * ──────────────────────────────────────────────────────────────────────────── */
@@ -466,8 +505,8 @@ export const REVIEW_GRID_REASON =
  *   - `exempt`              — carried for a reason that will never be paid
  *
  * `exempt` is in the vocabulary for completeness and **is not used here**: this
- * gate's one exemption is a separate constant, deliberately not a `REMAINING`
- * entry (see `REVIEW_GRID_FILE` above and the refusal at the foot of the
+ * gate's exemptions are separate constants, deliberately not a `REMAINING`
+ * entry (see `REVIEW_GRID_FILE` and `ORGANIZER_MAIL_FILE` above and the refusal at the foot of the
  * pre-flight checks). If an `exempt` tag ever appears on this list, read that
  * refusal's reasoning first — it almost certainly means an exemption has been
  * tidied onto a list that can only shrink.
@@ -709,13 +748,15 @@ if (!existsSync(`${ROOT}/${PRIMITIVE_FILE}`)) {
   );
 }
 
-if (!existsSync(`${ROOT}/${REVIEW_GRID_FILE}`)) {
-  refuse(
-    `the declared exemption names ${REVIEW_GRID_FILE}, which is not on disk.\n` +
-      '       Exempting whatever later moves into that name would be worse than refusing:\n' +
-      '       an exemption is a decision about a specific file, not about a path. Nothing\n' +
-      '       was measured.'
-  );
+for (const [exemptFile] of EXEMPTIONS) {
+  if (!existsSync(`${ROOT}/${exemptFile}`)) {
+    refuse(
+      `the declared exemption names ${exemptFile}, which is not on disk.\n` +
+        '       Exempting whatever later moves into that name would be worse than refusing:\n' +
+        '       an exemption is a decision about a specific file, not about a path. Nothing\n' +
+        '       was measured.'
+    );
+  }
 }
 
 if (REMAINING.length === 0) {
@@ -780,9 +821,10 @@ for (const entry of REMAINING) {
   }
 }
 
-if (declaredPaths.has(REVIEW_GRID_FILE)) {
+for (const [exemptFile] of EXEMPTIONS) {
+  if (!declaredPaths.has(exemptFile)) continue;
   refuse(
-    `${REVIEW_GRID_FILE} is BOTH the declared exemption and a REMAINING entry.\n` +
+    `${exemptFile} is BOTH the declared exemption and a REMAINING entry.\n` +
       '       Those are different kinds of thing: a file that will never convert, placed on a\n' +
       '       list that can only shrink, guarantees the number never reaches zero — and a debt\n' +
       '       whose number cannot reach zero is not a debt, it is a decoration.'
@@ -832,9 +874,11 @@ console.log(
   `  lines blanked as comments     : ${commentLinesBlanked}   (DEF-41-02, D-41.1-07)\n`
 );
 
-console.log('  declared exemptions: 1\n');
-console.log(`      ${REVIEW_GRID_FILE}`);
-console.log(`         ${REVIEW_GRID_REASON}\n`);
+console.log(`  declared exemptions: ${EXEMPTIONS.length}\n`);
+for (const [exemptFile, exemptReason] of EXEMPTIONS) {
+  console.log(`      ${exemptFile}`);
+  console.log(`         ${exemptReason}\n`);
+}
 
 /* ── check A — one table implementation ───────────────────────────────────── */
 
@@ -844,7 +888,7 @@ const primitiveTables = countNeedle(primitiveLines, TABLE_ELEMENT);
 const undeclaredTables = [];
 for (const [file, hits] of measuredTables) {
   if (file === PRIMITIVE_FILE) continue;
-  if (file === REVIEW_GRID_FILE) continue;
+  if (EXEMPTIONS.some(([exemptFile]) => exemptFile === file)) continue;
   if (declaredPaths.has(file)) continue;
   undeclaredTables.push({ file, hits });
 }
@@ -854,7 +898,7 @@ console.log(`      literal "${TABLE_ELEMENT}" occurrences  : ${literalTableCount
 console.log(`      files carrying at least one   : ${measuredTables.size}`);
 console.log(`      in the primitive              : ${primitiveTables}   (expected ${PRIMITIVE_TABLE_COUNT})`);
 console.log(`      on REMAINING                  : ${REMAINING.length}`);
-console.log(`      exempt                        : 1\n`);
+console.log(`      exempt                        : ${EXEMPTIONS.length}\n`);
 
 if (primitiveTables < PRIMITIVE_TABLE_COUNT) {
   failures.push('A');
@@ -888,7 +932,7 @@ if (undeclaredTables.length > 0) {
 if (!failures.includes('A')) {
   console.log(
     `  ✓ A  all ${literalTableCount} table element(s) in ${measuredTables.size} file(s) are accounted for:\n` +
-      `       ${primitiveTables} in the primitive, ${REMAINING.length} on REMAINING, 1 exempt\n`
+      `       ${primitiveTables} in the primitive, ${REMAINING.length} on REMAINING, ${EXEMPTIONS.length} exempt\n`
   );
 }
 
@@ -1116,7 +1160,7 @@ if (failures.length === 0) {
   const owed = REMAINING.length - missing.length - stale.length;
   console.log(
     `  TABLES_OK — all three checks passed. REMAINING = ${owed} file(s) still render a table\n` +
-      '  of their own, and one is exempt for good.'
+      `  of their own, and ${EXEMPTIONS.length} are exempt for good.`
   );
   console.log(
     '\n  That number is the point of the green, not the tick. Read the header before treating\n' +
