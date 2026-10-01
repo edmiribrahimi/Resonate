@@ -617,16 +617,16 @@ saltati sono percorsi; gli avvisi della review sono chiusi.
 | **DBT-20** — **aggiunto il 2026-10-01 (il proprietario: «se mi arriva una lista di 15 nomi per la guestlist devo aggiungerli uno alla volta?»)** | **La guest list si incolla, non si ribatte.** Nella pagina Guest List, accanto ad «Add Guest», un riquadro **«Add several»**: un nome per riga, con l'email facoltativa dopo una virgola o uno spazio (`Nome Cognome, nome@dominio`), serata scelta una volta per tutta la lista. Prima di salvare, un'**anteprima** riga per riga: cosa e' stato letto come nome e cosa come email, le righe che non si capiscono segnate e **non** salvate, i doppioni gia' in lista segnalati. Al salvataggio ogni riga passa dalla **stessa** azione di oggi (`addGuest`, `guest-list/actions.ts:97`): stessa attribuzione `added_by`, stessa mail d'invito per chi ha l'email, stesso conteggio — l'import e' una comodita' di inserimento, **non** una via nuova d'ingresso (`ticketing-payments.md`, gate guest list; `community-membership.md`, gate nessuna corsia grigia). Esito finale: quante aggiunte, quante saltate e perche'. Provato sul laboratorio con una lista di 15 righe, di cui due sbagliate apposta. |
 
 **Depends on:** Phase 52
-**Plans:** 28 plans in 11 onde — pianificata il 2026-10-01. Gli atti spingono prefissi di `main` fissati a fine onda (D-52.1-27): U1 (onda 1) → atto 1, U2 (onda 3) → atto 2, U4 (onda 6) → atto 3, U5 (onda 8) → atto 4.
+**Plans:** 30 plans in 17 onde — pianificata il 2026-10-01, revisione 1 lo stesso giorno (16 → 16 + 29, 28 → 28 + 30). Gli atti spingono prefissi di `main` fissati a fine onda (D-52.1-27): U1 (fine onda 2) → atto 1 (onda 4), U2 (fine onda 4) → atto 2 (onda 6), U4 (fine onda 8) → atto 3 (onda 11, default `solo-codice`), U5 (fine onda 13) → atto 4 (onda 15). Onda 1 = solo procedure (01) e `verify` verde (02); ogni piano di codice dipende da entrambi. **La porta e la cover (atto 3) prima dei carrelli:** DBT-15 (21, 23, 24) e la domanda al professionista (07) partono dopo l'atto 3.
 
 Plans:
-- [ ] 52.1-01-PLAN.md — le procedure P-521-A..I e PRE-LAB scritte prima del codice
-- [ ] 52.1-02-PLAN.md — DBT-16: `npm run verify` verde (esenzione della mail, varianti di contenitore, `md:`, digest rifissato)
+- [ ] 52.1-01-PLAN.md — le procedure P-521-A..I e PRE-LAB scritte prima del codice e di ogni corsa sul laboratorio (onda 1)
+- [ ] 52.1-02-PLAN.md — DBT-16: `npm run verify` verde (esenzione della mail, varianti di contenitore, `md:`, digest rifissato) (onda 1)
 - [ ] 52.1-03-PLAN.md — DBT-19: Who works, Drink Menu, Door review nella card; controllo inverso `[4/4]` in `verify:routes`
 - [ ] 52.1-04-PLAN.md — DBT-20: «Add several» nella guest list, anteprima, stessa `addGuest` in sequenza
 - [ ] 52.1-05-PLAN.md — DBT-17: Manage tickets configura, Sales racconta, un solo Refund, mail a /sales
 - [ ] 52.1-06-PLAN.md — DBT-18: M-A `sort_order` + `reorder_ticket_tiers`, applicata al laboratorio [BLOCKING]
-- [ ] 52.1-07-PLAN.md — DBT-15: la domanda al professionista sui dati degli ordini mai pagati, consegnata subito
+- [ ] 52.1-07-PLAN.md — DBT-15: la domanda al professionista sui dati degli ordini mai pagati, consegnata dopo l'atto 3 e prima del codice della cancellazione (onda 12)
 - [ ] 52.1-08-PLAN.md — DBT-18: un solo ordinamento in tutti i lettori, `createTier` in coda, `reorderTiers`
 - [ ] 52.1-09-PLAN.md — laboratorio U1: P-521-A/B/C da telefono, misura «prima» della porta, approvazione visiva
 - [ ] 52.1-10-PLAN.md — DBT-18: «Reorder» con `@dnd-kit` (maniglia, 500 ms, Done/Cancel)
@@ -635,7 +635,7 @@ Plans:
 - [ ] 52.1-13-PLAN.md — DBT-14: cover dal server (strada A misurata, `finalize-cover`, M-C scritta, gate esteso)
 - [ ] 52.1-14-PLAN.md — DBT-05 + WR-05: la porta avvisa sulla radio; `aria-live` sempre montata
 - [ ] 52.1-15-PLAN.md — atto 2: M-A in produzione → U2, ordine pubblico invariato
-- [ ] 52.1-16-PLAN.md — DBT-13: la gallery esce dal codice (perimetro ristretto, l'archivio resta), gate e persona
+- [ ] 52.1-16-PLAN.md — DBT-13: media del laboratorio tolti per chiave, la gallery esce dal codice (perimetro ristretto, l'archivio resta); intervallo rosso n. 2 aperto
 - [ ] 52.1-17-PLAN.md — DBT-14 strada B (`heic-decode`), condizionale: solo se la strada A non regge
 - [ ] 52.1-18-PLAN.md — DBT-13: `gallery.view` e `media.upload` fuori dal catalogo, M-D scritta, 56/26/30
 - [ ] 52.1-19-PLAN.md — DBT-06/07: IN-03, IN-07, ricognizione lessicale, IN-06 citata
@@ -644,10 +644,12 @@ Plans:
 - [ ] 52.1-22-PLAN.md — laboratorio U4: P-521-H «dopo» su Android e iPhone, WR-05, P-521-I (DBT-04)
 - [ ] 52.1-23-PLAN.md — DBT-15: `utm_source` ridotto, `checkout_form` dal segnale firmato
 - [ ] 52.1-24-PLAN.md — DBT-15: imbuto esteso, «All nights», cancellazione PII spenta dietro `ORDER_PII_CLEAR_ENABLED`
-- [ ] 52.1-25-PLAN.md — atto 3: U4 → M-C → M-D → bucket `event-media` dall'API Storage
+- [ ] 52.1-25-PLAN.md — atto 3: U4 (default `solo-codice`) → M-C → M-D → bucket `event-media` dall'API Storage, se concessi
 - [ ] 52.1-26-PLAN.md — laboratorio U5: P-521-G con ordini veri, interruttore solo sul ramo lab
-- [ ] 52.1-27-PLAN.md — atto 4: M-B → U5, cancellazione spenta
-- [ ] 52.1-28-PLAN.md — persona 1.31.0, 52.1-VERIFICATION.md con `file:riga` per i 14 requisiti, approvazione
+- [ ] 52.1-27-PLAN.md — atto 4: M-B → U5, cancellazione spenta; i residui dell'atto 3 solo se concessi a parte
+- [ ] 52.1-28-PLAN.md — persona 1.31.0 riletta dal prodotto spedito (media/porta/accesso; biglietti/analytics), `verify:persona` dopo
+- [ ] 52.1-29-PLAN.md — DBT-13/06/07: script della gallery cancellati, voci di gate ritirate, `verify:media-strip` ri-puntato, persona 1.30.0; intervallo rosso n. 2 chiuso (onda 7)
+- [ ] 52.1-30-PLAN.md — 52.1-VERIFICATION.md con `file:riga` per i 14 requisiti (DBT-15 parziale senza parere), approvazione del proprietario (ultimo piano)
 
 > **Ordine dentro la fase:** DBT-01 e DBT-03 sono decisioni/feature Critical
 > (media, sede segreta) e vogliono la domanda al proprietario prima del codice
