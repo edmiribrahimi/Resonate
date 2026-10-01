@@ -516,8 +516,22 @@ export interface TicketTier {
   event_id: string;
   party_id: string | null;
   name: string;
+  /**
+   * Cosa include il livello (`20260924100000_tier_description.sql`). Copy
+   * pubblica, letta prima dell'acquisto: mai un posto (venue-secrecy).
+   */
+  description: string | null;
   price: number;
   quantity: number | null;
+  /**
+   * Posizione nella lista della serata (`party_id`; nullo = Event Pass
+   * dell'evento), decisa da chi la gestisce (DBT-18, D-52.1-23,
+   * `20261001120000_tier_sort_order.sql`). Si cambia solo con la RPC
+   * `reorder_ticket_tiers(p_event_id, p_party_id, p_tier_ids) -> integer`,
+   * che salva la lista intera o rifiuta (`reorder.stale_list`,
+   * `reorder.partial`). I lettori ordinano per `sort_order, price, created_at`.
+   */
+  sort_order: number;
   show_remaining: boolean;
   starts_at: string | null;
   expires_at: string | null;
