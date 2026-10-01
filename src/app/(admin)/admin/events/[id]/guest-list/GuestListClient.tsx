@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Chip";
 import { Input, Select } from "@/components/ui/Input";
 import { addGuest, removeGuest } from "./actions";
+import AddSeveralGuests from "./AddSeveralGuests";
 import type { GuestListEntry, GuestListStatus } from "@/types/database";
 
 /**
@@ -239,6 +240,13 @@ export default function GuestListClient({
           </Button>
         </form>
       </Card>
+
+      {/*
+        DBT-20 (D-52.1-25): a pasted list, previewed before it is saved. It
+        calls the same `addGuest` as the form above, once per line and in
+        sequence — no new action, no new lane. See its docblock.
+      */}
+      <AddSeveralGuests eventId={eventId} parties={parties} entries={entries} />
 
       {/* Summary Stats */}
       {entries.length > 0 && (
