@@ -620,6 +620,7 @@ saltati sono percorsi; gli avvisi della review sono chiusi.
 **Plans:** 30 plans in 17 onde — pianificata il 2026-10-01, revisione 1 lo stesso giorno (16 → 16 + 29, 28 → 28 + 30). Gli atti spingono prefissi di `main` fissati a fine onda (D-52.1-27): U1 (fine onda 2) → atto 1 (onda 4), U2 (fine onda 4) → atto 2 (onda 6), U4 (fine onda 8) → atto 3 (onda 11, default `solo-codice`), U5 (fine onda 13) → atto 4 (onda 15). Onda 1 = solo procedure (01) e `verify` verde (02); ogni piano di codice dipende da entrambi. **La porta e la cover (atto 3) prima dei carrelli:** DBT-15 (21, 23, 24) e la domanda al professionista (07) partono dopo l'atto 3.
 
 Plans:
+
 - [ ] 52.1-01-PLAN.md — le procedure P-521-A..I e PRE-LAB scritte prima del codice e di ogni corsa sul laboratorio (onda 1)
 - [ ] 52.1-02-PLAN.md — DBT-16: `npm run verify` verde (esenzione della mail, varianti di contenitore, `md:`, digest rifissato) (onda 1)
 - [ ] 52.1-03-PLAN.md — DBT-19: Who works, Drink Menu, Door review nella card; controllo inverso `[4/4]` in `verify:routes`
@@ -651,6 +652,10 @@ Plans:
 - [ ] 52.1-29-PLAN.md — DBT-13/06/07: script della gallery cancellati, voci di gate ritirate, `verify:media-strip` ri-puntato, persona 1.30.0; intervallo rosso n. 2 chiuso (onda 7)
 - [ ] 52.1-30-PLAN.md — 52.1-VERIFICATION.md con `file:riga` per i 14 requisiti (DBT-15 parziale senza parere), approvazione del proprietario (ultimo piano)
 
+**Cross-cutting constraints:**
+
+- L'atto e' dichiarato ESAURITO con l'ora
+
 > **Ordine dentro la fase:** DBT-01 e DBT-03 sono decisioni/feature Critical
 > (media, sede segreta) e vogliono la domanda al proprietario prima del codice
 > (`meta-gates.md`, «misura due volte»); DBT-06/07 sono ritocchi; DBT-04/05
@@ -669,6 +674,7 @@ fatti misurati quel giorno la governano:
   il modulo carta butta via il checkout e il Buy successivo crea un **nuovo**
   ordine. Non esiste alcun evento di analytics sull'inizio o la fine di un
   checkout biglietti: il tasso di abbandono e' ignoto.
+
 - **La mail di recupero e' vincolata nella forma, non nel gusto.** Garante
   privacy, provv. 17 luglio 2024, doc. web 10084158: senza una vendita
   effettiva il soft spam (art. 130 c. 4) non si applica; senza intento
@@ -676,6 +682,7 @@ fatti misurati quel giorno la governano:
   contestuale all'abbandono, senza offerte, prevista nell'informativa. Una
   seconda mail, o uno sconto, e' marketing e vuole un consenso che al checkout
   non si raccoglie.
+
 - **I piani decidono il meccanismo.** Vercel e' **Hobby** (cron solo
   giornalieri, con scarto fino a 59 minuti); Resend e' **free** (100 mail al
   giorno) e accetta l'invio programmato con annullamento — verificato il
@@ -707,12 +714,15 @@ il prodotto sa dire di cio' che e' gia' successo.
 - **D-52.2-01** — Il meccanismo della mail e' l'invio programmato di Resend con
   annullamento, non un cron ogni 5 minuti (servirebbe Vercel Pro, che non si
   compra per questo) e non `pg_cron` (scheduler invisibile).
+
 - **D-52.2-02** — Niente sconti, niente sequenze, niente SMS o WhatsApp: i primi
   due per il Garante e perche' il prezzo di un tier e' pubblico e uguale per
   tutti (`community-membership.md`, gate *stessa regola per tutti*); il terzo
   perche' il telefono e' un dato in piu' senza ragione dichiarata.
+
 - **D-52.2-03** — Nessun timer «riservato per N minuti»: un ordine aperto non
   riserva posti, e la promessa sarebbe falsa.
+
 - **D-52.2-04** — Per l'ordine del 2026-09-28 non si scrive a mano: nessun
   tentativo di pagamento, e una mail non prevista dall'informativa e' il caso
   Iliad in piccolo.
@@ -730,6 +740,7 @@ decide il proprietario.
 **Plans:** 17/17 plans executed — fase chiusa il 2026-09-30, VERIFICATION passed, prima mattina in produzione riletta il 2026-10-01
 
 Plans:
+
 - [x] 52.2-01-PLAN.md — le procedure PRE-LAB e A-F scritte prima del codice; VALIDATION onesta
 - [x] 52.2-02-PLAN.md — tre migration (ordini, rimborsi, categorie), tipi, vocabolario; applicate al laboratorio [BLOCKING]
 - [x] 52.2-03-PLAN.md — i mattoni SumUp: valid_until opzionale, disattivazione, rimborsi da events[], un solo POST al webhook
@@ -794,11 +805,14 @@ senza un aggettivo sul suono e senza un indirizzo che non sia gia' pubblico.
   pubblicazione in piu' il martedi'. **Niente feed podcast verso Apple e
   Spotify**: un episodio scaricabile e' distribuzione dei brani altrui, e le
   fonti riportano rimozioni e sospensioni.
+
 - **D-52.3-02** — Il player legge i nostri dati, non l'API SoundCloud (lo stato
   del `client_id` pubblico non e' certo); l'oEmbed di SoundCloud si usa al piu'
   in admin per verificare un link.
+
 - **D-52.3-03** — La grammatica dei titoli e' quella gia' decisa il 2026-08-15
   per SoundCloud; la pagina la mostra, non la reinventa.
+
 - **D-52.3-04** — Il canvas del 2026-09-30 non e' il riferimento visivo: e' un
   ordine di lettura (titolo, una frase, ascolta altrove, filtri, serata con i
   suoi slot, player in fondo). Il riferimento visivo e' l'app com'e' oggi.
@@ -814,6 +828,7 @@ in nessuna superficie, la scheda che porta all'artista.
 **Plans:** 0 plans
 
 Plans:
+
 - [ ] TBD (run /gsd-plan-phase 52.3 to break down)
 
 ### Phase 53: TASK
