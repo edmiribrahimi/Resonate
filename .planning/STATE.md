@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "2026-10-01 ~23:30Z(30/09) — FASE 52.2 CHIUSA: 52.2-VERIFICATION.md passed, «approvata» dal proprietario; persona 1.29.0; tre atti esauriti; in produzione dal 30/09 22:11Z con porta (22:41Z) e mail di ripresa (22:47Z) accese. DA FARE ALLA PROSSIMA SESSIONE (sola lettura): rileggere la prima corsa di close-pending-orders (07:05 UTC) e reconcile-refunds (07:30 UTC) del 2026-10-01 in produzione — atteso: l'ordine del 28/9 expired/never_attempted, checkout disattivato, 0 mail — e appenderla a 52.2-VERIFICATION.md «La prima mattina in produzione». POI: /gsd-plan-phase 52.1 con DBT-04/05/06/07/09/10/13/14/15/16/17/18 (15 carrelli per l'analisi, 16 verify rossi, 17 Sales/Manage tickets, 18 riordino tier). Documentazione spinta su origin/main a chiusura."
-last_updated: "2026-09-30T23:30:00.000Z"
-last_activity: 2026-09-30
+stopped_at: "2026-10-01 08:35Z — 52.2 CHIUSA E OSSERVATA: prima mattina in produzione riletta (close-pending-orders 08:01Z: 1 considerato, never_attempted, checkout disattivato; reconcile-refunds 08:13Z: silenzio = nulla da riconciliare; 0 pending residui, 0 refunds, 0 mail) e appesa a 52.2-VERIFICATION.md. Nota per la 52.1: reconcile-refunds non logga un riepilogo quando non fa nulla. ORA: /gsd-plan-phase 52.1 con DBT-04/05/06/07/09/10/13/14/15/16/17/18/19/20 — ordine deciso 2026-10-01: 19, 20, 17, 18, poi il resto; scadenza: 52.1 e 52.3 in produzione entro gio 8/10."
+last_updated: "2026-10-01T08:35:00.000Z"
+last_activity: 2026-10-01
 progress:
   total_phases: 15
   completed_phases: 6
