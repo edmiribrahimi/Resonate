@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "2026-10-01 10:20Z — FASE 52.1 PIANIFICATA: 30 piani in 17 onde, plan-checker passed al 2° giro (commit d1152367), nyquist_compliant true. Quattro atti su prefissi di main: atto 1 = U1 (DBT-16, 19, 20, 17, nessuna migration) → atto 2 = U2 (M-A sort_order + DBT-18) → atto 3 = U4 (cover dal server, gallery ristretta, porta DBT-05, review; default solo-codice) → atto 4 = U5 (M-B + DBT-15, cancellazione PII spenta). Sei decisioni della ricerca prese sulle raccomandazioni e portate come assunzioni da confermare negli atti. Scadenza: tutto in produzione entro gio 8/10; se slitta, slitta DBT-15, non la porta. PRIMA della 52.1 e' stata riletta la prima mattina della 52.2 in produzione (tutto come atteso). ORA: /gsd-execute-phase 52.1 (prima /clear)."
-last_updated: "2026-10-01T10:20:00.000Z"
+stopped_at: "2026-10-01 10:25Z — FASE 52.1 IN ESECUZIONE: onda 1/17 (01 procedure, 02 verify verde) in corso. Quattro atti su prefissi di main (vedi 52.1-11/15/25/27-PLAN.md); scadenza gio 8/10; se slitta, slitta DBT-15, non la porta. La 52.2 e' COMPLETE e osservata in produzione."
+last_updated: "2026-10-01T10:24:44.044Z"
 last_activity: 2026-10-01
 progress:
   total_phases: 15
@@ -30,16 +30,15 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 52.1 — chiusura-del-debito-della-fase-52 (pianificata il 2026-10-01, 30 piani / 17 onde, da eseguire)
+**Current Focus:** Phase 52.1 — chiusura-del-debito-della-fase-52
 
 ## Current Position
 
-Phase: 52.1 (chiusura-del-debito-della-fase-52) — PLANNED, 0 of 30 plans executed
-Plan: 0 of 30
+Phase: 52.1 (chiusura-del-debito-della-fase-52) — EXECUTING
+Plan: 1 of 30
 Next: `/gsd-execute-phase 52.1` (prima `/clear`). Onda 1 = 01 (procedure) + 02 (DBT-16, verify verde: precondizione di deploy). L'ordine del proprietario (19, 20, 17, 18) e' l'atto 1 e l'atto 2; porta e cover sono l'atto 3; i carrelli (DBT-15) l'atto 4 e possono slittare. La 52.2 e' COMPLETE e osservata in produzione (prima mattina del 2026-10-01 in `52.2-VERIFICATION.md`).
 
 **52.2 chiusa e osservata (2026-10-01 08:28Z).** `close-pending-orders` 08:01Z: 1 considerato, `never_attempted`, checkout disattivato; `reconcile-refunds` 08:13Z: silenzio = nulla da riconciliare (non logga un riepilogo quando non fa nulla: nota per la 52.1); 0 pending residui, 0 refunds, 0 mail. CART-03 e RFD-02 osservati.
-
 
 **52-17 chiuso: verifica approvata dal proprietario (`approvata`, 2026-09-23T19:13:29Z).** Persona 1.26.0 (`media-and-storage`, `access-gating` rilette dal codice, con data; `verify:persona` 7/7 dopo; caso peggiore `DoorSurface.tsx` 13.812/15.000, moderazione 13.280). Sonda di cache dopo la finestra **senza soggetto** in produzione (18:48:05Z, 0 righe, 0 oggetti): residuo zero per costruzione, l'unico misurato e' del laboratorio. `52-VERIFICATION.md` `status: passed`: NAV-01..07 chiusi, D-52-01..31 senza contraddizioni. Le 9 istantanee locali del laboratorio (15 file) cancellate per nome alle 19:13:29Z; le 6 `.env.attendances-snapshot.*` della fase 51 restano, fuori perimetro. Commit `a33e40ec`, `25248cc0`, `d7531634`, `5798e07a`. Nulla spinto.
 
@@ -322,7 +321,7 @@ SUMMARY su quindici: la fase e' eseguita.** Il piano 37-13 ha chiuso l'onda 7 il
 sostituite, e undici voci `human_needed` consolidate nel suo SUMMARY. Le onde 8 e
 9 (piani 37-14 e 37-15) hanno chiuso i reperti del code review: CR-01, WR-01,
 WR-03, WR-05, WR-06, WR-07, WR-08 e la voce 4 di `deferred-items.md`.
-Status: Ready to execute
+Status: Executing Phase 52.1
 scritto «riportato come avvenuto, non misurato da me» — ed era la cosa giusta da
 scrivere dalla sua posizione. La misura pero' esiste, ed e' dell'orchestratore
 che gliel'aveva riportato:
