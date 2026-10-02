@@ -13,6 +13,7 @@ import { computeTierStatuses, type PublicTier, type TierStatus } from "@/lib/tic
 import { SectionHeading } from "@/components/ui/Typography";
 import SumUpCheckoutModal from "./SumUpCheckoutModal";
 import { logMoneyPathFailure } from "@/lib/failure/money-path";
+import { captureEntrySource, readEntrySource } from "../entry-source-capture";
 
 /**
  * ── IL NOME SI CHIEDE, E VA ALL'ACCOUNT — RISCRITTO IL 2026-09-21 ────────────
@@ -375,12 +376,22 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
   const [fullName, setFullName] = useState("");
   const [guestOrderId, setGuestOrderId] = useState<string | null>(null);
   const [openOrderToken, setOpenOrderToken] = useState<string | null>(null);
+  // L'order token dell'ordine il cui modulo di pagamento e' aperto ADESSO: lo
+  // porta il segnale «modulo aperto» (DBT-15). Nullo sulla strada dell'Event
+  // Pass, che non ha un `ticket_orders`.
+  const [checkoutOrderToken, setCheckoutOrderToken] = useState<string | null>(null);
 
   // Letta al montaggio, mai sul server: `localStorage` esiste solo qui.
   useEffect(() => {
     if (!partyId) return;
     setOpenOrderToken(readOpenOrderToken(partyId));
   }, [partyId]);
+
+  // Da dove arriva chi compra (DBT-15): chi atterra direttamente sulla serata
+  // senza passare da `/events` viene letto qui. Prima sorgente della sessione.
+  useEffect(() => {
+    captureEntrySource();
+  }, []);
   const quantityFieldId = useId();
   const emailFieldId = useId();
   const nameFieldId = useId();
@@ -468,11 +479,14 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
           email,
           fullName,
           discountCodeId: discount?.id ?? null,
+          // Il grezzo del link; il server lo riduce a cinque parole.
+          entrySource: readEntrySource(),
         });
 
         if (result.success) {
           rememberOpenOrder(partyId, result.orderToken);
           setGuestOrderId(result.orderId);
+          setCheckoutOrderToken(result.orderToken);
           setCheckoutId(result.checkoutId);
           return;
         }
@@ -489,6 +503,7 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
       try {
         const result = await purchaseTicket(partyId, selectedTierId, discount?.id ?? null);
         if (result.success && result.checkoutId) {
+          setCheckoutOrderToken(null);
           setCheckoutId(result.checkoutId);
         }
       } catch (err) {

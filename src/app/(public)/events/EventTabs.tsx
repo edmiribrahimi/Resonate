@@ -10,6 +10,7 @@ import { Badge, Chip } from "@/components/ui/Chip";
 import { MapPinIcon, LockClosedIcon, MusicalNoteIcon } from "@/components/ui/Icons";
 import FormatMarker from "@/components/formats/FormatMarker";
 import { formatTime } from "@/utils/formatTime";
+import { captureEntrySource } from "./entry-source-capture";
 
 /**
  * One venue marker on one card — TWO fields, and the four that are missing are
@@ -556,6 +557,13 @@ export default function EventTabs({
   useEffect(() => {
     setActiveTab(activeTabFromUrl);
   }, [activeTabFromUrl]);
+
+  // Da dove arriva chi guarda (DBT-15): letto dal link al primo atterraggio,
+  // PRIMA che un cambio di tab riscriva l'indirizzo. Solo nel browser — il
+  // server non legge `searchParams`, cosi' la cache anonima resta possibile.
+  useEffect(() => {
+    captureEntrySource();
+  }, []);
 
   // ===========================================================================
   // Every tab change does BOTH things, and the order is the whole design

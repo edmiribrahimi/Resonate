@@ -9,6 +9,7 @@ import { getServiceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
 import { logMoneyPathFailure } from "@/lib/failure/money-path";
 import { redactDbError } from "@/lib/errors/redact";
+import { reduceEntrySource } from "@/lib/tickets/entry-source";
 import {
   buildOrderQuote,
   type OrderQuoteRefusal,
@@ -264,6 +265,12 @@ export async function purchaseTicketsGuest(input: {
    */
   fullName?: string;
   discountCodeId?: string | null;
+  /**
+   * Il `utm_source` grezzo del link d'ingresso, letto nel browser
+   * (`entry-source-capture.ts`). Facoltativo: assente → `direct`. Non si salva
+   * mai cosi' com'e' — vedi `reduceEntrySource` piu' sotto (DBT-15, D-52.1-20).
+   */
+  entrySource?: string | null;
 }): Promise<GuestPurchaseResult> {
   // 1. L'indirizzo e il nome, normalizzati PRIMA di toccare qualunque cosa,
   //    con le regole che vivono in un posto solo (`@/lib/tickets/buyer-input`)
@@ -442,6 +449,11 @@ export async function purchaseTicketsGuest(input: {
         ? "mobile"
         : "desktop";
 
+  // La sorgente d'ingresso (DBT-15, D-52.1-20): come il dispositivo, un bit per
+  // l'imbuto. Il grezzo arriva dal browser, si riduce a cinque parole e si
+  // butta — non si salva e non si logga (gate PII di `comms-analytics.md`).
+  const entry_source = reduceEntrySource(input.entrySource);
+
   // 6. La riga d'ordine. `user_id: null` — **nessun account nasce qui**.
   //
   //    `buyer_name` e' la casa di passaggio del nome: l'account nasce al
@@ -463,6 +475,10 @@ export async function purchaseTicketsGuest(input: {
     discount_code_id: quote.discountCodeId,
     status: "pending",
     device,
+    entry_source,
+    // Il passo dell'imbuto: il modulo di pagamento non e' ancora stato
+    // mostrato. Lo porta a `opened` solo `markCheckoutFormOpened`, firmato.
+    checkout_form: "not_opened",
   });
 
   if (insertError) {
