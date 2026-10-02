@@ -253,6 +253,15 @@ const SECTION_TARGETS = [
    * Until 52.1-25 the table still exists with its arms; that is a database fact
    * this instrument no longer reports on, and it is written here rather than
    * left to be discovered.
+   *
+   * **2026-10-02, plan 52.1-18 (DBT-13) — what that paragraph announced has
+   * happened in the code.** `gallery.view` and `media.upload` are out of `CAP`,
+   * of `capability-routes.ts` and of «Who works», and the removal migration is
+   * written: `20261001120200_gallery_removal.sql` (M-D) drops `event_media`,
+   * its policies, the `'event-media'` object policies and both keys with their
+   * grants. It is applied to the laboratory in plan 52.1-20 and to production
+   * in plan 52.1-25, each after the deploy. Nothing of `gallery.view` remains
+   * in this file to retire: no group, no key — only this history.
    */
 ];
 
