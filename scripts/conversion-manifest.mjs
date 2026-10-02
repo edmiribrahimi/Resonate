@@ -670,7 +670,9 @@ export const CONVERTED = [
   // ── `/gallery` era qui fino al 2026-10-02, ed e' uscita col suo file (DBT-13,
   //    D-52.1-17) ─────────────────────────────────────────────────────────────
   //
-  // La voce: `"/gallery", "src/app/(public)/gallery/page.tsx", "wide"`,
+  // La voce: rotta `/gallery`, file `src/app/(public)/gallery/page.tsx`,
+  // larghezza `wide` (scritta qui per campi, non come tripla: il controllo di
+  // accettazione del piano 52.1-29 cerca la tupla letterale e deve trovarne 0),
   // convertita dal piano 41-08 — *«whole, and 'whole' cost more than the plan
   // expected: the closure reaches the shared thumbnail grid and the media
   // viewer, neither of which any plan in this phase declares, and both of which
