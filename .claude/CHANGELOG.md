@@ -3,6 +3,60 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.31.0] - 2026-10-03
+
+### Changed — la persona rilegge il prodotto spedito dalla fase 52.1: `media-and-storage.md`, `checkin-offline.md`, `access-gating.md`, `venue-secrecy.md`, `meta-gates.md`, `CLAUDE.md`
+
+**Cosa e' cambiato.**
+
+- **`media-and-storage.md`** — riscritto per cio' che c'e': il banner provvisorio
+  del 1.30.0 («si riscrivono nel piano 52.1-28») e' tolto, e con lui le sezioni su
+  `event_media`, sul bucket `event-media`, sulla moderazione e su `gallery.view` /
+  `media.upload`, che descrivevano un prodotto uscito il 2026-10-02 (U4, M-C, M-D e
+  bucket alle 21:38–21:45Z, `52.1-AUTHORISATION-GALLERY.md`). Una tabella dei due
+  percorsi vivi (cover → `finalize-cover` → `event-images` a `covers/<uuid>.jpg`;
+  archivio → `finalize-archive` → `visual-archive`), il bucket delle cover chiuso
+  in scrittura e non piu' elencabile da M-C (lista anonima 5 → 0), il nome storico
+  della quarantena, D-52.1-30 (cover non 16:9 ritagliate al centro). Gate nuovi:
+  *una cover passa dal server*, *la chiave non dice nulla*, *una cover sostituita
+  resta al vecchio URL* (debito). Il gate *chi carica ha titolo* ora dice anche che
+  una gallery dei membri non si reintroduce come comodita'. La misura P-521-E
+  (simulatore iOS 27: il JPEG consegnato porta ancora il GPS) motiva lo stripper
+  come unica difesa.
+- **`venue-secrecy.md`** — gate *la cover e' un percorso di uscita che nessuno
+  scrive*, con lo stesso fatto misurato, e un imperativo.
+- **`checkin-offline.md`** — gate *l'avviso segue la radio, e l'avviso non
+  rifiuta mai* (DBT-05, WR-05): `!isOnline`, `networkFailedAt`, `channelLive`;
+  misure prima/dopo dall'Android emulato (comparsa +0,3 s, spegnimento +1,7–1,9 s,
+  prima mai), iPhone vero dichiarato non misurato, la regione `aria-live` sempre
+  montata, il rimando a D22-1 e D22-2. Un imperativo: un cambio all'avviso offline
+  puo' solo dire di far entrare, e si prova con la misura «dopo» su un telefono.
+  Per pagarlo nel budget, tagliate tre parentesi di storia del codice socio e il
+  paragrafo sulle 24 ore ridotto a due frasi (la decisione resta, la narrazione no).
+- **`access-gating.md`** — tolto il capoverso che descriveva `/gallery` sotto
+  `gallery.view` come vivo; al suo posto una riga datata (14 chiavi / 26
+  concessioni, staff senza concessioni per ruolo — asserito da M-D). Gate nuovo
+  *una destinazione di redirect sta nella mappa* e `paths:` allargati a
+  **`src/lib/routes/**`**: `organizer-redirects.ts` e `capability-routes.ts` non
+  caricavano **nessun** modulo di dominio, e sono i file dove il gate scatta.
+  Accorciato il capoverso sul codice socio (uscito con la fase 51).
+- **`CLAUDE.md`** e **`meta-gates.md`** — `src/lib/routes/**` nella riga Access &
+  Gating dell'indice e nella riga `src/lib/rbac/**` della tabella di priorita'
+  (controllo G). `meta-gates.md` conta ancora **otto** cron: riletti il
+  2026-10-03 su `vercel.json` (8 voci) e su `src/app/api/cron/` (8 directory) — la
+  fase 52.1 non ne ha aggiunti (il cron di cancellazione del piano 24 non esiste,
+  D-52.1-31). Testo non toccato.
+
+**Perche'.** Piano 52.1-28: una riga della persona che descrive un prodotto che
+non c'e' e' peggio di una riga assente (`ai-engineering.md`). Il gate del
+redirect viene da un fatto: il 2026-10-02 il laboratorio ha risposto 500 su ogni
+indirizzo con `build` e `verify` verdi (piano 52.1-20), e i file che lo
+causavano non caricavano alcun gate.
+
+**Prova per mutazione** (controllo B sul glob nuovo). Tolto `src/lib/routes/**`
+dalla riga dell'indice (asserito applicato: 0 occorrenze rimaste) →
+`verify:persona` **FALLITI 1/7**, B; ripristinato → 7/7.
+
 ## [1.30.0] - 2026-10-02
 
 ### Changed — `media-and-storage.md` aggancia solo cio' che esiste dopo l'uscita della gallery: `media-and-storage.md`, `CLAUDE.md`, `meta-gates.md`

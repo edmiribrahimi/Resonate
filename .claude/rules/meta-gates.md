@@ -45,7 +45,7 @@ Quando piu' moduli coprono lo stesso file, vince il **piu' specifico**.
 | Path | Modulo primario | Supplementari |
 |------|-----------------|---------------|
 | `src/middleware.ts`, `src/lib/supabase/middleware.ts` | access-gating | supabase-data, nextjs-architecture |
-| `src/lib/rbac/**` | access-gating | nextjs-architecture |
+| `src/lib/rbac/**`, `src/lib/routes/**` | access-gating | nextjs-architecture |
 | `src/app/api/auth/**`, `src/app/(auth)/**` | access-gating | comms-analytics |
 | `src/app/(admin)/**` | access-gating | nextjs-architecture, ticketing-payments |
 | `src/app/api/webhooks/**` | ticketing-payments | supabase-data |

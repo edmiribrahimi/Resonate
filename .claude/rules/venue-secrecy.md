@@ -75,6 +75,7 @@ autorizzazione esplicita documentata nel commit.
 
 - **Gate idempotenza del cron**: `api/cron/venue-reveal` puo' essere eseguito due volte. Marcare `venue_reveal_sent` **prima o insieme** all'invio, mai solo dopo: una seconda esecuzione non deve rispedire. E se l'invio fallisce dopo la marcatura, va loggato come tale — un destinatario che non ha ricevuto l'indirizzo e' un problema visibile, una doppia mail e' rumore.
 - **Gate indizio non equivalente all'indirizzo**: `venue_secret_hint_reveal_hours` esiste per dare un indizio prima dell'indirizzo. L'indizio non deve essere sufficiente a identificare il luogo: se lo e', hai rivelato in anticipo con piu' passaggi.
+- **Gate la cover e' un percorso di uscita che nessuno scrive**: Misurato il 2026-10-02 (P-521-E): il JPEG che Safari iOS consegna dal rullino **porta ancora le coordinate GPS**. La cover sta in un bucket **pubblico** e finisce nell'anteprima social, quindi lo stripper di `finalize-cover` e' **l'unica difesa** fra una foto scattata nella sede e un indirizzo pubblico, e la chiave pubblica non porta mai il nome originale del file. Situazione che lo fa scattare: una cover scritta senza passare dal server. Vedi `media-and-storage.md`.
 - **Gate cache e pre-render**: Una pagina cacheata mentre l'indirizzo era visibile continua a servirlo dopo. Ogni superficie che mostra il venue e' dinamica e non cacheabile — **dichiarandolo, non derivandolo**. Dal 2026-08-22 quella superficie e' `(public)/tickets/[id]`, il cui predicato ha un termine temporale che **scatta da solo a un istante che nessuno scrive**.
 
 ## Imperative Behaviors
@@ -90,5 +91,6 @@ autorizzazione esplicita documentata nel commit.
 - When an RSVP is involved: treat it as a ticket, and never behind `venue_reveal_on_purchase`
 - When writing the reveal cron: mark before or with the send, and log a failed send explicitly
 - When writing a hint: verify it does not identify the place on its own
+- When a cover is uploaded: it goes through the server stripper — an iPhone JPEG still carries the place
 - When a page can show the venue: mark it dynamic and uncacheable
 - When naming a night whose place is secret: keep the place out of the title — the wallet pass prints it, and no predicate can see it

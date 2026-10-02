@@ -235,7 +235,7 @@ universale.
 
 | Domain | Scope |
 |--------|-------|
-| Access & Gating | `src/lib/rbac/**`, `src/lib/supabase/**`, `src/middleware.ts`, `src/app/api/auth/**`, `src/app/(auth)/**`, `src/app/(admin)/**`, `src/app/api/drinks/**` |
+| Access & Gating | `src/lib/rbac/**`, `src/lib/supabase/**`, `src/lib/routes/**`, `src/middleware.ts`, `src/app/api/auth/**`, `src/app/(auth)/**`, `src/app/(admin)/**`, `src/app/api/drinks/**` |
 | Ticketing & Payments | `src/lib/sumup.ts`, `src/lib/apple-wallet.ts`, `src/lib/tickets/**`, `src/app/api/webhooks/**`, `src/app/api/cron/**`, `src/app/api/tickets/**`, `src/lib/guest-list/**`, `src/app/**/tickets/**`, `src/app/**/drinks/**`, `src/app/(public)/events/**`, `src/app/**/sales/**`, `src/app/**/payment/**`, `src/app/**/guest-list/**` |
 | Check-in & Offline | `src/lib/offline/**`, `src/app/api/tickets/checkin/**`, `src/utils/qr.ts`, `src/utils/haptics.ts`, `src/app/**/scanner/**`, `src/components/scanner/**`, `src/app/(admin)/door/**`, `src/lib/door/**` |
 | Venue Secrecy | `src/lib/venue-reveal/**`, `src/app/api/cron/venue-reveal/**`, `src/emails/venue-reveal.tsx`, `src/app/(public)/events/**`, `src/app/(public)/tickets/**`, `src/app/**/venues/**`, `src/components/venues/**`, `src/components/events/**` |
