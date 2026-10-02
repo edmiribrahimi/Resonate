@@ -214,8 +214,40 @@ interface EventFormProps {
   submitLabel: string;
 }
 
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+// 5 MB, unchanged by plan 52.1-13: the bytes go to the quarantine bucket, not
+// through the body of a Vercel Function (4.5 MB cap), so the cap is ours.
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+/**
+ * HEIC is deliberately NOT here, nor in the input's `accept` (plan 52.1-13,
+ * road A). Measured 2026-10-02 on the iPhone simulator (iOS 27.0): with an
+ * `accept` that does not name HEIC, Safari converts a HEIC photo from the camera
+ * roll into a JPEG (`image/jpeg`, `IMG_xxxx.jpeg`). Naming HEIC would turn the
+ * conversion off and hand the server a format `sharp` cannot decode here.
+ */
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+/**
+ * One sentence per way `/api/media/finalize-cover` can say no. A string record,
+ * not a total one, because the categories cross HTTP as strings: an unknown one
+ * falls back to a sentence that still prints it, never to a shared one.
+ */
+const COVER_REASON_TEXT: Record<string, string> = {
+  "event_cover.unauthenticated": "Your session has expired, so the cover was not published. Sign in again and retry.",
+  "event_cover.bad_request": "The cover request was malformed and was refused. Reload the page and retry.",
+  "event_cover.path_not_yours": "The uploaded file did not belong to this session, so it was refused. Reload the page and retry.",
+  "event_cover.forbidden": "You do not have permission to change this night's cover.",
+  "event_cover.event_not_found": "This night no longer exists, so its cover cannot be changed.",
+  "event_cover.permission_unresolved": "We could not confirm your permission just now. Nothing was refused; try again in a moment.",
+  "media_finalize.source_missing": "The uploaded file was not found on the server. Choose the image again.",
+  "media_finalize.source_unreadable": "The server could not read the uploaded file just now. Try again in a moment.",
+  "media_finalize.type_not_accepted": "Only JPEG, PNG and WebP images can be used as a cover.",
+  "media_finalize.already_published": "This cover was already published by an earlier attempt. Choose the image again to retry.",
+  "media_finalize.publish_failed": "The cover could not be written to storage just now. Try again in a moment.",
+  "media_finalize.unexpected": "Something unforeseen stopped the cover. Try again; if it repeats, tell the team which night it was.",
+  "media_strip.unsupported_type": "The file is not the image type it claims to be, so it was refused. Export it as JPEG or PNG and retry.",
+  "media_strip.tool_unavailable": "The image processor is unavailable right now, so no cover can be published. Try again later.",
+  "media_strip.failed": "The image could not be read — it may be damaged. Export it again as JPEG or PNG and retry.",
+};
 
 const ACCESS_TYPE_LABELS: Record<AccessType, string> = {
   free_public: "Free (Open to all)",
@@ -513,30 +545,104 @@ export default function EventForm({
     }
   }
 
-  async function uploadImage(file: File): Promise<string> {
+  /**
+   * The cover goes through the server (plan 52.1-13, DBT-14, D-52.1-18).
+   *
+   * ── Why this no longer writes the public bucket ───────────────────────────
+   *
+   * It used to upload straight from the browser into the public covers bucket
+   * at `covers/<timestamp>-<original file name>`: the GPS of a camera-roll
+   * photo stayed in the bytes, and the file's own name — very often a
+   * description of the place — sat in a public URL. On a night with a secret
+   * venue both are a reveal (`venue-secrecy.md`, monotone).
+   *
+   * Now: (1) deposit into the PRIVATE quarantine at `<my id>/<random>.<ext>` —
+   * no name, no date; (2) POST the key to `/api/media/finalize-cover`, which
+   * checks `staff.manage` + this night, strips, rotates, shrinks to 1920 px,
+   * writes a JPEG at a key IT generates and answers the public URL; (3) that
+   * URL is saved in `events.cover_image` by the form, as before.
+   *
+   * Three outcomes, three sentences, three log categories — never the single
+   * "Image upload failed" it replaced. Logs carry the category, never the key.
+   *
+   * `QUARANTINE_BUCKET` is the historical name of the shared transit bucket
+   * (it was born for the gallery); the archive of the visual section uses it
+   * too. The name is not a statement about what is deposited.
+   */
+  async function uploadImage(
+    file: File,
+    eventId: string
+  ): Promise<{ ok: true; url: string } | { ok: false; message: string }> {
+    const QUARANTINE_BUCKET = "event-media-quarantine";
     const supabase = createClient();
-    const timestamp = Date.now();
-    const sanitized = file.name
-      .replace(/[^a-zA-Z0-9._-]/g, "-")
-      .toLowerCase();
-    const path = `covers/${timestamp}-${sanitized}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("event-images")
-      .upload(path, file, {
-        cacheControl: "3600",
-        upsert: false,
-      });
-
-    if (uploadError) {
-      throw new Error(`Image upload failed: ${uploadError.message}`);
-    }
 
     const {
-      data: { publicUrl },
-    } = supabase.storage.from("event-images").getPublicUrl(path);
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      console.error("[event_cover.deposit_failed] code=no_session message=no session to deposit with");
+      return {
+        ok: false,
+        message: "Your session has expired, so the cover was not uploaded. Sign in again and retry.",
+      };
+    }
 
-    return publicUrl;
+    const ext =
+      ({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" } as Record<string, string>)[
+        file.type
+      ] ?? "bin";
+    const quarantinePath = `${user.id}/${crypto.randomUUID()}.${ext}`;
+
+    // ── 1. Deposit into the PRIVATE holding area ───────────────────────────
+    const { error: depositError } = await supabase.storage
+      .from(QUARANTINE_BUCKET)
+      .upload(quarantinePath, file, { contentType: file.type, upsert: false });
+
+    if (depositError) {
+      console.error(
+        `[event_cover.deposit_failed] code=${depositError.name} message=the holding area refused the write`
+      );
+      return {
+        ok: false,
+        message:
+          "The cover could not be placed in the holding area, so it was not published. Nothing was saved; try again.",
+      };
+    }
+
+    // ── 2. The server strips, resizes and publishes ────────────────────────
+    try {
+      const response = await fetch("/api/media/finalize-cover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventId, quarantinePath, mimeType: file.type }),
+      });
+      const payload: unknown = await response.json().catch(() => null);
+      const p = (typeof payload === "object" && payload !== null ? payload : {}) as {
+        ok?: unknown;
+        publicUrl?: unknown;
+        reason?: unknown;
+      };
+
+      if (response.ok && p.ok === true && typeof p.publicUrl === "string" && p.publicUrl !== "") {
+        return { ok: true, url: p.publicUrl };
+      }
+
+      const reason = typeof p.reason === "string" ? p.reason : `http_${response.status}`;
+      console.error(`[event_cover.finalize_refused] reason=${reason}`);
+      return {
+        ok: false,
+        message:
+          COVER_REASON_TEXT[reason] ??
+          `The cover was refused with an unrecognised reason (${reason}), so it was not published. Nothing was saved.`,
+      };
+    } catch {
+      console.error("[event_cover.finalize_unreachable] code=network message=no answer");
+      return {
+        ok: false,
+        message:
+          "We could not reach the server that publishes the cover, so it may or may not have gone through. Nothing was saved; reload the page before trying again.",
+      };
+    }
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -547,8 +653,16 @@ export default function EventForm({
 
     try {
       let coverImageUrl = initialData?.cover_image ?? null;
-      if (imageFile) {
-        coverImageUrl = await uploadImage(imageFile);
+      if (imageFile && initialData?.id) {
+        const uploaded = await uploadImage(imageFile, initialData.id);
+        if (!uploaded.ok) {
+          // The cover failed with its own sentence, and NOTHING is saved: a
+          // save that quietly dropped the new cover would look like success.
+          setImageError(uploaded.message);
+          setError("The cover was not uploaded, so the night was not saved. See the message under Cover Image.");
+          return;
+        }
+        coverImageUrl = uploaded.url;
       } else if (!imagePreview) {
         coverImageUrl = null;
       }
@@ -1756,14 +1870,29 @@ export default function EventForm({
           double check in `handleImageChange`, which is what actually refuses a
           file, since the attribute is only a picker filter.
         */}
+        {/*
+          Plan 52.1-13: the cover is published by `/api/media/finalize-cover`,
+          which checks the NIGHT — so it needs the night's id. On the create
+          form there is none yet: the field is disabled and says so, which is
+          the form that cannot lose a cover (nothing can be picked that a save
+          would then drop). The cover is added from Edit, after the first save.
+          `accept` does NOT name HEIC: see `ACCEPTED_IMAGE_TYPES`.
+        */}
         <input
           ref={fileInputRef}
           id="event-cover-image"
           type="file"
           accept="image/jpeg,image/png,image/webp"
           onChange={handleImageChange}
-          className="block min-h-11 w-full text-sm text-muted file:mr-4 file:min-h-11 file:rounded-full file:border-0 file:bg-accent/20 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-accent hover:file:bg-accent/30 file:cursor-pointer"
+          disabled={!initialData?.id}
+          aria-describedby="event-cover-image-help"
+          className="block min-h-11 w-full text-sm text-muted file:mr-4 file:min-h-11 file:rounded-full file:border-0 file:bg-accent/20 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-accent hover:file:bg-accent/30 file:cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
         />
+        <p id="event-cover-image-help" className="text-xs text-muted">
+          {initialData?.id
+            ? "Landscape 16:9 (1920×1080). From iPhone, pick from Photos; on a computer, export as JPEG or PNG."
+            : "Save the night first — the cover is added from Edit. Landscape 16:9 (1920×1080)."}
+        </p>
         {/*
           Its own region, its own cause. `handleImageChange` sets one of two
           distinct sentences — a rejected type and a rejected size — and neither
