@@ -555,16 +555,7 @@ export interface TicketOrder {
    * costringerebbe a coniare un conto per ogni carrello abbandonato.
    */
   user_id: string | null;
-  /**
-   * **Nullabile dal piano 52.1-21 (DBT-15), e in un solo caso.** Il CHECK
-   * `ticket_orders_buyer_email_cleared_check` di
-   * `20261001120300_order_entry_source.sql` ammette il nullo solo su un ordine
-   * `expired` con {@link TicketOrder.pii_cleared_at} valorizzato: la
-   * cancellazione tracciata dell'indirizzo di chi non ha mai pagato. Chi crea
-   * un ordine ha sempre l'indirizzo; chi lo legge deve gestire il nullo con una
-   * categoria propria e non mandare mail nel vuoto.
-   */
-  buyer_email: string | null;
+  buyer_email: string;
   /**
    * Il nome raccolto dal modulo (D-50-18b), e sta **sull'ordine** per la stessa
    * ragione per cui {@link TicketOrder.user_id} e' nullabile: sul percorso
@@ -659,11 +650,6 @@ export interface TicketOrder {
    * `null` = ordine nato prima della colonna.
    */
   checkout_form: "not_opened" | "opened" | null;
-  /**
-   * Quando email e nome di un ordine mai pagato sono stati tolti — §3. `null` =
-   * mai tolti. Il periodo di conservazione e' da decidere con il professionista.
-   */
-  pii_cleared_at: string | null;
   created_at: string;
   updated_at: string;
 }
