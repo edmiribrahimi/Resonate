@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
-status: executing
-stopped_at: "2026-10-02 23:10Z — FASE 52.1: ATTO 4 ESAURITO. U5 7fb8077b in produzione (deploy READY 23:07Z), M-B + correttiva applicate (20261002230101/230102), verify 24/24. Tutti e quattro gli atti spesi; origin/main = U5. 28/30. Restano: 28 (persona 1.31.0 + verify:persona) e 30 (VERIFICATION + approvazione). Debito per la VERIFICATION: D22-1..4 (porta, colori), riscansione QR D22-3 da decidere prima del 10/10, /privacy con paragrafo foto da togliere, verify:refusal lanciato senza atto il 2/10, cover dal telefono vero PASSATA (E6), DBT-15 chiuso senza cancellazione (D-52.1-31), 07 ritirato, 17 saltato."
-last_updated: "2026-10-01T10:31:56.951Z"
+status: ready_to_plan
+stopped_at: Phase 52.1 complete (30/30) — ready to discuss Phase 52.2
+last_updated: 2026-10-02T23:27:32.393Z
 last_activity: 2026-10-01
 progress:
   total_phases: 15
   completed_phases: 7
   total_plans: 122
-  completed_plans: 99
+  completed_plans: 455
   percent: 47
 ---
 
@@ -30,12 +30,12 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 52.1 — chiusura-del-debito-della-fase-52
+**Current Focus:** Phase 52.2 — il carrello che non si chiude e il rimborsato alla porta
 
 ## Current Position
 
-Phase: 52.1 (chiusura-del-debito-della-fase-52) — EXECUTING
-Plan: 29 of 30
+Phase: 52.2
+Plan: Not started
 Next: `/gsd-execute-phase 52.1` (prima `/clear`). Onda 1 = 01 (procedure) + 02 (DBT-16, verify verde: precondizione di deploy). L'ordine del proprietario (19, 20, 17, 18) e' l'atto 1 e l'atto 2; porta e cover sono l'atto 3; i carrelli (DBT-15) l'atto 4 e possono slittare. La 52.2 e' COMPLETE e osservata in produzione (prima mattina del 2026-10-01 in `52.2-VERIFICATION.md`).
 
 **52.2 chiusa e osservata (2026-10-01 08:28Z).** `close-pending-orders` 08:01Z: 1 considerato, `never_attempted`, checkout disattivato; `reconcile-refunds` 08:13Z: silenzio = nulla da riconciliare (non logga un riepilogo quando non fa nulla: nota per la 52.1); 0 pending residui, 0 refunds, 0 mail. CART-03 e RFD-02 osservati.
@@ -321,7 +321,7 @@ SUMMARY su quindici: la fase e' eseguita.** Il piano 37-13 ha chiuso l'onda 7 il
 sostituite, e undici voci `human_needed` consolidate nel suo SUMMARY. Le onde 8 e
 9 (piani 37-14 e 37-15) hanno chiuso i reperti del code review: CR-01, WR-01,
 WR-03, WR-05, WR-06, WR-07, WR-08 e la voce 4 di `deferred-items.md`.
-Status: Executing Phase 52.1
+Status: Ready to plan
 scritto «riportato come avvenuto, non misurato da me» — ed era la cosa giusta da
 scrivere dalla sua posizione. La misura pero' esiste, ed e' dell'orchestratore
 che gliel'aveva riportato:
@@ -402,7 +402,7 @@ Note:
         organizer/approved, organizer/pending seminato a mano, staff, member —
         ne chiude la maggior parte. La fase 36 costruisce superfici pubbliche
         sopra quel modello: il debito non e' suo, ma le sta sotto.
-Last activity: 2026-10-01
+Last activity: 2026-10-02
 
 **Phase 31: EXECUTED, NOT VERIFIED.** 13 of 13 plans, 61 commits on
 `gsd/phase-31-live-defects-at-the-door-and-the-bar`. One of its four blocking
