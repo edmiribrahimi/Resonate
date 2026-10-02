@@ -61,21 +61,26 @@ import { CAP } from "@/lib/capabilities/keys";
  * a check that gets ignored the third time it goes red.
  */
 
-/** The night-scoped keys a grant may carry. Four, and never the whole catalogue. */
+/**
+ * The night-scoped keys a grant may carry. Three, and never the whole catalogue.
+ *
+ * Four until 2026-10-02: `media.upload` («Photo») left with the gallery (plan
+ * 52.1-18, DBT-13), here and in `party_assignments_capability_assignable`
+ * (`20261001120200_gallery_removal.sql`, M-D).
+ */
 const ASSIGNABLE_CAPABILITIES = [
   CAP.DOOR_OPERATE,
   CAP.DOOR_SUPERVISE,
-  CAP.MEDIA_UPLOAD,
   CAP.PARTY_MANAGE,
 ] as const;
 
 /**
- * The four assignable keys as a type.
+ * The three assignable keys as a type.
  *
  * Exported for the surface, which holds a **total** `Record` of labels over it —
- * so a fifth assignable key cannot reach the interface without a label, and a
+ * so a fourth assignable key cannot reach the interface without a label, and a
  * key removed here leaves an unreachable label. That is the one half of this
- * contract `npm run build` can hold; the other half — that these four match
+ * contract `npm run build` can hold; the other half — that these three match
  * `party_assignments_capability_assignable` — is the migration's, and no
  * compiler compares them.
  */
@@ -108,7 +113,7 @@ export type AssignmentRefusal =
   | "invalid_party"
   /** `subjectId` is not a uuid. Nothing was asked of the database. */
   | "invalid_subject"
-  /** `capability` is not one of the four assignable keys. */
+  /** `capability` is not one of the three assignable keys. */
   | "invalid_capability"
   /**
    * The night does not belong to the event this call claims.

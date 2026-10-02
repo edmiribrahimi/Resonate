@@ -22,7 +22,8 @@ import type { UserRole } from "@/types/database";
  * **This surface grants a capability for one night**, so the pass changed markup
  * and nothing else: **no query changed, no column added, no capability check
  * touched, no action payload altered.** `assignToParty` and `revokeAssignment`
- * are called with byte-identical arguments; the four assignable keys, the closed
+ * are called with byte-identical arguments; the assignable keys (four then,
+ * three since «Photo» left with the gallery on 2026-10-02), the closed
  * refusal set and every sentence attached to it are untouched; and who may be
  * offered at all is still the roster the page filtered, with the composite
  * foreign key still the boundary behind it.
@@ -93,9 +94,14 @@ type LiveAssignment = {
 };
 
 /**
- * The four jobs, in the words the interface uses.
+ * The three jobs, in the words the interface uses.
  *
- * A **total** `Record` over `AssignableCapability` on purpose: a fifth
+ * **«Photo» (`media.upload`) is no longer offered**, from 2026-10-02 (plan
+ * 52.1-18, DBT-13): after the gallery left there was nothing for it to open,
+ * and an assignment that opens nothing is not offered. The key leaves the
+ * catalogue in the same plan.
+ *
+ * A **total** `Record` over `AssignableCapability` on purpose: a fourth
  * assignable key cannot reach this surface without a label, and a key removed
  * from the action leaves an unreachable entry. `npm run build` holds it, which
  * in a repository with no test runner is worth stating rather than assuming.
@@ -106,7 +112,6 @@ type LiveAssignment = {
 const CAPABILITY_LABELS: Record<AssignableCapability, string> = {
   "door.operate": "Door",
   "door.supervise": "Door supervisor",
-  "media.upload": "Photo",
   "party.manage": "Night organiser",
 };
 
@@ -119,15 +124,15 @@ const CAPABILITY_OPTIONS = Object.keys(CAPABILITY_LABELS) as AssignableCapabilit
  *
  * `assignee_not_staff` deliberately does not say "error". It says what to do,
  * and it says the thing about credits that somebody meets exactly here for the
- * first time: a photographer who is a `member` today has to be promoted to
- * staff before they can be assigned to photo, and their **public credit** is a
+ * first time: somebody who is an `attendee` today has to be promoted to staff
+ * before they can be assigned to a night, and their **public credit** is a
  * different thing that needs neither a role nor an account.
  */
 const REFUSAL_MESSAGES: Record<AssignableRefusalKey, string> = {
   invalid_party: "That night is not a valid reference. Reload the page.",
   invalid_subject: "That account is not a valid reference. Reload the page.",
   invalid_capability:
-    "That job cannot be assigned per night. Four can: door, door supervisor, photo and night organiser.",
+    "That job cannot be assigned per night. Three can: door, door supervisor and night organiser.",
   party_not_in_event:
     "That night does not belong to this event. Reload the page — what you are looking at is out of date.",
   self_assignment:
