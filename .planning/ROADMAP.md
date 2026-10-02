@@ -617,7 +617,7 @@ saltati sono percorsi; gli avvisi della review sono chiusi.
 | **DBT-20** — **aggiunto il 2026-10-01 (il proprietario: «se mi arriva una lista di 15 nomi per la guestlist devo aggiungerli uno alla volta?»)** | **La guest list si incolla, non si ribatte.** Nella pagina Guest List, accanto ad «Add Guest», un riquadro **«Add several»**: un nome per riga, con l'email facoltativa dopo una virgola o uno spazio (`Nome Cognome, nome@dominio`), serata scelta una volta per tutta la lista. Prima di salvare, un'**anteprima** riga per riga: cosa e' stato letto come nome e cosa come email, le righe che non si capiscono segnate e **non** salvate, i doppioni gia' in lista segnalati. Al salvataggio ogni riga passa dalla **stessa** azione di oggi (`addGuest`, `guest-list/actions.ts:97`): stessa attribuzione `added_by`, stessa mail d'invito per chi ha l'email, stesso conteggio — l'import e' una comodita' di inserimento, **non** una via nuova d'ingresso (`ticketing-payments.md`, gate guest list; `community-membership.md`, gate nessuna corsia grigia). Esito finale: quante aggiunte, quante saltate e perche'. Provato sul laboratorio con una lista di 15 righe, di cui due sbagliate apposta. |
 
 **Depends on:** Phase 52
-**Plans:** 28/30 plans executed
+**Plans:** 29/30 plans executed
 
 Plans:
 
@@ -648,7 +648,7 @@ Plans:
 - [x] 52.1-25-PLAN.md — atto 3: U4 (default `solo-codice`) → M-C → M-D → bucket `event-media` dall'API Storage, se concessi
 - [x] 52.1-26-PLAN.md — laboratorio U5: P-521-G con ordini veri, interruttore solo sul ramo lab
 - [x] 52.1-27-PLAN.md — atto 4: M-B → U5, cancellazione spenta; i residui dell'atto 3 solo se concessi a parte
-- [ ] 52.1-28-PLAN.md — persona 1.31.0 riletta dal prodotto spedito (media/porta/accesso; biglietti/analytics), `verify:persona` dopo
+- [x] 52.1-28-PLAN.md — persona 1.31.0 riletta dal prodotto spedito (media/porta/accesso; biglietti/analytics), `verify:persona` dopo
 - [x] 52.1-29-PLAN.md — DBT-13/06/07: script della gallery cancellati, voci di gate ritirate, `verify:media-strip` ri-puntato, persona 1.30.0; intervallo rosso n. 2 chiuso (onda 7)
 - [ ] 52.1-30-PLAN.md — 52.1-VERIFICATION.md con `file:riga` per i 14 requisiti (DBT-15 parziale senza parere), approvazione del proprietario (ultimo piano)
 
