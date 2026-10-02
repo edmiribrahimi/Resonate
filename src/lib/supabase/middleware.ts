@@ -348,7 +348,9 @@ export async function updateSession(request: NextRequest) {
   //
   // **An approval status used to travel beside it, and no longer does** (fase
   // 50, D-50-01): la funzione di database non mette piu' quella chiave nel
-  // payload e `getVisibleNavItems` non la chiede piu'. Nessun predicato di
+  // payload e la barra non la chiede piu' — oggi la calcola `getNavigation`
+  // in `src/lib/rbac/roles.ts` (fase 52; prima `getVisibleNavItems`, che non
+  // esiste piu'). Nessun predicato di
   // questo file cambia — non ne leggeva nessuno dei due — ma la prosa qui sopra
   // descriveva un payload che non esiste piu', e questo file si carica su ogni
   // richiesta.

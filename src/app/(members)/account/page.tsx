@@ -270,7 +270,12 @@ export default async function AccountPage({
     : null;
 
   const roleLabel = ROLE_LABEL[(profile?.role as UserRole | null | undefined) ?? "attendee"];
-  const fullName = user.user_metadata?.full_name || roleLabel;
+  // IN-07 (review fase 52): senza `full_name` il titolo ricadeva su
+  // `roleLabel`, e il ruolo compariva due volte — titolo e badge. Ora ricade
+  // sull'email e, se manca anche quella, su «Your account»; il ruolo resta al
+  // solo badge. Quando il titolo E' l'email, la riga dell'email sotto non si
+  // ripete.
+  const fullName = user.user_metadata?.full_name || userEmail || "Your account";
 
   // Fetch user's tickets (only for attendees — admin/organizer don't buy tickets)
   //
@@ -493,9 +498,11 @@ export default async function AccountPage({
           <AnimatedSection>
             <header className="mb-6">
               <div className="flex items-start justify-between">
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm text-muted">Hey,</p>
-                  <PageTitle>{fullName}</PageTitle>
+                  {/* Il titolo puo' essere un'email (IN-07): senza un punto di a
+                      capo uscirebbe dal bordo su telefono. */}
+                  <PageTitle className="[overflow-wrap:anywhere]">{fullName}</PageTitle>
                 </div>
                 {/*
                   The role mark states something and cannot be operated, so it is a
@@ -506,7 +513,9 @@ export default async function AccountPage({
                 */}
                 <Badge className="mt-2 shrink-0">{roleLabel}</Badge>
               </div>
-              <p className="mt-1 text-sm text-muted truncate">{userEmail}</p>
+              {fullName !== userEmail && (
+                <p className="mt-1 text-sm text-muted truncate">{userEmail}</p>
+              )}
               {accountSince && (
                 <p className="text-xs text-muted/60">{roleLabel} since {accountSince}</p>
               )}

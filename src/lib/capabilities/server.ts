@@ -200,7 +200,11 @@ import type { CapabilityKey } from "./keys";
  * (`20260921120000`, entrambi i sovraccarichi di `my_access_context`), e
  * leggerla qui significherebbe mappare un campo che non arriva. La sua ultima
  * ragione di esistere era `AppNav`, che la prendeva come prop: la firma di
- * `getVisibleNavItems` l'ha persa nello stesso commit di questa riga.
+ * `getVisibleNavItems` l'ha persa nello stesso commit di questa riga. *(Quella
+ * funzione non esiste piu': dalla fase 52 (piano 52-07) la barra la calcola
+ * `getNavigation(role, capabilities, liveAssignmentCapabilities)` in
+ * `src/lib/rbac/roles.ts`, e lo stato non c'e' nemmeno li'. Riletto il
+ * 2026-10-02, DBT-07.)*
  *
  * `role` resta, e la ragione e' la stessa di prima: `AppNav` e `StaffNav` sono
  * `"use client"` e non possono importare questo modulo. Next.js's own guidance
