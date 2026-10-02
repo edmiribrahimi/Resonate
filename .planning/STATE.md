@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "2026-10-02 14:15Z — FASE 52.1: onda 5 — 13 (cover dal server, strada A regge: il JPEG di iOS porta ancora il GPS, stripper indispensabile; piano 17 non serve) e 14 (porta sulla radio, causa vera: finestra di ~100 ms del canale realtime) FUSI; 12 AL CHECKPOINT: U2 sul lab, P-521-D passata su iPhone/iPad/desktop, in attesa del gesto del proprietario dal suo iPhone e di «vai» sulle due assunzioni (tier nuovo in coda; Edit/Delete nascosti in Reorder). Due tier di prova (5 € e 10 €) lasciati sul lab apposta, da cancellare per chiave dopo la risposta. Poi: onda 6 = 15 (ATTO 2: M-A in produzione, poi push di U2 ae50eabf), 16 (gallery fuori dal codice), 17 (SALTATO: strada B non serve)."
+stopped_at: "2026-10-02 14:25Z — FASE 52.1: onda 5 CHIUSA (12 confermato dal proprietario «funziona tutto come previsto» 14:14Z; 13 cover dal server; 14 porta sulla radio), 17 SALTATO per misura (strada A regge). 15/30. Lab pulito (0 tier di prova, riconteggio letto prima di scrivere — due rettifiche in ESITI). main locale: U1 in prod; U2 = ae50eabf (08+10) da spingere con l'ATTO 2 dopo M-A in produzione; 13/14 restano per l'atto 3. Onda 6 in corso: 15 (atto 2, checkpoint) e 16 (gallery fuori dal codice)."
 last_updated: "2026-10-01T10:31:56.951Z"
 last_activity: 2026-10-01
 progress:
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 52.1 (chiusura-del-debito-della-fase-52) — EXECUTING
-Plan: 13 of 30 (12 al checkpoint)
+Plan: 15 of 30
 Next: `/gsd-execute-phase 52.1` (prima `/clear`). Onda 1 = 01 (procedure) + 02 (DBT-16, verify verde: precondizione di deploy). L'ordine del proprietario (19, 20, 17, 18) e' l'atto 1 e l'atto 2; porta e cover sono l'atto 3; i carrelli (DBT-15) l'atto 4 e possono slittare. La 52.2 e' COMPLETE e osservata in produzione (prima mattina del 2026-10-01 in `52.2-VERIFICATION.md`).
 
 **52.2 chiusa e osservata (2026-10-01 08:28Z).** `close-pending-orders` 08:01Z: 1 considerato, `never_attempted`, checkout disattivato; `reconcile-refunds` 08:13Z: silenzio = nulla da riconciliare (non logga un riepilogo quando non fa nulla: nota per la 52.1); 0 pending residui, 0 refunds, 0 mail. CART-03 e RFD-02 osservati.
