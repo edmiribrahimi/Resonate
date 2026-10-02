@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "2026-10-02 21:50Z — FASE 52.1: ATTO 3 ESAURITO. U4 77ad2773 in produzione (deploy READY 21:44Z), M-C e M-D applicate (versioni 20261002214511/214514), bucket event-media cancellato, verify 24/24 contro la produzione: tutti gli intervalli rossi chiusi. 23/30 (onde 1-11 chiuse; 17 saltato). origin/main = 77ad2773 = main locale meno documenti. Reperti differiti in deferred-items.md (D22-3 porta: da decidere prima del 10/10). Onda 12 = 07 (domanda al legale: gesto del proprietario) + 21 (M-B sul lab [BLOCKING]); poi 23, 24 (DBT-15), 26 corsa U5, 27 atto 4, 28 persona 1.31.0, 30 VERIFICATION."
+stopped_at: "2026-10-03 — FASE 52.1: onda 13 CHIUSA (23 sorgente/passo scritti; 24 imbuto e All nights; nessuna cancellazione per D-52.1-31). 26/30. La punta e' il candidato U5: va in produzione SOLO dopo M-B (20261001120300 + correttiva 20261001120400) nell'atto 4, altrimenti l'insert dell'ordine fallisce. origin/main = U4 77ad2773. Onda 14 = 26 (corsa U5 sul lab, P-521-G; carta vera = gesto del proprietario, non percorso per sua scelta); poi 27 atto 4, 28 persona 1.31.0, 30 VERIFICATION."
 last_updated: "2026-10-01T10:31:56.951Z"
 last_activity: 2026-10-01
 progress:
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 52.1 (chiusura-del-debito-della-fase-52) — EXECUTING
-Plan: 24 of 30
+Plan: 26 of 30
 Next: `/gsd-execute-phase 52.1` (prima `/clear`). Onda 1 = 01 (procedure) + 02 (DBT-16, verify verde: precondizione di deploy). L'ordine del proprietario (19, 20, 17, 18) e' l'atto 1 e l'atto 2; porta e cover sono l'atto 3; i carrelli (DBT-15) l'atto 4 e possono slittare. La 52.2 e' COMPLETE e osservata in produzione (prima mattina del 2026-10-01 in `52.2-VERIFICATION.md`).
 
 **52.2 chiusa e osservata (2026-10-01 08:28Z).** `close-pending-orders` 08:01Z: 1 considerato, `never_attempted`, checkout disattivato; `reconcile-refunds` 08:13Z: silenzio = nulla da riconciliare (non logga un riepilogo quando non fa nulla: nota per la 52.1); 0 pending residui, 0 refunds, 0 mail. CART-03 e RFD-02 osservati.
