@@ -542,3 +542,357 @@ export async function fetchTicketFunnel(
     byMethod,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Where the carts stop, where they come from, what the resume mail earns
+// (DBT-15, plan 52.1-24 — the READING half only)
+// ---------------------------------------------------------------------------
+//
+// **The PII-clearing half of plan 52.1-24 is not here, by decision.** D-52.1-31
+// (owner, 2026-10-02, «deve rimanere cosi' com'e' oggi»): the data of never-paid
+// orders is never cleared. No switch, no retention constant, no scrub step, no
+// `pii_cleared_at` — the column was withdrawn by
+// `20261001120400_order_pii_clearing_withdrawn.sql`.
+//
+// **Why a second read and not three more columns on `fetchTicketFunnel`.**
+// `entry_source` and `checkout_form` (`20261001120300_order_entry_source.sql`)
+// exist on the laboratory today and reach production only in act 4 (plan
+// 52.1-27). A `select` naming an absent column fails as a whole: folded into the
+// existing read, it would take down the numbers that already work. Kept apart,
+// an absent column is ONE state of its own — «not available yet» — and the
+// funnel above it keeps counting.
+
+export type CartEntrySource =
+  | "instagram"
+  | "newsletter"
+  | "flyer"
+  | "direct"
+  | "other"
+  | "unrecorded";
+
+export const CART_ENTRY_SOURCES: readonly CartEntrySource[] = [
+  "instagram",
+  "newsletter",
+  "flyer",
+  "direct",
+  "other",
+  "unrecorded",
+];
+
+export interface CartReading {
+  /** Every order that opened a SumUp checkout: the base of every line below. */
+  opened: number;
+  paid: number;
+  /** `expired` + `never_attempted` + `checkout_form = 'not_opened'`. */
+  formNeverOpened: number;
+  /** `expired` + `never_attempted` + `checkout_form = 'opened'`. */
+  openedNotAttempted: number;
+  /** `expired` + `declined`, whatever the form column says. */
+  attemptedDeclined: number;
+  /** `checkout_form` NULL: the order was born before the column, never «unknown». */
+  beforeTracking: number;
+  /**
+   * `completed` AND `resume_email_state = 'sent'`, no join: `sent` is written
+   * only when a payment finds the resume mail already gone (`order-resume.ts`).
+   */
+  paidAfterResume: number;
+  /**
+   * Resume mails that LEFT: the ledger's `provider_last_event` is one of the
+   * «already sent» events, or the order itself says `sent`. `null` = the mail
+   * register could not be read — a state of its own, never a zero.
+   */
+  resumeEmailsSent: number | null;
+  /** Opened / paid per entry source. `unrecorded` = before the column. */
+  bySource: Record<CartEntrySource, { opened: number; paid: number }>;
+}
+
+export interface CartReadingNight extends CartReading {
+  eventId: string;
+  title: string;
+  /** `events.date`. `null` when the night row could not be matched. */
+  date: string | null;
+}
+
+/**
+ * The three outcomes of a cart read, never collapsed: a column production does
+ * not have yet is not the same fact as a read that failed.
+ */
+export type CartReadingResult<T> =
+  | { state: "ok"; data: T }
+  | { state: "not_available" }
+  | { state: "error" };
+
+/** The provider's words for «this mail has already left» — `order-resume.ts`, P-4. */
+const RESUME_ALREADY_SENT_EVENTS = new Set([
+  "sent",
+  "delivered",
+  "delivery_delayed",
+  "opened",
+  "clicked",
+  "bounced",
+  "complained",
+]);
+
+/** PostgREST puts an `in` list in the URL: 100 ids keep it well under any limit. */
+const CART_IN_CHUNK = 100;
+
+type CartRow = {
+  event_id: string;
+  status: string;
+  closed_reason: string | null;
+  entry_source: string | null;
+  checkout_form: string | null;
+  resume_email_id: string | null;
+  resume_email_state: string | null;
+};
+
+class CartColumnsAbsent extends Error {}
+class CartReadLogged extends Error {}
+
+/** Postgres `undefined_column`, and PostgREST's «column not in the schema cache». */
+function isAbsentColumn(error: { code?: string | null }): boolean {
+  return error.code === "42703" || error.code === "PGRST204";
+}
+
+/**
+ * The order rows a cart reading is built from. NO person column: the `select`
+ * names seven columns and none is an email or a name (`comms-analytics.md`).
+ */
+async function readCartRows(
+  service: SupabaseClient,
+  eventId: string | null
+): Promise<CartRow[]> {
+  const scope = eventId ?? "all";
+  const rows: CartRow[] = [];
+  let truncated = true;
+  for (let page = 0; page < TICKET_FUNNEL_MAX_PAGES; page++) {
+    const from = page * TICKET_FUNNEL_PAGE;
+    let query = service
+      .from("ticket_orders")
+      .select(
+        "event_id, status, closed_reason, entry_source, checkout_form, resume_email_id, resume_email_state"
+      )
+      .not("sumup_checkout_id", "is", null);
+    if (eventId) query = query.eq("event_id", eventId);
+    const { data, error } = await query
+      .order("id")
+      .range(from, from + TICKET_FUNNEL_PAGE - 1);
+    if (error) {
+      if (isAbsentColumn(error)) {
+        // Production before act 4: expected, said as such, not as a fault.
+        console.warn(
+          `[analytics.cart_reading_columns_absent] scope=${scope} ${redactDbError(error)}`
+        );
+        throw new CartColumnsAbsent();
+      }
+      console.error(
+        `[analytics.cart_reading_unreadable] scope=${scope} page=${page} ${redactDbError(error)}`
+      );
+      throw new CartReadLogged();
+    }
+    const batch = (data ?? []) as CartRow[];
+    rows.push(...batch);
+    if (batch.length < TICKET_FUNNEL_PAGE) {
+      truncated = false;
+      break;
+    }
+  }
+  if (truncated) {
+    console.error(
+      `[analytics.cart_reading_truncated] scope=${scope} rows=${rows.length} max_pages=${TICKET_FUNNEL_MAX_PAGES}`
+    );
+  }
+  return rows;
+}
+
+/**
+ * Which resume mails have left, by provider id, from `email_deliveries`
+ * (`category = 'order_resume'`) — an order never paid stays `scheduled` even
+ * after its mail went out, so the order row cannot say it. `null` = the
+ * register could not be read.
+ */
+async function readResumeMailsSent(
+  service: SupabaseClient,
+  providerIds: string[]
+): Promise<Set<string> | null> {
+  const sent = new Set<string>();
+  for (let i = 0; i < providerIds.length; i += CART_IN_CHUNK) {
+    const { data, error } = await service
+      .from("email_deliveries")
+      .select("provider_message_id, provider_last_event")
+      .eq("category", "order_resume")
+      .in("provider_message_id", providerIds.slice(i, i + CART_IN_CHUNK));
+    if (error) {
+      console.error(
+        `[analytics.cart_resume_ledger_unreadable] ids=${providerIds.length} ${redactDbError(error)}`
+      );
+      return null;
+    }
+    for (const row of (data ?? []) as {
+      provider_message_id: string;
+      provider_last_event: string | null;
+    }[]) {
+      if (row.provider_last_event && RESUME_ALREADY_SENT_EVENTS.has(row.provider_last_event)) {
+        sent.add(row.provider_message_id);
+      }
+    }
+  }
+  return sent;
+}
+
+function emptyCartReading(): CartReading {
+  const bySource = {} as CartReading["bySource"];
+  for (const s of CART_ENTRY_SOURCES) bySource[s] = { opened: 0, paid: 0 };
+  return {
+    opened: 0,
+    paid: 0,
+    formNeverOpened: 0,
+    openedNotAttempted: 0,
+    attemptedDeclined: 0,
+    beforeTracking: 0,
+    paidAfterResume: 0,
+    resumeEmailsSent: 0,
+    bySource,
+  };
+}
+
+function addCartRow(reading: CartReading, row: CartRow, sent: Set<string>) {
+  // NULL = before the column: never summed into `direct` or `other`.
+  const source: CartEntrySource =
+    row.entry_source === "instagram" ||
+    row.entry_source === "newsletter" ||
+    row.entry_source === "flyer" ||
+    row.entry_source === "direct" ||
+    row.entry_source === "other"
+      ? row.entry_source
+      : "unrecorded";
+  reading.opened++;
+  reading.bySource[source].opened++;
+  if (row.checkout_form === null) reading.beforeTracking++;
+
+  if (row.status === "completed") {
+    reading.paid++;
+    reading.bySource[source].paid++;
+    if (row.resume_email_state === "sent") reading.paidAfterResume++;
+  } else if (row.status === "expired") {
+    if (row.closed_reason === "declined") {
+      reading.attemptedDeclined++;
+    } else if (row.closed_reason === "never_attempted") {
+      if (row.checkout_form === "not_opened") reading.formNeverOpened++;
+      else if (row.checkout_form === "opened") reading.openedNotAttempted++;
+    }
+  }
+
+  if (
+    reading.resumeEmailsSent !== null &&
+    row.resume_email_id &&
+    (row.resume_email_state === "sent" || sent.has(row.resume_email_id))
+  ) {
+    reading.resumeEmailsSent++;
+  }
+}
+
+async function buildCartReadings(
+  service: SupabaseClient,
+  eventId: string | null
+): Promise<Map<string, CartReading>> {
+  const rows = await readCartRows(service, eventId);
+  const providerIds = Array.from(
+    new Set(rows.map((r) => r.resume_email_id).filter((id): id is string => !!id))
+  );
+  const sent =
+    providerIds.length > 0
+      ? await readResumeMailsSent(service, providerIds)
+      : new Set<string>();
+  const byEvent = new Map<string, CartReading>();
+  for (const row of rows) {
+    let reading = byEvent.get(row.event_id);
+    if (!reading) {
+      reading = emptyCartReading();
+      byEvent.set(row.event_id, reading);
+    }
+    addCartRow(reading, row, sent ?? new Set<string>());
+  }
+  if (sent === null) for (const r of byEvent.values()) r.resumeEmailsSent = null;
+  return byEvent;
+}
+
+function toCartResult<T>(
+  scope: string,
+  run: () => Promise<T>
+): Promise<CartReadingResult<T>> {
+  return Promise.resolve()
+    .then(run)
+    .then(
+      (data): CartReadingResult<T> => ({ state: "ok", data }),
+      (e: unknown): CartReadingResult<T> => {
+        if (e instanceof CartColumnsAbsent) return { state: "not_available" };
+        if (!(e instanceof CartReadLogged)) {
+          // Categorised reads logged where they failed; this catches the rest
+          // (a service client that could not be built).
+          console.error(
+            `[analytics.cart_reading_failed] scope=${scope} ${e instanceof Error ? e.message : "unknown"}`
+          );
+        }
+        return { state: "error" };
+      }
+    );
+}
+
+/**
+ * One night's cart reading. **The caller passes the service client factory,
+ * and only after `mayManageEvent` and behind `admin.access`** — same guard,
+ * same reason as `fetchTicketFunnel`. Never throws: the three outcomes are the
+ * result.
+ */
+export function fetchCartReading(
+  getService: () => SupabaseClient,
+  eventId: string
+): Promise<CartReadingResult<CartReading>> {
+  return toCartResult(eventId, async () => {
+    const byEvent = await buildCartReadings(getService(), eventId);
+    return byEvent.get(eventId) ?? emptyCartReading();
+  });
+}
+
+/**
+ * «All nights»: the same reading with no night filter, one row per night, most
+ * recent night first. It reads every night's orders through the service
+ * client, so its only caller is the Analytics page behind the SAME
+ * `admin.access` guard as the funnel panel — no route, no capability of its own.
+ */
+export function fetchTicketFunnelAcrossNights(
+  getService: () => SupabaseClient
+): Promise<CartReadingResult<CartReadingNight[]>> {
+  return toCartResult("all", async () => {
+    const service = getService();
+    const byEvent = await buildCartReadings(service, null);
+    const ids = Array.from(byEvent.keys());
+    const meta = new Map<string, { title: string; date: string }>();
+    for (let i = 0; i < ids.length; i += CART_IN_CHUNK) {
+      const { data, error } = await service
+        .from("events")
+        .select("id, title, date")
+        .in("id", ids.slice(i, i + CART_IN_CHUNK));
+      if (error) {
+        console.error(
+          `[analytics.cart_nights_unreadable] nights=${ids.length} ${redactDbError(error)}`
+        );
+        throw new CartReadLogged();
+      }
+      for (const e of (data ?? []) as { id: string; title: string; date: string }[]) {
+        meta.set(e.id, { title: e.title, date: e.date });
+      }
+    }
+    return ids
+      .map(
+        (eventId): CartReadingNight => ({
+          ...(byEvent.get(eventId) as CartReading),
+          eventId,
+          title: meta.get(eventId)?.title ?? "Night not found",
+          date: meta.get(eventId)?.date ?? null,
+        })
+      )
+      .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+  });
+}
