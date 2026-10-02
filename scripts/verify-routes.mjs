@@ -131,6 +131,29 @@
  * a person clicks inside the app to arrive. A page with no way in fails, unless
  * it is named in INBOUND_EXEMPT with the reason it lives without a door.
  *
+ * ── Check 5: every redirect destination is bound in the map (2026-10-02) ────
+ *
+ * The deviation that created it: U4 (plan 52.1-20, DBT-13/DBT-19). Plan 52.1-18
+ * removed `/admin/events/[id]/media` from `CAPABILITY_ROUTES`, and
+ * `ORGANIZER_REDIRECTS` in `src/lib/routes/organizer-redirects.ts` still
+ * pointed `/organizer/events/[id]/media` at it. That module's fence 2 throws
+ * on exactly this — but at MODULE LOAD, and a middleware bundle is evaluated
+ * at the first request after deploy, never at build. So build was 0, verify was
+ * green, this script was green, and the lab answered 500
+ * `MIDDLEWARE_INVOCATION_FAILED` on every address, the door included.
+ *
+ * This check is fence 2 moved to where it can fail before a deploy. The table
+ * is PARSED, like the map and like `verify-organizer-redirects.sh` does — the
+ * slice runs from `export const ORGANIZER_REDIRECTS` to the `];` that closes
+ * it, comments blanked — and every `to` is matched with the same segment walk
+ * as checks 1-2 (`[id]` meets a dynamic pattern segment, never a literal one).
+ * A zero-row parse is a FAIL, not a pass: an empty table would make this check
+ * vacuously green.
+ *
+ * What it does NOT see: the runtime throws of fences 1 and 3 (door address,
+ * row count) — fence 1 is mostly carried by the `RedirectRow` type, fence 3 is
+ * a count, and both still fire only at the first request.
+ *
  * Zero dependencies, Node built-ins only. Exit 1 when any check fails.
  *
  * Usage:  npm run verify:routes
@@ -195,6 +218,7 @@ const INBOUND_EXEMPT = [
 
 const EVENT_WORK_DIR = join(ROOT, "src/app/(admin)/admin/(work)/events/[id]");
 const EVENT_CARD_FILE = join(ROOT, "src/components/events/EventList.tsx");
+const REDIRECTS_FILE = join(ROOT, "src/lib/routes/organizer-redirects.ts");
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Comment blanking. Positions are preserved (comments become spaces, newlines
@@ -514,7 +538,7 @@ const offenders = literals.filter(
   (call) => !matchesAny(call.value, patterns) && !matchesAny(call.value, allowPatterns)
 );
 
-console.log("[1/4] revalidatePath arguments");
+console.log("[1/5] revalidatePath arguments");
 console.log(`  files scanned:                 ${fileCount}`);
 console.log(`  literal arguments read:        ${literals.length}`);
 console.log(`  non-literal arguments skipped: ${opaque.length}  (invisible to this parse)`);
@@ -538,7 +562,7 @@ console.log("");
 const census = censusAddresses();
 const unbound = census.filter((page) => !matchesAny(page.address, patterns));
 
-console.log("[2/4] route census — src/app/(admin)");
+console.log("[2/5] route census — src/app/(admin)");
 console.log(`  pages found:                   ${census.length}`);
 console.log(
   `  patterns under /admin:         ${
@@ -558,7 +582,7 @@ if (unbound.length === 0) {
 console.log("");
 
 /* ────────────────────────────────────────────────────────────────────────────
- * [3/4] IL RIMBALZO E L'ELENCO DI CIO' CHE E' AMMESSO NON POSSONO DIVERGERE
+ * [3/5] IL RIMBALZO E L'ELENCO DI CIO' CHE E' AMMESSO NON POSSONO DIVERGERE
  *
  * Blocker **D7**, chiuso il 2026-08-26: il middleware rimbalzava chi non ha una
  * sessione scrivendo `?redirect=`, e la pagina di accesso legge `?next=`. I due
@@ -580,7 +604,7 @@ console.log("");
  * su un flusso che usano tutti mentre si chiude un difetto di comodita'.
  * ──────────────────────────────────────────────────────────────────────────── */
 
-console.log("[3/4] il rimbalzo e l'elenco di cio' che e' ammesso");
+console.log("[3/5] il rimbalzo e l'elenco di cio' che e' ammesso");
 
 const { PROTECTED_PREFIXES, resolveNext, DEFAULT_NEXT } = await import(
   pathToFileURL(join(ROOT, "src", "lib", "routes", "next-redirect.ts")).href
@@ -688,7 +712,7 @@ console.log("");
 
 /* ── Check 4 — inbound links (DBT-19, D-52.1-24; see the docblock) ─────────── */
 
-console.log("[4/4] inbound links — (work)/events/[id]");
+console.log("[4/5] inbound links — (work)/events/[id]");
 
 const workSegments = readdirSync(EVENT_WORK_DIR)
   .filter((entry) => statSync(join(EVENT_WORK_DIR, entry)).isDirectory())
@@ -779,6 +803,53 @@ if (doorless.length === 0) {
 }
 console.log("");
 
+/* ── Check 5 — redirect destinations bound in the map (plan 52.1-20) ──────── */
+
+console.log("[5/5] redirect destinations — ORGANIZER_REDIRECTS against CAPABILITY_ROUTES");
+
+const redirectsRelative = REDIRECTS_FILE.slice(ROOT.length + 1);
+const redirectsSource = readFileSync(REDIRECTS_FILE, "utf8");
+const redirectsStartMarker = "export const ORGANIZER_REDIRECTS";
+const redirectsStart = redirectsSource.indexOf(redirectsStartMarker);
+const redirectsEnd = redirectsStart === -1 ? -1 : redirectsSource.indexOf("];", redirectsStart);
+
+const redirectRows = [];
+if (redirectsStart !== -1 && redirectsEnd !== -1) {
+  const slice = blankComments(redirectsSource.slice(redirectsStart, redirectsEnd));
+  for (const match of slice.matchAll(/\[\s*"(\/organizer[^"\n]*)"\s*,\s*"([^"\n]+)"\s*\]/g)) {
+    redirectRows.push({
+      from: match[1],
+      to: match[2],
+      line: lineOf(redirectsSource, redirectsStart + match.index),
+    });
+  }
+}
+
+if (redirectsStart === -1 || redirectsEnd === -1 || redirectRows.length === 0) {
+  failed = true;
+  console.log(`  FAIL — parsed zero rows out of ORGANIZER_REDIRECTS in ${redirectsRelative}:`);
+  console.log("      the parse, not the table, is broken — fix it here. A zero-row parse would");
+  console.log("      make this check vacuously green.");
+} else {
+  const deadDestinations = redirectRows.filter((row) => !matchesAny(row.to, patterns));
+  console.log(`  rows parsed:                   ${redirectRows.length}  (${redirectsRelative})`);
+  if (deadDestinations.length === 0) {
+    console.log("  ok — every destination of the redirect table is bound in CAPABILITY_ROUTES.");
+  } else {
+    failed = true;
+    console.log(
+      `  FAIL — ${deadDestinations.length} destination(s) not bound in CAPABILITY_ROUTES:`
+    );
+    for (const row of deadDestinations) {
+      console.log(`      ${redirectsRelative}:${row.line}  ${row.from} -> ${row.to}`);
+    }
+    console.log("      Fence 2 of organizer-redirects.ts throws on this at MODULE LOAD, i.e. at");
+    console.log("      the first request after deploy: the middleware fails and EVERY address,");
+    console.log("      the door included, answers 500 MIDDLEWARE_INVOCATION_FAILED.");
+  }
+}
+console.log("");
+
 if (failed) {
   console.log("FAIL — see above.");
   console.log(
@@ -791,10 +862,17 @@ if (failed) {
     "  A red check 4 is a work page with no way in (plan 52.1-03, DBT-19): link it, do not"
   );
   console.log("  exempt it to make the run green.");
+  console.log(
+    "  A red check 5 is a redirect row pointing at an address the map no longer binds — the"
+  );
+  console.log(
+    "  U4 deviation of plan 52.1-20 (2026-10-02): remove the row with its destination, or"
+  );
+  console.log("  bind the destination. Never relax fence 2 to make the middleware load.");
   process.exit(1);
 }
 
-console.log("PASS — tutti e quattro i controlli verdi.");
+console.log("PASS — tutti e cinque i controlli verdi.");
 console.log(
   "  This means every statically visible literal names a declared address, not that every"
 );
