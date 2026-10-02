@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "2026-10-02 16:40Z — FASE 52.1, onda 9: incidente del middleware CHIUSO (redirect morto tolto, verify:routes [5/5] con prova per mutazione). U4 RIDEFINITO = 9ea4c0ad (lab a 200). L'atto 3 (piano 25) spinge 9ea4c0ad o un discendente, MAI 947b5b76. Seconda corsa del piano 20 in corso sul lab: riga «Photo» revocata via per chiave → M-C → sonda → M-D → bucket → verify:capabilities verde sul lab → P-521-E/F → checkpoint E6 (foto dal rullino dell'iPhone del proprietario). origin/main = U2. NON spingere origin/main."
+stopped_at: "2026-10-02 21:00Z — FASE 52.1: onde 9-10 CHIUSE (20 corsa U4 con E6 sul telefono vero via Appium; 22 porta misurata, 4 reperti in deferred-items.md: D22-3 riscansione del QR ogni 3 s spinge l'ammissione fuori da Recent — da decidere prima del 10/10). 22/30. U4 RIDEFINITO = 77ad2773 (9ea4c0ad + fix Save sticky dopo E6), sul ramo lab. Lab: M-A/M-C/M-D applicate, bucket via, verify 24/24 con env lab. Onda 11 = piano 25 (ATTO 3: push di 77ad2773, poi M-C, M-D e bucket in produzione; default solo-codice). origin/main = U2."
 last_updated: "2026-10-01T10:31:56.951Z"
 last_activity: 2026-10-01
 progress:
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 52.1 (chiusura-del-debito-della-fase-52) — EXECUTING
-Plan: 20 of 30
+Plan: 22 of 30
 Next: `/gsd-execute-phase 52.1` (prima `/clear`). Onda 1 = 01 (procedure) + 02 (DBT-16, verify verde: precondizione di deploy). L'ordine del proprietario (19, 20, 17, 18) e' l'atto 1 e l'atto 2; porta e cover sono l'atto 3; i carrelli (DBT-15) l'atto 4 e possono slittare. La 52.2 e' COMPLETE e osservata in produzione (prima mattina del 2026-10-01 in `52.2-VERIFICATION.md`).
 
 **52.2 chiusa e osservata (2026-10-01 08:28Z).** `close-pending-orders` 08:01Z: 1 considerato, `never_attempted`, checkout disattivato; `reconcile-refunds` 08:13Z: silenzio = nulla da riconciliare (non logga un riepilogo quando non fa nulla: nota per la 52.1); 0 pending residui, 0 refunds, 0 mail. CART-03 e RFD-02 osservati.
