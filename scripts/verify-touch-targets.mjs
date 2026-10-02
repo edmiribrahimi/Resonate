@@ -1093,6 +1093,12 @@ export const CONSTANT_MINIMUM_ELEMENTS = [
  *
  * ── The fifth entry is a different fact, and it is here on purpose ──────────
  *
+ * *(2026-10-02, plan 52.1-29: this entry and the drop zone beside it were
+ * retired with their file — `MediaUpload.tsx` left with the gallery, DBT-13.
+ * The paragraph is kept as written because its argument about exemption 7 is
+ * the one the next upload component will need; the retired entries, quoted in
+ * full, are in the list below. The list now holds two entries, not five.)*
+ *
  * `MediaUpload.tsx`'s file input has **no box at all**: it carries the display
  * utility that removes it. That is exemption 7's fact — *not a target* — reached
  * by a class instead of by an attribute, and **widening 7 to reach it was
@@ -1159,20 +1165,37 @@ export const UNREADABLE_BOX_ELEMENTS = [
     'flex-1',
     'the same serve area on the drinks menu, and the file says of itself that it is a fork of the modal above. Identical construction, identical stretch, and declared a second time rather than covered by one entry, because the boundary of an exemption in this file is the element and never the file',
   ],
-  [
-    'src/components/media/MediaUpload.tsx',
-    'button',
-    'onDrop={handleDrop}',
-    'p-8',
-    "the drop zone. Its box is far above the floor and comes from padding on the element itself — two rows of text and an icon inside 32px of it on every side. It interpolates a module constant, so exemption 8 looks like the route and is NOT: that constant is the focus ring and declares no minimum, so 8's premise check would fail on it, correctly. The height is not in a constant either; it is in the padding",
-  ],
-  [
-    'src/components/media/MediaUpload.tsx',
-    'input',
-    'ref={fileInputRef}',
-    'hidden',
-    'the file input, which renders NO BOX AT ALL — the same fact exemption 7 reads, reached by a display utility instead of by the type attribute. Its visible target is the drop zone above it, kept a sibling rather than a child because a form control inside a button is not valid content (the file says so). Widening 7 to cover a class was refused: 7 is an attribute test whose abuse route is closed by a contradiction refusal, and making it a shape test would reopen it',
-  ],
+  /*
+   * ── A THIRD AND A FOURTH ENTRY STOOD HERE UNTIL 2026-10-02, AND THEIR FILE
+   *    IS GONE ───────────────────────────────────────────────────────────────
+   *
+   * Both named `src/components/media/MediaUpload.tsx`, the gallery's per-night
+   * upload component:
+   *
+   *   - element `button`, anchor `onDrop={handleDrop}`, token `p-8` — *"the drop
+   *     zone. Its box is far above the floor and comes from padding on the
+   *     element itself — two rows of text and an icon inside 32px of it on every
+   *     side. It interpolates a module constant, so exemption 8 looks like the
+   *     route and is NOT: that constant is the focus ring and declares no
+   *     minimum, so 8's premise check would fail on it, correctly. The height is
+   *     not in a constant either; it is in the padding"*;
+   *   - element `input`, anchor `ref={fileInputRef}`, token `hidden` — *"the
+   *     file input, which renders NO BOX AT ALL — the same fact exemption 7
+   *     reads, reached by a display utility instead of by the type attribute.
+   *     Its visible target is the drop zone above it, kept a sibling rather than
+   *     a child because a form control inside a button is not valid content.
+   *     Widening 7 to cover a class was refused: 7 is an attribute test whose
+   *     abuse route is closed by a contradiction refusal, and making it a shape
+   *     test would reopen it"*.
+   *
+   * **Deleted because the FILE is deleted, not because the reasons stopped
+   * holding** (DBT-13, D-52.1-17). The gallery left the product with plan
+   * 52.1-16 (`MediaUpload.tsx` went with it); the visual archive has its own
+   * `ArchiveUpload.tsx`, which is measured by this gate like any other file and
+   * inherits neither entry. Retired by plan 52.1-29. The second argument — a
+   * hidden file input is not a shape test for exemption 7 — is the one the next
+   * upload component will meet first, which is why it is quoted in full.
+   */
   /*
    * ── A SIXTH ENTRY STOOD HERE UNTIL 2026-09-21, AND ITS FILE IS GONE ────────
    *

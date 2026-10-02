@@ -8,8 +8,19 @@
  * `node_modules/next/dist/compiled/server-only/empty.js`, e ogni altro
  * specificatore passa intatto alla risoluzione di Node.
  *
+ * ── IL SUO UNICO CONSUMATORE E' USCITO IL 2026-10-02 (DBT-13, piano 52.1-29) ──
+ * `scripts/restrip-event-media.mjs` ri-spogliava le foto del bucket della
+ * gallery; la gallery e' uscita dal codice (piano 52.1-16, D-52.1-17) e lo
+ * script e' stato cancellato con lei. **Oggi nessun file importa questo hook.**
+ * Resta perche' il problema che risolve non dipende dalla gallery: qualunque
+ * script futuro che debba usare lo stripper DEL PRODOTTO invece di imitarlo
+ * incontra la stessa prima riga `import "server-only"`. Il paragrafo qui sotto
+ * e' scritto com'era, al passato per il suo consumatore e al presente per il
+ * meccanismo.
+ *
  * ── PERCHE' ESISTE (52-PATTERNS P4, nodo 1; D-52-31) ─────────────────────────
- * Lo strumento di ri-spogliatura (`scripts/restrip-event-media.mjs`) deve usare
+ * Lo strumento di ri-spogliatura (`scripts/restrip-event-media.mjs`, cancellato
+ * il 2026-10-02) doveva usare
  * lo stripper DEL PRODOTTO — `src/lib/media/strip-metadata.ts`,
  * `stripImageMetadata` — e non una sua imitazione: una seconda copia della
  * chiamata a `sharp` e' «la seconda copia di un ordine», il modo in cui si smette

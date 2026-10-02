@@ -115,14 +115,18 @@
  * membership because a paragraph describing a two-entry list above a four-entry
  * one is exactly the drift this gate is written against.
  *
- *   1. `src/components/media/Lightbox.tsx` — **exempt from check B, for good.**
- *      A full-bleed media viewer at every tier, carrying a heavier scrim than a
- *      sheet. It is a native `<dialog>` and is correct as one; §8.3 declares it
- *      an exception in advance precisely so a G2 demanding the sheet form does
- *      not open red on a correct file. It is therefore **not on `REMAINING`**:
- *      a file that will never convert is not a debt, and putting it on a list
- *      that only shrinks would guarantee the number never reaches zero, which
- *      makes the number lie.
+ *   1. `src/components/media/Lightbox.tsx` — **exempt from check B, for good —
+ *      UNTIL 2026-10-02, WHEN ITS FILE WAS DELETED** (DBT-13, D-52.1-17: the
+ *      gallery left the product with plan 52.1-16, and the viewer had no other
+ *      reader). The constant and both its list entries were retired by plan
+ *      52.1-29; see `FULL_BLEED_VIEWER`'s former place below. The reason is kept,
+ *      because it outlives the specimen: a full-bleed media viewer at every tier,
+ *      carrying a heavier scrim than a sheet, is a native `<dialog>` and correct
+ *      as one; §8.3 declared it an exception in advance precisely so a G2
+ *      demanding the sheet form does not open red on a correct file, and it was
+ *      **not on `REMAINING`** because a file that will never convert is not a
+ *      debt. The next full-bleed viewer gets the same argument ON ITS OWN FILE,
+ *      not by inheriting this one.
  *
  *   2. `src/components/media/MyMediaSection.tsx` — **NOT exempt, and the reason
  *      the signature is not keyed on its attribute.** It carries the tree's
@@ -521,15 +525,27 @@ export const SIGNATURE = [
  * The two declared exceptions — named constants, with their reasons
  * ──────────────────────────────────────────────────────────────────────────── */
 
-/**
- * Exception 1 — exempt from check B, permanently. See the header.
+/*
+ * ── EXCEPTION 1 STOOD HERE UNTIL 2026-10-02, AND ITS FILE IS GONE ──────────
  *
- * A full-bleed media viewer is not a sheet and not a window. §8.3 and §13's G2
- * row both name it before this gate existed, which is the point of §0 rule 3:
- * an exemption discovered on a gate's first red run is an exemption nobody
- * trusts.
+ * `export const FULL_BLEED_VIEWER = 'src/components/media/Lightbox.tsx';` —
+ * exempt from check B, permanently: *"a full-bleed media viewer is not a sheet
+ * and not a window. §8.3 and §13's G2 row both name it before this gate
+ * existed, which is the point of §0 rule 3: an exemption discovered on a gate's
+ * first red run is an exemption nobody trusts."*
+ *
+ * **Retired because the FILE is deleted, not because the reason stopped
+ * holding** (DBT-13, D-52.1-17). The gallery left the product with plan
+ * 52.1-16 and `Lightbox.tsx` had no reader outside it. The gate never reddened
+ * on the absence — `neverOpenedReason()` is guarded on existence, so the entry
+ * would simply have skipped nothing — and that is exactly why it is retired
+ * rather than left: an exemption printed on every run about a file that is not
+ * there is a decoration that reads as a decision. Retired by plan 52.1-29 in
+ * the form `verify-touch-targets.mjs` uses for its sixth entry; the two places
+ * that consumed the constant (`DECLARED_EXCEPTIONS`, `NEVER_MEASURED_BY_B`)
+ * carry the same note. The numbering of the exceptions below is kept, so the
+ * citations of "exception 2/3/4" elsewhere stay true.
  */
-export const FULL_BLEED_VIEWER = 'src/components/media/Lightbox.tsx';
 
 /**
  * Exception 2 — NOT exempt, and NOT on `REMAINING` either, since plan 41.2-14.
@@ -605,10 +621,15 @@ export const BARTENDER_TOKEN_SCREENS =
  * second declined the first's precedent while doing so.
  */
 export const DECLARED_EXCEPTIONS = [
-  [
-    FULL_BLEED_VIEWER,
-    'exempt from check B — a full-bleed media viewer at every tier, carrying a heavier scrim than a sheet. Declared an exception by §8.3 before this gate existed, and deliberately NOT on REMAINING: a file that will never convert is not a debt, and a list that can never reach zero is a number that lies',
-  ],
+  /*
+   * A FULL_BLEED_VIEWER ENTRY STOOD HERE UNTIL 2026-10-02, AND ITS FILE IS GONE
+   * (`src/components/media/Lightbox.tsx`, DBT-13 — see exception 1's former
+   * place above). Its printed reason was: *"exempt from check B — a full-bleed
+   * media viewer at every tier, carrying a heavier scrim than a sheet. Declared
+   * an exception by §8.3 before this gate existed, and deliberately NOT on
+   * REMAINING: a file that will never convert is not a debt, and a list that
+   * can never reach zero is a number that lies."* Retired by plan 52.1-29.
+   */
   [
     ROLE_DIALOG_OVERLAY,
     'NOT exempt, and no longer on REMAINING either — it is the tree\'s ONLY role="dialog" (one hit, measured) and WAS a hand-rolled overlay. A signature keyed on that attribute would find this one file and miss every other copy in the tree, which is why the check is keyed on the shell instead; that reason is why this line survives its list entry. Plan 41.2-14 took it off the debt by DELEGATION rather than by a shell swap — it renders the exemption above — and plan 41.2-19 deleted the entry after the tree agreed at zero. **THE FILE ITSELF WAS DELETED ON 2026-09-21** — phase 50, D-50-03, members no longer upload media — so this path is printed on every run and is not on disk; the reason above survives the specimen, which is exactly why the line was not deleted with it',
@@ -879,14 +900,17 @@ export const NEVER_MEASURED_BY_B = new Map([
         'check B measures copies OF it — the one implementation cannot be one of its own copies',
     },
   ],
-  [
-    FULL_BLEED_VIEWER,
-    {
-      kind: 'exempt — measured and declared correct',
-      reason:
-        'a full-bleed media viewer, right to be a native shell and wrong to be a sheet; declared by §8.3 before this gate existed. A file that will never convert is not a debt',
-    },
-  ],
+  /*
+   * A FULL_BLEED_VIEWER ENTRY STOOD HERE UNTIL 2026-10-02, AND ITS FILE IS GONE
+   * (`src/components/media/Lightbox.tsx`, DBT-13, plan 52.1-29). Kind *"exempt
+   * — measured and declared correct"*, reason *"a full-bleed media viewer,
+   * right to be a native shell and wrong to be a sheet; declared by §8.3 before
+   * this gate existed. A file that will never convert is not a debt."* With it
+   * gone this Map holds only the primitive, and the report's "never opened"
+   * line counts one kind instead of two — the category *exempt* still exists in
+   * the prose below as a description of what an entry here WOULD be, and the
+   * next one is argued on its own file.
+   */
   /*
    * THE TWO BARTENDER FILES USED TO BE HERE, AND THEIR ABSENCE IS THE 41.2-22
    * CHANGE — recorded rather than left to be inferred from a diff nobody reads.

@@ -521,10 +521,19 @@ export const PRIMITIVES = [
     "src/components/ui/Skeleton.tsx", "SkeletonCard",
     "plan 41-10 — the card-shaped placeholder, listed in the plan that first rendered it. Same treatment and same reason as Select above: plan 41-08 converted this file and gave it its first importer, but a gallery's loading state renders no card-shaped placeholder, so this export had no consumer in its own wave and was recorded as absent rather than claimed. Its consumer is /admin/members' loading state, which is Skeleton's SECOND consumer overall — a first importer is a proof, a second is a pattern",
   ],
-  [
-    "src/components/ui/Skeleton.tsx", "SkeletonTile",
-    "plan 41-08 — the square placeholder for a media thumbnail, published in the plan that renders it. A square is a different shape from a line, not a taller one: reaching it by passing a height through the caller's classes would have depended on which of two same-property utilities Tailwind emits last, which is measured below as unreliable in exactly this component",
-  ],
+  // ── UNA VOCE `SkeletonTile` STAVA QUI FINO AL 2026-10-02, E IL SUO UNICO
+  //    CONSUMATORE NON C'E' PIU' ─────────────────────────────────────────────
+  //
+  // `"src/components/ui/Skeleton.tsx", "SkeletonTile"`, dal piano 41-08: *«the
+  // square placeholder for a media thumbnail, published in the plan that renders
+  // it»*. Il file che lo rendeva era `src/app/(public)/gallery/loading.tsx`,
+  // cancellato con la gallery dal piano 52.1-16 (DBT-13). **L'export resta in
+  // `Skeleton.tsx` ed e' corretto**: e' la voce a uscire, perche' il controllo C
+  // asserisce che nessun primitivo DICHIARATO e' orfano, e una voce tenuta su un
+  // export senza importatori lo farebbe rosso su un file giusto. Stessa forma di
+  // `SkeletonAvatar` e `Textarea` nel paragrafo qui sotto: l'assenza si scrive,
+  // e il piano che rendera' di nuovo un quadrato rimette la voce. Ritirata dal
+  // piano 52.1-29.
   [
     "src/components/ui/Switch.tsx", "Switch",
     "plan 41.1-10 — the one primitive this phase builds; its consumer in the same commit is the drinks menu's availability toggle. Entered by plan 41.1-11, which is the wave's single declared owner of every gate edit (D-41.1-22) — the plan that built it deliberately did not enter it, because check C asserts no published primitive is an orphan and the entry may only land in the same reconciliation that declares the surface rendering it (D-41-04)",
@@ -563,6 +572,14 @@ export const PRIMITIVES = [
  * state renders eight of them — the file's second importer overall, which is
  * what turns one proof into a pattern. `SkeletonAvatar` still has none and
  * stays absent.
+ *
+ * ── And `SkeletonTile`, since 2026-10-02 ────────────────────────────────────
+ *
+ * The gallery's loading state was its only importer, and it left with the
+ * gallery (DBT-13, plan 52.1-16). Its entry is retired above in the dated form;
+ * the export stays in `Skeleton.tsx` and is absent from this list for the same
+ * reason as `SkeletonAvatar`: no consumer, so an entry would redden check C on
+ * a correct file.
  *
  * This record has now been written four times — the spine's own note on this
  * file, then the form controls, then the two skeleton exports, now the two that
@@ -650,10 +667,26 @@ export const CONVERTED = [
     "/set-password", "src/app/(auth)/set-password/page.tsx", "focus",
     "plan 41-06 — the surface is TWO files, and this entry names the ROUTE file rather than the form, because the route file imports the form and an import-closure walk from it therefore covers both; naming the form instead would have fenced off the half that owns the shell and the page title. All four outcomes stayed four. Named on §4's closed focus list",
   ],
-  [
-    "/gallery", "src/app/(public)/gallery/page.tsx", "wide",
-    "plan 41-08 — whole, and 'whole' cost more than the plan expected: the closure reaches the shared thumbnail grid and the media viewer, neither of which any plan in this phase declares, and both of which carried raw palette. They were converted with it, because a surface is declared converted when what it REACHES is converted — that is what this manifest's own gate walks. The read is untouched: same table, same filter on the row's moderation state, same ordering, same cap. Named on §4's closed wide list",
-  ],
+  // ── `/gallery` era qui fino al 2026-10-02, ed e' uscita col suo file (DBT-13,
+  //    D-52.1-17) ─────────────────────────────────────────────────────────────
+  //
+  // La voce: `"/gallery", "src/app/(public)/gallery/page.tsx", "wide"`,
+  // convertita dal piano 41-08 — *«whole, and 'whole' cost more than the plan
+  // expected: the closure reaches the shared thumbnail grid and the media
+  // viewer, neither of which any plan in this phase declares, and both of which
+  // carried raw palette»*. **La pagina e' stata cancellata dal piano 52.1-16**:
+  // la gallery e' uscita dal prodotto, e con lei la griglia e il visore che la
+  // sua chiusura raggiungeva.
+  //
+  // La voce esce **nel piano 52.1-29**, non nello stesso commit della
+  // cancellazione, e questo e' l'intervallo rosso nominato n. 2 di
+  // `52.1-VALIDATION.md`: fra i due commit `verify:conversion` e
+  // `verify:touch-targets` rifiutavano (exit 2) su questa riga — che e'
+  // esattamente il controllo che deve scattare quando una pagina sparisce e la
+  // sua voce resta. Stessa forma della voce `/register` qui sopra: non e' un
+  // debito e non e' un'esenzione, una superficie che non esiste esce dai
+  // conteggi. La larghezza `wide` resta nella lista chiusa del §4 come storia di
+  // quella decisione, non come superficie da misurare.
   [
     "/admin/formats", "src/app/(admin)/admin/(work)/formats/page.tsx", "default",
     "plan 41-09 — whole, and 'whole' here is SIX files in two directories: the route file under (work)/, and the catalogue, the two form dialogs, the destructive confirmation and the swatch picker one directory out, where R-WORK-ROUTES keeps everything that is not a route. NOT on §4's wide list and therefore default. This is also the surface that first renders the Dialog primitive: three of the seven byte-identical native shells left the tree here, and the gate that counts the rest went 17 to 14 in the same commit. ColorSwatchPicker is reached by this closure and is a NAMED EXEMPTION in two gates — a format's identification colour is data on a row, not a token — so its hexes are untouched and the gate reports the exemption as applied rather than skipping it in silence. Nothing the dialogs DO moved: not the actions, not the fields, not the validation, and above all not the numbering — a progressivo is already on a poster",
@@ -713,10 +746,20 @@ export const CONVERTED = [
     "/admin/events/[id]/assignments", "src/app/(admin)/admin/(work)/events/[id]/assignments/page.tsx", "default",
     "plan 41.1-08 — whole, and 'whole' here is TWO files: the route file and the client component a level out. NOT on §4's wide list and therefore default, which is not a fallback: the roster is a short stack of night cards, not a dense table. THE CAUTION, because this surface grants a capability for one night: no capability key, guard or action payload changed, the four assignable keys and the closed refusal set are byte-identical, and the composite foreign key is still the boundary behind an affordance that is still only a filter. Its one small-prefix use was paid by reading the class — a track template, not a column count — and the gate reported the entry STALE rather than this plan deleting it (D-41.1-22)",
   ],
-  [
-    "/admin/events/[id]/media", "src/app/(admin)/admin/(work)/events/[id]/media/page.tsx", "default",
-    "plan 41.1-09 — whole, and 'whole' here is TWO files: the route and the moderation grid it is the only importer of. NOT on §4's wide list and therefore default, which is not a fallback but the answer for every surface nobody had to argue about. The grid gained §2.2's middle step — one column, two at the tablet tier, three at desktop — and the image size hint moved with the boundary, or every browser between the two widths fetches a half-width file for a full-width slot. The three status tiles take NO semantic token: the warning semantic is also SunSet's identification colour and a rejected upload is not a critical outcome, so the label beside each count carries what the hue carried badly. THE CAUTION, because this surface decides what a member's upload becomes: no query changed, no column added, no capability check touched, no action payload altered, and moderation still flips the ROW and not the OBJECT — media-and-storage.md's gate moderazione = rimozione is open before this conversion and open after it, and no visual change closes it",
-  ],
+  // ── `/admin/events/[id]/media` era qui fino al 2026-10-02, ed e' uscita col
+  //    suo file (DBT-13, DBT-19, D-52.1-17) ────────────────────────────────────
+  //
+  // La voce: `"/admin/events/[id]/media",
+  // "src/app/(admin)/admin/(work)/events/[id]/media/page.tsx", "default"`,
+  // convertita dal piano 41.1-09 — la moderazione dei media di una serata, *«the
+  // route and the moderation grid it is the only importer of»*. **La pagina e'
+  // stata cancellata dal piano 52.1-16** insieme alla voce «Media» della card
+  // della serata (`EventList.tsx`, `ROW_CONTROLS`), nello stesso commit perche'
+  // un link a una pagina che non c'e' e' il difetto DBT-19. La riga della
+  // vecchia ragione che diceva *«moderation still flips the ROW and not the
+  // OBJECT — media-and-storage.md's gate moderazione = rimozione is open»*
+  // si chiude per rimozione: non c'e' piu' nulla da moderare. Ritirata dal piano
+  // 52.1-29, nella stessa forma di `/gallery` e `/register`.
   [
     "/admin/events/[id]/review", "src/app/(admin)/admin/(work)/events/[id]/review/page.tsx", "wide",
     "plan 41.1-09 — whole, and 'whole' here is TWO files: the route and the client list one directory out, which R-WORK-ROUTES keeps outside the route group. Named on §4's closed wide list, and the width is written out so a reader can check it against that list rather than infer it. The copy-out diagnostic grid inside it is PERMANENTLY EXEMPT (D-41-16, D-41.1-14) and stayed a table: no card branch, no data-table primitive, and no entry on any debt list — the negative obligation was asserted by grep AFTER the conversion, because the failure mode here is a later tidy. What it did owe is paid: the eleven-pixel type size is gone and the grid takes the label/data size, with the accepted consequence that it scrolls slightly more. THE CAUTION, because this is door evidence: no classification moved, no identifier became a name, the technical view still receives entries and nothing else, no query changed, no column added, no capability check touched, no action payload altered",

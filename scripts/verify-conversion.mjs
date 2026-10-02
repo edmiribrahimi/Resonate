@@ -1566,7 +1566,15 @@ export const WIDE_ROUTES = [
   // the ROUTE, whose segment says compare, and not from the file that renders.
   ['/admin/analytics/compare', 'the comparison chart — up to four editions side by side'],
   ['/admin/members/growth', 'the growth series, read as a grid'],
-  ['/gallery', 'the public media grid'],
+  // A `/gallery` ENTRY STOOD HERE UNTIL 2026-10-02, AND ITS PAGE IS GONE.
+  // It read `['/gallery', 'the public media grid']`. The page left the product
+  // with plan 52.1-16 (DBT-13, D-52.1-17) and its `CONVERTED` entry was retired
+  // by plan 52.1-29 in `conversion-manifest.mjs`; this line went in the same
+  // commit, because a closed list naming a route nobody can open is a decision
+  // about nothing. Unlike the `/register` line in `FOCUS_ROUTES` below — kept on
+  // purpose when phase 50 deleted that page — nothing here argues for keeping
+  // it: no other surface inherits "the public media grid". If a gallery comes
+  // back, its width is decided again, by a person, on its own page.
 ];
 
 /**

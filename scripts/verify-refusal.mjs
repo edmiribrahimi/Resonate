@@ -226,22 +226,40 @@ const SECTION_TARGETS = [
     note: "FIVE arms on one table: one per section, each asking that section's own key, plus the brand-wide arm written with IS NULL because section = 'x' on a null column is NULL and would have made the register's most general entries invisible to everybody with no error anywhere",
     tables: ["production_open_question"],
   },
-  {
-    section: "gallery",
-    note:
-      "not a production section — the photographs and videos of the nights (NAV-07, D-52-25, added 2026-09-23 by plan 52-13). " +
-      "Since 20260923180100_gallery_close_data.sql one SELECT arm asks gallery.view on approved rows (event_media_select_gallery); " +
-      "the uploader's own arm (select_own) and the staff.manage arm (select_admin) stay and are not what this measures. " +
-      "master reads rows — through BOTH the gallery arm and the staff.manage arm, so the control is every row and not only the approved ones; " +
-      "attendee and anon read zero. On a database with no event_media row the positive control is silent and the instrument refuses instead of passing — " +
-      "and against production it does exactly that until media exist there (plan 52-15 applies the closure; zero rows were counted by plan 52-01)",
-    tables: ["event_media"],
-  },
+  /*
+   * ── A "gallery" GROUP STOOD HERE UNTIL 2026-10-02, AND ITS SURFACE IS GONE ──
+   *
+   * `{ section: "gallery", tables: ["event_media"] }`, added 2026-09-23 by plan
+   * 52-13 (NAV-07, D-52-25). Its note read: *"not a production section — the
+   * photographs and videos of the nights. Since
+   * 20260923180100_gallery_close_data.sql one SELECT arm asks gallery.view on
+   * approved rows (event_media_select_gallery); the uploader's own arm
+   * (select_own) and the staff.manage arm (select_admin) stay and are not what
+   * this measures. master reads rows — through BOTH the gallery arm and the
+   * staff.manage arm, so the control is every row and not only the approved
+   * ones; attendee and anon read zero."*
+   *
+   * **Retired by plan 52.1-29 because the gallery left the product** (DBT-13,
+   * D-52.1-17): plan 52.1-16 deleted every surface that read `event_media`,
+   * and the laboratory's rows were removed by key the same day. The group could
+   * only ever REFUSE from now on — no row will be written into that table again
+   * — and a group that refuses by construction turns every full run into a 2
+   * that says nothing about the eleven tables still worth measuring.
+   *
+   * **The key `gallery.view` is NOT retired here**, because this file never held
+   * it as a key: it was named only in the note above. It leaves the catalogue
+   * with plan 52.1-18 (with `media.upload`), and the table, its policies and the
+   * `event-media` bucket leave the database with plan 52.1-25, after the deploy.
+   * Until 52.1-25 the table still exists with its arms; that is a database fact
+   * this instrument no longer reports on, and it is written here rather than
+   * left to be discovered.
+   */
 ];
 
 /**
  * `--section=<name>` restricts the run to ONE declared section (added
- * 2026-09-23, plan 52-13). Why it exists: on the laboratory ten of the eleven
+ * 2026-09-23, plan 52-13, for the gallery group retired above on 2026-10-02 —
+ * the flag outlived it and serves every section). Why it exists: on the laboratory ten of the eleven
  * production tables are empty, so a full run is REFUSED (exit 2) by
  * construction — the honest outcome, and it stays the outcome of a full run.
  * The flag lets one group carry its own verdict without hiding the others: the
