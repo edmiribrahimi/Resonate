@@ -5,12 +5,20 @@
 #
 # ── Why this is a script and not a paragraph ──────────────────────────────────
 #
-# The redirect table is fifteen rows of data that nothing exercises. D-34-04
+# The redirect table is fourteen rows of data that nothing exercises. D-34-04
 # says the mapping is "written once, reviewed as a table, and verified before
 # the phase closes", and a review is a thing a person does once. A shell loop is
 # re-runnable: after the middleware changes, after the 307→308 flip of plan
 # 34-17, after any edit to the table. That difference is the whole reason this
 # file exists.
+#
+# Fifteen rows until 2026-10-02 (DBT-13, DBT-19, plan 52.1-20): the row
+# `/organizer/events/[id]/media` left with its destination, which plan 52.1-18
+# had already removed from the route map. The legacy address now 404s like its
+# former destination. This walk needs a running server and is NOT among the
+# gates of `npm run verify`; the static half — every destination bound in the
+# map — is `npm run verify:routes` check 5. The row count below is read from
+# the table, never asserted here.
 #
 # ── What it proves, and what it says nothing about ────────────────────────────
 #

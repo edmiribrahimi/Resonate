@@ -1,5 +1,18 @@
 /**
- * The fifteen `/organizer/*` addresses, and where each one now lives.
+ * The fourteen `/organizer/*` addresses, and where each one now lives.
+ *
+ * ── Fifteen until 2026-10-02 (DBT-13, DBT-19, plan 52.1-20) ──────────────────
+ *
+ * The row `/organizer/events/[id]/media` → `/admin/events/[id]/media` was
+ * removed. Its destination left the map with plan 52.1-18 (the media page left
+ * the code with 52.1-16), and fence 2 below then threw at the first request
+ * after deploy: every address of the lab answered 500
+ * `MIDDLEWARE_INVOCATION_FAILED`, the door included, while build and verify
+ * were green. The legacy `/organizer/…/media` address now 404s exactly like
+ * its former destination. Since that day `npm run verify:routes` check 5
+ * asserts, from the source and without a server, that every destination of
+ * this table is bound in `CAPABILITY_ROUTES` — the same rule as fence 2, moved
+ * to where it can fail before a deploy.
  *
  * ── One direction, and it is not a preference ────────────────────────────────
  *
@@ -30,7 +43,7 @@
  *
  * ── A table, not a catch-all ─────────────────────────────────────────────────
  *
- * Fifteen explicit rows, because D-34-04's own word is *"reviewed as a table"*,
+ * Fourteen explicit rows, because D-34-04's own word is *"reviewed as a table"*,
  * because a `:path*` catch-all would silently alias any future `/admin/x` as
  * `/organizer/x`, and because a catch-all cannot express `/organizer` →
  * `/admin/events`.
@@ -40,7 +53,7 @@
  * Not in `next.config.ts` (D-34-14). A `next.config` redirect's **source enters
  * the generated route type union** — `/galleria`, `/presenze`, `/registrati`
  * and `/eventi/[[...path]]` sit in `StaticRoutes` today for exactly that
- * reason. Declaring these fifteen there would keep every stale
+ * reason. Declaring these fourteen there would keep every stale
  * `/organizer/…` literal compiling and hand this phase a false green on the
  * one sweep it exists to perform. The status is emitted from the middleware
  * instead, in plan 34-03.
@@ -118,7 +131,6 @@ export const ORGANIZER_REDIRECTS: readonly RedirectRow[] = [
   ["/organizer/events/[id]/drinks", "/admin/events/[id]/drinks"],
   ["/organizer/events/[id]/edit", "/admin/events/[id]/edit"],
   ["/organizer/events/[id]/guest-list", "/admin/events/[id]/guest-list"],
-  ["/organizer/events/[id]/media", "/admin/events/[id]/media"],
   ["/organizer/events/[id]/review", "/admin/events/[id]/review"],
   ["/organizer/events/[id]/sales", "/admin/events/[id]/sales"],
   ["/organizer/events/[id]/tickets", "/admin/events/[id]/tickets"],
@@ -232,10 +244,13 @@ const COMPILED_ROWS: readonly CompiledRow[] = (() => {
     }
   }
 
-  // ── Fence 3: fifteen rows, each source once. ───────────────────────────────
-  if (rows.length !== 15) {
+  // ── Fence 3: fourteen rows, each source once. ──────────────────────────────
+  //
+  // Fifteen until 2026-10-02: the `/organizer/events/[id]/media` row left with
+  // its destination (plan 52.1-20, DBT-13/DBT-19 — see the header).
+  if (rows.length !== 14) {
     throw new Error(
-      `organizer-redirects: expected 15 rows, found ${rows.length}. The count is part of ` +
+      `organizer-redirects: expected 14 rows, found ${rows.length}. The count is part of ` +
         `the review: a row added without one is a row nobody read.`
     );
   }
