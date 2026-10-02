@@ -447,6 +447,18 @@ function guestListWarningText(
   );
 }
 
+/** The kind of an Alerts key, for the live region (WR-05). Never a name. */
+function alertKindLabel(key: string): string {
+  if (key === "band") return "guest list not up to date";
+  if (key === "drain") return "check-ins not synced";
+  if (key === "drift") return "device clock differs from the server";
+  if (key === "notice:reach") return "server not reachable";
+  if (key === "notice:list") return "attendee list not refreshed";
+  if (key === "notice:merge") return "offline list not updated";
+  if (key.startsWith("notice:refund")) return "refund evidence";
+  return "list or queue warning";
+}
+
 function stalenessBandText(channelIsLive: boolean, ageMs: number): string {
   const minutes = Math.floor(ageMs / 60_000);
   const age =
@@ -2986,6 +2998,38 @@ export default function ScannerClient() {
   const alertsUnseen =
     activeFilter !== "alerts" && alertKeys.some((k) => !seenAlertKeys.has(k));
 
+  // ── WR-05: what the always-mounted live region says ────────────────────────
+  //
+  // The Alerts regions used to be the only `aria-live` for these notices, and
+  // they exist only while that tab is open — so a screen reader heard nothing
+  // on the other four. A live region announces CHANGES to a node that already
+  // exists; one mounted together with its text says nothing. So the region is
+  // rendered from the first paint, outside the tabs, and only its text moves:
+  // the TYPE of each new alert, never a guest's name.
+  const [alertAnnouncement, setAlertAnnouncement] = useState("");
+  const announcedKeysRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const current = new Set(
+      alertKeySignature ? alertKeySignature.split("|") : []
+    );
+    const added = [...current].filter((k) => !announcedKeysRef.current.has(k));
+    announcedKeysRef.current = current;
+    // Nothing left to report: empty, so a reader browsing the page does not
+    // meet an alert that is already over. An empty change is not announced.
+    if (current.size === 0) {
+      setAlertAnnouncement("");
+      return;
+    }
+    if (added.length === 0) return;
+    const labels = [...new Set(added.map(alertKindLabel))];
+    // A trailing no-break space alternates so the same sentence twice is still
+    // a change the screen reader hears.
+    setAlertAnnouncement(
+      (prev) =>
+        `New alert: ${labels.join("; ")}` + (prev.endsWith(" ") ? "" : " ")
+    );
+  }, [alertKeySignature]);
+
   // Short labels for the eye, full names for a screen reader (D-52-26). The
   // count sits beside the label WITHOUT parentheses: D-52-26 supersedes the
   // "Recent (12)" form of D-52-19, because at 360 px five tabs have 62 px each
@@ -3446,6 +3490,10 @@ export default function ScannerClient() {
             {guestListWarningText(listAgeMs, channelLive, radioOff)}
           </div>
         )}
+        {/* WR-05: always in the DOM, whatever the tab — see `alertAnnouncement`. */}
+        <div role="status" aria-live="polite" className="sr-only">
+          {alertAnnouncement}
+        </div>
 
         {/*
           Progress bar for selected party — and, since D-38-10, the freshness
@@ -3880,8 +3928,10 @@ export default function ScannerClient() {
                     from here — and why guessing between them would put a second verdict
                     about the operator on a screen that already has one.
                 */}
+                {/* No live region in this tab (WR-05): the always-mounted one
+                    above the tabs announces it, once. */}
                 {listIsStale && listAgeMs !== null && (
-                  <div role="status" aria-live="polite">
+                  <div>
                     <button
                       type="button"
                       onClick={() => requestReload("band")}
@@ -3899,7 +3949,7 @@ export default function ScannerClient() {
                   <p className="text-[10px] text-muted">{blockedResult}</p>
                 )}
                 {cacheNotices.length > 0 && (
-                  <div className="space-y-2" role="status" aria-live="polite">
+                  <div className="space-y-2">
                     {cacheNotices.map((notice) => (
                       <div
                         key={notice.key}
