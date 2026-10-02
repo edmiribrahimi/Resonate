@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "2026-10-02 15:30Z — FASE 52.1: onda 8 CHIUSA (18 catalogo a 14 chiavi + M-D scritta; 19 IN-03/IN-07/lessico). 20/30. La punta e' il candidato U4 (atto 3): 13 cover, 14 porta, 16 gallery, 29 gate/persona, 18, 19. Rosso nominato: verify:capabilities (16 chiavi in prod vs 14 nel codice) fino a M-D (lab nel 20, prod nel 25). Il lab ha UNA assegnazione «Photo» revocata da togliere per chiave prima di M-D (piano 20). Onda 9 = piano 20 (corsa U4 sul lab: M-C → M-D → bucket; P-521-E/F; checkpoint)."
+stopped_at: "2026-10-02 16:35Z — FASE 52.1, onda 9: IL LAB HA FERMATO UN INCIDENTE. U4 (947b5b76) deployato sul lab risponde 500 su ogni pagina: organizer-redirects.ts:121 rimanda ancora a /admin/events/[id]/media, tolta dalle rotte dal piano 18; il fence del modulo lancia alla prima richiesta (build e verify erano verdi). Produzione intatta (U2). Decisione dell'orchestratore: togliere la riga, aggiungere a verify:routes il controllo statico [5/5] (ogni destinazione di ORGANIZER_REDIRECTS e' in CAPABILITY_ROUTES) con prova per mutazione, ridefinire U4 sul nuovo sha, ripetere il piano 20 dal task 1 (riga «Photo» revocata via per chiave, M-C, sonda, M-D, bucket, P-521-E/F, checkpoint E6). Fix in corso. NON spingere origin/main."
 last_updated: "2026-10-01T10:31:56.951Z"
 last_activity: 2026-10-01
 progress:
