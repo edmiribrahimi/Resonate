@@ -115,7 +115,7 @@ export default async function AdminManifestoPage() {
   const { capabilities } = await getAccessContext();
 
   if (!capabilities.has(CAP.PRODUCTION_MANIFESTO_MANAGE)) {
-    redirect("/dashboard");
+    redirect("/account");
   }
 
   const supabase = await createClient();

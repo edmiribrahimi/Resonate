@@ -95,7 +95,7 @@ export default async function AssignmentsPage({ params }: PageProps) {
   // the whole tree and draws both navs (D-34-07). `getAccessContext` is
   // `cache()`-scoped per request, so this second ask costs no round trip.
   if (!ctx.capabilities.has(CAP.ORGANIZER_ACCESS)) {
-    redirect("/dashboard");
+    redirect("/account");
   }
 
   const supabase = await createClient();

@@ -190,7 +190,7 @@ export default async function LocationSpacePage({
   const { capabilities } = await getAccessContext();
 
   if (!capabilities.has(CAP.PRODUCTION_LOCATION_MANAGE)) {
-    redirect("/dashboard");
+    redirect("/account");
   }
 
   // BEFORE the client, before the query. A parameter that is not the shape of an

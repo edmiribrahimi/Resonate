@@ -102,7 +102,7 @@ export default async function TicketTiersPage({ params }: PageProps) {
   // page that stops asking is a page protected by a redirect alone, and
   // `access-gating.md` is explicit that a redirect is not a boundary.
   if (!ctx.capabilities.has(CAP.ORGANIZER_ACCESS)) {
-    redirect("/dashboard");
+    redirect("/account");
   }
 
   const supabase = await createClient();

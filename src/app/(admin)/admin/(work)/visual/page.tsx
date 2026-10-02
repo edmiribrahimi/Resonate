@@ -120,7 +120,7 @@ export default async function AdminVisualPage() {
   const { capabilities } = await getAccessContext();
 
   if (!capabilities.has(CAP.PRODUCTION_VISUAL_MANAGE)) {
-    redirect("/dashboard");
+    redirect("/account");
   }
 
   const supabase = await createClient();

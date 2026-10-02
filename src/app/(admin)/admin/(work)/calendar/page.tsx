@@ -122,7 +122,7 @@ export default async function AdminCalendarPage() {
   const { capabilities } = await getAccessContext();
 
   if (!capabilities.has(CAP.PRODUCTION_CALENDAR_MANAGE)) {
-    redirect("/dashboard");
+    redirect("/account");
   }
 
   const supabase = await createClient();

@@ -97,7 +97,7 @@ export default async function AdminLocationPage() {
   const { capabilities } = await getAccessContext();
 
   if (!capabilities.has(CAP.PRODUCTION_LOCATION_MANAGE)) {
-    redirect("/dashboard");
+    redirect("/account");
   }
 
   const supabase = await createClient();

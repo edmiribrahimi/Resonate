@@ -22,7 +22,7 @@ import { CAP } from "@/lib/capabilities/keys";
  * `admin.access` would close `/admin` to the master alone and bounce every
  * organizer off the entrance to their own area.
  *
- * The refusal is `redirect("/dashboard")` — the same shape every other page in
+ * The refusal is `redirect("/account")` — the same shape every other page in
  * this tree uses, not a 404 and not a bare 403 (D-34-08, state 2).
  *
  * `getAccessContext()` is resolved by `(work)/layout.tsx` for the whole tree and
@@ -33,7 +33,7 @@ export default async function AdminPage() {
   const { capabilities } = await getAccessContext();
 
   if (!capabilities.has(CAP.ORGANIZER_ACCESS)) {
-    redirect("/dashboard");
+    redirect("/account");
   }
 
   redirect("/admin/events");

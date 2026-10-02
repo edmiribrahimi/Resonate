@@ -180,7 +180,7 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
   const ctx = await getAccessContext();
 
   if (!ctx.capabilities.has(CAP.ORGANIZER_ACCESS)) {
-    redirect("/dashboard");
+    redirect("/account");
   }
 
   const supabase = await createClient();

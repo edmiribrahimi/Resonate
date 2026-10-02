@@ -81,7 +81,7 @@ export default async function AdminNewsletterPage() {
   // authority, instead of a role read out of a request header. Never a role
   // list: a fourth role arrives in phase 34.
   if (!capabilities.has(CAP.ADMIN_ACCESS)) {
-    redirect("/dashboard");
+    redirect("/account");
   }
 
   const statsResult = await getSubscriberStats();

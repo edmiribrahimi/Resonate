@@ -95,7 +95,7 @@ export default async function MembersPage() {
   // every member action re-checks on its own. The middleware is UX; the RLS is
   // the boundary.
   if (!capabilities.has(CAP.ORGANIZER_ACCESS)) {
-    redirect("/dashboard");
+    redirect("/account");
   }
 
   // Gli account, con il solo asse rimasto: il ruolo.

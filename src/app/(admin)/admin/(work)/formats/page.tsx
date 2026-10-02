@@ -57,7 +57,7 @@ export default async function AdminFormatsPage() {
   const { capabilities } = await getAccessContext();
 
   if (!capabilities.has(CAP.CATALOGUE_MANAGE)) {
-    redirect("/dashboard");
+    redirect("/account");
   }
 
   const supabase = await createClient();

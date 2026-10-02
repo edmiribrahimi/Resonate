@@ -54,7 +54,7 @@ export default async function EventsPage() {
   const { capabilities, userId } = await getAccessContext();
 
   if (!capabilities.has(CAP.ORGANIZER_ACCESS)) {
-    redirect("/dashboard");
+    redirect("/account");
   }
 
   // Narrow `userId` from `string | null` to `string` before it reaches the
@@ -80,7 +80,7 @@ export default async function EventsPage() {
   // `npm run build` is this project's only automatic gate, and on this line it
   // is blind. This runtime refusal is the whole guard.
   if (!userId) {
-    redirect("/dashboard");
+    redirect("/account");
   }
 
   const supabase = await createClient();

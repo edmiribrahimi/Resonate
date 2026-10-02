@@ -340,7 +340,7 @@ export default function SetPasswordForm() {
           sign in — it is not stored anywhere you can read it back, so if you
           forget it you will need a new link.
         </p>
-        <Button href="/dashboard" size="lg" variant="primary" className="mt-4">
+        <Button href="/account" size="lg" variant="primary" className="mt-4">
           Go to your dashboard
         </Button>
       </div>

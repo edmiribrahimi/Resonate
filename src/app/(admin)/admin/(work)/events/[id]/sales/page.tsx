@@ -99,7 +99,7 @@ export default async function SalesPage({
   // so the sweep grep that asserts their absence cannot be defeated by a comment
   // (plan 34-03).
   if (!ctx.capabilities.has(CAP.ORGANIZER_ACCESS)) {
-    redirect("/dashboard");
+    redirect("/account");
   }
 
   const supabase = await createClient();

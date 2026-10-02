@@ -56,7 +56,7 @@ function getAudienceId() {
  */
 async function requireMaster() {
   if (!(await hasCapability(CAP.ADMIN_ACCESS))) {
-    redirect("/dashboard");
+    redirect("/account");
   }
 }
 

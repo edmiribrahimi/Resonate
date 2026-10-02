@@ -79,7 +79,7 @@ export default async function AdminVenuesPage() {
   const { capabilities } = await getAccessContext();
 
   if (!capabilities.has(CAP.ORGANIZER_ACCESS)) {
-    redirect("/dashboard");
+    redirect("/account");
   }
 
   const supabase = await createClient();

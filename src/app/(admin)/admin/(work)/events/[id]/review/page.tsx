@@ -167,11 +167,11 @@ export default async function DoorReviewPage({
   // Somebody who arrived by **assignment** does not hold it — they are typically
   // `staff` — and sending them to the events list would bounce them again off
   // the middleware, producing two redirects and a second notice about a
-  // different thing. They go to `/dashboard`. **Nobody loses a destination they
+  // different thing. They go to `/account`. **Nobody loses a destination they
   // had.**
   const refusalDestination = holdsOrganizerAccess
     ? "/admin/events"
-    : "/dashboard";
+    : "/account";
 
   // The normal server client, and **not** the RLS-bypassing service client from
   // `@/lib/supabase/service`. That client bypasses every policy, so reading the

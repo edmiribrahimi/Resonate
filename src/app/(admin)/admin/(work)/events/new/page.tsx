@@ -51,7 +51,7 @@ export default async function NewEventPage() {
   const { capabilities } = await getAccessContext();
 
   if (!capabilities.has(CAP.ORGANIZER_ACCESS)) {
-    redirect("/dashboard");
+    redirect("/account");
   }
 
   const supabase = await createClient();

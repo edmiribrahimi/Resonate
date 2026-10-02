@@ -93,7 +93,7 @@ export default async function AnalyticsPage({
   // `admin/(work)/layout.tsx` resolves once and draws both navs (D-34-07).
   // Neither is named in prose, so the sweep grep stays runnable (plan 34-03).
   if (!ctx.capabilities.has(CAP.ORGANIZER_ACCESS)) {
-    redirect("/dashboard");
+    redirect("/account");
   }
 
   // The master-only half of this surface, decided by an existing grant and

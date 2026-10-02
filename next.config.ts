@@ -111,17 +111,24 @@ const nextConfig: NextConfig = {
     // passata da `/dashboard` a `/account`, e questa voce e' cio' che tiene
     // vivo il vecchio.
     //
-    // ⚠ **E' questa voce a tenere `/dashboard` dentro l'union di
-    // `typedRoutes`, ed e' la ragione per cui i circa quaranta rifiuti delle
-    // superfici di lavoro non sono stati toccati.** Misurato, non dedotto: i
-    // `source` dei redirect dichiarati qui entrano fra i percorsi validi
-    // (`.next/types/routes.d.ts`, `type RedirectRoutes`), quindi ogni
-    // `redirect("/dashboard")` sotto `src/app/(admin)/admin/(work)/` continua a
-    // compilare e resta **un** rifiuto solo. Misurato anche nell'altro verso,
-    // spostando la pagina prima di scrivere questa riga: il build si e' fermato
-    // su `artists/page.tsx:73` con *«Argument of type "/dashboard" is not
-    // assignable»*. Togliere questa voce senza riscrivere quei quaranta siti
-    // **rompe il build**, e non in silenzio — e' il verso buono in cui fallire.
+    // ⚠ **Dal 2026-10-02 questa voce serve solo a chi arriva da fuori** —
+    // link vecchi, segnalibri, mail gia' partite. Nessun rifiuto del codice
+    // passa piu' di qui: i ventisei `redirect("/dashboard")` delle superfici
+    // di lavoro, della porta e dell'azione newsletter, e i due della pagina di
+    // review (via `refusalDestination`), sono diventati `redirect("/account")`
+    // (IN-03 della review della fase 52, DBT-07, piano 52.1-19), e con loro il
+    // link di `set-password`. Prima ogni rifiuto costava un salto in piu'
+    // (308 qui, poi `/account`); adesso e' uno.
+    //
+    // **Resta anche per i tipi.** I `source` dei redirect dichiarati qui entrano
+    // fra i percorsi validi di `typedRoutes` (`.next/types/routes.d.ts`,
+    // `type RedirectRoutes`): e' questa voce a tenere `/dashboard` nell'union.
+    // Al 2026-10-02 nessun file la usa piu' come destinazione tipizzata
+    // (`grep -rn '"/dashboard' src` trova solo `PROTECTED_PREFIXES` in
+    // `src/lib/routes/next-redirect.ts`, che e' una stringa di prefisso e non
+    // una rotta, e un commento di `login/page.tsx`). Misurato il 2026-10-02
+    // togliendo la voce: il build passa. Toglierla quindi non rompe il build —
+    // romperebbe i link vecchi, ed e' per quelli che sta qui.
     //
     // **Il costo, dichiarato e non scoperto, ed e' lo stesso di `T-50-28`.**
     // `permanent: true` emette un **308**, e un 308 lo **memorizza il browser**:

@@ -144,7 +144,7 @@ export default async function DoorSurface() {
       ctx.liveAssignmentCapabilities.has(CAP.DOOR_OPERATE));
 
   if (!maySeeTheDoor) {
-    redirect("/dashboard");
+    redirect("/account");
   }
 
   return (

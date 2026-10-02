@@ -70,7 +70,7 @@ export default async function AdminArtistsPage() {
   const { capabilities } = await getAccessContext();
 
   if (!capabilities.has(CAP.ORGANIZER_ACCESS)) {
-    redirect("/dashboard");
+    redirect("/account");
   }
 
   const supabase = await createClient();

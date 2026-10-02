@@ -212,7 +212,7 @@ export default async function MembershipRegisterPage() {
   // `requires_approved = true` is D-19's non-negotiable requirement: a pending
   // organizer is refused here, by the capability set, exactly as intended.
   if (!ctx.capabilities.has(CAP.REGISTER_READ)) {
-    redirect("/dashboard");
+    redirect("/account");
   }
 
   // The normal server client, and **not** the RLS-bypassing one from
