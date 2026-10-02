@@ -1,9 +1,6 @@
 import type { Route } from "next";
 import { CAP, type CapabilityKey } from "@/lib/capabilities/keys";
-import {
-  CAPABILITY_ROUTES,
-  resolveRoute,
-} from "@/lib/routes/capability-routes";
+import { CAPABILITY_ROUTES } from "@/lib/routes/capability-routes";
 import { sortTabsByLabel, visibleStaffTabs } from "@/lib/routes/staff-tabs";
 import type { UserRole } from "@/types/database";
 
@@ -87,9 +84,9 @@ import type { UserRole } from "@/types/database";
  * **Fase 52: due import in piu', e la chiusura resta la stessa.** `resolveRoute`
  * viene dallo stesso modulo della mappa, e `staff-tabs.ts` importa soltanto
  * `keys.ts`, `capability-routes.ts` e `next` — quindi il pannello Management si
- * costruisce qui senza aggiungere alcun arco verso un modulo del server. Il
- * `resolveRoute` e' letto **a runtime**, per l'asserzione della voce Gallery
- * piu' sotto, e quel paragrafo dice dove scatta e dove no.
+ * costruisce qui senza aggiungere alcun arco verso un modulo del server.
+ * *(Il `resolveRoute` letto a runtime per l'asserzione della voce Gallery e'
+ * uscito il 2026-10-02 con la gallery, DBT-13: l'import non c'e' piu'.)*
  */
 type DoorAddress =
   (typeof CAPABILITY_ROUTES)[typeof CAP.DOOR_OPERATE]["routes"][number];
@@ -272,13 +269,10 @@ const EVENTS: LinkDeclaration = {
 // che D-50-04 ha spento; la fase 50 la lasciava **senza capability** e
 // dichiarava il debito: *il cancello vero lo costruisce `NAV-02`, fase 52*.
 //
-// **Il debito e' chiuso, e la voce non e' piu' qui.** Sta nel **pannello
-// Management**, sotto la chiave `gallery.view` (D-52-12: concessa per ruolo a
-// master, organizer e staff) — vedi `panelFor` qui sotto, e l'asserzione a
-// caricamento che la lega alla mappa. Un `attendee` e un anonimo non la vedono
-// piu' in nessun posto della navigazione; **non e' questo che li rifiuta**: li
-// rifiutano la voce `/gallery` di `CAPABILITY_ROUTES` nel middleware, la
-// guardia della pagina e, sui dati, la policy di lettura di NAV-07.
+// **Il debito e' chiuso, e la voce non esiste piu' in nessun posto.** Dalla
+// fase 52 stava nel pannello Management sotto `gallery.view`; il 2026-10-02
+// (DBT-13, D-52.1-17) la gallery e' uscita dal prodotto, e con lei la voce del
+// pannello e la sua asserzione a caricamento.
 const CHECK_IN: LinkDeclaration = {
   // ── The divergence Phase 34 wrote down, and its closure — D-39-06
   //
@@ -387,72 +381,23 @@ const MANAGEMENT: BarEntry = {
   icon: "squares-2x2",
 };
 
-// ── La voce Gallery del pannello, e la sua asserzione ───────────────────────
+// ── QUI STAVA LA VOCE GALLERY DEL PANNELLO — uscita il 2026-10-02 ─────────
 //
-// **Due guardie, e non sono la stessa guardia scritta due volte.**
-//
-// 1. **Il tipo.** `GalleryAddress` sono gli indirizzi che la mappa lega **a
-//    `gallery.view` in particolare**, letti attraverso l'`as const` di
-//    `CAPABILITY_ROUTES` — la stessa costruzione di `DoorAddress` in cima a
-//    questo file, e per la stessa ragione scritta li': se `/gallery` esce da
-//    quella voce, o passa a un'altra chiave, questa riga smette di compilare e
-//    nomina il file. E' la garanzia di **build**.
-//
-// 2. **L'asserzione a caricamento**, nella forma di `staff-tabs.ts` (il loop in
-//    fondo a quel file): chiede a `resolveRoute` che cosa risponde **davvero**
-//    il matcher per quell'indirizzo. Il tipo non lo vede: una seconda voce il
-//    cui pattern catturasse `/gallery` con meno segmenti dinamici **vincerebbe
-//    la risoluzione** (`resolveRoute` sceglie il pattern piu' specifico) mentre
-//    la lista di `gallery.view` continuerebbe a nominarlo. Quel caso compila, e
-//    il middleware chiederebbe una chiave diversa da quella su cui il pannello
-//    disegna la voce.
-//
-// **Dove scatta la seconda, detto senza gonfiarlo.** Questo modulo e' letto da
-// `AppNav`, che e' `"use client"`: l'asserzione gira alla prima valutazione del
-// modulo — nel render sul server di ogni pagina che monta la barra, e
-// all'idratazione. **Non e' una garanzia di build**, e la docblock di
-// `DOOR_HREF` qui sopra spiega perche' non va spacciata per tale: la garanzia di
-// build e' la guardia 1. La 2 e' la stessa disciplina delle tab, chiesta per
-// parita' da NAV-02 (T-52-27) — e il suo fallimento e' rumoroso, con due
-// messaggi per due errori diversi, invece di una voce che promette una rotta
-// che il middleware non apre.
-type GalleryAddress =
-  (typeof CAPABILITY_ROUTES)[typeof CAP.GALLERY_VIEW]["routes"][number];
-
-const GALLERY_HREF: Extract<GalleryAddress, Route> = "/gallery";
-
-{
-  const galleryResolution = resolveRoute("/gallery");
-
-  if (galleryResolution === null) {
-    throw new Error(
-      `roles: la voce Gallery del pannello Management punta a "${GALLERY_HREF}", ` +
-        `che nessuna voce di CAPABILITY_ROUTES lega. Lega l'indirizzo nella mappa ` +
-        `o togli la voce — una voce disegnata senza regola lato server e' una ` +
-        `promessa che nessuno mantiene.`
-    );
-  }
-
-  if (galleryResolution.key !== CAP.GALLERY_VIEW) {
-    throw new Error(
-      `roles: la voce Gallery del pannello Management si disegna su ` +
-        `"${CAP.GALLERY_VIEW}", ma CAPABILITY_ROUTES risolve "${GALLERY_HREF}" su ` +
-        `"${galleryResolution.key}" (pattern "${galleryResolution.pattern}"). La ` +
-        `mappa e' la fonte: correggi la voce, o il pattern che la cattura.`
-    );
-  }
-}
+// DBT-13 (D-52.1-17): con la pagina `/gallery` sono usciti `GALLERY_HREF`, il
+// tipo che lo legava a `gallery.view` e l'asserzione a caricamento su
+// `resolveRoute` (IN-04). Resta la sola guardia di `DOOR_HREF`, in cima.
 
 /**
  * Il contenuto del pannello Management — D-52-09, in ordine alfabetico
  * (D-52-27).
  *
- * `visibleStaffTabs(capabilities)` piu' Gallery (se `gallery.view`) piu'
- * Account. **Per ruolo, non per assegnazione**: `visibleStaffTabs` legge le sole
- * capability di ruolo, ed e' giusto — il middleware apre gli strumenti solo per
- * ruolo, nessuna loro voce e' `assignmentOpenable`. Uno `staff` assegnato
- * stasera trova Check-in in barra (per assegnazione) e Management (per
- * `gallery.view`, di ruolo).
+ * `visibleStaffTabs(capabilities)` piu' Account. **Per ruolo, non per
+ * assegnazione**: `visibleStaffTabs` legge le sole capability di ruolo, ed e'
+ * giusto — il middleware apre gli strumenti solo per ruolo, nessuna loro voce
+ * e' `assignmentOpenable`. Uno `staff` assegnato stasera trova Check-in in
+ * barra (per assegnazione); dal 2026-10-02 (DBT-13) non tiene piu' alcuna voce
+ * del pannello — la sua era Gallery — quindi in barra ha Account, non
+ * Management.
  *
  * **Account entra solo se c'e' almeno un'altra voce.** Un pannello con dentro il
  * solo Account sarebbe un giro in piu' per arrivare alla stessa pagina: in quel
@@ -466,10 +411,6 @@ function panelFor(capabilities: readonly CapabilityKey[]): PanelEntry[] {
     href: tab.href,
     label: tab.label,
   }));
-
-  if (capabilities.includes(CAP.GALLERY_VIEW)) {
-    entries.push({ href: GALLERY_HREF, label: "Gallery" });
-  }
 
   if (entries.length === 0) {
     return [];
@@ -558,10 +499,13 @@ function toLink(
  * |---|---|---|
  * | anonimo | Events · Account (→ `/login`) | — |
  * | `attendee` | Events · Account | — |
- * | `staff` non assegnato | Events · TASK · Management | Account · Gallery |
- * | `staff` assegnato a una serata in corso | Events · Check-in · TASK · Management | Account · Gallery |
- * | `organizer` | Events · Check-in · TASK · Management | 9 strumenti + Gallery + Account |
- * | `master` | Events · Check-in · TASK · Management | 10 strumenti + Gallery + Account |
+ * | `staff` non assegnato | Events · TASK · Account | — |
+ * | `staff` assegnato a una serata in corso | Events · Check-in · TASK · Account | — |
+ * | `organizer` | Events · Check-in · TASK · Management | 9 strumenti + Account |
+ * | `master` | Events · Check-in · TASK · Management | 10 strumenti + Account |
+ *
+ * *(2026-10-02, DBT-13: Gallery e' uscita da ogni pannello con la gallery, e lo
+ * `staff`, che nel pannello aveva solo quella, ha Account in barra.)*
  * | contesto fallito | Events · Account (→ `/login`) | — |
  *
  * **Il contesto fallito non arriva qui come un ruolo.** `getAccessContext()`
@@ -573,10 +517,9 @@ function toLink(
  * dell'anonimo. **Fail closed per costruzione**, coerente col middleware: meno
  * voci, mai di piu'.
  *
- * **Una conseguenza da leggere prima di chiamarla un difetto.** La riga dello
- * `staff` vale dove la chiave `gallery.view` esiste. In un database dove non
- * esiste ancora — la produzione fino al piano 52-15 — uno `staff` non tiene
- * alcuna voce del pannello, quindi il pannello e' vuoto e la sua barra e'
+ * **Una conseguenza da leggere prima di chiamarla un difetto.** Uno `staff`
+ * non tiene alcuna voce del pannello — l'unica era Gallery, uscita il
+ * 2026-10-02 (DBT-13) — quindi il pannello e' vuoto e la sua barra e'
  * **Events · TASK · Account**. E' la derivazione che si comporta bene, non una
  * voce persa: la presenza del pannello discende dalle capability, e chi non ne
  * ha non riceve un pannello con il solo Account.
