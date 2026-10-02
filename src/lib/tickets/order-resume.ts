@@ -135,11 +135,6 @@ export type OrderResumeSkip =
   | "order_unreadable"
   /** L'ordine non e' piu' `pending`: non c'e' niente da riprendere. */
   | "order_not_open"
-  /**
-   * L'indirizzo e' stato tolto dalla cancellazione tracciata (`pii_cleared_at`,
-   * piano 52.1-21): non c'e' a chi scrivere, e non e' un ordine illeggibile.
-   */
-  | "buyer_email_cleared"
   /** L'ordine ha gia' una mail di ripresa: una per ordine, per costruzione. */
   | "already_scheduled"
   /** Il fornitore ha rifiutato la programmazione, o qualcosa ha sollevato. */
@@ -227,7 +222,7 @@ export async function scheduleOrderResumeEmail({
     // ── 3. L'ordine. Colonne nominate, nessuna di luogo ───────────────────────
     const { data: order, error: orderError } = await serviceClient
       .from("ticket_orders")
-      .select("id, buyer_email, user_id, event_id, party_id, tier_id, status, resume_email_id, sumup_checkout_id, pii_cleared_at")
+      .select("id, buyer_email, user_id, event_id, party_id, tier_id, status, resume_email_id, sumup_checkout_id")
       .eq("id", orderId)
       .maybeSingle();
 
@@ -255,10 +250,6 @@ export async function scheduleOrderResumeEmail({
 
     const buyerEmail = normalizeBuyerEmail(order.buyer_email);
     if (!buyerEmail) {
-      // Un indirizzo nullo non e' un indirizzo, e le due cause restano distinte.
-      if (order.pii_cleared_at) {
-        return skip("buyer_email_cleared", "indirizzo tolto dalla cancellazione tracciata");
-      }
       return skip("order_unreadable", "buyer_email vuoto");
     }
 

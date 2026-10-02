@@ -118,7 +118,7 @@ export async function readRefundNoticeRecipient({
     if (!email && ticket.order_id) {
       const { data: order, error: orderError } = await serviceClient
         .from("ticket_orders")
-        .select("buyer_email, pii_cleared_at")
+        .select("buyer_email")
         .eq("id", ticket.order_id)
         .maybeSingle();
       if (orderError) {
@@ -127,15 +127,6 @@ export async function readRefundNoticeRecipient({
         );
       }
       email = (order?.buyer_email ?? "").trim() || null;
-      if (!email && order?.pii_cleared_at) {
-        // Indirizzo tolto dalla cancellazione tracciata (piano 52.1-21): una
-        // causa propria, distinta da «nessun destinatario». Il CHECK lo ammette
-        // solo su un ordine mai pagato, quindi qui non dovrebbe mai comparire.
-        // Nessun invio: si prosegue verso `no_recipient`.
-        console.error(
-          `[refund.notice_buyer_email_cleared] ticket=${ticketId} order=${ticket.order_id}`
-        );
-      }
     }
 
     const rawLabel = (ticket.holder_label ?? "").trim();

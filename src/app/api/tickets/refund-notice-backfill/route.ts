@@ -122,7 +122,7 @@ export async function POST(request: Request) {
   if (refund.refunded_order_id) {
     const { data: order, error: orderError } = await supabase
       .from("ticket_orders")
-      .select("buyer_email, pii_cleared_at")
+      .select("buyer_email")
       .eq("id", refund.refunded_order_id)
       .maybeSingle();
     if (orderError) {
@@ -132,16 +132,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "order_unreadable" }, { status: 500 });
     }
     email = normalizeBuyerEmail(order?.buyer_email) || null;
-    if (!email && order?.pii_cleared_at) {
-      // Indirizzo tolto dalla cancellazione tracciata (piano 52.1-21): una
-      // causa propria, mai collassata in «nessun destinatario». Il CHECK la
-      // ammette solo su un ordine mai pagato, quindi un rimborso approvato qui
-      // non dovrebbe mai trovarla. Si prosegue con l'indirizzo fornito
-      // dall'operatore, se c'e'; altrimenti `no_recipient`.
-      console.error(
-        `[refund.backfill_buyer_email_cleared] refund=${refundId} order=${refund.refunded_order_id}`
-      );
-    }
   }
   if (!email) email = providedEmail;
   if (!email) {
