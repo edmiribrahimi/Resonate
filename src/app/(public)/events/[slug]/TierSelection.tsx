@@ -860,6 +860,7 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
       {checkoutId && (
         <SumUpCheckoutModal
           checkoutId={checkoutId}
+          orderToken={checkoutOrderToken}
           onClose={() => setCheckoutId(null)}
           onPaid={() => {
             // Pagato in questa scheda: l'ordine non e' piu' «lasciato aperto».

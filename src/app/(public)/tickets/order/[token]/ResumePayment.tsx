@@ -62,6 +62,8 @@ export default function ResumePayment({ token }: { token: string }) {
       {checkout ? (
         <SumUpCheckoutModal
           checkoutId={checkout.checkoutId}
+          // Same order, same signal: a resumed form shown counts as «opened» (DBT-15).
+          orderToken={token}
           onClose={() => setCheckout(null)}
           onPaymentComplete={() => setCheckout(null)}
           successOutcome={{

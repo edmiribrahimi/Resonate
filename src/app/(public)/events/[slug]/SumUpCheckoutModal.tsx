@@ -5,6 +5,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { SumUpCardWidget } from "@/components/SumUpCardWidget";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
+import { markCheckoutFormOpened } from "./checkout-form-actions";
 
 /**
  * The panel a card is entered into — the platform's modal, around a mount point
@@ -80,6 +81,10 @@ import { Dialog } from "@/components/ui/Dialog";
  * mounts into is still not in this file, and `handleSuccess`, `handleError` and
  * `handleLoad` are untouched.
  *
+ * *(2026-10-02, plan 52.1-23: `handleLoad` gained ONE fire-and-forget statistics
+ * signal, sent only when the caller passes `orderToken`. It writes no payment
+ * state, is not awaited, and its identity is unchanged — see the prop.)*
+ *
  * **`PendingIntentHandler.tsx` was deliberately NOT edited**, so the resumed
  * purchase keeps the old behaviour. Its six resumption conditions are
  * byte-identical on purpose — a condition changed there is a purchase that
@@ -127,6 +132,15 @@ interface SumUpCheckoutModalProps {
    * navigate; the panel keeps its own behaviour.
    */
   readonly onPaid?: () => void;
+  /**
+   * The signed order token of the `ticket_orders` row this checkout pays
+   * (2026-10-02, plan 52.1-23, DBT-15). Optional: the drinks path and the Event
+   * Pass have no ticket order and pass nothing. When present, the moment the
+   * widget loads sends ONE fire-and-forget signal — «the payment form was
+   * shown» — through `markCheckoutFormOpened`. The payment never waits on it and
+   * never depends on it; a lost signal only undercounts «opened».
+   */
+  readonly orderToken?: string | null;
 }
 
 type ModalStatus = "loading" | "ready" | "success" | "error";
@@ -137,6 +151,7 @@ export default function SumUpCheckoutModal({
   onPaymentComplete,
   successOutcome,
   onPaid,
+  orderToken,
 }: SumUpCheckoutModalProps) {
   const [status, setStatus] = useState<ModalStatus>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -144,9 +159,25 @@ export default function SumUpCheckoutModal({
   useEffect(() => {
     onPaidRef.current = onPaid;
   }, [onPaid]);
+  // Through refs, like `onPaid`: `handleLoad` keeps its identity, so the card
+  // widget is never remounted by the signal, and the signal goes once per mount.
+  const orderTokenRef = useRef(orderToken);
+  useEffect(() => {
+    orderTokenRef.current = orderToken;
+  }, [orderToken]);
+  const formSignalSent = useRef(false);
 
   const handleLoad = useCallback(() => {
     setStatus("ready");
+    // «The payment form was shown» (DBT-15). NOT awaited: the payment must
+    // never wait on, or fail because of, a statistics signal.
+    const token = orderTokenRef.current;
+    if (token && !formSignalSent.current) {
+      formSignalSent.current = true;
+      void markCheckoutFormOpened(token).catch(() => {
+        console.warn("[tickets.checkout_form_signal_lost]");
+      });
+    }
   }, []);
 
   const handleSuccess = useCallback(
