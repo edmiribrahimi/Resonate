@@ -26,9 +26,39 @@ import {
   fetchMarketInsights,
   fetchPurchaseFunnel,
   fetchTicketFunnel,
+  fetchCartReading,
+  fetchTicketFunnelAcrossNights,
+  CART_ENTRY_SOURCES,
   type TicketFunnel,
+  type CartReading,
+  type CartReadingNight,
+  type CartReadingResult,
+  type CartEntrySource,
 } from "@/lib/analytics/event-queries";
 import { getServiceClient } from "@/lib/supabase/service";
+import { DataTable, type DataColumn } from "@/components/ui/DataTable";
+
+const SOURCE_LABELS: Record<CartEntrySource, string> = {
+  instagram: "Instagram",
+  newsletter: "newsletter",
+  flyer: "flyer",
+  direct: "direct",
+  other: "other",
+  unrecorded: "before tracking",
+};
+
+/**
+ * The two underestimates, written next to the numbers they bend (plan 52.1-24):
+ * a buyer whose browser refuses `sessionStorage` lands as `direct` even when a
+ * marked link brought them, and a lost «opened» beacon leaves a cart in «form
+ * never opened». And the third, of the mail: the morning check reads the
+ * provider, so the newest mails count only after it has run.
+ */
+const CART_NOTES = [
+  "Sources are underestimated: when the browser cannot keep the link's source for the session, the order counts as direct.",
+  "«Opened» is underestimated: when the form's opened signal is lost on the way, the cart counts as form never opened.",
+  "A resume mail counts as sent once the morning delivery check has read it from the provider.",
+] as const;
 
 /** A read that failed is a state of its own, never a panel of zeros. */
 type TicketFunnelResult = { ok: true; funnel: TicketFunnel } | { ok: false };
@@ -145,6 +175,8 @@ export default async function AnalyticsPage({
     marketInsights,
     purchaseFunnel,
     ticketFunnel,
+    cartReading,
+    cartNights,
   ] = await Promise.all([
     fetchEventRevenue(supabase, eventId),
     fetchDailyVelocity(supabase, eventId),
@@ -175,6 +207,17 @@ export default async function AnalyticsPage({
             return { ok: false };
           }
         )
+      : Promise.resolve(null),
+    // Where the carts stop and where they come from (DBT-15). Same guard as the
+    // funnel above: reached only after `mayManageEvent` and behind
+    // `admin.access`. A separate read so that a column production does not have
+    // yet (before act 4) is «not available yet», never the funnel's failure.
+    // Never rejects: its three outcomes are its result.
+    seesMasterOnlyPanels
+      ? fetchCartReading(getServiceClient, eventId)
+      : Promise.resolve(null),
+    seesMasterOnlyPanels
+      ? fetchTicketFunnelAcrossNights(getServiceClient)
       : Promise.resolve(null),
   ]);
 
@@ -261,6 +304,16 @@ export default async function AnalyticsPage({
                   Could not read ticket checkouts
                 </p>
               )}
+              {cartReading && <CartReadingPanel result={cartReading} />}
+            </Card>
+          )}
+
+          {/* All nights — the same cart reading for every night, behind the
+              same `admin.access` guard; a section of this page, not a route. */}
+          {seesMasterOnlyPanels && cartNights && (
+            <Card>
+              <SectionHeading>All nights</SectionHeading>
+              <CartNightsSection result={cartNights} />
             </Card>
           )}
         </div>
@@ -304,6 +357,143 @@ function TicketFunnelPanel({ funnel }: { funnel: TicketFunnel }) {
           <p>By device (opened/paid): {devices.join(" · ")}</p>
         )}
         {methods.length > 0 && <p>Paid with: {methods.join(" · ")}</p>}
+      </div>
+    </div>
+  );
+}
+
+/** The two states that are not numbers, worded apart (meta-gates: no generic error). */
+function CartUnavailable({ state }: { state: "not_available" | "error" }) {
+  return (
+    <p className="text-sm text-muted" role="status">
+      {state === "not_available"
+        ? "Entry source and stopping step: not available yet — this database does not record them yet"
+        : "Could not read where carts stop"}
+    </p>
+  );
+}
+
+function mainSource(reading: CartReading): string {
+  let best: CartEntrySource | null = null;
+  for (const s of CART_ENTRY_SOURCES) {
+    if (reading.bySource[s].opened === 0) continue;
+    if (best === null || reading.bySource[s].opened > reading.bySource[best].opened) best = s;
+  }
+  return best === null ? "—" : SOURCE_LABELS[best];
+}
+
+function resumeSentLabel(reading: CartReading): string {
+  return reading.resumeEmailsSent === null
+    ? "could not read the mail register"
+    : String(reading.resumeEmailsSent);
+}
+
+/**
+ * Where this night's carts stop, where they come from, and what the resume mail
+ * earned. No email, no name: every figure is a count. The notes on the two
+ * underestimates sit under the numbers, not in a tooltip.
+ */
+function CartReadingPanel({ result }: { result: CartReadingResult<CartReading> }) {
+  if (result.state !== "ok") {
+    return (
+      <div className="mt-4 border-t border-line pt-4">
+        <CartUnavailable state={result.state} />
+      </div>
+    );
+  }
+  const r = result.data;
+  const sources = CART_ENTRY_SOURCES.filter((s) => r.bySource[s].opened > 0).map(
+    (s) => `${SOURCE_LABELS[s]} ${r.bySource[s].opened}/${r.bySource[s].paid}`
+  );
+  const lines: [string, string][] = [
+    ["Form never opened", String(r.formNeverOpened)],
+    ["Opened, not attempted", String(r.openedNotAttempted)],
+    ["Attempted and declined", String(r.attemptedDeclined)],
+    ["Before tracking (step not recorded)", String(r.beforeTracking)],
+    ["Resume emails sent", resumeSentLabel(r)],
+    ["Paid after the resume email", String(r.paidAfterResume)],
+  ];
+  return (
+    <div className="mt-4 space-y-3 border-t border-line pt-4">
+      <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-sm md:grid-cols-2">
+        {lines.map(([label, value]) => (
+          <div key={label} className="flex justify-between gap-4">
+            <dt className="text-muted">{label}</dt>
+            <dd className="font-mono text-ink-2">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      <div className="space-y-1 text-sm text-muted">
+        <p>
+          Of {r.opened} checkouts.
+          {sources.length > 0 && ` By source (opened/paid): ${sources.join(" · ")}`}
+        </p>
+        {CART_NOTES.map((note) => (
+          <p key={note} className="text-xs">
+            {note}
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const NIGHT_COLUMNS: readonly DataColumn<CartReadingNight>[] = [
+  { key: "night", header: "Night", card: "title", cell: (n) => n.title },
+  { key: "date", header: "Date", card: "subtitle", cell: (n) => n.date ?? "—" },
+  { key: "opened", header: "Opened", figure: true, align: "end", cell: (n) => n.opened },
+  { key: "paid", header: "Paid", figure: true, align: "end", cell: (n) => n.paid },
+  {
+    key: "never",
+    header: "Form never opened",
+    figure: true,
+    align: "end",
+    cell: (n) => n.formNeverOpened,
+  },
+  {
+    key: "notAttempted",
+    header: "Opened, not attempted",
+    figure: true,
+    align: "end",
+    cell: (n) => n.openedNotAttempted,
+  },
+  {
+    key: "declined",
+    header: "Declined",
+    figure: true,
+    align: "end",
+    cell: (n) => n.attemptedDeclined,
+  },
+  {
+    key: "afterMail",
+    header: "Paid after the resume email",
+    figure: true,
+    align: "end",
+    cell: (n) => n.paidAfterResume,
+  },
+  { key: "source", header: "Main source", cell: (n) => mainSource(n) },
+];
+
+/** One row per night with checkouts, most recent first. Empty and error apart. */
+function CartNightsSection({
+  result,
+}: {
+  result: CartReadingResult<CartReadingNight[]>;
+}) {
+  if (result.state !== "ok") return <CartUnavailable state={result.state} />;
+  return (
+    <div className="space-y-3">
+      <DataTable
+        rows={result.data}
+        columns={NIGHT_COLUMNS}
+        rowKey={(n) => n.eventId}
+        caption="Ticket checkouts per night: where carts stop and what the resume email earned"
+        empty="No ticket checkouts on any night yet"
+      />
+      <div className="space-y-1 text-xs text-muted">
+        {CART_NOTES.map((note) => (
+          <p key={note}>{note}</p>
+        ))}
       </div>
     </div>
   );
