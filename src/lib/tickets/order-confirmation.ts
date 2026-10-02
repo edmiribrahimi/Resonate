@@ -85,6 +85,12 @@ export type OrderConfirmationFailure =
   | "order_unreadable"
   /** L'ordine non porta un indirizzo di posta: non c'e' a chi spedire. */
   | "order_without_buyer"
+  /**
+   * L'indirizzo e' stato tolto dalla cancellazione tracciata (`pii_cleared_at`,
+   * piano 52.1-21). Il CHECK del database lo ammette solo su un ordine `expired`:
+   * su questo percorso non dovrebbe mai comparire, e se compare non si spedisce.
+   */
+  | "buyer_email_cleared"
   /** Nessun biglietto e' nato da quest'ordine: non c'e' cosa spedire. */
   | "order_without_tickets"
   /** La serata o il tier non si sono potuti leggere. */
@@ -215,7 +221,7 @@ export async function sendOrderConfirmation({
     // ── L'ordine. Colonne nominate una per una, mai `*` ───────────────────────
     const { data: order, error: orderError } = await serviceClient
       .from("ticket_orders")
-      .select("id, event_id, party_id, tier_id, user_id, buyer_email, buyer_name, quantity, total_amount")
+      .select("id, event_id, party_id, tier_id, user_id, buyer_email, buyer_name, quantity, total_amount, pii_cleared_at")
       .eq("id", orderId)
       .single();
 
@@ -228,6 +234,11 @@ export async function sendOrderConfirmation({
 
     const buyerEmail = (order.buyer_email ?? "").trim();
     if (!buyerEmail) {
+      // Un indirizzo nullo non e' un indirizzo: due cause, due categorie. Mai
+      // l'indirizzo nel log (non c'e', e se ci fosse non ci andrebbe).
+      if (order.pii_cleared_at) {
+        return fail("buyer_email_cleared", "indirizzo tolto dalla cancellazione tracciata");
+      }
       return fail("order_without_buyer", "buyer_email vuoto");
     }
 

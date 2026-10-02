@@ -199,7 +199,7 @@ export async function readSalesSections(eventId: string) {
     type OrdineSenzaBiglietti = {
       id: string;
       status: string;
-      buyer_email: string;
+      buyer_email: string | null;
       quantity: number;
       total_amount: number;
       error_message: string | null;
@@ -345,7 +345,7 @@ export type SoldTicket = {
 
 export type OrdineIndirizzoNonPartito = {
   id: string;
-  buyer_email: string;
+  buyer_email: string | null;
   quantity: number;
   total_amount: number;
   error_message: string | null;

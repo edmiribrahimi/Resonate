@@ -270,7 +270,7 @@ export default function SalesSections({
                 <Card key={o.id}>
                   <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
                     <p className="text-sm font-semibold text-ink">
-                      {o.buyer_email}
+                      {o.buyer_email ?? "address removed"}
                     </p>
                     {/* The money mark — D-41.1-13. */}
                     <p className="text-sm font-semibold text-ink">
@@ -321,7 +321,7 @@ export default function SalesSections({
               <Card key={o.id}>
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
                   <p className="text-sm font-semibold text-ink">
-                    {o.buyer_email}
+                    {o.buyer_email ?? "address removed"}
                   </p>
                   <p className="text-sm font-semibold text-ink">
                     {formatPrice(o.total_amount)}
@@ -346,7 +346,7 @@ export default function SalesSections({
               <Card key={o.id}>
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
                   <p className="text-sm font-semibold text-ink">
-                    {o.buyer_email}
+                    {o.buyer_email ?? "address removed"}
                   </p>
                   <p className="text-sm font-semibold text-ink">
                     {formatPrice(o.total_amount)}
@@ -363,7 +363,7 @@ export default function SalesSections({
               <Card key={o.id}>
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
                   <p className="text-sm font-semibold text-ink">
-                    {o.buyer_email}
+                    {o.buyer_email ?? "address removed"}
                   </p>
                   <p className="text-sm font-semibold text-ink">
                     {formatPrice(o.total_amount)}
@@ -398,7 +398,7 @@ export default function SalesSections({
             {ordiniIndirizzoNonPartito.map(
               (o: {
                 id: string;
-                buyer_email: string;
+                buyer_email: string | null;
                 quantity: number;
                 total_amount: number;
                 error_message: string | null;
@@ -406,7 +406,7 @@ export default function SalesSections({
                 <Card key={o.id}>
                   <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
                     <p className="text-sm font-semibold text-ink">
-                      {o.buyer_email}
+                      {o.buyer_email ?? "address removed"}
                     </p>
                     {/* The money mark — D-41.1-13. */}
                     <p className="text-sm font-semibold text-ink">

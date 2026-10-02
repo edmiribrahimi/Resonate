@@ -403,7 +403,9 @@ export async function POST(request: Request) {
         // 52.2 (CART-05): servono all'annullamento della mail di ripresa, che
         // sta PRIMA dell'uscita su `completed`. Identificativi opachi, nessun
         // luogo.
-        "id, status, buyer_email, buyer_name, user_id, total_amount, quantity, event_id, party_id, tier_id, discount_code_id, error_message, resume_email_id, resume_email_state"
+        // `pii_cleared_at` e' aggiunto dal piano 52.1-21 (DBT-15): serve al
+        // ramo 1c, il pagamento su un ordine il cui indirizzo e' stato tolto.
+        "id, status, buyer_email, buyer_name, user_id, total_amount, quantity, event_id, party_id, tier_id, discount_code_id, error_message, resume_email_id, resume_email_state, pii_cleared_at"
       )
       .eq("sumup_checkout_id", checkout.id)
       .single();
@@ -463,6 +465,42 @@ export async function POST(request: Request) {
         console.error(
           `[tickets.order_paid_after_expiry] order=${ticketOrder.id}`
         );
+      }
+
+      // 1c. UN PAID SU UN ORDINE GIA' CANCELLATO (piano 52.1-21, DBT-15).
+      //
+      // **Impossibile per costruzione.** Email e nome di un ordine mai pagato si
+      // tolgono solo mesi dopo la sua chiusura (`pii_cleared_at`, interruttore
+      // del piano 52.1-24), e `close-pending-orders` disattiva il checkout del
+      // fornitore a 30 minuti: nessun pagamento puo' arrivare su quella riga.
+      //
+      // **Se accade lo stesso, il pagamento non si perde e non si finge.** Il
+      // CHECK `ticket_orders_buyer_email_cleared_check` ammette un indirizzo
+      // nullo solo su `expired`: qualunque cambio di stato — `completed` della
+      // RPC, `failed` di `failOrder` — verrebbe rifiutato dal database, quindi
+      // NON si tenta. Non c'e' un indirizzo a cui legare un account ne' a cui
+      // mandare i biglietti, e non lo si ricostruisce. Si fanno due cose:
+      //   - il log con la sua categoria, senza indirizzo (non c'e');
+      //   - l'avviso all'organizer con l'allarme esistente dell'incasso senza
+      //     biglietti, perche' e' esattamente questo: il denaro resta su
+      //     SumUp, e il rimborso e' manuale dalla dashboard del fornitore.
+      // La verifica GET del checkout qui sopra non cambia: questo ramo vede
+      // solo pagamenti gia' verificati. Una seconda consegna dello stesso
+      // webhook riavvisa — accettato su un caso che non deve esistere.
+      if (ticketOrder.pii_cleared_at || !ticketOrder.buyer_email) {
+        console.error(
+          `[tickets.paid_after_pii_cleared] order=${ticketOrder.id} ` +
+            `status=${ticketOrder.status} pii_cleared=${ticketOrder.pii_cleared_at ? "yes" : "no"}`
+        );
+        await alertOrganizerPaidNotIssued({
+          serviceClient: supabase,
+          orderId: ticketOrder.id,
+          eventId: ticketOrder.event_id,
+          quantity: ticketOrder.quantity,
+          totalAmount: Number(ticketOrder.total_amount),
+          cause: "paid_after_pii_cleared: indirizzo tolto, nessun biglietto emesso, rimborso manuale su SumUp",
+        });
+        return NextResponse.json({ received: true });
       }
 
       // Un ordine che va a `failed` porta la causa **scritta sulla riga**, non
