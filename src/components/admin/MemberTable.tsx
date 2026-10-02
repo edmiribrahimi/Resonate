@@ -120,15 +120,16 @@ function RoleBadge({ role }: { role: UserRole }) {
   //   * `staff` NON deve prendere in prestito il vocabolario cromatico del
   //     potere. Misurato cella per cella nel piano 43-08 su 21 tabelle × 3
   //     verbi, `staff` non concedeva allora **nulla** che un `attendee` non
-  //     avesse gia'. **Dal 2026-09-23, fase 52 (D-52-12), tiene UNA chiave per
-  //     ruolo: `gallery.view`** — la prima concessione per ruolo mai data a
-  //     `staff`, che apre la gallery e nient'altro. Resta vero cio' che conta
+  //     avesse gia'. Dal 2026-09-23 al 2026-10-02 (fase 52, D-52-12) ha tenuto
+  //     UNA chiave per ruolo, `gallery.view`, uscita con la gallery (fase 52.1,
+  //     DBT-13): **oggi di nuovo zero concessioni per ruolo**. Resta vero cio' che conta
   //     per il colore: **nessun potere operativo**, nessuna riga `door.operate`
   //     per ruolo — la porta viene dall'assegnazione della serata. Il viola e
   //     il blu dicono «questo account puo' di piu'»; per `staff` sarebbe una
   //     bugia detta dall'interfaccia prima che qualcuno legga una parola. Il
-  //     tratteggio resta, e ora dice «non concede potere operativo», non piu'
-  //     «non concede nulla».
+  //     tratteggio resta: dal 2026-09-23 diceva «non concede potere operativo»
+  //     e non piu' «non concede nulla»; dal 2026-10-02 sono di nuovo vere
+  //     entrambe.
   //   * `staff` deve restare TROVABILE a colpo d'occhio. Non piu' per il posto
   //     gratuito permanente — quello e' uscito con la tessera nella fase 51,
   //     vedi la legenda sotto la tabella — ma perche' chi conta gli account di
@@ -735,13 +736,22 @@ export default function MemberTable({
         per ruolo, solo l'assegnazione della serata. Questa legenda spedisce
         **nello stesso deploy** della migration (atto del piano 52-15), perche'
         non esista un momento in cui la produzione ne mostri una falsa.
+
+        **2026-10-02, fase 52.1 (DBT-13, piano 52.1-18) — torna vera la
+        prima.** La gallery e' uscita dal prodotto (D-52.1-17) e con lei
+        `gallery.view`: `staff` torna a **zero concessioni per ruolo**. Lavora
+        solo per assegnazione alla serata — porta, supervisione della porta,
+        organizzazione della serata — e l'assegnazione scade con la serata. La
+        legenda lo dice di nuovo, e la gallery non si nomina piu': promettere
+        una pagina che non esiste e' lo stesso errore di prima, al contrario.
+        Spedisce con il codice; la migration M-D arriva dopo il deploy, e nel
+        frattempo la riga di catalogo che resta non apre nessuna pagina.
       */}
       <p className="mb-6 text-xs text-muted">
-        A <span className="font-semibold text-ink">staff</span> account opens
-        the gallery — photos and videos from the nights — and nothing else of
-        its own. It opens no door on its own: working the door comes from the
-        night&apos;s own assignment, which an organizer makes and which ends
-        with the night.
+        A <span className="font-semibold text-ink">staff</span> account
+        grants nothing by itself. Its work comes from a night&apos;s own
+        assignment — the door, supervising the door, or running the night —
+        which an organizer makes and which ends with the night.
       </p>
 
       {/* Filters.

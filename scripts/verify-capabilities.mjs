@@ -287,8 +287,37 @@ const SRC_DIR = `${ROOT}/src`;
  * allora un run contro la produzione riporta 15 dove questo file dice 16 (e 28
  * concessioni dove dice 31), ed e' il gate che funziona. **Non si ripara
  * editando questa costante.**
+ *
+ * ── Da 16 a 14 il 2026-10-02, piano 52.1-18 (DBT-13) — ed e' una RIMOZIONE ───
+ *
+ * La gallery esce dal prodotto (D-52.1-17) e con lei due chiavi: `gallery.view`
+ * e `media.upload`, tolte dall'oggetto `CAP`, da `capability-routes.ts` e da
+ * «Who works» **nello stesso piano** in cui e' scritta la migration che le toglie
+ * dal catalogo, M-D (`20261001120200_gallery_removal.sql`). 16 − 2 = 14.
+ *
+ * **Le cinque concessioni che escono**: `gallery.view` a master, organizer e
+ * staff; `media.upload` a master e organizer. `media.upload` non resta come asse
+ * non usato perche' nessun percorso vivo la legge piu' — l'archivio del visual
+ * chiede `production.visual.manage`, la cover `staff.manage` piu'
+ * `assertMayManageEvent` — e una chiave senza lettori e' una concessione
+ * dormiente.
+ *
+ * ⚠ LA RIGA CHE QUESTO NUMERO DEVE DIRE: **`staff` torna a ZERO concessioni per
+ * ruolo**, come dal 2026-09-22 al 2026-09-23. Master 14, organizer 12, staff 0,
+ * attendee 0. L'asimmetria e' quella gia' dichiarata due paragrafi sopra: lo
+ * staff lavora per assegnazione alla serata (porta, supervisione,
+ * organizzazione della serata), non per ruolo.
+ *
+ * ⚠ ROSSO CONTRO LA PRODUZIONE E IL LABORATORIO finche' M-D non e' applicata:
+ * laboratorio nel piano 52.1-20 (dopo il deploy del codice li'), produzione nel
+ * piano 52.1-25 (atto 3, sotto autorizzazione datata). E' l'ordine inverso al
+ * 52-15 perche' e' una rimozione: prima il codice smette di chiedere le chiavi,
+ * poi il catalogo le perde. Fino ad allora un run riporta 16 dove questo file
+ * dice 14 (e 31 concessioni dove dice 26), ed e' il gate che funziona. **Non si
+ * ripara editando questa costante.** Se un run in quell'intervallo riporta 14,
+ * M-D e' stata applicata prima del deploy: e' un reperto, non un sollievo.
  */
-const EXPECTED_KEY_COUNT = 16;
+const EXPECTED_KEY_COUNT = 14;
 
 /**
  * ── The pre-registered grant declaration (phase decision D-02) ─────────────
@@ -414,7 +443,8 @@ const ROLE_GRANTS = {
     // them. With the flag gone the distinction is no longer expressible here, so
     // it is recorded in this paragraph — a reader must not conclude that the
     // four rows were always the same decision.
-    'media.upload': 'GRANTED',
+    // `media.upload` stava qui, GRANTED — uscita dal catalogo il 2026-10-02
+    // (piano 52.1-18, DBT-13) con la gallery.
     'party.manage': 'GRANTED',
     // D-37-14, plan 37-01. `true`, and for this key the flag is not a copy of
     // `catalogue.manage`'s: publishing an address is irreversible, and there is
@@ -453,8 +483,8 @@ const ROLE_GRANTS = {
     'production.manifesto.manage': 'GRANTED',
     'production.visual.manage': 'GRANTED',
     'production.location.manage': 'GRANTED',
-    // D-52-12, plan 52-06. The master holds everything, the gallery included.
-    'gallery.view': 'GRANTED',
+    // `gallery.view` stava qui, GRANTED (D-52-12, plan 52-06) — uscita con la
+    // gallery il 2026-10-02 (piano 52.1-18, DBT-13).
   },
   organizer: {
     'staff.manage': 'GRANTED',
@@ -487,8 +517,9 @@ const ROLE_GRANTS = {
     // organizer whose status is still `pending` must be able to reverse a
     // check-in they just made by mistake.
     'door.supervise': 'GRANTED',
-    // `true` on both, plan 35-03. Neither is at the door.
-    'media.upload': 'GRANTED',
+    // `true` on both, plan 35-03. Neither is at the door. *(Both meant
+    // `media.upload` and `party.manage`; the first left the catalogue on
+    // 2026-10-02 with the gallery — piano 52.1-18, DBT-13.)*
     'party.manage': 'GRANTED',
     // D-37-13, plan 37-01, AND THIS IS THE ROW THE KEY EXISTS FOR. Every
     // APPROVED organizer, not only the one who created the night: that person
@@ -511,9 +542,8 @@ const ROLE_GRANTS = {
     'production.manifesto.manage': 'GRANTED',
     'production.visual.manage': 'GRANTED',
     'production.location.manage': 'GRANTED',
-    // D-52-12, plan 52-06. By role: the organizer runs the nights and moderates
-    // their media, so the archive of those nights is the organizer's to see.
-    'gallery.view': 'GRANTED',
+    // `gallery.view` stava qui, GRANTED (D-52-12, plan 52-06) — uscita con la
+    // gallery il 2026-10-02 (piano 52.1-18, DBT-13).
   },
   // ── The fourth role, added by plan 43-05 with its migration ───────────────
   //
@@ -607,8 +637,13 @@ const ROLE_GRANTS = {
     //
     // `20260808000500_staff_role.sql:125-136` wrote this refusal down before the
     // key existed: *"the upload ROLE-01 refuses is Phase 35's per-night work
-    // upload"*. This line is that sentence acquiring a pair to be checked on.
-    'media.upload': 'REFUSED',
+    // upload"*. This line was that sentence acquiring a pair to be checked on.
+    //
+    // **Il rifiuto e' uscito il 2026-10-02 insieme alla chiave** (piano
+    // 52.1-18, DBT-13): `media.upload` non esiste piu', e un rifiuto su una
+    // chiave che non esiste non si puo' controllare. La ragione resta vera per
+    // qualunque caricamento futuro per serata: se ne nascesse uno, il suo
+    // rifiuto allo staff per ruolo si riscrive qui, con la sua chiave.
     // Refused (D-03). A night's back office is a night's, and `staff` has no
     // organizer surface at all — `NAV_ITEMS` shows it none.
     'party.manage': 'REFUSED',
@@ -652,6 +687,12 @@ const ROLE_GRANTS = {
     // address. A space under negotiation named outside the people negotiating is
     // a negotiation made public, and a publication does not un-publish.
     'production.location.manage': 'REFUSED',
+    // ── DAL 2026-10-02 LO STAFF TORNA A ZERO (piano 52.1-18, DBT-13) ────────
+    //
+    // `gallery.view` e' uscita con la gallery. Il paragrafo che segue resta
+    // come storia: descrive la sola concessione per ruolo che lo staff abbia
+    // tenuto, dal 2026-09-23 al 2026-10-02.
+    //
     // ── ⚠ DAL 2026-09-23 LO STAFF TIENE DI NUOVO UNA CHIAVE PER RUOLO ──────
     //
     // D-52-12, piano 52-06, decisione del proprietario: la gallery si vede per
@@ -662,7 +703,6 @@ const ROLE_GRANTS = {
     // lei. Guardare l'archivio delle serate non e' lavoro e non e' per serata.
     // Quello che la chiave NON apre, e resta rifiutato qui sopra: caricare
     // (`media.upload`), moderare (`staff.manage`), rivelare (`venue.reveal`).
-    'gallery.view': 'GRANTED',
   },
   // ── `member` SI CHIAMA `attendee` DAL 2026-09-22 (piano 51-08, D-51-06) ────
   //
@@ -703,8 +743,9 @@ const ROLE_GRANTS = {
     // nominato a contrasto, `membership.active`, e' uscita dal catalogo il
     // 2026-09-22 (D-51-07): resta il rifiuto, e resta la ragione per cui questa
     // riga e' separata da quella del lavoro per serata.
+    // `media.upload` usciva da qui il 2026-10-02 con la chiave (piano 52.1-18,
+    // DBT-13): restano i due rifiuti di lavoro per serata.
     'door.supervise': 'REFUSED',
-    'media.upload': 'REFUSED',
     'party.manage': 'REFUSED',
     // Refused, plan 37-01. A member holding this key could make any night's
     // secret address public — which is not a permission boundary being crossed
@@ -732,7 +773,10 @@ const ROLE_GRANTS = {
     // l'indirizzo. Un biglietto non e' un posto nell'archivio. Nothing else in
     // the model would say no — which is why this line, and not a comment, is
     // where the refusal exists.
-    'gallery.view': 'REFUSED',
+    //
+    // **Il rifiuto e' uscito il 2026-10-02 con la chiave** (piano 52.1-18,
+    // DBT-13): la gallery non esiste piu', `event_media` esce con M-D, e non
+    // c'e' archivio a cui un `attendee` possa essere ammesso o no.
   },
 };
 
@@ -846,9 +890,28 @@ const ROLE_GRANTS = {
 // ⚠ ROSSO CONTRO LA PRODUZIONE fino al piano **52-15**, che applica la migration
 // sotto atto datato; VERDE CONTRO IL LABORATORIO dal piano 52-06. Non si ripara
 // editando questi numeri.
-const EXPECTED_PAIR_COUNT = 64;
-const EXPECTED_GRANT_COUNT = 31;
-const EXPECTED_REFUSAL_COUNT = 33;
+//
+// ── 2026-10-02, piano 52.1-18 (DBT-13): DUE CHIAVI ESCONO ───────────────────
+//
+// SOTTRATTA IN CODA, non riscritta sopra. 56 = 4 ruoli × **14** chiavi: 64 − 8.
+// Concessioni: 31 − 5 = **26** (`gallery.view` a master, organizer, staff;
+// `media.upload` a master, organizer). Rifiuti: 33 − 3 = **30** (`gallery.view`
+// ad attendee; `media.upload` a staff e attendee). Per ruolo, camminando
+// `ROLE_GRANTS`: master 14, organizer 12, **staff 0**, attendee 0 — 26.
+//
+//   64/31/33 → 56/26/30   plan 52.1-18, two CAPABILITIES removed (2026-10-02)
+//
+// La firma e' quella di una rimozione di chiavi — concessioni e rifiuti scendono
+// nello stesso verso — e la riga che questi numeri devono portare e' che
+// `staff` torna a zero concessioni per ruolo.
+//
+// ⚠ ROSSO CONTRO LA PRODUZIONE E IL LABORATORIO finche' M-D
+// (`20261001120200_gallery_removal.sql`) non e' applicata: laboratorio nel piano
+// **52.1-20**, produzione nel piano **52.1-25**. Non si ripara editando questi
+// numeri.
+const EXPECTED_PAIR_COUNT = 56;
+const EXPECTED_GRANT_COUNT = 26;
+const EXPECTED_REFUSAL_COUNT = 30;
 
 /**
  * The two markers a pair carries in `ROLE_GRANTS`.
@@ -1404,6 +1467,28 @@ async function run(target, targetLabel) {
           'design decision with a grant row and a policy or a route behind it, and it belongs in ' +
           'a plan. Look at the model, NOT at EXPECTED_KEY_COUNT.'
       );
+    // ── L'intervallo rosso di DBT-13, nominato nell'output (piano 52.1-18) ──
+    //
+    // Si riconosce per FORMA, non per numero: il TS ha le 14 attese e il
+    // database ha esattamente quelle piu' le due che M-D toglie. Qualunque altra
+    // forma di rosso resta senza questa riga — un nome dato a un rosso diverso
+    // da quello dichiarato sarebbe un modo di non guardarlo.
+    const DBT13_LEAVING = ['gallery.view', 'media.upload'];
+    const dbExtra = dbKeys.filter((k) => !tsKeys.includes(k));
+    const dbMissing = tsKeys.filter((k) => !dbKeys.includes(k));
+    if (
+      tsKeys.length === EXPECTED_KEY_COUNT &&
+      dbMissing.length === 0 &&
+      dbExtra.length === DBT13_LEAVING.length &&
+      DBT13_LEAVING.every((k) => dbExtra.includes(k))
+    )
+      problems.push(
+        'DECLARED RED INTERVAL (plan 52.1-18, DBT-13): the code dropped gallery.view and ' +
+          'media.upload; the catalogue loses them with M-D, ' +
+          'supabase/migrations/20261001120200_gallery_removal.sql — on the lab in plan 52.1-20, ' +
+          'in production in plan 52.1-25, each AFTER the deploy of the code. This red closes by ' +
+          'applying M-D, never by editing EXPECTED_KEY_COUNT.'
+      );
     check(
       `0 · both declarations hold the pre-registered ${EXPECTED_KEY_COUNT} keys`,
       problems,
@@ -1490,6 +1575,11 @@ async function run(target, targetLabel) {
         '.'
       );
     });
+    // La frase finale diceva «eight of the seventeen keys gate TABLES», contato il
+    // 2026-08-17 e mai riletto mentre il catalogo passava a 15, 16 e 14: corretta
+    // il 2026-10-02 (piano 52.1-18, DBT-07 ricognizione lessicale, DBT-13) col
+    // conteggio riletto da `capability-routes.ts` — le voci sul ramo
+    // `scope: "table"`.
     if (problems.length)
       problems.push(
         'WHAT THIS SIDE ASKS: does a policy body or a src/ call site ask for this key? ' +
@@ -1500,9 +1590,10 @@ async function run(target, targetLabel) {
           'is itself under src/, so binding a key MAKES it asked-for by this side ' +
           '(finding F3 in the docblock). This stays a WARNING because promoting it would ' +
           'make the production build depend on a live database (D-34-11/D-34-12), and ' +
-          'because eight of the seventeen keys gate TABLES rather than routes — counted ' +
-          'by reading capability-routes.ts on 2026-08-17, each with its reason written ' +
-          'beside it in that same file.'
+          'because four of the fourteen keys gate TABLES rather than routes (scope: "table": ' +
+          'master.manage, door.supervise, staff.manage, venue.reveal) — counted by reading ' +
+          'capability-routes.ts on 2026-10-02, each with its reason written beside it in ' +
+          'that same file.'
       );
     warn(
       '4 · every catalogue key is asked for by a policy or by src/',

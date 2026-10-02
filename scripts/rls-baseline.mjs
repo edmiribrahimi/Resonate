@@ -1121,6 +1121,12 @@ export const PROBE_PAYLOADS = {
   // schema dopo: il banco non prova a essere giusto su due schemi insieme,
   // perche' un banco ambiguo misura ambiguamente.
   //
+  // **Lo stesso verso dal 2026-10-02, piano 52.1-18 (DBT-13)**: la voce
+  // `event_media` non c'e' piu', perche' M-D (`20261001120200_gallery_removal.sql`)
+  // toglie la tabella. Finche' M-D non e' applicata — laboratorio nel piano
+  // 52.1-20, produzione nel 52.1-25 — una corsa su quel bersaglio si ferma con
+  // «has no entry for: event_media», ed e' il controllo che funziona.
+  //
   // The register of acts on an account's role (plan 43-07, rinominato dalla
   // fase 51 — D-51-08). It has RLS on and **no INSERT, UPDATE or DELETE policy
   // at all**, deliberately (`20260808002000_membership_register.sql`,
@@ -1222,76 +1228,13 @@ export const PROBE_PAYLOADS = {
     },
     update: 'drink_name',
   },
-  // `type` is CHECK-constrained to photo|video; `uploaded_by` is the subject,
-  // and the owner column matters: since 2026-09-21 the insert policy is
-  // `event_media_insert_staff` (`20260921120000`, D-50-03), which still demands
-  // `auth.uid() = uploaded_by` — and now a work capability instead of a status.
-  //
-  // ── WHY `event_id` IS NOT `{{events}}` ANY MORE (plan 35-18) ──────────────
-  //
-  // Since `20260809004500_event_media_party_id.sql` the row must name a NIGHT,
-  // and `event_media_insert_member` demands that the night belong to THIS
-  // event. The two placeholders cannot express that: `{{events}}` and
-  // `{{event_parties}}` are resolved INDEPENDENTLY — one privileged
-  // `min(id::text)` per table, see `resolveProbeReferences` — so nothing
-  // correlates them. With the old entry the probe would compose an incoherent
-  // pair on any database where those two minima disagree, every insert cell
-  // would turn into a refusal FOR THE WRONG REASON, and a matrix that refuses
-  // for the wrong reason is worse than one that does not run: it looks like a
-  // result.
-  //
-  // The correction does NOT touch the placeholder machinery. `values` are SQL
-  // expressions — `door_scan_events` already uses `now()` and `auth.uid()` —
-  // so the pair is made coherent INSIDE the payload: `party_id` takes the
-  // placeholder, and `event_id` is derived from it.
-  //
-  // ── AND WHY THE DERIVATION IS A FUNCTION AND NOT A SUB-SELECT ─────────────
-  //
-  // A plain sub-select reading `public.event_parties` for that id
-  // would run under the PERSONA's read policies:
-  // `event_parties_select_published` only shows a night whose event is
-  // published, and `event_parties_select_admin` shows every night to
-  // `staff.manage`. The same expression would then yield the event id for a
-  // master and NULL for an attendee — a `23502` for one persona and a real probe
-  // for another. `private.party_event_id(uuid)` is `SECURITY DEFINER` (and
-  // granted to `authenticated` and `anon`) precisely so the value is the SAME
-  // FOR EVERY PERSONA, which is the invariant that makes the matrix a matrix.
-  //
-  // THE DEGENERATE CASE, stated rather than met: if `event_parties` were empty
-  // the placeholder is the nil uuid, the function returns NULL, and the insert
-  // fails `23502` — which D-19 records as INCONCLUSIVE, not as a refusal. That
-  // is the behaviour already provided for, not a new one.
-  //
-  // NOTE ON THE QUOTES, because getting them wrong produces a syntax error and
-  // not a wrong measurement: `substituteReferences` expands `{{table}}` to
-  // `'<uuid>'::uuid` — the literal quotes AND the cast are part of the
-  // substitution. So the placeholder is written BARE here, exactly as every
-  // other entry in this table writes it.
-  //
-  // ── `storage_path`, from plan 52-06 (NAV-07) ──────────────────────────────
-  //
-  // `20260923180000_gallery_view_and_media_paths.sql` adds the object key, and
-  // M2 (`20260923180100`, plan 52-13) makes it obligatory. The probe carries it
-  // NOW so that the day M2 lands the insert cell still measures the POLICY and
-  // not a `23502` on a missing column — a refusal for the wrong reason, which
-  // is the Pitfall 14 shape. The value is a key, not a URL: it starts with
-  // neither `/` nor a scheme, so it satisfies `event_media_storage_path_is_a_key`.
-  // The unique index on the column does not bite across personas: every probe
-  // ends in `rollback;`.
-  event_media: {
-    insert: {
-      columns: ['event_id', 'party_id', 'url', 'storage_path', 'type', 'uploaded_by'],
-      values: [
-        '(select private.party_event_id({{event_parties}}))',
-        '{{event_parties}}',
-        `'https://example.invalid/rls-baseline-probe'`,
-        `'rls-baseline-probe/probe.jpg'`,
-        `'photo'`,
-        'auth.uid()',
-      ],
-    },
-    update: 'caption',
-  },
+  // `event_media` stava qui (piani 35-18 e 52-06: `party_id` con
+  // `private.party_event_id`, `storage_path` da NAV-07). **Esce il 2026-10-02,
+  // piano 52.1-18 (DBT-13)**: la tabella la toglie M-D
+  // (`20261001120200_gallery_removal.sql`) — sul laboratorio nel piano 52.1-20,
+  // in produzione nel 52.1-25. Fino ad allora, su un bersaglio che la ha ancora,
+  // la corsa si ferma con «has no entry for: event_media» e lo dice: e' il verso
+  // dichiarato in testa a questa tabella, codice prima e schema dopo.
   // A party needs its event, a title, a start time — and, since
   // `20260810120000_formats_and_series.sql`, a FORMAT and a SERIES, both
   // `NOT NULL`. `venue_secret` defaults to false, so nothing here creates a row
@@ -1325,7 +1268,7 @@ export const PROBE_PAYLOADS = {
   // `{{party_series_format}}` is the format OF THAT SERIES, resolved once on the
   // privileged connection. See `DERIVED_PROBE_REFERENCES` below for why it is
   // not a scalar sub-select — that is the same trap `event_media` fell into
-  // above, and here it would cost four cells that the `pre-36` capture records
+  // (its entry stood above until 2026-10-02, DBT-13), and here it would cost four cells that the `pre-36` capture records
   // as `ok:1`.
   //
   // ── AND WHY `number` IS A SUB-SELECT, WHICH IS SAFE HERE AND ONLY HERE ────
@@ -1549,8 +1492,9 @@ export const PROBE_PAYLOADS = {
   },
   // ── WHICH RUN of a format a night belongs to (plan 36-04) ─────────────────
   //
-  // `format_id` takes the placeholder BARE, per the quoting note on
-  // `event_media` above. `{{formats}}` is why `formats` joins the referenceable
+  // `format_id` takes the placeholder BARE, per the quoting note that stood on
+  // `event_media` until 2026-10-02 (DBT-13): `{{table}}` expands with its own
+  // quotes and cast. `{{formats}}` is why `formats` joins the referenceable
   // list below: `party_series.format_id` is `NOT NULL REFERENCES public.formats`,
   // so the nil uuid would make the insert fail `23503` on every persona and
   // measure the foreign key instead of the policy — the same sentence the

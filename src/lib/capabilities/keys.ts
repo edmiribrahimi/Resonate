@@ -316,6 +316,18 @@
  * **Sedici dal 2026-09-23** (fase 52, D-52-12): `gallery.view` entra con
  * `20260923180000_gallery_view_and_media_paths.sql` — un'AGGIUNTA, con le sue
  * tre concessioni nello stesso file.
+ *
+ * **Quattordici dal 2026-10-02** (fase 52.1, piano 18, DBT-13 — una
+ * RIMOZIONE): `gallery.view` e `media.upload` escono con la gallery
+ * (D-52.1-17), qui e in `20261001120200_gallery_removal.sql` (M-D) nello stesso
+ * piano. `media.upload` non resta come asse non usato perche' **nessun percorso
+ * vivo la legge**: l'archivio del visual chiede `production.visual.manage`
+ * (`src/lib/media/may-upload.ts`, `mayUploadToVisualSection`), la cover
+ * `staff.manage` piu' `assertMayManageEvent` (`/api/media/finalize-cover`,
+ * piano 52.1-13). Una chiave senza lettori e' una concessione dormiente che
+ * domani qualcuno ricollega a un percorso senza rileggere perche' esisteva. I
+ * paragrafi sopra che la nominano sono storia, e restano: gli ordinali non si
+ * rinumerano.
  */
 export const CAP = {
   /** P1 — the 34 policies gating on `is_admin_or_organizer()`. Status ignored. */
@@ -342,8 +354,6 @@ export const CAP = {
   REGISTER_READ: "register.read",
   /** Reverse a check-in already recorded at the door. ASSIGN-05, and NOT `DOOR_OPERATE`. */
   DOOR_SUPERVISE: "door.supervise",
-  /** Upload media to a night. The per-night work upload, and never the account-level one. */
-  MEDIA_UPLOAD: "media.upload",
   /** Manage one night's operational surfaces. Not `ORGANIZER_ACCESS`, which is the area. */
   PARTY_MANAGE: "party.manage",
   /** Reveal a night's secret venue by hand. Role AND approved. */
@@ -372,22 +382,6 @@ export const CAP = {
    * page arrives in plan 45-11.
    */
   PRODUCTION_LOCATION_MANAGE: "production.location.manage",
-  /**
-   * See the gallery — the approved photos and videos of the nights. Phase 52,
-   * D-52-12, `20260923180000_gallery_view_and_media_paths.sql`.
-   *
-   * Held BY ROLE by `master`, `organizer` and `staff`; `attendee` does not hold
-   * it. For `staff` it is the **first grant by role** since phase 51 took them
-   * all away (D-51-07) — and the only one: the door stays with the per-night
-   * assignment, and seeing the archive is not a night's work.
-   *
-   * It opens `/gallery` in `src/lib/routes/capability-routes.ts` (D-52-13), and
-   * **from NAV-07 it governs ROWS too**: M2 (`20260923180100_gallery_close_data.sql`,
-   * plan 52-13) binds the read of `event_media` to it and closes the bucket.
-   * Until M2 is applied the rows are still read by any session — the address is
-   * gated, the data is not yet.
-   */
-  GALLERY_VIEW: "gallery.view",
 } as const;
 
 export type CapabilityKey = (typeof CAP)[keyof typeof CAP];
@@ -418,8 +412,10 @@ export type CapabilityKey = (typeof CAP)[keyof typeof CAP];
  * with no entry there is also a build error. The two records are the compiler's
  * whole half of this file's contract, and a new key pays both in one commit.
  *
- * It cannot hold the other part — that these strings match the sixteen rows in
- * `private.capabilities` (fifteen until phase 52 added `gallery.view`, D-52-12). That is `scripts/verify-capabilities.mjs`'s job, and
+ * It cannot hold the other part — that these strings match the fourteen rows in
+ * `private.capabilities` (fifteen until phase 52 added `gallery.view`, D-52-12;
+ * sixteen until M-D, `20261001120200_gallery_removal.sql`, takes `gallery.view`
+ * and `media.upload` out — DBT-13). That is `scripts/verify-capabilities.mjs`'s job, and
  * that check needs a live database: it is RED between the commit that adds a key
  * here and the deploy that applies the migration adding the row. For this split
  * that is TWO red intervals rather than one, and both are declared in that
@@ -440,8 +436,6 @@ export const CAP_DESCRIPTIONS: Record<CapabilityKey, string> = {
     "Read the register of acts on a member's role and status — who was created, approved, rejected, promoted, demoted, deactivated or reactivated, by whom and when. Role AND an approved status, because the register contains rejections.",
   "door.supervise":
     "Reverse a check-in already recorded at the door. A different question from door.operate: an operator admits, a supervisor undoes. Role alone on both grants, deliberately — the undo is what corrects a wrong refusal, and it happens in front of a queue.",
-  "media.upload":
-    "Upload media to a night. The per-night work upload — the photographer uploading to the night they worked. The account-level contribution it was named apart from, membership.active, left the catalogue in phase 51 (D-51-07); this key stays scoped to the night, which is the reason it survived.",
   "party.manage":
     "Manage one night's operational surfaces: that night's review, its door register, its guest list. Scoped to a single date, which is why it is not organizer.access.",
   "venue.reveal":
@@ -462,8 +456,4 @@ export const CAP_DESCRIPTIONS: Record<CapabilityKey, string> = {
     "Read and write the visual system section: the capitolato — palette, typography, the grid-safe zone, the publication order, what is fixed and what is variable — beside the produced pieces and the photo archive a listing is pulled from. One key covers both directions (D-45-06), which is why the verb is manage and not read. Granted to master and organizer (D-45-03). requires_approved is FALSE (D-45-20, the owner) because organizer accounts are created inside the app by an admin or an organizer and nobody signs up any more, so pending is about to stop varying and gating on a value that no longer varies is debt rather than safety. That is a BET on the signup path staying closed: reopen a path that can create a pending organizer and this flag is reconsidered in the same commit. It is NOT staff.manage ignoring status for the door reason — nobody is standing in a queue in front of a capitolato.",
   "production.location.manage":
     "Read and write the location section: scouted spaces with their stage, the attributes a per-format score is computed from, and the four answers that close a to-verify column. Every row is a space nobody has phoned, and one of its columns is a street address (D-45-24) — which makes this the narrowest-audience section of the four in intent, even though D-45-03 gives all four the same two roles. One key covers both directions (D-45-06), which is why the verb is manage and not read. requires_approved is FALSE (D-45-20, the owner) because organizer accounts are created inside the app by an admin or an organizer and nobody signs up any more, so pending is about to stop varying and gating on a value that no longer varies is debt rather than safety. That is a BET on the signup path staying closed: reopen a path that can create a pending organizer and this flag is reconsidered in the same commit. It is NOT staff.manage ignoring status for the door reason — nobody is standing in a queue in front of a scouting list.",
-  // BYTE-IDENTICAL to the description of the row in
-  // `20260923180000_gallery_view_and_media_paths.sql` section 1, same commit.
-  "gallery.view":
-    "See the gallery: the approved photos and videos of the nights. Granted by role to master, organizer and staff (phase 52, D-52-12) — for staff it is the one key the role holds by itself, while the door stays with the per-night assignment. attendee does not hold it: a ticket is not a seat in the archive. From NAV-07 it gates the rows of event_media as well as the /gallery address.",
 };

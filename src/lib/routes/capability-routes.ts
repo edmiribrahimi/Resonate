@@ -105,10 +105,11 @@
  *
  * ── What is deliberately NOT in this map ─────────────────────────────────────
  *
- * **Route Handlers under `/api/*`** (D-34-13). `door.supervise` and
- * `media.upload` gate handlers through `src/lib/door/require-operator.ts` and
- * `src/lib/media/may-upload.ts`, not through a route rule, and they say so
- * below instead of being silently absent. Bringing `/api/*` under CAP-02 would
+ * **Route Handlers under `/api/*`** (D-34-13). `door.supervise` gates
+ * handlers through `src/lib/door/require-operator.ts`, not through a route
+ * rule, and says so below instead of being silently absent. *(`media.upload`
+ * did the same through `src/lib/media/may-upload.ts` until it left the
+ * catalogue with the gallery on 2026-10-02, plan 52.1-18, DBT-13.)* Bringing `/api/*` under CAP-02 would
  * mean adding a middleware rule on the **door's scan path**, which is the one
  * path this phase has no business touching. Recorded here as a finding for a
  * later phase, not as an exemption.
@@ -156,7 +157,15 @@ type Binding =
        */
       assignmentOpenable?: true;
       /**
-       * True when the key ALSO gates rows. **Ten of the sixteen do**,
+       * True when the key ALSO gates rows. **Eight entries of the fourteen
+       * carry it**, RE-COUNTED by reading this file on 2026-10-02 (phase 52.1,
+       * plan 52.1-18, DBT-13): `gallery.view` left the catalogue with its flag,
+       * and `staff.manage` lost its only page and moved to the `scope: "table"`
+       * branch, where the field does not exist — it still gates rows, and its
+       * `reason` says so. *(This line said «Ten of the sixteen» from
+       * 2026-09-23 to 2026-10-02.)* The earlier count follows, as written.
+       *
+       * **Ten of the sixteen did**,
        * RE-COUNTED by reading this file on 2026-09-23 (phase 52, plan 52-06)
        * rather than by adding to the number that was printed here: the nine
        * counted on 2026-08-17 — `door.operate`, `register.read`,
@@ -203,8 +212,9 @@ type Binding =
     };
 
 /**
- * The sixteen keys, each accounted for (seventeen until phase 51 removed two,
- * sixteen again since phase 52 added `gallery.view`).
+ * The fourteen keys, each accounted for (seventeen until phase 51 removed two,
+ * sixteen again since phase 52 added `gallery.view`, fourteen since phase 52.1
+ * took `gallery.view` and `media.upload` out with the gallery — DBT-13).
  *
  * `as const satisfies` and not a type annotation, and the difference is the
  * whole second half of CAP-02: `satisfies` keeps the totality error (a key
@@ -388,14 +398,27 @@ export const CAPABILITY_ROUTES = {
   },
 
   /**
-   * Finding F1: the `/admin` media page has **no** capability check of its own
-   * — only `if (!user) redirect("/login")` — while its organizer twin gates on
-   * `staff.manage`. Taking the twin's gate is not a widening. It is giving a
-   * page its own gate for the first time.
+   * `staff.manage` gates the WRITE actions on the nights and the rows behind
+   * them — the 34 policies of P1, `assertMayManageEvent`, the cover route
+   * `/api/media/finalize-cover` — and **no address of its own**.
+   *
+   * Until 2026-10-02 this entry bound it to `/admin/events/[id]/media`, the
+   * moderation page (finding F1: that page had no gate of its own, and took its
+   * organizer twin's). The page left with the gallery in plan 52.1-16
+   * (D-52.1-17), and plan 52.1-18 (DBT-13) moves the key to the table branch
+   * instead of leaving it bound to an address that is no longer on disk. The
+   * addresses an organizer works on are opened by `organizer.access` and
+   * `party.manage`, above and below; this key stays what it always was
+   * underneath them, the gate on the data.
+   *
+   * The table branch carries no `alsoGatesTables` — the field does not exist
+   * there — so the count of flagged entries in the `Binding` docblock drops by
+   * one for this move as well as for `gallery.view`'s exit.
    */
   [CAP.STAFF_MANAGE]: {
-    routes: ["/admin/events/[id]/media"],
-    alsoGatesTables: true,
+    scope: "table",
+    reason:
+      "Gates the write actions on the nights and the tables behind them (P1, assertMayManageEvent, the cover route), not a page; its only page, /admin/events/[id]/media, left with the gallery (DBT-13).",
   },
 
   /**
@@ -511,11 +534,10 @@ export const CAPABILITY_ROUTES = {
       "Gates a Route Handler, not a page; the guard is `src/lib/door/require-operator.ts`. See D-34-13 in the module docblock.",
   },
 
-  [CAP.MEDIA_UPLOAD]: {
-    scope: "table",
-    reason:
-      "Gates a Route Handler, not a page; the guard is `src/lib/media/may-upload.ts`. See D-34-13 in the module docblock.",
-  },
+  // `media.upload` stava qui con `scope: "table"`, guardia in
+  // `src/lib/media/may-upload.ts`. Esce dal catalogo e da `CAP` il 2026-10-02
+  // (piano 52.1-18, DBT-13) con la gallery: nessun percorso vivo la leggeva
+  // piu', e un `Record` totale non ammette il residuo.
 
   /**
    * The manual venue reveal — phase 37, plan 01.
@@ -856,6 +878,10 @@ export const CAPABILITY_ROUTES = {
    * `master.manage`, `membership.active`, `door.supervise`, `media.upload` and
    * `venue.reveal`. **Quattro dal 2026-09-22**: `membership.active` e' uscita
    * dal catalogo con il piano 51-08 (D-51-07), e con lei la sua voce qui.
+   * **Quattro anche dal 2026-10-02, ma non le stesse**: `media.upload` esce con
+   * la gallery (piano 52.1-18, DBT-13) e `staff.manage` ci arriva, perche' la
+   * sua unica pagina, la moderazione dei media, e' uscita con lei —
+   * `master.manage`, `door.supervise`, `staff.manage` e `venue.reveal`.
    * Each gates rows and opens no address, which is what that branch is for; the
    * four section keys were the only ones parked there waiting for a page, and all
    * four have one now.
@@ -901,58 +927,12 @@ export const CAPABILITY_ROUTES = {
     alsoGatesTables: true,
   },
 
-  /**
-   * The gallery — phase 52, D-52-12 / D-52-13 / D-52-14.
-   *
-   * ── The question this key answers ────────────────────────────────────────────
-   *
-   * *May this subject see the photos and videos of the nights?* `master`,
-   * `organizer` and `staff` hold it by role; `attendee` does not. An `attendee`
-   * who types the address receives the same standard refusal the middleware
-   * gives on `/admin` (D-52-13) — no 404, no special case.
-   *
-   * ── `alsoGatesTables: true`, and it is NOT optional here ────────────────────
-   *
-   * From NAV-07 (D-52-25) the key gates ROWS: M2,
-   * `20260923180100_gallery_close_data.sql` (plan 52-13), binds the read of
-   * `event_media` to it and makes the bucket private, while M1,
-   * `20260923180000_gallery_view_and_media_paths.sql`, already lets an object be
-   * read only through a row the reader can see. The flag is optional on this
-   * branch, so omitting it would have produced no error — just a declaration
-   * that lies by omission (D-34-11). **No `assignmentOpenable`**: seeing the
-   * archive is not a night's work, and no per-night assignment carries this key.
-   *
-   * ── PER RIAPRIRLA AL PUBBLICO (D-52-14) — cinque passi, e uno e' SQL ─────────
-   *
-   * Il giorno in cui ci sara' qualcosa da pubblicare:
-   *   1. togliere questa voce;
-   *   2. togliere la guardia in cima a `src/app/(public)/gallery/page.tsx`;
-   *   3. togliere `"/gallery"` da `PROTECTED_PREFIXES` e il suo pattern da
-   *      `NEXT_ALLOW_LIST` in `src/lib/routes/next-redirect.ts`;
-   *   4. rimettere la voce in barra per tutti;
-   *   5. **e — da NAV-07 — scrivere UNA MIGRATION**: la policy
-   *      `event_media_select_gallery` e il bucket privato non si riaprono dal
-   *      codice. Togliere le prime quattro righe e non la quinta produce una
-   *      pagina pubblica **vuota**: la RLS continua a rifiutare le righe a chi
-   *      non tiene la chiave, e nessun errore lo dice.
-   * La chiave resta nel catalogo, innocua.
-   *
-   * ⚠ E riaprire i DATI e' una decisione, non una pulizia: rende di nuovo
-   * raggiungibili foto di serate con la sede segreta (`venue-secrecy.md`). Si
-   * pubblica cio' che si e' scelto di pubblicare — le approvate — mai il bucket.
-   *
-   * ── The middleware is UX. The RLS is the boundary. ──────────────────────────
-   *
-   * This entry stops somebody arriving on `/gallery`; it stops nobody reading an
-   * `event_media` row or fetching an object. Until M2 is applied, a session
-   * without the key still reads the approved rows through the API and the
-   * objects through the public bucket — the address is gated, the data is not
-   * yet. That window is NAV-07's, declared in M1's header, and it closes with M2.
-   */
-  [CAP.GALLERY_VIEW]: {
-    routes: ["/gallery"],
-    alsoGatesTables: true,
-  },
+  // `gallery.view` stava qui (`routes: ["/gallery"]`, `alsoGatesTables: true`;
+  // fase 52, D-52-12 / D-52-13 / D-52-14). Esce il 2026-10-02 (piano 52.1-18,
+  // DBT-13): la pagina e' uscita col piano 52.1-16, la chiave esce da `CAP` e
+  // dal catalogo con M-D (`20261001120200_gallery_removal.sql`). La gallery non
+  // e' chiusa, e' tolta: non c'e' un passo per «riaprirla» — tornare sarebbe
+  // una decisione nuova, con una chiave nuova e le sue concessioni.
 } as const satisfies Record<CapabilityKey, Binding>;
 
 /* ────────────────────────────────────────────────────────────────────────────
