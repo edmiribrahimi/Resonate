@@ -1,11 +1,10 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
-import { getAccessContext, getPartyAccessContext } from "@/lib/capabilities/server";
+import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
 
 /**
- * may-upload.ts — may this account put a file on THIS NIGHT?
+ * may-upload.ts — may this account file a photograph in the visual archive?
  *
  * ── Why the imports sit ABOVE this block ─────────────────────────────────────
  * The plan's acceptance criterion greps `head -3` of this file for
@@ -20,65 +19,19 @@ import { CAP } from "@/lib/capabilities/keys";
  * the opposite belief ("`server-only` is not a dependency of this repository")
  * — which was true of `package.json` and never of the resolver.
  *
- * ── WHAT THIS FILE ASSERTS, in one sentence ─────────────────────────────────
- * Given an event and ONE of its nights, it answers whether the current session
- * may upload media **to that night** — and there is no signature in which the
- * question can be asked without naming the night.
+ * ── 2026-10-02, DBT-13 (D-52.1-17): the per-night question LEFT with the gallery
+ * `mayUploadToParty` and its refusals went with the event gallery; what stays is
+ * `mayUploadToVisualSection`, because the visual archive still uploads.
  *
- * ── Why it is a module and not an export of `actions.ts` ─────────────────────
+ * ── Why it is a module and not an export of an `actions.ts` ──────────────────
  * A file marked `"use server"` publishes **every** export as a public endpoint.
- * Leaving this predicate there and exporting it — so that plan 35-20's
- * persistence route could reuse it — would publish an oracle answering *"may
- * this person upload to this night?"* to anyone who calls it. A plain module
- * has no such behaviour: `validateMediaUpload`, `registerMedia` and the route
- * import ONE definition and none of them becomes an extra door.
+ * Leaving a predicate there and exporting it — so that a persistence route
+ * could reuse it — would publish an oracle answering *"may this person
+ * upload?"* to anyone who calls it. A plain module has no such behaviour: the
+ * route that finalises an archive upload (`api/media/finalize-archive`)
+ * imports ONE definition and does not become an extra door.
  *
- * ── Why the name says NIGHT and not event ────────────────────────────────────
- * It was `mayUploadToEvent` while the written row carried only the event. Plan
- * 35-18 put `party_id` on `public.event_media`, so the row now carries the
- * night, and a predicate still called `…Event` would tell every later reader
- * that the permission is per-event. In this repository the names are the first
- * place a rule gets lost.
- *
- * The blast radius that made this necessary was **larger than the phase
- * documents said**: `20260226300000_multi_sub_events.sql:11-17` dropped the
- * `UNIQUE (event_id, type)` ceiling of three nights, so a per-night key writing
- * to a per-event table reached the **whole event**, uncapped (measured in
- * `35-18-SUMMARY.md`).
- *
- * ── TWO arms since 2026-09-21, and the third is gone rather than repaired ────
- * Plan 35-14 wrote three: `staff.manage`, the per-night `media.upload`
- * assignment, and a recorded presence. **The third never admitted anybody** —
- * it queried a table that does not exist, measured on 2026-08-08 — and phase 50
- * removes it instead of fixing it, because fixing it would widen uploading to
- * everyone with an attendance row, which is the opposite of D-50-03. The
- * paragraph at the removal site carries the measurement and the date; it is
- * what a verification must cite in order not to claim this phase narrowed
- * something it found already closed.
- *
- * The two that remain are two `.has()` calls on a Set already in memory, so the
- * predicate now costs exactly one round trip — the coherence diagnostic's —
- * and no permission arm costs any.
- *
- * ── What is NOT here, each for a measured reason ─────────────────────────────
- *
- *   - **No loop over the event's nights.** An earlier draft resolved every
- *     night of the event in short circuit, because the row did not know which
- *     night it belonged to. It does now. Anyone re-introducing a loop over
- *     `public.event_parties` here is re-opening the per-event permission.
- *   - **No re-written liveness rule.** *"Is this assignment still alive?"* — not
- *     revoked, and not past its end — has ONE definition, inside
- *     `private.has_capability` (`20260809001000_assignment_resolver.sql`,
- *     section 3). Writing it again in TypeScript is the second definition CAP-01
- *     forbids, and this one would diverge **silently**: it would move a window,
- *     not raise an error.
- *   - **No optional night.** `partyId` is a required parameter of a normal
- *     function, so no caller can ask the question without naming the night. It
- *     is the other half of the rule plan 35-18 wrote into the database: there no
- *     new row may omit the night, here no question may.
- *
- * ── A SECOND QUESTION LIVES HERE FROM PLAN 45-17, AND IT IS A SECOND ────────
- * ── FUNCTION RATHER THAN A WIDENED ONE ─────────────────────────────────────
+ * ── It names no night, and that is not an omission ─────────────────────────
  *
  * The dj photograph archive has **no night**, and that is not an omission in its
  * model: it is the entire reason the archive exists. The listing goes out two
@@ -87,33 +40,10 @@ import { CAP } from "@/lib/capabilities/keys";
  * piece is pulled from an archive somebody has been building
  * (`brand-visual-system.md`, gate *l'archivio precede il listing*). A photograph
  * filed on a Thursday is filed for a listing nobody has scheduled.
- *
- * So `mayUploadToVisualSection` below takes **no party**, and
- * `mayUploadToParty` above was **not widened to accept a nullable one**. The
- * paragraph immediately above this one is the argument, and it is the argument a
- * planner would be tempted to overrule with one `?`: a nullable night makes *may
- * this person upload* answerable **without naming what they are uploading to**,
- * and the two callers of that answer would be a per-night gallery and a
- * per-brand archive sharing one verdict. Two questions, two functions, and
- * neither signature can be mistaken for the other's.
  */
 
-/** The night named is not a night of the event named. Not a permission verdict. */
-export const MEDIA_PARTY_NOT_OF_EVENT = "media.party_not_of_event";
-
-/** The caller did not name a night at all. See `registerMedia` for why this is reachable. */
-export const MEDIA_NIGHT_REQUIRED = "media.night_required";
-
 /**
- * Both arms answered no. This one IS a permission verdict, and it is NAMED: a
- * member who forced the action reads this code and not a generic sentence
- * (D-50-03, and `meta-gates.md`, zero silent failures).
- */
-export const MEDIA_UPLOAD_FORBIDDEN = "forbidden.media_upload_required";
-
-/**
- * The visual section's key was not held. A permission verdict, and a **different
- * one** from the per-night refusal above.
+ * The visual section's key was not held. A permission verdict.
  *
  * Spelled exactly as `visual/actions.ts` spells its own refusal, so that a
  * person refused by the archive upload and a person refused by the capitolato
@@ -122,195 +52,6 @@ export const MEDIA_UPLOAD_FORBIDDEN = "forbidden.media_upload_required";
  */
 export const MEDIA_VISUAL_UPLOAD_FORBIDDEN =
   "forbidden.production_visual_manage_required";
-
-/**
- * May the current session upload media to `partyId`, a night of `eventId`?
- *
- * `true` / `false` is the **permission** answer. Anything that is not a
- * permission answer throws with its own category, the same split
- * `hasCapability` makes: a caller never has to wonder which of the two it got.
- *
- * @throws `party.invalid_id` — `partyId` is not a uuid. A caller bug, raised by
- *         the resolver before any client is built.
- * @throws `capabilities.resolve_failed: <code>` — the context could not be
- *         resolved. Never degraded into `false`, which would refuse a master
- *         exactly the way it refuses a stranger.
- * @throws `media.party_not_of_event` — the night belongs to another event.
- */
-export async function mayUploadToParty(
-  eventId: string,
-  partyId: string
-): Promise<boolean> {
-  // ONE resolution, on the night the file belongs to, and one round trip for
-  // both capability arms. `cache()` does NOT memoise inside a Server Action or
-  // a Route Handler (measured, phase 33 research, `server.ts:105-121`), and
-  // both of this predicate's callers are Server Actions — so two
-  // `hasCapability()` calls here would be two full round trips per upload.
-  //
-  // This call also validates the uuid shape of `partyId`, which is why there is
-  // no third spelling of `UUID_PATTERN` in this file: two spellings of "is this
-  // a uuid" are two answers waiting to disagree.
-  const ctx = await getPartyAccessContext(partyId);
-
-  // No identity, no upload. Both callers refuse an anonymous session before
-  // reaching here with their own category; this is the backstop, and it is a
-  // refusal rather than a throw because "nobody is here" has already been
-  // reported by then. (The sentence that stood here also cited the presence arm,
-  // which needed an identity to compare against; that arm is gone — see its
-  // removal site below — and the backstop stands on its own reason.)
-  if (!ctx.userId) {
-    return false;
-  }
-
-  // ── The coherence check: a DIAGNOSTIC, and deliberately not a gate ──────────
-  //
-  // What it buys: a `partyId` from another event is refused HERE, with its own
-  // category, instead of arriving at the database as a bare `42501` that reads
-  // like an access decision and is not one. The security is still the policy's
-  // — `event_media_insert_staff` compares `private.party_event_id(party_id)`
-  // with `event_id` (`20260809004500`, section 6) — this is the message.
-  //
-  // **Why an unreadable night is NOT a refusal, which is the interesting part.**
-  // This read runs with the caller's own privileges, so it sees
-  // `public.event_parties` through `event_parties_select_published`
-  // (`20260225150000_party_architecture.sql:30-37`): an ordinary member sees the
-  // nights of PUBLISHED events only, while `staff.manage` sees them all. If
-  // "no row" were treated as "not this event's night", the same coherent pair
-  // would be admitted for an organizer and refused for a member — a check about
-  // the SHAPE of the row turned into a check about WHO IS ASKING. That is
-  // exactly the defect plan 35-18 measured inside the policy body and replaced
-  // with a `SECURITY DEFINER` accessor; repeating it one layer up would be the
-  // same mistake with a nicer error message.
-  //
-  // So this branch can only ever refuse MORE clearly, never admit more: a
-  // mismatch it can see is refused, and a night it cannot see is left to the
-  // database, which answers with `private.party_event_id` and does not depend on
-  // what the account being checked may read.
-  const supabase = await createClient();
-
-  const { data: party, error: partyError } = await supabase
-    .from("event_parties")
-    .select("id, event_id")
-    .eq("id", partyId)
-    .maybeSingle();
-
-  if (partyError) {
-    // Logged with a category and NOT collapsed into a refusal. This project has
-    // no error tracking (`meta-gates.md`), so the observable effect is the one
-    // the database will produce a moment later if the pair really is wrong.
-    // `error.details` is never logged: on a failing write PostgREST puts the
-    // whole row there.
-    console.error(
-      `[media.party_lookup_failed] could not read the night ${partyId}: ` +
-        `${partyError.code ?? "unknown"}. This is NOT a refusal — the pair is ` +
-        `decided by event_media_insert_staff.`
-    );
-  } else if (party && party.event_id !== eventId) {
-    throw new Error(MEDIA_PARTY_NOT_OF_EVENT);
-  }
-
-  // ── Arm 1: `staff.manage` ───────────────────────────────────────────────────
-  //
-  // This replaces the hand-written role test this predicate was extracted from,
-  // and **the equivalence was measured, not assumed** — the same paragraph
-  // `updateMediaStatus` carries in `actions.ts`, reproduced in full rather than
-  // referenced, because a reader who found two different predicates for the same
-  // question would conclude one of them is wrong.
-  //
-  // The deleted test read `role in (organizer, master)` from a `select("role,
-  // status")` in which `status` was fetched but NOT part of the role branch.
-  // `private.role_capabilities` grants `staff.manage` to `master` and to
-  // `organizer` with `requires_approved = false` on both rows
-  // (`20260807000000_capability_model.sql:392-393`) — the same predicate, row
-  // for row, `status` ignored on both sides.
-  //
-  // The two near neighbours are verdict changes and are refused:
-  // `CATALOGUE_MANAGE` carries `requires_approved = true` (`:399-400`) and would
-  // refuse a pending organizer who uploads today; `ADMIN_ACCESS` is granted to
-  // `master` alone (`:408`) and would refuse every organizer.
-  //
-  // `staff.manage` is not an assignable trade — an assignment may carry only
-  // `door.operate`, `door.supervise`, `media.upload` and `party.manage`
-  // (`20260809000000_party_assignments.sql:340-342`) — so its presence in this
-  // per-night union comes from the role arm and from nowhere else.
-  if (ctx.capabilities.has(CAP.STAFF_MANAGE)) {
-    return true;
-  }
-
-  // ── Arm 3: the per-night assignment — the reason this file exists ───────────
-  //
-  // ONE resolution, on the night the file belongs to. Being "photo" on one night
-  // says nothing about any other night of the same event, which is Success
-  // Criterion 1 of the ROADMAP made true in code:
-  // `20260808000500_staff_role.sql:127-135` already wrote which upload this is —
-  // *"the photographer uploading to the night they worked, which expires with
-  // the night"* — and this line is the sentence acquiring a consumer.
-  //
-  // ── WHAT THIS ARM DOES NOT PROTECT, and the reader must find it here ───────
-  //
-  // Widening WHO uploads does not, on its own, widen WHAT IS STRIPPED. A phone
-  // photograph carries GPS coordinates, a date and a device model **inside the
-  // file**, so a picture taken inside a secret venue carries that venue's
-  // address in its bytes — a reveal path that passes through none of the
-  // surfaces enumerated in `venue-secrecy.md`, because it is not our code that
-  // writes it. The stripper exists (`src/lib/media/strip-metadata.ts`, plan
-  // 35-19) and lives in plan 35-20's persistence route, and **until
-  // `20260809006000_event_media_server_upload_only.sql` is applied the browser
-  // can still write straight to the public `event-media` bucket and go around
-  // it** — the door that leaves open is
-  // `20260225120000_phase7_media.sql:70-75`. That migration is the ONE row of
-  // the queue applied AFTER the deploy, not before.
-  //
-  // Two further limits, stated rather than left to be discovered: **video is
-  // stripped by nothing** (`sharp` does not handle containers, and an MP4/MOV
-  // carries coordinates in a `udta` atom), and moderation flips the row, not the
-  // object (`media-and-storage.md`, gate *moderazione = rimozione*).
-  //
-  // This matters precisely here: the person this arm admits is the photographer
-  // standing INSIDE the secret venue, which makes them the most likely traveller
-  // of this path — not an edge case.
-  if (ctx.capabilities.has(CAP.MEDIA_UPLOAD)) {
-    return true;
-  }
-
-  // ── ARM 2 STOOD HERE — THE RECORDED PRESENCE — AND IT IS REMOVED, NOT FIXED ──
-  //
-  // **The measurement that this paragraph exists to carry, and its date.** The
-  // query that stood here asked for a table named `attendance`; the table is
-  // `public.attendances` (`supabase/schema.sql:231`) and **no object named
-  // `attendance` exists**. PostgREST answered with an error, the destructuring
-  // took only `{ data }`, so the value was `null` and **the arm refused every
-  // time, for everybody**. Measured on **2026-08-08**: from that day only
-  // `staff.manage` — and, once it existed, the per-night `media.upload`
-  // assignment — reached an upload at all.
-  //
-  // **The date is why this paragraph survives the code it described.** Phase 50
-  // formalises D-50-03 — *media are uploaded by organizers and staff, nobody
-  // else* — and without this measurement a reader would conclude the phase
-  // NARROWED something. It did not: the member arm had been dead for six weeks,
-  // and what changed is that the predicate now says so. A verification that
-  // claims a restriction here is claiming something the tree cannot show.
-  //
-  // **And it is removed rather than repaired, deliberately.** The obvious tidy
-  // is to correct `attendance` → `attendances` and make the arm work. That
-  // would **widen** uploading to anybody with a recorded presence — the exact
-  // opposite of D-50-03 — on a path `media-and-storage.md` (gate *chi carica ha
-  // titolo*) and `venue-secrecy.md` guard together: a photograph taken inside a
-  // secret venue carries that venue's coordinates in its own bytes.
-  //
-  // The arm's other half asked for the «active membership» capability key, which resolved
-  // to `status = 'approved'` and to nothing else. Phase 50 cancels the status
-  // axis, and the migration `20260921120000` deletes that key's four grants from
-  // `private.role_capabilities`: asking for it here would now be asking for a
-  // key no role holds — a second way of refusing everybody, written as if it
-  // decided something.
-  //
-  // What is left is **two arms, both true**: `staff.manage` above, and the
-  // per-night `media.upload` assignment above it. Whoever holds neither falls
-  // through to the caller's refusal, which is NAMED — `MEDIA_UPLOAD_FORBIDDEN`,
-  // never a generic sentence.
-  return false;
-}
 
 /**
  * May the current session file a photograph in the visual section's archive?
@@ -322,13 +63,12 @@ export async function mayUploadToParty(
  *
  * ── ONE ARM, AND IT IS THE SECTION'S OWN KEY ────────────────────────────────
  *
- * `production.visual.manage` and nothing else. Not `staff.manage`, which opens
- * every night's gallery and says nothing about who owns the brand's material;
- * not `admin.access`, which is the master alone. D-45-06 makes the key that
- * READS a section the key that WRITES it, and filing a photograph in the
- * archive is a write to that section — so the archive upload and the capitolato
- * write are refused and admitted together, by construction rather than by
- * two checks that agree today.
+ * `production.visual.manage` and nothing else. Not `staff.manage`, which says
+ * nothing about who owns the brand's material; not `admin.access`, which is the
+ * master alone. D-45-06 makes the key that READS a section the key that WRITES
+ * it, and filing a photograph in the archive is a write to that section — so
+ * the archive upload and the capitolato write are refused and admitted
+ * together, by construction rather than by two checks that agree today.
  *
  * ── WHAT THIS DOES **NOT** DECIDE, and the reader must find it here ─────────
  *
@@ -336,7 +76,7 @@ export async function mayUploadToParty(
  * stakes rather than lowering them: an archive photograph is **kept for
  * months** and is drawn on for a listing, so an un-stripped file there is a
  * reveal path that stays open long after the upload is forgotten. The strip is
- * `src/lib/media/finalize.ts`'s, on the one path both destinations share, and
+ * `src/lib/media/finalize.ts`'s, on the one path every destination shares, and
  * *a file that has not been stripped is reachable by nobody* is a property of
  * that module and of the destination bucket's policies — never of this
  * predicate.

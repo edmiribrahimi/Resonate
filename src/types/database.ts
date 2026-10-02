@@ -414,95 +414,14 @@ export interface RSVP {
 // carried — *entry_role is what the entry WAS, taken at the door* — lives on in
 // `door_scan_events`, which is where a presence is recorded now.
 
-/**
- * One row of `public.event_media` — the file, and the NIGHT it belongs to.
- *
- * ── `party_id`, and the one reading the type cannot forbid ───────────────────
- *
- * The rule below is written in THREE places that must say the same thing: the
- * `COMMENT ON COLUMN` and the trigger comment of
- * `supabase/migrations/20260809004500_event_media_party_id.sql`, and here. Three
- * places because the next reader arrives from one of the three, and two
- * formulations of one rule are two rules.
- *
- * ── The honest limit, the same one `PartyAssignmentRow` and `PartyCreditRow`
- *    carry ──────────────────────────────────────────────────────────────────
- *
- * None of the four Supabase clients is parameterised with a `Database` generic
- * (`src/lib/supabase/server.ts:7`), so this interface is a CATALOGUE FOR THE
- * READER and not a constraint the compiler applies to a query. **A green
- * `npm run build` does not prove that any query writes `party_id`** — the
- * database proves that, by refusing the insert.
- */
-export interface EventMediaRow {
-  id: string;
-  event_id: string;
-  /**
-   * The night this file belongs to.
-   *
-   * `null` means **LEGACY ROW, EVENT SCOPE**: uploaded before the column
-   * existed, on an event with more than one night, where attributing a night
-   * after the fact would be inventing it — and for a file shot inside a secret
-   * venue the night is not a detail.
-   *
-   * A legacy row is **read and moderated exactly as today**: the guard is a
-   * `BEFORE INSERT` trigger, so no update of an existing row is affected.
-   *
-   * A legacy row is **never a valid target for a new write**: the trigger
-   * `event_media_require_party` refuses every `INSERT` without a night — the
-   * service role included, because a policy does not reach it and a trigger
-   * does — and the per-night test is an equality between identifiers
-   * (`pa.party_id = p_party_id`, inside `private.has_capability`), so `null`
-   * satisfies no arm.
-   *
-   * **`null` does NOT mean "every night"** — in italiano, perche' e' la lingua
-   * in cui questa regola e' stata decisa e perche' e' l'unica frase di questo
-   * file che non deve essere fraintesa: **`null` non significa «tutte le
-   * serate».** Written exactly like that, twice, because it is the reading that
-   * would turn a permission scoped to one evening into an unlimited one, and it
-   * is the only wrong reading the type alone cannot prevent.
-   */
-  party_id: string | null;
-  /** `null` once the uploading account is deleted — the column is nullable. */
-  uploaded_by: string | null;
-  /**
-   * La vecchia URL pubblica dell'oggetto — **storia, non un indirizzo**.
-   * Nullable nello schema dal piano 52-06 (`20260923180000_gallery_view_and_media_paths.sql`
-   * sezione 4); il tipo la segue dal 2026-09-23, piano 52-13, che ha chiuso la
-   * divergenza dichiarata dal 52-06. Nessuna superficie la legge piu' (piano
-   * 52-12) e `registerMedia` non la scrive: una riga nuova la porta `null`.
-   * Da M2 (`20260923180100_gallery_close_data.sql`) il bucket e' privato,
-   * quindi un valore presente risponde errore: **non disegnarla mai**, si firma
-   * `storage_path`.
-   */
-  url: string | null;
-  /**
-   * The object's key in the `event-media` bucket — what a signed URL is minted
-   * from (NAV-07, D-52-25). NOT NULL since M2 (`20260923180100_gallery_close_data.sql`,
-   * plan 52-13, 2026-09-23), which re-ran the backfill for the rows born between
-   * M1 and the deploy and only then closed the column. Never a full URL:
-   * `event_media_storage_path_is_a_key` refuses one.
-   */
-  storage_path: string;
-  type: "photo" | "video";
-  caption: string | null;
-  status: "pending" | "approved" | "rejected";
-  file_size: number | null;
-  order: number;
-  created_at: string;
-}
-
-/**
- * The older name for the same row, kept because it is exported.
- *
- * It is an ALIAS and not a second interface on purpose: two shapes describing
- * one table drift, and this one had already started to — it predates
- * `party_id`, and it typed `uploaded_by` as non-nullable where the column is
- * nullable (`20260225120000_phase7_media.sql:8`). Measured before collapsing
- * it: `grep -rn "EventMedia" src/` finds no reader outside this file, so the
- * correction costs nothing and the divergence cannot reopen.
- */
-export type EventMedia = EventMediaRow;
+// ── `EventMediaRow` and its alias `EventMedia` stood here ─────────────────────
+//
+// Removed on 2026-10-02 with the event gallery (DBT-13, D-52.1-17): their
+// readers — the gallery, the night's media page, the upload actions — left in
+// the same commit. The table `public.event_media` and the `event-media` bucket
+// still exist in the database until the schema is closed after the deploy
+// (plan 52.1-25); a type for a table no code reads is an invitation to write a
+// query against it — the same reason the `attendances` interface left above (WR-08).
 
 export interface NewsletterSubscriber {
   id: string;

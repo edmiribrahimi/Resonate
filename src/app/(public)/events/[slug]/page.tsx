@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { CompactChip, Badge } from "@/components/ui/Chip";
 import { FOCUS_RING } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/server";
-import { getAccessContext, hasCapability } from "@/lib/capabilities/server";
+import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import FormatMarker from "@/components/formats/FormatMarker";
@@ -22,12 +22,7 @@ import MyDrinks from "./MyDrinks";
 import PendingIntentHandler from "./PendingIntentHandler";
 import SecretVenueDialog from "./SecretVenueDialog";
 import ShareButton from "./ShareButton";
-import MediaGallerySection from "./MediaGallerySection";
 import { logMoneyPathFailure } from "@/lib/failure/money-path";
-import {
-  signEventMedia,
-  EVENT_MEDIA_SIGNATURE_SECONDS,
-} from "@/lib/media/sign-event-media";
 import { formatTime } from "@/utils/formatTime";
 import { buildEventMetadata } from "./event-metadata";
 import { CalendarIcon, ClockIcon, MapPinIcon, LockClosedIcon, MusicalNoteIcon } from "@/components/ui/Icons";
@@ -520,13 +515,6 @@ export default async function EventDetailPage({
   if (!event) {
     notFound();
   }
-
-  // Since 2026-09-24 any organizer manages any night (owner's decision, and
-  // the RLS moved with it: `20260924120000_organizers_manage_all_events.sql`).
-  // So "the organizer of this night" is no longer "its creator": it is anyone
-  // holding `staff.manage`. The name stays because its one reader below asks
-  // exactly that question.
-  const isOrganizer = capabilities.has(CAP.STAFF_MANAGE);
 
   // Service client for counting tickets (anon users can't read tickets via RLS)
   const serviceClient = createSupabaseClient(
@@ -1042,65 +1030,12 @@ export default async function EventDetailPage({
   // l'arm non e' stato riparato: farla funzionare vorrebbe dire ridare il
   // caricamento a chiunque abbia una presenza registrata.
 
-  // ── La galleria: letta solo da chi la puo' vedere, e firmata (NAV-07) ────────
+  // ── QUI STAVA LA GALLERIA — uscita il 2026-10-02 (DBT-13, D-52.1-17) ──────
   //
-  // D-52-29: la pagina non annuncia foto che chi guarda non puo' vedere. Senza
-  // `gallery.view` i media approvati **non si leggono affatto** — non per
-  // nasconderli dopo, ma perche' dopo M2 la RLS rifiuterebbe comunque quelle
-  // righe, e una query il cui unico esito possibile e' «niente» e' un giro in
-  // rete per ogni visita. Nessun conteggio, nessun «N foto» derivato da una
-  // lettura piu' larga.
-  //
-  // D-52-25: si seleziona la CHIAVE (`storage_path`), mai `url`. L'indirizzo
-  // lo produce `signEventMedia`, col client della sessione di chi guarda e con
-  // scadenza di un'ora: la policy dell'oggetto chiede che la riga sia visibile
-  // a quella sessione, quindi la firma non allarga cio' che la RLS ha dato. Le
-  // chiavi non lasciano il server: al componente arriva `id → URL firmato`.
-  //
-  // Tre esiti, tenuti distinti (`meta-gates.md`): lettura fallita, firma
-  // fallita, lista vuota. I primi due hanno la propria categoria nel log e un
-  // avviso in pagina; solo il terzo e' «nessuna foto».
-  const hasGalleryView = capabilities.has(CAP.GALLERY_VIEW);
-  let mediaItems: { id: string; url: string; type: "photo" | "video"; uploaded_by?: string }[] = [];
-  let galleryUnavailable = false;
-
-  if (hasGalleryView) {
-    const { data: approvedMedia, error: approvedMediaError } = await supabase
-      .from("event_media")
-      .select("id, storage_path, type, uploaded_by, created_at")
-      .eq("event_id", event.id)
-      .eq("status", "approved")
-      .order("created_at", { ascending: false });
-
-    if (approvedMediaError) {
-      console.error(
-        `[gallery.read_failed] code=${approvedMediaError.code ?? "unknown"} message=${approvedMediaError.message}`
-      );
-      galleryUnavailable = true;
-    } else {
-      const rows = (approvedMedia ?? []) as {
-        id: string;
-        storage_path: string | null;
-        type: string;
-        uploaded_by: string | null;
-      }[];
-      const signed = await signEventMedia(rows, EVENT_MEDIA_SIGNATURE_SECONDS);
-      if (!signed.ok) {
-        // Il log con categoria l'ha gia' scritto il firmatario
-        // (`[gallery.sign_failed]`); qui l'effetto visibile.
-        galleryUnavailable = true;
-      } else {
-        // Una riga senza firma resta nella lista con l'indirizzo vuoto:
-        // `MediaGrid` la disegna come «could not be loaded», non la fa sparire.
-        mediaItems = rows.map((m) => ({
-          id: m.id,
-          url: signed.urls[m.id] ?? "",
-          type: m.type as "photo" | "video",
-          uploaded_by: m.uploaded_by ?? undefined,
-        }));
-      }
-    }
-  }
+  // Decisione del proprietario: «Sì, via la gallery», resta la sola cover della
+  // serata. Con la sezione sono usciti la lettura di `event_media`, la firma
+  // degli indirizzi e il controllo di caricamento per serata (`media.upload`):
+  // questa pagina non legge piu' nessun media se non la cover.
 
   // Check if any drinks are available across parties
   const { count: drinkItemCount } = await supabase
@@ -1143,108 +1078,6 @@ export default async function EventDetailPage({
     }
   }
 
-  // ── The nights this person may upload to ────────────────────────────────────
-  //
-  // WHY A LOOP IS RIGHT HERE AND WRONG IN THE PREDICATE. `mayUploadToParty`
-  // (plan 35-16) answers *"may they upload to THIS night?"* — singular, one
-  // resolution, and a loop inside it would be the per-event permission coming
-  // back through the window. This surface asks the other question, *"which
-  // nights may they upload to?"*, which is plural by construction because it has
-  // to draw a list. One resolution per night is the minimum that question has.
-  //
-  // THE CEILING, AND THE FACT THAT IT IS GONE. Plan 35-21 justified this loop
-  // with `UNIQUE (event_id, type)` — "at most three". That constraint, and the
-  // `type` column itself, were **dropped on 2026-02-26**
-  // (`20260226300000_multi_sub_events.sql:11-17`): an event may carry N
-  // sub-nights today. So this is N resolutions, not three, and the bound worth
-  // naming is the real one — `parties` is the list this page already renders, so
-  // the cost is one round trip per night ALREADY DRAWN on the page, resolved in
-  // parallel, on a render and never on the door path. If a night ever stops
-  // being rendered, this loop must stop iterating it too.
-  //
-  // THE READ PERIMETER DOES NOT WIDEN — and it does not widen by ZERO, not by a
-  // little. No new query is issued and no new column is selected: `parties` is
-  // the array built at :200 from the `event_parties` read at :177, with the
-  // caller's own privileges, and `id`, `title` and `date` are already rendered
-  // into this page's HTML for this same viewer. The secret-venue flag this page
-  // reads at :179 and :278 for the venue dialog is deliberately NOT carried into
-  // anything below: `venue-secrecy.md`, gate *percorsi enumerati* — this page IS
-  // one of the enumerated exits, so what crosses to the client here is exactly
-  // what already crossed before this block existed. (The flag is named by line
-  // rather than spelled here so that the acceptance criterion of plan 35-21 —
-  // "no added line names it" — measures the property it means, instead of
-  // failing on a paragraph that exists to forbid the very read it looks for.
-  // Same class of correction as `35-20-SUMMARY.md`, deviation 5.)
-  //
-  // A RESOLVER FAULT IS NOT A REFUSAL, AND IS ALSO NOT A 500 ON THIS PAGE.
-  // `hasCapability` throws rather than returning a degraded answer
-  // (`capabilities/server.ts`, and that is correct there). Letting it escape
-  // here would turn a bad database minute into a crash of the **ticket-buying
-  // surface** — `ticketing-payments.md` is explicit that an auxiliary read must
-  // not abort the money path. So each night is caught on its own and, when
-  // unresolved, is NOT offered: fail closed, which is the direction
-  // `media-and-storage.md` and `venue-secrecy.md` both require on this path.
-  //
-  // The cost of that choice, named rather than left to be found: for someone
-  // whose ONLY route to the box is an assignment, an unresolved night is
-  // indistinguishable from an unassigned one — the box simply does not appear.
-  // There is no error tracking in this product (`meta-gates.md`), so the
-  // `console.error` below reaches a log nobody reads. When the other two arms
-  // hold, the box does appear with an empty list and `MediaUpload` draws a
-  // distinguishable error state instead of a mute control.
-  let uploadableParties: { id: string; title: string; date: string }[] = [];
-  if (isAuthenticated && user && parties.length > 0) {
-    const resolved = await Promise.all(
-      parties.map(async (p) => {
-        try {
-          // `getPartyAccessContext` is memoised per `partyId` within one render,
-          // so asking here does not re-ask anything asked elsewhere on this page.
-          const allowed = await hasCapability(CAP.MEDIA_UPLOAD, { partyId: p.id });
-          return allowed ? { id: p.id, title: p.title, date: p.date } : null;
-        } catch (cause) {
-          // Category, and nothing about the person. `35-PATTERNS.md` S5 and S7.
-          console.error(
-            `[media_upload.night_unresolved] could not resolve ${CAP.MEDIA_UPLOAD} ` +
-              `for night ${p.id}: ${cause instanceof Error ? cause.message : "unknown"}. ` +
-              `This is NOT a refusal — the night is withheld because the question ` +
-              `went unanswered.`
-          );
-          return null;
-        }
-      })
-    );
-    uploadableParties = resolved.filter(
-      (p): p is { id: string; title: string; date: string } => p !== null
-    );
-  }
-
-  // ── CHI VEDE IL CONTROLLO DI CARICAMENTO — D-50-03, dal 2026-09-21 ──────────
-  //
-  // **L'arm dei membri e' USCITO, non e' stato lasciato morire in silenzio.**
-  // Questa espressione portava `(isApproved && hasAttended)`, e nessuna delle
-  // due meta' ha mai ammesso nessuno: `hasAttended` interroga una tabella
-  // `attendance` che non esiste (la tabella e' `public.attendances`) — lo stesso
-  // difetto misurato il 2026-08-08 dentro `may-upload.ts`, e qui e' la sua
-  // seconda occorrenza — e `isApproved` sparisce con l'asse dello stato.
-  //
-  // Lasciarla morire da sola sarebbe stato il modo peggiore: una condizione che
-  // si legge come un permesso e non ne concede nessuno. D-50-03 dice che i media
-  // li caricano **organizer e staff**, e questa riga adesso lo dice.
-  //
-  // Il commento precedente — *«la riparazione ALLARGA chi puo' caricare, ed e'
-  // una decisione d'accesso»* — resta vero e resta la ragione per cui l'arm e'
-  // stato rimosso invece che corretto: una foto scattata dentro una sede segreta
-  // porta le coordinate nei suoi byte (`media-and-storage.md`,
-  // `venue-secrecy.md`).
-  //
-  // **Questa e' la superficie, non il cancello.** Il verdetto vero e'
-  // `mayUploadToParty`, che ha gli stessi due arm e rifiuta con
-  // `MEDIA_UPLOAD_FORBIDDEN`, nominato. Se i due divergessero, chi vede il
-  // controllo riceverebbe un rifiuto senza capire perche' — ed e' per questo
-  // che qui si tengono allineati.
-  const canUpload =
-    isAuthenticated &&
-    (isOrganizer || isMasterRole || uploadableParties.length > 0);
   const partyDates = parties.map((p) => p.date);
   const dateRangeDisplay = formatDateRange(partyDates);
   const isUpcoming = parties.some((p) => p.date >= new Date().toISOString().split("T")[0]);
@@ -1271,7 +1104,7 @@ export default async function EventDetailPage({
 
         The utility is written whole in the class list and is not spelled here,
         and the line is copied byte-for-byte from
-        src/app/(public)/gallery/page.tsx:110 — Tailwind scans comments, cannot
+        src/app/(public)/gallery/page.tsx:110 (deleted 2026-10-02 with the gallery, DBT-13) — Tailwind scans comments, cannot
         tell a description from a use, and an abbreviated one emits a malformed
         rule and a build warning (DEF-41-01).
 
@@ -2041,39 +1874,6 @@ export default async function EventDetailPage({
           </AnimatedSection>
         )}
 
-        {/*
-          Event Gallery — montata solo per chi tiene `gallery.view` o puo'
-          caricare. D-52-29: la pagina non annuncia foto che chi guarda non puo'
-          vedere, quindi senza la chiave non esiste nemmeno il titolo «Gallery».
-          P5: la sezione porta anche il caricamento, e chi puo' caricare per
-          assegnazione senza tenere `gallery.view` deve ancora trovarla — con il
-          solo caricamento, senza griglia (`showGrid`). Oggi quell'insieme e'
-          vuoto (`staff` tiene `gallery.view` per ruolo), ma la condizione e'
-          scritta qui, non dedotta.
-        */}
-        {(hasGalleryView || canUpload) && (
-          <AnimatedSection scrollTriggered className="mb-6">
-            <SectionHeading>Gallery</SectionHeading>
-            {galleryUnavailable && (
-              <div
-                role="alert"
-                className="mb-4 rounded-2xl border border-sem-crit/40 bg-sem-crit/10 p-4"
-              >
-                <p className="text-sm font-semibold text-sem-crit">
-                  The photos of this night could not be loaded
-                </p>
-                <p className="mt-1 text-xs text-muted">Reload the page.</p>
-              </div>
-            )}
-            <MediaGallerySection
-              media={mediaItems}
-              canUpload={canUpload}
-              showGrid={hasGalleryView && !galleryUnavailable}
-              eventId={event.id}
-              uploadableParties={uploadableParties}
-            />
-          </AnimatedSection>
-        )}
       </div>
         <SiteFooter />
         </PageShell>
@@ -2086,7 +1886,7 @@ export default async function EventDetailPage({
           fragment, and it is a SIBLING of the declaring div rather than a child
           of it — inside, it would still satisfy the textual pairing and would
           pad the column by its own clearance. The shape is
-          src/app/(public)/gallery/page.tsx:88-133.
+          src/app/(public)/gallery/page.tsx:88-133 (deleted 2026-10-02 with the gallery, DBT-13).
 
           The four props are the four the phone-locked wrapper received, in the
           same order. Width may change layout, never membership: the server

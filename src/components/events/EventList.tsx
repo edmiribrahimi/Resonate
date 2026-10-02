@@ -114,9 +114,9 @@ interface EventListProps {
  * prose no longer counts them in words — a count written as a word goes stale
  * at the next addition. The guarantee is mechanical: check `[4/4]` of
  * `npm run verify:routes` fails when a `page.tsx` under that directory has no
- * inbound link from a live line. «Media» stays here until plan 52.1-16 removes
- * it IN THE SAME COMMIT that deletes its page (DBT-13): the card says what
- * exists at every commit — no page without a door, no door without a page.
+ * inbound link from a live line. «Media» left on 2026-10-02 in the same commit
+ * that deleted its page (DBT-13): the card says what exists at every commit —
+ * no page without a door, no door without a page.
  */
 
 /**
@@ -136,7 +136,6 @@ const ROW_CONTROLS = [
   { segment: "assignments", label: "Who works" },
   { segment: "drinks", label: "Drink Menu" },
   { segment: "review", label: "Door review" },
-  { segment: "media", label: "Media" },
   { segment: "analytics", label: "Analytics" },
 ] as const;
 
