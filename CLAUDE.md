@@ -246,7 +246,7 @@ universale.
 | Production Calendar | — consultazione manuale, senza frontmatter |
 | Brand & Visual System | — consultazione manuale, senza frontmatter |
 | Time & Scheduling | `src/utils/formatTime.ts`, `src/utils/datetime.ts`, `src/app/api/cron/**`, `vercel.json` |
-| Media & Storage | `src/components/media/**`, `src/app/**/media/**`, `src/app/(public)/gallery/**` |
+| Media & Storage | `src/lib/media/**`, `src/app/api/media/**` |
 | Sound Manifesto | — consultazione manuale, senza frontmatter |
 | Venue Acquisition | — consultazione manuale, senza frontmatter |
 | Legal & Compliance | — consultazione manuale, senza frontmatter |

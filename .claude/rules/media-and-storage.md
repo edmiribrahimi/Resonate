@@ -1,11 +1,22 @@
 ---
 paths:
-  - "src/components/media/**"
-  - "src/app/**/media/**"
-  - "src/app/(public)/gallery/**"
+  - "src/lib/media/**"
+  - "src/app/api/media/**"
 ---
 
 # Media & Storage — Operational Gates
+
+> **La gallery e' uscita dal prodotto il 2026-10-02** (DBT-13, D-52.1-17,
+> piano 52.1-16): pagina `/gallery`, moderazione per serata, route
+> `/api/media/finalize`, componenti di `src/components/media/` e gli script
+> della gallery sono cancellati. **Le sezioni qui sotto su `event_media`, sul
+> bucket `event-media` e sulla moderazione descrivono cio' che c'era**, e si
+> riscrivono nel piano 52.1-28; tabella, bucket e policy escono dal database
+> col piano 52.1-25. **Il solo media del prodotto e' la cover della serata**
+> (DBT-14): bucket **pubblico** `event-images`, unico scrittore
+> `/api/media/finalize-cover`, spogliata da `src/lib/media/finalize.ts` — piu'
+> l'archivio privato del visual (`/api/media/finalize-archive`). I `paths:`
+> agganciano solo cio' che esiste: `src/lib/media/**` e `src/app/api/media/**`.
 
 ## Before Touching
 

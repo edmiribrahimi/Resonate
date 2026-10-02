@@ -3,6 +3,61 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.30.0] - 2026-10-02
+
+### Changed — `media-and-storage.md` aggancia solo cio' che esiste dopo l'uscita della gallery: `media-and-storage.md`, `CLAUDE.md`, `meta-gates.md`
+
+**Cosa e' cambiato.** I `paths:` di `media-and-storage.md` passano da
+`src/components/media/**`, `src/app/**/media/**`, `src/app/(public)/gallery/**`
+a **`src/lib/media/**`, `src/app/api/media/**`**. La riga «Media & Storage»
+dell'indice di `CLAUDE.md` e la riga della tabella «Priorita' di dominio per
+path» di `meta-gates.md` portano gli stessi due glob, con gli stessi moduli
+supplementari (`venue-secrecy`, `access-gating`). In testa al modulo un banner
+datato: la gallery e' uscita dal prodotto il 2026-10-02 (DBT-13, D-52.1-17), le
+sezioni su `event_media`, sul bucket `event-media` e sulla moderazione
+descrivono cio' che c'era e si riscrivono nel piano 52.1-28, e il solo media
+del prodotto e' la cover della serata (DBT-14) — piu' l'archivio privato del
+visual. Le sezioni stesse **non** sono riscritte qui: e' il perimetro del piano
+52.1-28.
+
+**Perche'.** Piano 52.1-29, che chiude l'intervallo rosso nominato n. 2 aperto
+dal piano 52.1-16: dopo la cancellazione di `src/components/media/` e di
+`src/app/(public)/gallery/`, due dei tre glob non matchavano nulla —
+`verify:persona` rosso sui controlli **A** (path morti) e **G** (riga 10 della
+tabella di `meta-gates.md`). Un modulo agganciato a path morti e' un modulo che
+non si carica, e non lo dice. `src/app/**/media/**` ancora matchava, ma solo per
+`src/app/api/media/**`: e' stato scritto per quello che copre. **Effetto
+nuovo, dichiarato:** `src/lib/media/**` prima non caricava questo modulo —
+`finalize.ts`, `strip-metadata.ts`, `upload-limits.ts`, `may-upload.ts` sono il
+cuore dello stripper e ora portano i loro gate quando si modificano. La memoria
+di progetto *verify:persona dopo aver cancellato superfici* e' stata seguita:
+`verify:persona` e' stato lanciato **dopo** le cancellazioni del 52.1-16 (rosso
+A+G) e di nuovo dopo questa modifica (verde).
+
+**Prova per mutazione.** Rimesso `"src/components/media/**"` nei `paths:` del
+modulo (asserito applicato: 1 occorrenza) → `verify:persona` **FALLITI 2/7**,
+A (*«"src/components/media/**" non matcha alcun file»*) e B (frontmatter e
+indice divergono); ripristinato → **7/7 verdi**.
+
+**Caso peggiore rimisurato.** Invariato il file:
+**`src/app/(admin)/admin/scanner/DoorSurface.tsx`**, 5 file (`CLAUDE.md`,
+`meta-gates`, `access-gating`, `checkin-offline`, `nextjs-architecture`). Prima
+(1.29.0): 52.729 byte ≈ **14.647** token. Dopo: **52.655 byte ≈ 14.626 token su
+15.000, margine 374** — scende di 21 token perche' la riga dell'indice e quella
+della tabella si accorciano. `media-and-storage.md` non entra nel caso
+peggiore. Nessun modulo senza `paths:` aggiunto o tolto (controllo D: sei
+manuali, invariati). `npm run verify:persona`: 7/7 verdi dopo le modifiche.
+
+**Scenario di carico e scatto.** File `src/lib/media/finalize.ts` → moduli
+attesi `media-and-storage.md` (primario), `meta-gates.md`, `CLAUDE.md`;
+modifica-tipo che deve far scattare il gate *EXIF prima della pubblicazione*:
+dare a `destinationBucket` un valore di default `"event-images"` (lo stesso caso
+che `verify:media-strip` controllo F fa rosso). File
+`src/app/api/media/finalize-cover/route.ts` → `media-and-storage.md`;
+modifica-tipo: scrivere la cover con la chiave scelta dal client invece di
+`covers/<uuid>.jpg`. File `src/components/media/Lightbox.tsx` → non esiste
+piu', e nessun modulo deve dichiararlo.
+
 ## [1.29.0] - 2026-09-30
 
 ### Changed — la persona rilegge il prodotto spedito dalla fase 52.2: `ticketing-payments.md`, `checkin-offline.md`, `meta-gates.md`, `CLAUDE.md`
