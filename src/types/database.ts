@@ -637,6 +637,19 @@ export interface TicketOrder {
   device: "mobile" | "desktop" | "unknown" | null;
   /** `null` = prima della colonna o non ancora pagato, mai «sconosciuto» (quello e' `other`). */
   payment_method: "apple_pay" | "google_pay" | "card" | "other" | null;
+  /**
+   * Da dove arriva chi compra — `20261001120300_order_entry_source.sql` §1.
+   * Ridotto dal parametro `utm_source` del link d'ingresso; il grezzo non si
+   * salva. `direct` = nessun parametro, `other` = non riconosciuto, `null` =
+   * ordine nato prima della colonna, mai «sconosciuto».
+   */
+  entry_source: "instagram" | "newsletter" | "flyer" | "direct" | "other" | null;
+  /**
+   * Il passo in cui ci si ferma — §2. `not_opened` all'insert, `opened` dal
+   * segnale firmato del modulo di pagamento (l'API di SumUp non lo sa).
+   * `null` = ordine nato prima della colonna.
+   */
+  checkout_form: "not_opened" | "opened" | null;
   created_at: string;
   updated_at: string;
 }
