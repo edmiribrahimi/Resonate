@@ -57,6 +57,88 @@ causavano non caricavano alcun gate.
 dalla riga dell'indice (asserito applicato: 0 occorrenze rimaste) →
 `verify:persona` **FALLITI 1/7**, B; ripristinato → 7/7.
 
+### Changed — biglietti, analytics e la disciplina degli agenti: `ticketing-payments.md`, `comms-analytics.md`, `ai-engineering.md`
+
+**Cosa e' cambiato.**
+
+- **`ticketing-payments.md`** — gate nuovi *un solo ordine dei tier* (DBT-18:
+  `sort_order, price, created_at` in ogni lettore, la RPC atomica
+  `reorder_ticket_tiers` che scrive solo `sort_order`, il tier nuovo in coda),
+  *il rimborso vive in un posto* (DBT-17: Sales), *l'ordine dice da dove arriva e
+  dove si ferma* (DBT-15: `entry_source` a vocabolario chiuso, `checkout_form` dal
+  segnale firmato, nessuno dei due tocca il pagamento). Il gate *guest list* dice
+  che «Add several» passa dalla stessa `addGuest` (DBT-20), col rimando a
+  `community-membership.md`, *nessuna corsia grigia*. Quattro imperativi.
+- **`comms-analytics.md`** — gate *la sorgente si riduce, non si salva*: il
+  grezzo non si salva, `sessionStorage` illeggibile → `direct`, segnale perso →
+  «form never opened», sottostime scritte accanto ai numeri (imbuto della serata e
+  «All nights»), nessuna email ne' nome nella lettura, colonna assente detta con la
+  sua frase e mai con uno zero. Un imperativo.
+- **D-52.1-31, registrata in entrambi i moduli.** Il piano chiedeva di scrivere
+  *«la cancellazione di email e nome degli ordini mai pagati dietro
+  `ORDER_PII_CLEAR_ENABLED`, spenta in attesa del professionista»*: **quella
+  cancellazione non esiste**. Il proprietario ha deciso il 2026-10-02 (*«deve
+  rimanere cosi' com'e' oggi»*) e la domanda al professionista e' ritirata (piano
+  52.1-07). Il gate scritto e' quello vero: i dati degli ordini mai pagati si
+  conservano come sono, per decisione datata; `pii_cleared_at` e l'interruttore
+  sono nominati solo per dire che non esistono, cosi' chi li cerca non li inventa.
+- **`ai-engineering.md`** — due gate dai fatti del 2026-10-02: *uno strumento che
+  conia sessioni e' un atto* (`verify:refusal` lanciato da un esecutore senza
+  autorizzazione datata, ESITI §«Atto non autorizzato») e *la conferma si legge
+  prima di scrivere il registro* (due righe di pulizia dei tier del laboratorio
+  scritte prima della misura: un filtro a 0 id, un `while read` senza a-capo
+  finale). Due imperativi.
+
+**Caso peggiore rimisurato, dopo tutte le modifiche dei due task.** Invariato il
+file: **`src/app/(admin)/admin/scanner/DoorSurface.tsx`**, 5 file (`CLAUDE.md`,
+`meta-gates`, `access-gating`, `checkin-offline`, `nextjs-architecture`). Prima
+(1.30.0): 52.655 byte ≈ 14.626 token. Dopo: **52.657 byte ≈ 14.627 token su
+15.000, margine 373**. Il gate nuovo della porta (+~1.100 byte) e quello del
+redirect sono stati pagati tagliando descrizione — la storia del codice socio in
+tre punti, il paragrafo sulle 24 ore, il capoverso della gallery — e nessuna
+regola. **Secondo caso, misurato a mano perche' e' quello che cresce:** la pagina
+pubblica della serata (`CLAUDE.md`, `meta-gates`, `venue-secrecy`,
+`ticketing-payments`, `nextjs-architecture`) passa da 49.084 a **52.331 byte ≈
+14.536 token, margine 464**: la prossima prosa in `ticketing-payments.md` o
+`venue-secrecy.md` va pesata come quella della porta. Nessun modulo senza `paths:`
+aggiunto o tolto (D: sei manuali). `npm run verify:persona`: 7/7 verdi dopo le
+modifiche.
+
+**Scenari di carico e scatto.**
+
+- `src/app/api/media/finalize-cover/route.ts` → `media-and-storage.md` (primario),
+  `meta-gates.md`, `CLAUDE.md`; modifica-tipo: chiave `covers/${file.name}` →
+  scatta *la chiave non dice nulla*.
+- `src/lib/media/strip-metadata.ts` → `media-and-storage.md`; modifica-tipo:
+  saltare lo stripper per i JPEG «perche' gia' convertiti da iOS» → scatta *una
+  cover passa dal server*.
+- `src/app/(public)/events/[slug]/page.tsx` → `venue-secrecy.md` (primario),
+  `ticketing-payments.md`, `nextjs-architecture.md`; modifica-tipo: mostrare una
+  cover letta da un URL scritto dal browser → scatta *la cover e' un percorso di
+  uscita che nessuno scrive*.
+- `src/app/(admin)/admin/scanner/ScannerClient.tsx` → `checkin-offline.md`
+  (primario), `access-gating.md`, `nextjs-architecture.md`; modifica-tipo:
+  disabilitare il check-in per nome quando `listIsStale` → scatta *l'avviso segue
+  la radio, e l'avviso non rifiuta mai*.
+- `src/lib/routes/organizer-redirects.ts` → `access-gating.md` (primario, **nuovo**:
+  prima nessun modulo); modifica-tipo: togliere una voce da `CAPABILITY_ROUTES`
+  lasciando un redirect che ci punta → scatta *una destinazione di redirect sta
+  nella mappa*, e `verify:routes [5/5]` lo fa rosso.
+- `src/app/(admin)/admin/events/[id]/tickets/actions.ts` → `ticketing-payments.md`
+  (primario), `access-gating.md`; modifica-tipo: `reorderTiers` che aggiorna anche
+  `price` → scatta *un solo ordine dei tier*.
+- `src/app/(admin)/admin/events/[id]/guest-list/AddSeveralGuests.tsx` →
+  `ticketing-payments.md`; modifica-tipo: un `insert` di massa in
+  `guest_list_entries` → scatta *guest list*.
+- `src/lib/analytics/event-queries.ts` → `comms-analytics.md` (primario);
+  modifica-tipo: leggere `buyer_email` nell'imbuto, o mostrare 0 quando la colonna
+  manca → scatta *la sorgente si riduce, non si salva*.
+- `src/lib/tickets/entry-source.ts` → `ticketing-payments.md`; modifica-tipo:
+  salvare `utm_source` grezzo → scatta *l'ordine dice da dove arriva*.
+- `.claude/rules/ai-engineering.md` → `ai-engineering.md`; situazione-tipo: un
+  esecutore che lancia `npm run verify:refusal` «per misurare lo stato di
+  partenza» → scatta *uno strumento che conia sessioni e' un atto*.
+
 ## [1.30.0] - 2026-10-02
 
 ### Changed — `media-and-storage.md` aggancia solo cio' che esiste dopo l'uscita della gallery: `media-and-storage.md`, `CLAUDE.md`, `meta-gates.md`

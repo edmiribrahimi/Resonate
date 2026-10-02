@@ -66,6 +66,10 @@ della delega. Questo modulo governa se stesso: modificarlo carica questo file.
 
 - **Gate l'autorizzazione a scrivere in produzione e' un atto, non un permesso**: Un'autorizzazione del proprietario a seminare dati per una verifica **si consuma una volta**, copre esattamente cio' che e' stato descritto quando e' stata chiesta, e **non si estende alla rimozione con uno strumento diverso da quello concordato**. Chi la riceve dichiara nel proprio registro quando l'ha usata e quando l'ha esaurita. *(Il precedente positivo esiste nella stessa fase: un agente si e' rifiutato di riseminare perche' il ciclo era chiuso e non c'era una misura in piu' da raccogliere.)*
 
+- **Gate uno strumento che conia sessioni e' un atto**: `verify:refusal` crea **sessioni vere** su identita' vere (master e attendee) e chiude con un sign-out globale: anche se legge soltanto, e' un atto sulla produzione, e sta in `NEEDS_AUTHORISATION` di `verify-all.mjs` per questo. **Non si lancia senza un'autorizzazione datata.** Situazione che lo fa scattare, ed e' successa il 2026-10-02 (~14:49Z, piano 52.1-29): un esecutore lo ha lanciato con `.env.local` per misurare lo stato di partenza; nessuna scrittura, ma il proprietario poteva trovarsi disconnesso da ogni dispositivo. Ogni prompt d'esecutore lo nomina fra gli strumenti vietati.
+
+- **Gate la conferma si legge prima di scrivere il registro**: Dopo una rimozione per chiave, la riga del registro che dice «rimosso / 0 rimasti» si scrive **dopo** aver letto il riconteggio da una fonte diversa — e lo script si ferma se non e' zero. Situazione che lo fa scattare, ed e' successa **due volte** il 2026-10-02 sui tier del laboratorio: un filtro malformato ha catturato 0 id e il registro diceva «cancellati»; poi un ciclo `while read` ha letto solo la prima riga del file degli id (manca l'a-capo finale), ha cancellato 1 su 2, e il registro diceva di nuovo «0». **Una riga scritta prima della misura e' un'eco**, anche quando il verso dell'errore e' innocuo.
+
 - **Gate multi-agent**: `.planning/config.json` ha `parallelization: true` e il workflow GSD genera agenti. Nessun lavoro multi-agente senza: invarianti condivise replicate in ogni prompt d'agente (in particolare l'irreversibilita' della rivelazione del venue), protocollo di handoff esplicito, risoluzione dei conflitti definita nell'orchestratore, e **Principio di Autorita' Minima** — nessun agente con tool o permessi oltre il necessario. Due agenti che toccano `CLAUDE.md` o lo stesso modulo in parallelo vanno **sequenziati**, non parallelizzati.
 
 ## Imperative Behaviors
@@ -88,3 +92,5 @@ della delega. Questo modulo governa se stesso: modificarlo carica questo file.
 - When snapshotting before a production write: cover every table reachable by cascade, read from the constraints
 - When given authorisation to seed production: use it once, for what was described, and record when it was spent
 - When two agents would touch the same persona file: sequence them
+- When a tool mints sessions on real identities: treat it as an act — never run `verify:refusal` without a dated authorisation
+- When recording a deletion: read the recount first, then write the line — and make the loop survive a file without a trailing newline
