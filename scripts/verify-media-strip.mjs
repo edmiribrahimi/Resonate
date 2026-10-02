@@ -784,10 +784,271 @@ if (moduleBucketHits.length === 0) {
   failures.push('F');
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// THE COVER BUCKET — plan 52.1-13 (DBT-14, D-52.1-18)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// WHAT THESE FOUR ASSERT, in one sentence: **no file under `src/` writes into
+// the PUBLIC `event-images` bucket except `src/app/api/media/finalize-cover/
+// route.ts`, that route hands it to the shared module with the `cover-jpeg`
+// encoding, the event form never names it, and the migrations leave no INSERT
+// or UPDATE policy for `authenticated` on it.**
+//
+// Why they exist: `event-images` is `public = true` — readable by URL with no
+// session — and it is where the cover of a night with a secret venue lands. A
+// cover picked from a phone carries GPS in its bytes (measured 2026-10-02:
+// Safari on iOS hands over the converted JPEG with *«Location Included»*), and
+// the old browser upload put the file's own name in the public URL. Until this
+// plan the browser wrote there directly, with no strip.
+//
+// ADDED, NOT SUBSTITUTED. The six checks above, about the gallery bucket, stay
+// until plan 52.1-29 removes the gallery; this block is the part that survives
+// it. The new code sits HERE, below check F, on purpose: eleven comments in
+// other gates cite line numbers of this file (`:51-62`, `:130`, `:163`), and
+// inserting above them would make every one of those citations point at the
+// wrong paragraph.
+//
+// WHAT A GREEN DOES NOT MEAN — the same three disclaimers as the header, plus
+// one: it does NOT mean `20261001120100_cover_server_only.sql` was APPLIED.
+// That migration is written by plan 52.1-13 and applied by plan 52.1-20 on the
+// lab and by act 3 in production, AFTER the route is deployed. Until then a
+// browser with `is_admin_or_organizer()` can still write into the bucket by
+// hand; this script reads files, not a catalogue.
+
+/** The public cover bucket. Matched as a quoted literal only, like the gallery one. */
+export const COVER_BUCKET = 'event-images';
+
+/** The one file allowed to hand the cover bucket to a write. An exact path. */
+export const COVER_ROUTE = 'src/app/api/media/finalize-cover/route.ts';
+
+/** The form that used to write the cover from the browser. */
+export const COVER_FORM = 'src/components/events/EventForm.tsx';
+
+/** M-C: the migration that closes the bucket's write policies. */
+export const COVER_MIGRATION = '20261001120100_cover_server_only.sql';
+
+/** The migration that created the four policies M-C drops. */
+export const COVER_POLICY_SOURCE = '20260225100000_phase5_events.sql';
+
+/** Does this line name `bucket` as a quoted literal? */
+export function namesBucket(raw, bucket) {
+  return (
+    raw.includes(`"${bucket}"`) || raw.includes(`'${bucket}'`) || raw.includes(`\`${bucket}\``)
+  );
+}
+
+/**
+ * Every live line of `relPath` that WRITES to `bucket` — the same two rules as
+ * {@link findPublicBucketWrites} (a write call in the same statement, forward
+ * AND backward; or the literal bound to a name), parameterised by bucket. A
+ * second copy rather than a change to the original's signature because the
+ * original is exported and pinned, and is removed with the gallery.
+ */
+export function findBucketWrites(relPath, bucket) {
+  const live = liveLines(relPath);
+  const binds = new RegExp(`=\\s*(["'\`])${bucket}\\1`);
+  const hits = [];
+  for (let i = 0; i < live.length; i += 1) {
+    const raw = live[i];
+    if (raw === '') continue;
+    if (binds.test(raw)) {
+      hits.push({ path: relPath, line: i + 1, text: raw.trim(), kind: 'binds the bucket name to a variable' });
+      continue;
+    }
+    if (!namesBucket(raw, bucket)) continue;
+    let window = raw;
+    for (let j = i + 1; j < Math.min(i + 1 + STATEMENT_WINDOW, live.length); j += 1) {
+      if (window.includes(';')) break;
+      window += `\n${live[j]}`;
+    }
+    for (let j = i - 1; j >= Math.max(0, i - STATEMENT_WINDOW); j -= 1) {
+      const previous = live[j];
+      if (previous.includes(';')) break;
+      window += `\n${previous}`;
+    }
+    const call = writeCallIn(window);
+    if (call !== null) {
+      hits.push({ path: relPath, line: i + 1, text: raw.trim(), kind: `writes to the bucket (${call} in the same statement)` });
+    }
+  }
+  return hits;
+}
+
+/** Every live line of `relPath` that names `bucket`, in any role. */
+export function findBucketLines(relPath, bucket) {
+  const live = liveLines(relPath);
+  const hits = [];
+  for (let i = 0; i < live.length; i += 1) {
+    if (live[i] === '' || !namesBucket(live[i], bucket)) continue;
+    hits.push({ path: relPath, line: i + 1, text: live[i].trim() });
+  }
+  return hits;
+}
+
+for (const required of [COVER_ROUTE, COVER_FORM]) {
+  if (!existsSync(`${ROOT}/${required}`)) {
+    refuse(`${required} does not exist. The cover checks have no subject. Nothing was measured.`);
+  }
+}
+
+console.log(`\n  — the cover bucket "${COVER_BUCKET}" (public), exemption: ${COVER_ROUTE}\n`);
+
+// ── A·cover. one writer, and it is the cover route ─────────────────────────
+const coverStray = [];
+for (const rel of files) {
+  if (rel === COVER_ROUTE) continue;
+  coverStray.push(...findBucketWrites(rel, COVER_BUCKET));
+}
+const coverRouteWrites = findBucketWrites(COVER_ROUTE, COVER_BUCKET);
+if (coverStray.length === 0 && coverRouteWrites.length > 0) {
+  console.log(
+    `  ✓ A·cover  the only writer of "${COVER_BUCKET}" under src/ is ${COVER_ROUTE} ` +
+      `(:${coverRouteWrites[0].line})`
+  );
+} else {
+  if (coverStray.length > 0) {
+    console.log(`  ✗ A·cover  ${coverStray.length} line(s) outside the cover route write to "${COVER_BUCKET}":`);
+    for (const h of coverStray) console.log(`         ${h.path}:${h.line}: [${h.kind}] ${h.text}`);
+    console.log(
+      '\n       Each is a path into a PUBLIC bucket that skips the stripper: a cover with\n' +
+        '       the GPS of the place it was taken, readable by URL with no session. Deposit\n' +
+        `       into "${QUARANTINE_BUCKET}" and call POST /api/media/finalize-cover.\n`
+    );
+  }
+  if (coverRouteWrites.length === 0) {
+    console.log(
+      `  ✗ A·cover  ${COVER_ROUTE} no longer writes to "${COVER_BUCKET}" in a way this check sees —\n` +
+        '         either the cover stopped being published, or the write moved out of WRITE_CALLS.'
+    );
+  }
+  failures.push('A·cover');
+}
+
+// ── B·cover. the route hands the bucket to the stripping module, as a cover ─
+//
+// The ORDER strip-then-write is check B's, measured in the shared module. What
+// is specific to the cover is the call: the bucket, the `cover-jpeg` encoding
+// (JPEG, 1920 px, no EXIF) and a server-generated `covers/` key, all in the one
+// call to the module. A `same-format` here would publish the original format at
+// the original size — still stripped, but not the cover D-52.1-18 decided.
+{
+  const live = liveLines(COVER_ROUTE);
+  const start = live.findIndex((l) => l.includes(FINALIZE_CALL) && !l.includes('import') && !/^\s*[A-Za-z_]+,\s*$/.test(l));
+  let call = '';
+  if (start >= 0) {
+    for (let j = start; j < Math.min(start + 15, live.length); j += 1) {
+      call += `\n${live[j]}`;
+      if (live[j].includes('});')) break;
+    }
+  }
+  const problems = [];
+  if (start < 0) problems.push(`no live call to ${FINALIZE_CALL}`);
+  else {
+    if (!namesBucket(call, COVER_BUCKET)) problems.push(`the call does not name "${COVER_BUCKET}"`);
+    if (!call.includes('encoding: "cover-jpeg"')) problems.push('the call does not pass encoding: "cover-jpeg"');
+    if (!call.includes('destinationKey')) problems.push('the call does not pass a destinationKey');
+    if (!call.includes('unstrippable: null')) problems.push('the call admits un-strippable bytes (unstrippable is not null)');
+  }
+  const generated = live.some((l) => l.includes('covers/${crypto.randomUUID()}.jpg'));
+  if (!generated) problems.push('the route does not generate the key as covers/${crypto.randomUUID()}.jpg');
+  if (problems.length === 0) {
+    console.log(
+      `  ✓ B·cover  ${COVER_ROUTE}:${start + 1} calls ${FINALIZE_CALL} with "${COVER_BUCKET}", ` +
+        'cover-jpeg, a server-generated covers/<uuid>.jpg key and no un-strippable gate'
+    );
+  } else {
+    console.log(`  ✗ B·cover  ${COVER_ROUTE}:`);
+    for (const p of problems) console.log(`         ${p}`);
+    failures.push('B·cover');
+  }
+}
+
+// ── C·cover. the form names the public bucket nowhere ──────────────────────
+const formHits = findBucketLines(COVER_FORM, COVER_BUCKET);
+if (formHits.length === 0) {
+  console.log(`  ✓ C·cover  ${COVER_FORM} names "${COVER_BUCKET}" nowhere`);
+} else {
+  console.log(`  ✗ C·cover  ${formHits.length} line(s) in ${COVER_FORM} name the public cover bucket:`);
+  for (const h of formHits) console.log(`         ${h.path}:${h.line}: ${h.text}`);
+  console.log(
+    '\n       This is the file the browser upload grew in. It deposits into the quarantine\n' +
+      '       and lets POST /api/media/finalize-cover publish.\n'
+  );
+  failures.push('C·cover');
+}
+
+// ── D·cover. the migrations close the browser's write, and nothing reopens it ─
+{
+  const dCover = [];
+  if (!migrations.includes(COVER_MIGRATION)) {
+    dCover.push(`${COVER_MIGRATION} does not exist: nothing closes the browser's write on "${COVER_BUCKET}".`);
+  } else {
+    const mc = readFileSync(`${MIGRATIONS_DIR}/${COVER_MIGRATION}`, 'utf8');
+    const dropped = [...mc.matchAll(/DROP\s+POLICY\s+(?:IF\s+EXISTS\s+)?"([^"]+)"\s+ON\s+storage\.objects/gi)].map((m) => m[1]);
+    const source = existsSync(`${MIGRATIONS_DIR}/${COVER_POLICY_SOURCE}`)
+      ? readFileSync(`${MIGRATIONS_DIR}/${COVER_POLICY_SOURCE}`, 'utf8')
+      : '';
+    // Statement by statement (split on `;`), so a lazy match cannot run from one
+    // policy into the next and attribute a name to the wrong bucket.
+    const created = source
+      .split(';')
+      .map((stmt) => stmt.match(/CREATE\s+POLICY\s+"([^"]+)"\s+ON\s+storage\.objects\s+FOR\s+(INSERT|UPDATE|DELETE|SELECT)/i) && /'event-images'/.test(stmt) ? stmt.match(/CREATE\s+POLICY\s+"([^"]+)"/i)[1] : null)
+      .filter((n) => n !== null);
+    if (created.length === 0) {
+      dCover.push(`${COVER_POLICY_SOURCE} creates no policy on "${COVER_BUCKET}" any more: nothing to compare M-C against.`);
+    } else {
+      const unmatched = created.filter((n) => !dropped.includes(n));
+      if (unmatched.length > 0) {
+        dCover.push(
+          `${COVER_MIGRATION} does not drop ${unmatched.map((n) => `"${n}"`).join(', ')}, created by ` +
+            `${COVER_POLICY_SOURCE}. A DROP POLICY IF EXISTS with a wrong name applies cleanly and changes nothing.`
+        );
+      }
+    }
+    if (/CREATE\s+POLICY[\s\S]*?'event-images'/i.test(mc.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n'))) {
+      dCover.push(`${COVER_MIGRATION} itself creates a policy on "${COVER_BUCKET}".`);
+    }
+  }
+  const reopened = [];
+  for (const file of migrations) {
+    if (file <= COVER_MIGRATION) continue;
+    const sql = readFileSync(`${MIGRATIONS_DIR}/${file}`, 'utf8');
+    for (const stmt of sql.split(';')) {
+      if (
+        /CREATE\s+POLICY/i.test(stmt) &&
+        /ON\s+storage\.objects\s+FOR\s+(INSERT|UPDATE|ALL)/i.test(stmt) &&
+        /TO\s+[^;]*\b(authenticated|anon|public)\b/i.test(stmt) &&
+        /'event-images'/.test(stmt)
+      ) {
+        reopened.push(file);
+        break;
+      }
+    }
+  }
+  if (reopened.length > 0) {
+    dCover.push(`these migration(s) recreate a client write policy on "${COVER_BUCKET}" after M-C: ${reopened.join(', ')}.`);
+  }
+  if (dCover.length === 0) {
+    console.log(
+      `  ✓ D·cover  ${COVER_MIGRATION} drops every policy ${COVER_POLICY_SOURCE} created on ` +
+        `"${COVER_BUCKET}", and no later migration gives a client a write on it`
+    );
+  } else {
+    console.log(`  ✗ D·cover  the browser's write on "${COVER_BUCKET}" is not closed in the migrations:`);
+    for (const line of dCover) console.log(`         ${line}`);
+    failures.push('D·cover');
+  }
+  console.log(
+    `\n  Reminder: D·cover reads a FILE. ${COVER_MIGRATION} is applied after the route is\n` +
+      '  deployed (plan 52.1-20 on the lab, act 3 in production) — until then the browser\n' +
+      '  write policies still exist in the catalogue.'
+  );
+}
+
 // ── verdict ────────────────────────────────────────────────────────────────
 console.log('');
 if (failures.length === 0) {
-  console.log('  MEDIA_STRIP_OK — all six checks passed.');
+  console.log('  MEDIA_STRIP_OK — all ten checks passed (six on the gallery bucket, four on the cover bucket).');
   console.log(
     '  Read the header before treating this as safety: it says nothing about whether sharp\n' +
       '  really removes metadata, nothing about videos, and nothing about row 15 being\n' +
