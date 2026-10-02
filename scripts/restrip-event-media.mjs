@@ -648,7 +648,10 @@ for (const [i, r] of photos.entries()) {
   }
   let stripped;
   try {
-    stripped = await stripImageMetadata(src.bytes, mime);
+    // Piano 52.1-13: l'encoding e' un argomento obbligatorio. La ripassata della
+    // gallery rifa' lo stesso formato, come prima — senza questo argomento ogni
+    // foto cadrebbe in `media_strip.failed` e lo script direbbe «lasciata com'era».
+    stripped = await stripImageMetadata(src.bytes, mime, { encoding: "same-format" });
   } catch (err) {
     tally.strip_refused += 1;
     note("strip_refused", `code=${isMediaStripRefusal(err) ? err.reason : "uncategorised"} message=foto ${tag} lasciata com'era`);

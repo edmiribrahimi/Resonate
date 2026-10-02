@@ -555,6 +555,11 @@ export async function POST(request: Request) {
       quarantinePath,
       mimeType,
       destinationBucket: "event-media",
+      // Plan 52.1-13: both fields are required now and have no default. The
+      // gallery keeps writing at the quarantine key, in the format received —
+      // exactly what it did before, until DBT-13 removes this route.
+      destinationKey: quarantinePath,
+      encoding: "same-format",
       logScope: "public",
       /**
        * The video branch — this product accepts video HERE and nothing in this

@@ -6,11 +6,26 @@ import {
   isMediaStripRefusal,
   stripImageMetadata,
   type MediaStripRefusalReason,
+  type StripEncoding,
 } from "@/lib/media/strip-metadata";
 
 /**
  * finalize.ts — pick the bytes up, STRIP them, write them to the destination
- * that was named. One implementation, two destinations.
+ * that was named. One implementation, and the destinations are arguments.
+ *
+ * ── THE DESTINATIONS THAT EXIST, named by what they are (plan 52.1-13) ──────
+ *
+ *   * **private — the visual archive** (`/api/media/finalize-archive`): dj
+ *     photographs filed for months, no anonymous read arm, signed reads only.
+ *   * **public — the event cover** (`/api/media/finalize-cover`, D-52.1-18):
+ *     `event-images` is `public = true`, so what lands there is readable by URL
+ *     with no session at all. It is the ONLY public destination of this module,
+ *     which is why its caller also names a server-generated key
+ *     (`covers/<uuid>.jpg`) and the `cover-jpeg` encoding.
+ *   * the gallery (`/api/media/finalize`, `event-media`) still calls this module
+ *     until it is removed (DBT-13). Since 2026-09-23 that bucket is **private**,
+ *     read through signed URLs: the old prose here that called it "the public
+ *     bucket" was false from that day (DBT-07) and has been rewritten.
  *
  * ── WHY THE IMPORTS SIT ABOVE THIS BLOCK ────────────────────────────────────
  * Same discipline, and the same reason, as `may-upload.ts:1-15` and
@@ -38,16 +53,25 @@ import {
  *
  * ── THE DESTINATION HAS NO DEFAULT, AND THAT IS THE FILE'S SHARPEST RULE ────
  *
- * `destinationBucket` is a required field of the request. There is no default,
- * no fallback and no `??` anywhere below, because **a default destination is
- * exactly the bug that publishes an archive photograph**. The two destinations
- * of this product differ in the one way that cannot be undone: one is
- * `public = true` and readable by URL with no session at all
- * (`20260225120000_phase7_media.sql:64-66`), the other is private with no
+ * `destinationBucket`, `destinationKey` and `encoding` are required fields of
+ * the request. There is no default, no fallback and no `??` for any of them
+ * anywhere below, because **a default destination is exactly the bug that
+ * publishes an archive photograph**. The destinations of this product differ in
+ * the one way that cannot be undone: `event-images` is `public = true` and
+ * readable by URL with no session at all
+ * (`20260225100000_phase5_events.sql`), the archive is private with no
  * anonymous read arm (`20260817120400_visual_archive_bucket.sql`). A caller who
  * forgot to name a destination and got the public one would have published
  * material nobody decided to publish — and in this domain an accidental
  * publication is read as an announcement.
+ *
+ * The KEY has no default for a second reason (plan 52.1-13): until then the
+ * module wrote at the quarantine key, `<caller id>/<random>.<ext>`, which is
+ * fine in a private bucket and wrong in a public one — the public URL is the
+ * key. The cover route therefore generates `covers/<uuid>.jpg` itself, and a
+ * caller that wants the old behaviour has to SAY `destinationKey:
+ * quarantinePath`. The ENCODING has no default because the two outputs (same
+ * format and size / JPEG at 1920 px) are decisions, see `StripEncoding`.
  *
  * ── WHY THE BYTES DO NOT TRAVEL THROUGH THE CALLER'S REQUEST ────────────────
  *
@@ -177,6 +201,15 @@ export interface FinalizeRequest<R extends string> {
   readonly mimeType: string;
   /** Where the bytes go. Required, and there is no default anywhere in this file. */
   readonly destinationBucket: string;
+  /**
+   * The object key at the destination. Required, no default, no `??` — same
+   * rule as `destinationBucket`. On a public bucket the key IS the URL, so a
+   * key derived from anything the uploader chose (a file name) would publish
+   * it; the cover route generates one on the server.
+   */
+  readonly destinationKey: string;
+  /** How the stripped image is encoded. Required, no default. See {@link StripEncoding}. */
+  readonly encoding: StripEncoding;
   /** What to do with bytes the stripper cannot treat. See {@link UnstrippableGate}. */
   readonly unstrippable: UnstrippableGate<R> | null;
   /**
@@ -245,8 +278,15 @@ function isStrippableMime(
 export async function finalizeStrippedUpload<R extends string>(
   request: FinalizeRequest<R>
 ): Promise<FinalizeStepResult<R>> {
-  const { quarantinePath, mimeType, destinationBucket, unstrippable, logScope } =
-    request;
+  const {
+    quarantinePath,
+    mimeType,
+    destinationBucket,
+    destinationKey,
+    encoding,
+    unstrippable,
+    logScope,
+  } = request;
 
   const serviceClient = getServiceClient();
 
@@ -284,6 +324,10 @@ export async function finalizeStrippedUpload<R extends string>(
 
   // ── 2. The fork on the declared type ──────────────────────────────────────
   let bytesToWrite: Buffer;
+  // The type actually WRITTEN, which is what the object must be served as. On
+  // `cover-jpeg` it is JPEG whatever was declared: a PNG cover is re-encoded,
+  // and JPEG bytes served as `image/png` are a broken picture on some readers.
+  let writtenType: string;
 
   if (isStrippableMime(mimeType)) {
     // An image. Every outcome other than a stripped buffer returns, and each
@@ -291,7 +335,10 @@ export async function finalizeStrippedUpload<R extends string>(
     // the type, the tool, and the bytes. **Nothing in this branch can return the
     // bytes it was handed**, which is the sentence the whole module exists for.
     try {
-      bytesToWrite = await stripImageMetadata(sourceBytes, mimeType);
+      bytesToWrite = await stripImageMetadata(sourceBytes, mimeType, {
+        encoding,
+      });
+      writtenType = encoding === "cover-jpeg" ? "image/jpeg" : mimeType;
     } catch (cause) {
       if (isMediaStripRefusal(cause)) {
         return { ok: false, reason: cause.reason };
@@ -328,6 +375,7 @@ export async function finalizeStrippedUpload<R extends string>(
     // Passing as received, and the limit is the caller's declared one. See
     // {@link UnstrippableGate}.
     bytesToWrite = sourceBytes;
+    writtenType = mimeType;
   } else {
     // No gate, and the stripper cannot treat this type. Refused, and nothing was
     // written. This is the archive's whole answer to video.
@@ -343,12 +391,16 @@ export async function finalizeStrippedUpload<R extends string>(
   // `contentType` is passed explicitly. Without it a Buffer is stored as
   // `text/plain`, and the bucket would then serve a photograph as text — the
   // strip would have worked and the picture would still be broken. The value is
-  // the declared mime, which by this line has been checked against the real
-  // container on both branches.
+  // the type WRITTEN: the declared mime on `same-format` and on the gate branch
+  // (checked against the real container on both), `image/jpeg` on `cover-jpeg`
+  // because that is what the encoder produced.
+  //
+  // The key is `destinationKey` — required, never defaulted. On the public cover
+  // bucket the key is the URL, so it is the one the server generated.
   const { error: writeError } = await serviceClient.storage
     .from(destinationBucket)
-    .upload(quarantinePath, bytesToWrite, {
-      contentType: mimeType,
+    .upload(destinationKey, bytesToWrite, {
+      contentType: writtenType,
       upsert: false,
     });
 

@@ -376,6 +376,11 @@ export async function POST(request: Request) {
       quarantinePath,
       mimeType,
       destinationBucket: "visual-archive",
+      // Plan 52.1-13: both fields are required now and have no default. The
+      // archive keeps writing at the quarantine key, in the format received —
+      // exactly what it did before; the key is private and caller-random.
+      destinationKey: quarantinePath,
+      encoding: "same-format",
       logScope: "archive",
       unstrippable: null,
     });

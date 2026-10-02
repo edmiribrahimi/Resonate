@@ -210,6 +210,53 @@ const REENCODE: Record<StrippableMime, (pipeline: Sharp) => Sharp> = {
 };
 
 /**
+ * How the stripped picture leaves this module — a **required** choice of the
+ * caller, with no default (plan 52.1-13, D-52.1-18).
+ *
+ *   `same-format`  re-encode into the format that was decoded, at the size that
+ *                  was decoded. The archive of the visual section and, while it
+ *                  exists, the gallery: a PNG stays a PNG.
+ *   `cover-jpeg`   the event cover. Rotate, shrink to {@link COVER_MAX_EDGE_PX}
+ *                  on the long side, encode as JPEG. The cover is the one image
+ *                  of a night that sits on a PUBLIC bucket, readable by URL with
+ *                  no session, so its output is one known format at one known
+ *                  size — and still without any EXIF, because a cover chosen from
+ *                  a phone's camera roll carries the coordinates of where it was
+ *                  taken (measured on 2026-10-02: Safari on iOS hands over a
+ *                  converted JPEG, and its photo picker says *«Location
+ *                  Included»* by default).
+ *
+ * No default, for the same reason `finalize.ts` gives its destination none: the
+ * two outputs differ in a way the caller must have decided, not inherited.
+ */
+export type StripEncoding = "same-format" | "cover-jpeg";
+
+/** What a caller of {@link stripImageMetadata} must say. Every field required. */
+export interface StripOptions {
+  readonly encoding: StripEncoding;
+}
+
+/**
+ * The cover's long side, in pixels (D-52.1-18/19).
+ *
+ * Why 1920: the cover is shown 16:9 at most ~800 CSS px wide
+ * (`src/app/(public)/events/[slug]/page.tsx`, the 16:9 block), and a phone
+ * multiplies that by a device pixel ratio of 2 to 3 — 1600 to 2400 physical
+ * pixels. 1920 is the 16:9 "full HD" width: sharp at every width the page
+ * actually renders, and a fraction of the 8000×4500 original the census of
+ * 2026-10-01 found on the bucket. `withoutEnlargement` keeps a small picture
+ * small: shrinking is a decision, enlarging would be inventing pixels.
+ */
+export const COVER_MAX_EDGE_PX = 1920;
+
+/**
+ * The cover's JPEG quality (D-52.1-18/19). 82 is where a photographic JPEG stops
+ * showing blocking on gradients — the night sky of every re:sonate material is
+ * one long gradient — while staying a few hundred kilobytes at 1920 px.
+ */
+export const COVER_JPEG_QUALITY = 82;
+
+/**
  * What `sharp` calls each of those formats when it reports what it actually
  * decoded. Used to check the declared mime against the real container.
  */
@@ -239,13 +286,17 @@ function isStrippableMime(mime: string): mime is StrippableMime {
  * @param input the file's bytes, as received
  * @param mime  the declared content type — **untrusted**: it comes from the
  *              browser, see the container check below
- * @returns the same picture, re-encoded in the same format, without metadata
+ * @param options {@link StripOptions} — the output encoding, required, no default
+ * @returns the same picture without metadata: in the same format
+ *          (`same-format`), or as a JPEG no larger than
+ *          {@link COVER_MAX_EDGE_PX} on its long side (`cover-jpeg`)
  * @throws {MediaStripRefusal} on every other outcome. Never returns the bytes
  *         it was handed, and never a degraded value.
  */
 export async function stripImageMetadata(
   input: Buffer,
-  mime: string
+  mime: string,
+  options: StripOptions
 ): Promise<Buffer> {
   // ── Refusal 1: a type this module does not treat ──────────────────────────
   // A video lands here, and lands here as a refusal rather than as a pass. So
@@ -312,8 +363,25 @@ export async function stripImageMetadata(
     // EXIF orientation and then clears it: it is the line that makes the
     // sanitisation invisible to whoever looks at the picture. Moving it after
     // the encoder, or deleting it as redundant, breaks that and breaks it
-    // quietly.
-    const output = await REENCODE[mime](pipeline.rotate()).toBuffer();
+    // quietly. It stays FIRST on both branches below: the cover's resize must
+    // measure the picture the way it will be seen, not the way the sensor lay.
+    const rotated = pipeline.rotate();
+
+    // ── The two encodings. Neither calls `withMetadata` / `keepExif`: sharp
+    // drops every metadata block on re-encode by default, and that default IS
+    // the strip. Adding either call here would undo the module.
+    const output =
+      options.encoding === "cover-jpeg"
+        ? await rotated
+            .resize({
+              width: COVER_MAX_EDGE_PX,
+              height: COVER_MAX_EDGE_PX,
+              fit: "inside",
+              withoutEnlargement: true,
+            })
+            .jpeg({ quality: COVER_JPEG_QUALITY })
+            .toBuffer()
+        : await REENCODE[mime](rotated).toBuffer();
 
     return output;
   } catch (cause) {
