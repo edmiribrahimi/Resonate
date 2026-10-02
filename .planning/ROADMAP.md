@@ -617,7 +617,7 @@ saltati sono percorsi; gli avvisi della review sono chiusi.
 | **DBT-20** — **aggiunto il 2026-10-01 (il proprietario: «se mi arriva una lista di 15 nomi per la guestlist devo aggiungerli uno alla volta?»)** | **La guest list si incolla, non si ribatte.** Nella pagina Guest List, accanto ad «Add Guest», un riquadro **«Add several»**: un nome per riga, con l'email facoltativa dopo una virgola o uno spazio (`Nome Cognome, nome@dominio`), serata scelta una volta per tutta la lista. Prima di salvare, un'**anteprima** riga per riga: cosa e' stato letto come nome e cosa come email, le righe che non si capiscono segnate e **non** salvate, i doppioni gia' in lista segnalati. Al salvataggio ogni riga passa dalla **stessa** azione di oggi (`addGuest`, `guest-list/actions.ts:97`): stessa attribuzione `added_by`, stessa mail d'invito per chi ha l'email, stesso conteggio — l'import e' una comodita' di inserimento, **non** una via nuova d'ingresso (`ticketing-payments.md`, gate guest list; `community-membership.md`, gate nessuna corsia grigia). Esito finale: quante aggiunte, quante saltate e perche'. Provato sul laboratorio con una lista di 15 righe, di cui due sbagliate apposta. |
 
 **Depends on:** Phase 52
-**Plans:** 23/30 plans executed
+**Plans:** 24/30 plans executed
 
 Plans:
 
@@ -641,7 +641,7 @@ Plans:
 - [x] 52.1-18-PLAN.md — DBT-13: `gallery.view` e `media.upload` fuori dal catalogo, M-D scritta, 56/26/30
 - [x] 52.1-19-PLAN.md — DBT-06/07: IN-03, IN-07, ricognizione lessicale, IN-06 citata
 - [x] 52.1-20-PLAN.md — laboratorio U4: M-C, M-D e bucket [BLOCKING]; P-521-E/F; cover dall'iPhone del proprietario
-- [ ] 52.1-21-PLAN.md — DBT-15: M-B (sorgente, passo, `pii_cleared_at`), lettori del nullo, laboratorio [BLOCKING]
+- [x] 52.1-21-PLAN.md — DBT-15: M-B (sorgente, passo, `pii_cleared_at`), lettori del nullo, laboratorio [BLOCKING]
 - [x] 52.1-22-PLAN.md — laboratorio U4: P-521-H «dopo» su Android e iPhone, WR-05, P-521-I (DBT-04)
 - [ ] 52.1-23-PLAN.md — DBT-15: `utm_source` ridotto, `checkout_form` dal segnale firmato
 - [ ] 52.1-24-PLAN.md — DBT-15: imbuto esteso, «All nights», cancellazione PII spenta dietro `ORDER_PII_CLEAR_ENABLED`
