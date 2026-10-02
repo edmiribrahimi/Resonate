@@ -401,10 +401,19 @@ function formatListAge(ageMs: number): string {
  * refusing people earns its space. What changed is the wording — a list that
  * cannot refresh is not a list that was not refreshed — so the middle sentence
  * below exists for that case and says what is actually happening.
+ *
+ * ── DBT-05 (52.1-14): «radio off» only when the radio IS off ────────────────
+ *
+ * `radioOff` is `!isOnline` or a door fetch that failed for the network. With
+ * the radio on and only the channel down the sentence says so without the word
+ * «radio» — on 2026-10-01 the lab measured «cannot refresh while the radio is
+ * off» standing beside a green Online pill for six minutes. The instruction
+ * not to refuse is in every branch.
  */
 function guestListWarningText(
   ageMs: number | null,
-  channelIsLive: boolean
+  channelIsLive: boolean,
+  radioOff: boolean
 ): string {
   if (ageMs === null) {
     return (
@@ -414,12 +423,20 @@ function guestListWarningText(
       "the night's review."
     );
   }
-  if (!channelIsLive) {
+  if (radioOff) {
     return (
       `The guest list on this device cannot refresh while the radio is off (${formatListAge(ageMs)}). ` +
       "A guest added to the list since then will not be found by name — do not " +
       "refuse them on the strength of this screen; let them in and sort it out " +
       "in the night's review."
+    );
+  }
+  if (!channelIsLive) {
+    return (
+      `Live updates are paused — the guest list on this device may miss the last few minutes (${formatListAge(ageMs)}). ` +
+      "A guest added since then may not be found by name — do not refuse them " +
+      "on the strength of this screen; let them in and sort it out in the " +
+      "night's review."
     );
   }
   return (
@@ -696,6 +713,36 @@ export default function ScannerClient() {
   const [isOnline, setIsOnline] = useState(true);
 
   /**
+   * ── DBT-05: a door fetch that failed for the network, and when ─────────────
+   *
+   * `navigator.onLine === true` does not prove a network (MDN), and at a door a
+   * bar of signal that lies is the ordinary case. So a fetch that never reached
+   * a server is evidence of absence: it lights the guest-list warning even with
+   * the pill green. Set by the network `catch` of the door's fetches; cleared by
+   * the next response from the server (any status — a response proves the
+   * network) and by the `online` event. It only ever LOWERS trust in the list:
+   * nothing reads it to refuse or to admit.
+   */
+  const [networkFailedAt, setNetworkFailedAt] = useState<number | null>(null);
+  const networkFailedRef = useRef(false);
+  const noteNetworkFailed = useCallback(() => {
+    if (networkFailedRef.current) return;
+    networkFailedRef.current = true;
+    const at = Math.round(performance.now());
+    console.warn("[scanner.radio_network_failed]", { at });
+    setNetworkFailedAt(at);
+  }, []);
+  const noteNetworkRecovered = useCallback((via: string) => {
+    if (!networkFailedRef.current) return;
+    networkFailedRef.current = false;
+    console.info("[scanner.radio_network_recovered]", {
+      at: Math.round(performance.now()),
+      via,
+    });
+    setNetworkFailedAt(null);
+  }, []);
+
+  /**
    * ── LIVE-01: whether the door is listening to the night now open ────────────
    *
    * A **transport** fact and nothing else: this device currently holds a joined
@@ -858,6 +905,7 @@ export default function ScannerClient() {
      */
     const goOnline = () => {
       setIsOnline(true);
+      noteNetworkRecovered("online");
       resubscribe();
       requestReloadRef.current?.("online");
     };
@@ -930,7 +978,7 @@ export default function ScannerClient() {
       cleanupSync();
       clearInterval(interval);
     };
-  }, [refreshQueueCounts, resubscribe]);
+  }, [refreshQueueCounts, resubscribe, noteNetworkRecovered]);
 
   /**
    * The verdict for the night just opened, from the cache, before the network is
@@ -1025,6 +1073,21 @@ export default function ScannerClient() {
       await supabase.realtime.setAuth();
       if (cancelled) return;
 
+      // ── 52.1-14: the rebuild must not land inside the socket's close ──────
+      //
+      // Removing the only channel makes realtime-js 2.97 call `disconnect()`,
+      // and for ~100 ms the client sits in `disconnecting`, where `connect()`
+      // returns without doing anything. A `subscribe()` inside that window
+      // queues its join on a socket nobody reopens: no reconnect timer (the
+      // disconnect was "manual"), no heartbeat, TIMED_OUT at 10 s and then a
+      // rejoin loop waiting forever for a socket. Measured in Chrome on
+      // 2026-10-02 after the `online` rebuild — the cause of the warning that
+      // outlived the radio (P-521-H). Waiting out the window is bounded.
+      for (let i = 0; i < 6 && supabase.realtime.isDisconnecting(); i++) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      if (cancelled) return;
+
       channel = supabase
         // ── Two details on this call, and BOTH fail silently ─────────────────
         //
@@ -1064,6 +1127,14 @@ export default function ScannerClient() {
         // guess. One place decides who is holding the phone, it runs when the
         // night is opened, and it is not this one.
         .subscribe((status) => {
+          // ── 52.1-14: a torn-down channel does not speak for the new one ────
+          //
+          // `removeChannel` sends a `leave`, and when its reply does not come
+          // realtime-js fires CLOSED at its 10 s timeout — possibly AFTER the
+          // rebuilt channel's SUBSCRIBED, where it would pin `channelLive`
+          // false with nothing left to raise it. The effect that armed this
+          // callback is gone; its channel describes nothing this door hears.
+          if (cancelled) return;
           switch (status) {
             case REALTIME_SUBSCRIBE_STATES.SUBSCRIBED:
               setChannelLive(true);
@@ -1083,6 +1154,13 @@ export default function ScannerClient() {
               // file's own `scanner:<snake_case>` convention. Never a collapsed
               // generic line — `meta-gates.md`, zero silent failures.
               console.warn("scanner:channel_not_listening", { status });
+              // The safety net for the window above: a join that timed out on
+              // a closed socket is retried by the library only once a socket is
+              // open, and nothing else would open one. `connect()` is a no-op
+              // when connected or connecting — not a second backoff.
+              if (status === REALTIME_SUBSCRIBE_STATES.TIMED_OUT) {
+                supabase.realtime.connect();
+              }
               break;
             default: {
               // Exhaustiveness, and the only thing a green build proves about
@@ -1246,6 +1324,7 @@ export default function ScannerClient() {
         if (search) params.set("search", search);
         res = await fetch(`/api/tickets/attendance?${params}`);
       } catch (error) {
+        noteNetworkFailed();
         // Being offline is not a fault — the cached list is what the door runs
         // on, and the Offline pill already says so. Being online and unable to
         // reach the server is a different fact and gets its own line.
@@ -1261,6 +1340,7 @@ export default function ScannerClient() {
         }
         return;
       }
+      noteNetworkRecovered("attendance");
 
       if (!res.ok) {
         // Plan 31-06 turned an unreadable attendee list into a 500 where it used
@@ -1435,7 +1515,13 @@ export default function ScannerClient() {
       }
       await refreshQueueCounts();
     },
-    [selectedPartyId, refreshQueueCounts, armSafetyTimer]
+    [
+      selectedPartyId,
+      refreshQueueCounts,
+      armSafetyTimer,
+      noteNetworkFailed,
+      noteNetworkRecovered,
+    ]
   );
 
   /**
@@ -2136,8 +2222,10 @@ export default function ScannerClient() {
         }),
       });
     } catch {
+      noteNetworkFailed();
       return "network_failed";
     }
+    noteNetworkRecovered("checkin");
 
     let parsed: unknown = null;
     try {
@@ -2660,9 +2748,11 @@ export default function ScannerClient() {
       // both avoids two console lines for one event, which is how a category
       // stops meaning anything.
       console.error("scanner:guest_checkin_queued_after_unreachable", error);
+      noteNetworkFailed();
       await queueGuestLocally(selectedPartyId);
       return;
     }
+    noteNetworkRecovered("guest_checkin");
 
     {
       let parsed: unknown = null;
@@ -2832,8 +2922,26 @@ export default function ScannerClient() {
   // and the failure that matters there already has a voice — the three early
   // returns of `fetchAttendance` each raise their own notice, and with the radio
   // off the Offline pill is already saying so.
+  //
+  // ── DBT-05: and two more, both about the RADIO, not the channel ────────────
+  //
+  // `!isOnline` and `networkFailedAt`. The channel's own timeout took ~40 s in
+  // Chrome and ~2 min on the owner's iPhone (52-ESITI), and in Chrome's offline
+  // emulation it never came at all: the door stayed silent with the radio off.
+  // The radio enters ONLY downwards — it can light the warning, never put it
+  // out — because the door's asymmetry runs that way: a false «stale» shows a
+  // prudent instruction («let them in»), a false «fresh» is what refuses a
+  // valid guest. `channelLive` is NOT lowered for the radio: it says «this
+  // device holds a joined channel» and nothing else, and `SUBSCRIBED` stays its
+  // only raiser. One predicate feeds the warning, the Alerts dot and the live
+  // region, so the three cannot disagree.
+  const radioOff = !isOnline || networkFailedAt !== null;
   const listIsStale =
-    listAgeMs !== null && (!channelLive || listAgeMs > SAFETY_RELOAD_MS);
+    listAgeMs !== null &&
+    (!isOnline ||
+      networkFailedAt !== null ||
+      !channelLive ||
+      listAgeMs > SAFETY_RELOAD_MS);
 
   /** A drift worth saying out loud. Shown, never acted on. */
   const driftMinutes =
@@ -3335,7 +3443,7 @@ export default function ScannerClient() {
             role="status"
             aria-live="polite"
           >
-            {guestListWarningText(listAgeMs, channelLive)}
+            {guestListWarningText(listAgeMs, channelLive, radioOff)}
           </div>
         )}
 
