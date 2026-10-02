@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "2026-10-02 16:35Z — FASE 52.1, onda 9: IL LAB HA FERMATO UN INCIDENTE. U4 (947b5b76) deployato sul lab risponde 500 su ogni pagina: organizer-redirects.ts:121 rimanda ancora a /admin/events/[id]/media, tolta dalle rotte dal piano 18; il fence del modulo lancia alla prima richiesta (build e verify erano verdi). Produzione intatta (U2). Decisione dell'orchestratore: togliere la riga, aggiungere a verify:routes il controllo statico [5/5] (ogni destinazione di ORGANIZER_REDIRECTS e' in CAPABILITY_ROUTES) con prova per mutazione, ridefinire U4 sul nuovo sha, ripetere il piano 20 dal task 1 (riga «Photo» revocata via per chiave, M-C, sonda, M-D, bucket, P-521-E/F, checkpoint E6). Fix in corso. NON spingere origin/main."
+stopped_at: "2026-10-02 16:40Z — FASE 52.1, onda 9: incidente del middleware CHIUSO (redirect morto tolto, verify:routes [5/5] con prova per mutazione). U4 RIDEFINITO = 9ea4c0ad (lab a 200). L'atto 3 (piano 25) spinge 9ea4c0ad o un discendente, MAI 947b5b76. Seconda corsa del piano 20 in corso sul lab: riga «Photo» revocata via per chiave → M-C → sonda → M-D → bucket → verify:capabilities verde sul lab → P-521-E/F → checkpoint E6 (foto dal rullino dell'iPhone del proprietario). origin/main = U2. NON spingere origin/main."
 last_updated: "2026-10-01T10:31:56.951Z"
 last_activity: 2026-10-01
 progress:
