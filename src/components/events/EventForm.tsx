@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, type FormEvent, type ChangeEvent } from "react";
+import { useState, useRef, useCallback, useEffect, type FormEvent, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import AutocompleteTagInput from "@/components/events/AutocompleteTagInput";
@@ -456,6 +456,75 @@ export default function EventForm({
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  /**
+   * A chosen cover that has not been saved yet is lost by ANY navigation, and
+   * until 2026-10-02 it was lost without a word: on the owner's iPhone (E6,
+   * 20:18:39Z) the tap meant for «Save Changes» landed on the floating bar's
+   * «Check-in», the page went to `/door`, and the photo was gone with nothing
+   * said. Zero silent failures (`meta-gates.md`): leaving now asks first.
+   *
+   * Two routes out, two guards. A hard navigation (reload, closing the tab, a
+   * typed address, a link to another origin) gets the browser's own
+   * `beforeunload` prompt. A client-side `<Link>` never fires `beforeunload`,
+   * so a click listener in the CAPTURE phase on `document` — which runs before
+   * React's own listener on the root — asks with `window.confirm`, the same
+   * confirm the event list and the tier cards already use, and stops the click
+   * before Next sees it when the answer is no.
+   *
+   * Not covered, and said here rather than left to be discovered: the
+   * browser's back gesture (a `popstate`, which Next handles after the fact).
+   * `leavingRef` is set by the save itself, so the success redirect is never
+   * questioned.
+   */
+  const coverUnsaved = imageFile !== null;
+  const leavingRef = useRef(false);
+  useEffect(() => {
+    if (!coverUnsaved) return;
+    const question =
+      "The cover you chose has not been saved yet. Leave this page and lose it?";
+
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      if (leavingRef.current) return;
+      e.preventDefault();
+      // Older Safari still reads the legacy field; its text is ignored.
+      e.returnValue = "";
+    }
+
+    function onClickCapture(e: MouseEvent) {
+      if (leavingRef.current || e.defaultPrevented || e.button !== 0) return;
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const target = e.target;
+      if (!(target instanceof Element)) return;
+      const anchor = target.closest("a[href]");
+      if (!(anchor instanceof HTMLAnchorElement)) return;
+      if (anchor.target && anchor.target !== "_self") return;
+      if (anchor.hasAttribute("download")) return;
+      const url = new URL(anchor.href, window.location.href);
+      // Another origin unloads the page, and `beforeunload` asks: one question.
+      if (url.origin !== window.location.origin) return;
+      // A jump inside this page loses nothing.
+      if (
+        url.pathname === window.location.pathname &&
+        url.search === window.location.search
+      ) {
+        return;
+      }
+      if (window.confirm(question)) {
+        leavingRef.current = true;
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("click", onClickCapture, true);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("click", onClickCapture, true);
+    };
+  }, [coverUnsaved]);
+
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -771,6 +840,7 @@ export default function EventForm({
         // Not left to the redirect table on purpose: this is the destination
         // after creating or editing an event, and D-34-15 flips those redirects
         // to a 308 the browser caches and does not come back from.
+        leavingRef.current = true;
         router.push("/admin/events");
       } else {
         // The category first, so the sentence can be attached to the night and
@@ -1940,13 +2010,33 @@ export default function EventForm({
         finding A2's arithmetic, 2.91:1 becoming 6.85:1 on the accent fill. The
         label is untouched; §11 introduces no copy.
       */}
-      <Button
-        type="submit"
-        disabled={isSubmitting}
-        className="w-full"
-      >
-        {isSubmitting ? "Saving..." : submitLabel}
-      </Button>
+      {/*
+        Sticky, and held ABOVE the floating bar (DBT-14, after E6).
+
+        The button sits in the middle of the page — the venue reveal and the
+        drink menu chip come after the form — so the page shell's bottom
+        clearance never reaches it: choosing a cover inserts the preview above
+        it, pushes it down, and at that scroll position it lay under the bar.
+        On the owner's iPhone the tap meant for it hit «Check-in» instead.
+
+        `sticky` keeps it inside the form: while any of the form is on screen
+        its bottom edge stays `--nav-inset-block-end` + 0.5rem above the
+        viewport's — the same declared clearance PageShell, Dialog and the
+        toasts read, so the number is not authored a second time. From `md` up
+        that variable is 0px and the bar is a column, so it rests 0.5rem from
+        the bottom. `z-40` stays under the bar's `z-50` and the dialogs'
+        `z-[60]`; it never overlaps the bar, so the order only matters for what
+        scrolls behind it.
+      */}
+      <div className="sticky bottom-[calc(var(--nav-inset-block-end)+0.5rem)] z-40">
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full shadow-lg"
+        >
+          {isSubmitting ? "Saving..." : submitLabel}
+        </Button>
+      </div>
     </form>
 
     {/* Modals rendered outside <form> to avoid nested form hydration error */}
