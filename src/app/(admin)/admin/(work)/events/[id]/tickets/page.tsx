@@ -5,6 +5,7 @@ import { getAccessContext } from "@/lib/capabilities/server";
 import { mayManageEvent } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
 import TierCard from "@/components/tickets/TierCard";
+import TierReorderList from "@/components/tickets/TierReorderList";
 import AddTierForm from "@/components/tickets/AddTierForm";
 import AddDiscountCodeForm from "@/components/tickets/AddDiscountCodeForm";
 import DiscountCodeCard from "@/components/tickets/DiscountCodeCard";
@@ -38,6 +39,15 @@ import { PageTitle, SectionHeading } from "@/components/ui/Typography";
  *
  * The tier counts stay here: `TierCard` shows how many of a tier are sold,
  * which is configuration (is it sold out? raise the quantity?), not reporting.
+ *
+ * ── DBT-18, 2026-10-01: the order of the tiers is the managers' choice ───────
+ *
+ * Each list — one per night, and the Event Pass list apart — is wrapped in
+ * `TierReorderList`, which adds a «Reorder» mode (D-52.1-23 D1–D7). The order
+ * it saves is the one the reader above already applies (`sort_order, price,
+ * created_at`, plan 52.1-08), and the public page reads the same chain. A
+ * reorder sends positions only: no price, quantity or sale window moves.
+ * `AddTierForm` stays outside the wrapper and a new tier lands at the tail.
  *
  * ── Which of the two versions decided each difference (D-34-05) ──────────────
  *
@@ -285,11 +295,17 @@ export default async function TicketTiersPage({ params }: PageProps) {
                 <p className="text-muted text-sm">No event-level tiers yet. Add one to offer an all-access pass.</p>
               </Card>
             ) : (
-              <div className="space-y-3">
+              // DBT-18, D-52.1-23 D5 — the Event Pass list reorders on its own
+              // (`partyId={null}`), never mixed with a night's tiers.
+              <TierReorderList
+                eventId={eventId}
+                partyId={null}
+                tiers={eventLevelTiers.map((t) => ({ id: t.id, name: t.name, price: t.price }))}
+              >
                 {eventLevelTiers.map((tier) => (
                   <TierCard key={tier.id} tier={tier} eventId={eventId} />
                 ))}
-              </div>
+              </TierReorderList>
             )}
           </div>
         )}
@@ -316,11 +332,17 @@ export default async function TicketTiersPage({ params }: PageProps) {
                     <p className="text-muted text-sm">No tiers yet for this sub-event.</p>
                   </Card>
                 ) : (
-                  <div className="space-y-3">
+                  // DBT-18, D-52.1-23 D5 — one reorderable list per night; the
+                  // add form above stays outside it and never hides.
+                  <TierReorderList
+                    eventId={eventId}
+                    partyId={party.id}
+                    tiers={partyTiers.map((t) => ({ id: t.id, name: t.name, price: t.price }))}
+                  >
                     {partyTiers.map((tier) => (
                       <TierCard key={tier.id} tier={tier} eventId={eventId} />
                     ))}
-                  </div>
+                  </TierReorderList>
                 )}
 
                 {/* Discount Codes for this party */}
