@@ -813,6 +813,19 @@ senza un aggettivo sul suono e senza un indirizzo che non sia gia' pubblico.
 - **D-52.3-03** — La grammatica dei titoli e' quella gia' decisa il 2026-08-15
   per SoundCloud; la pagina la mostra, non la reinventa.
 
+  > **Emendata il 2026-10-03.** Il proprietario, alla lettera: *«il titolo è
+  > giusto quello che c'è.»* Il titolo pubblicato del LiveCut di `RamaDub x Booze
+  > 001`, letto dall'oEmbed lo stesso giorno, ha la forma
+  > `<artista> @ RamaDub - 17 Sept 26`. La grammatica della pagina e' quindi
+  > `<artista> @ <format> - <d> <Mon> <yy>`: `<format>` e' il nome del **format**
+  > della serata (`formats.name`: `RamaDub`, `re:sonate`, poi `MotionLab`), non
+  > quello della serie; separatore ` - `; giorno senza zero; `Sept`; anno a due
+  > cifre. Anno e mese non sono piu' opzioni; resta aperta solo la congiunzione
+  > del b2b. La chiave di serata (`RamaDub x Booze 001`) resta nell'intestazione
+  > del blocco, quindi il locale compare ancora dove il format lo porta nel nome
+  > della serie (MUS-04 invariato). Il testo qui sopra resta com'era: e' la
+  > decisione del 2026-08-15, e questa e' la sua correzione datata.
+
 - **D-52.3-04** — Il canvas del 2026-09-30 non e' il riferimento visivo: e' un
   ordine di lettura (titolo, una frase, ascolta altrove, filtri, serata con i
   suoi slot, player in fondo). Il riferimento visivo e' l'app com'e' oggi.
