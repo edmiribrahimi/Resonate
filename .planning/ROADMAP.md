@@ -825,11 +825,25 @@ in nessuna superficie, la scheda che porta all'artista.
 
 **Depends on:** Phase 52.2 (ordine deciso dal proprietario: *«subito dopo la
 52.2»*), Phase 52 (la barra di navigazione). La 52.1 resta in coda dopo.
-**Plans:** 0 plans
+**Plans:** 15 plans in 8 waves
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 52.3 to break down)
+- [ ] 52.3-01-PLAN.md — onda 1: ramo `wip/52.3`, laboratorio attivo, interruttore sul solo preview `lab`, spike del player e dell'oEmbed da `dub1` → `52.3-SPIKE.md`
+- [ ] 52.3-02-PLAN.md — onda 1: migration `livecuts` + `livecut_artists` + RLS, tipi, [BLOCKING] applicata al laboratorio e riletta dal catalogo
+- [ ] 52.3-03-PLAN.md — onda 1: contratti `src/lib/livecuts/` (interruttore, grammatica del titolo, tipi, profilo, verifica SoundCloud), `purpose` in finalize-cover, `verify:media-strip` sui due letterali
+- [ ] 52.3-04-PLAN.md — onda 2: `52.3-LEGALE.md` (Q1-Q4, regola di produzione), paragrafo dell'informativa sotto l'interruttore, `52.3-PROCEDURES.md`
+- [ ] 52.3-05-PLAN.md — onda 2: pagina `/music` (lettura con allow-list, schede, filtri, stati, manifesto, service worker)
+- [ ] 52.3-06-PLAN.md — onda 2: seme di laboratorio dichiarato e fittizio, sonde anonime della RLS
+- [ ] 52.3-07-PLAN.md — onda 2: server action admin (verifica del link, bozza, pubblica, ritira, cancella per chiave, guardia del luogo nell'URL)
+- [ ] 52.3-08-PLAN.md — onda 3: il player (un iframe al primo play, barra, ripiego, tre errori)
+- [ ] 52.3-09-PLAN.md — onda 3: voce Music in barra dopo Check-in, misura della pillola a 360/375
+- [ ] 52.3-10-PLAN.md — onda 3: admin LiveCuts dalla riga dell'evento (form in linea, cover dallo stripper, dialog)
+- [ ] 52.3-11-PLAN.md — onda 4: check H di `verify:venue-surfaces` (H1-H5) provato per mutazione
+- [ ] 52.3-12-PLAN.md — onda 5: laboratorio servito, P-523-A..H percorse su tre dispositivi, pacchetto per il proprietario
+- [ ] 52.3-13-PLAN.md — onda 6: checkpoint unico del proprietario (giudizio, O-1..O-8, MotionLab, D-LEG, strada) e cambi a una riga
+- [ ] 52.3-14-PLAN.md — onda 7: persona 1.32.0, `52.3-VERIFICATION.md`, pulizia del laboratorio
+- [ ] 52.3-15-PLAN.md — onda 8: atto datato su «vai» — migration in produzione, deploy di `main` con la pagina spenta, `lab` riallineato
 
 ### Phase 53: TASK
 
