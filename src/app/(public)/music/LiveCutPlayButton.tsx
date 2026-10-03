@@ -16,6 +16,13 @@ import { PlayerIcon, useMusicPlayer } from "./MusicPlayer";
  *
  * The tap calls the shared player and does NOT move the focus: it stays on
  * this button (§A.5, Accessibility).
+ *
+ * `relative` is load-bearing: from `md:` the play shares the cover's grid cell,
+ * and the cover's wrapper is positioned (`LiveCutCover`, for `next/image`
+ * `fill`). A positioned box paints above a non-positioned one whatever the DOM
+ * order, so without `relative` the cover sat ON the play and swallowed every
+ * tap — measured by CDP `elementFromPoint` on 2026-10-03 (the hit was the
+ * cover's `<img>`). Positioned and later in the DOM, the play paints on top.
  */
 export default function LiveCutPlayButton({
   liveCut,
@@ -43,7 +50,7 @@ export default function LiveCutPlayButton({
         if (playing) pause();
         else if (!loading) play(liveCut);
       }}
-      className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-full active:scale-95 active:opacity-80 ${tone} ${FOCUS_RING}`}
+      className={`relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-full active:scale-95 active:opacity-80 ${tone} ${FOCUS_RING}`}
     >
       <PlayerIcon name={loading ? "arrow-path" : playing ? "pause" : "play"} className="h-5 w-5" />
     </button>

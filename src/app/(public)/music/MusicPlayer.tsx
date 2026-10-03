@@ -126,6 +126,8 @@ function widgetSrc(trackId: string): string {
 // ── The minimum of the Widget API this file uses, declared here ─────────────
 
 interface ScProgress {
+  /** The track the event speaks for — after a `load()` the previous one still speaks for a moment. */
+  soundId?: number;
   relativePosition: number;
   currentPosition: number;
 }
@@ -303,6 +305,26 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const erroredRef = useRef(false);
   /** The listener asked for this pause — so the PAUSE that follows is not a refusal. */
   const userPauseRef = useRef(false);
+  /**
+   * Written synchronously by the handlers, never from the rendered state: the
+   * widget's events arrive faster than React commits. Measured by CDP on
+   * 2026-10-03: right after FINISH the widget sends one more PLAY_PROGRESS at
+   * position 0, and a guard reading the rendered status (still `playing`)
+   * turned the finished bar back into a playing one at 0 %.
+   */
+  const liveCutIdRef = useRef<string | null>(null);
+  const trackIdRef = useRef<string | null>(null);
+  const finishedRef = useRef(false);
+  const progressingRef = useRef(false);
+  /**
+   * A PLAY of the requested track was seen since the last `play()`. Only a
+   * PAUSE AFTER it is a refusal (iOS: PLAY, then PAUSE within ~500 ms). Chrome
+   * sends a PAUSE 6 ms BEFORE the PLAY of every fresh track (CDP, 2026-10-03,
+   * on both the first track and after `load()`): that one is the widget
+   * resetting, not a refusal, and treating it as one opened the fallback on a
+   * desktop that then played normally.
+   */
+  const sawPlayRef = useRef(false);
 
   const clearTimer = useCallback((ref: { current: Timer }) => {
     if (ref.current !== null) {
@@ -382,6 +404,11 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       const s = stateRef.current;
       const widget = widgetRef.current;
       userPauseRef.current = false;
+      finishedRef.current = false;
+      progressingRef.current = false;
+      sawPlayRef.current = false;
+      liveCutIdRef.current = liveCut.id;
+      trackIdRef.current = liveCut.soundcloudTrackId;
 
       if (widget && widgetReadyRef.current) {
         if (s.current?.id === liveCut.id) {
@@ -452,6 +479,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
 
   const pause = useCallback(() => {
     userPauseRef.current = true;
+    progressingRef.current = false;
     clearTimer(refusedTimerRef);
     widgetRef.current?.pause();
     dispatch({ type: "pause" });
@@ -469,7 +497,10 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     const widget = sc.Widget(iframe);
     const E = sc.Widget.Events;
     widgetRef.current = widget;
-    const currentId = () => stateRef.current.current?.id ?? "unknown";
+    const currentId = () => liveCutIdRef.current ?? "unknown";
+    /** Events without a `soundId` are accepted; events of another track are not. */
+    const isRequested = (payload?: ScProgress) =>
+      payload?.soundId === undefined || String(payload.soundId) === trackIdRef.current;
 
     widget.bind(E.READY, () => {
       widgetReadyRef.current = true;
@@ -486,30 +517,37 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
 
     // Deliberately NOT "playing" (spike finding 1): spurious after `load()`,
     // and on iOS the first half of a refusal. PLAY_PROGRESS decides.
-    widget.bind(E.PLAY, () => {});
+    // It only records that the requested track was asked to play, so that a
+    // PAUSE right after it can be read as a refusal.
+    widget.bind(E.PLAY, (payload) => {
+      if (awaitingCallbackRef.current || !isRequested(payload)) return;
+      sawPlayRef.current = true;
+    });
 
     widget.bind(E.PLAY_PROGRESS, (payload) => {
       if (awaitingCallbackRef.current || erroredRef.current || userPauseRef.current) return;
-      if (stateRef.current.status === "finished") return;
+      if (finishedRef.current || !isRequested(payload)) return;
       clearTimer(refusedTimerRef);
       const positionMs = payload?.currentPosition ?? 0;
       const relative = payload?.relativePosition ?? 0;
-      dispatch({
-        type: stateRef.current.status === "playing" ? "progress" : "play",
-        positionMs,
-        relative,
-      });
+      dispatch({ type: progressingRef.current ? "progress" : "play", positionMs, relative });
+      progressingRef.current = true;
     });
 
-    widget.bind(E.PAUSE, () => {
+    widget.bind(E.PAUSE, (payload) => {
       if (awaitingCallbackRef.current || erroredRef.current) return;
-      if (stateRef.current.status === "finished") return;
+      if (finishedRef.current || !isRequested(payload)) return;
+      progressingRef.current = false;
       if (userPauseRef.current) {
         dispatch({ type: "pause" });
         return;
       }
       if (refusedTimerRef.current !== null) {
-        refuse(currentId(), "PAUSE not asked by the listener before any PLAY_PROGRESS");
+        // Inside the refusal window: before the PLAY it is the widget
+        // resetting (Chrome); after it, it is the refusal (iOS).
+        if (sawPlayRef.current) {
+          refuse(currentId(), "PAUSE right after PLAY, not asked by the listener");
+        }
         return;
       }
       // Paused from inside the visible widget.
@@ -518,6 +556,8 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
 
     // The end of a LiveCut is the end: no `load()`, no `play()` — no autoplay.
     widget.bind(E.FINISH, () => {
+      finishedRef.current = true;
+      progressingRef.current = false;
       clearTimers();
       dispatch({ type: "finish" });
     });
