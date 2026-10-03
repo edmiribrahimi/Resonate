@@ -33,3 +33,5 @@
   (52.3-06, deviazione 2). Sul laboratorio l'evento N3 ha due serate: la prima
   (satellite) `venue_secret = false`. Da decidere se la guardia debba leggere
   anche l'evento (piano 52.3-07 / proprietario); non toccato qui.
+
+> **2026-10-03, orchestratore — chiuso.** La guardia del luogo in `actions.ts` (`scopeParty`) ora legge anche `events.venue_secret`: una serata non segreta dentro un evento segreto e' trattata come segreta, la stessa regola del seme del laboratorio. Nessuna riga toccata; `tsc` ed eslint verdi. Da provare dal vivo in P-523-F sul satellite di N3 (piano 52.3-12).

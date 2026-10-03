@@ -46,8 +46,10 @@ import { turinToday } from "@/utils/datetime";
  *
  * The SoundCloud permalink is chosen by whoever uploads the track, and on a
  * secret-venue night it can carry the place — the backlink on `/music` would
- * then publish it, and a publication does not come back. On a night with
- * `venue_secret`, a link whose PATH contains a word of the venue's name or of
+ * then publish it, and a publication does not come back. On a night that is
+ * secret — its own `venue_secret`, OR its event's (the lab seed of 2026-10-03
+ * uses the same rule: the satellite of a secret night inherits the secret) — a
+ * link whose PATH contains a word of the venue's name or of
  * `venue_text` (four letters or more) is refused with `url_names_venue`,
  * BEFORE SoundCloud is asked. The log line carries the event id only: never
  * the URL, never the matched word.
@@ -327,8 +329,26 @@ async function scopeParty(
     return refuse("party_not_in_event", eventId, "night not in this event");
   }
 
+  // The event's own flag: a non-secret party inside a secret event is still a
+  // secret night for this guard (the more restrictive reading, the same the lab
+  // seed applies). Read by the event id already proved manageable.
+  const { data: event, error: eventError } = await service
+    .from("events")
+    .select("venue_secret")
+    .eq("id", eventId)
+    .maybeSingle();
+  if (eventError) {
+    return refuse(
+      "write_failed",
+      eventId,
+      "event scope read",
+      eventError.code ?? "unknown"
+    );
+  }
+  const secret = party.venue_secret === true || event?.venue_secret === true;
+
   let venueName: string | null = null;
-  if (party.venue_secret && party.venue_id) {
+  if (secret && party.venue_id) {
     const { data: venue, error: venueError } = await service
       .from("venues")
       .select("name")
@@ -350,8 +370,8 @@ async function scopeParty(
     party: {
       partyId,
       date: String(party.date),
-      venueSecret: party.venue_secret === true,
-      placeTokens: party.venue_secret
+      venueSecret: secret,
+      placeTokens: secret
         ? placeTokens(venueName, party.venue_text ?? null)
         : [],
     },
