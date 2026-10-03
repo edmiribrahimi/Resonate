@@ -547,6 +547,15 @@ function toLink(
  * **A interruttore spento la tabella di sopra vale invariata**, riga per riga:
  * nessuna voce Music per nessun soggetto, e nessuna voce spostata.
  *
+ * **Misurato il 2026-10-03 sul laboratorio (piano 52.3-09), e la misura dice
+ * che le righe a cinque voci NON ci stanno sul telefono.** La pillola chiede
+ * 388 px (`Management`) o 401 px (`Account`) di contenuto contro i 326 / 341
+ * utili a 360 / 375 px (`max-w-[calc(100vw-2rem)]`): l'ultima voce esce
+ * tagliata dal bordo. A tre voci (anonimo, `attendee`) ci sta con margine; a
+ * interruttore spento le quattro voci di oggi ci stanno (323 / 310 px). **O-6
+ * resta del proprietario** (piano 52.3-13): niente etichette accorciate, niente
+ * icone tolte, niente scorrimento — e Check-in resta seconda in ogni caso.
+ *
  * **Il contesto fallito non arriva qui come un ruolo.** `getAccessContext()`
  * **lancia** con la categoria `capabilities.resolve_failed` quando
  * `my_access_context` fallisce, e il middleware chiude (ramo fail-closed di
