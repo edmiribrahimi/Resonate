@@ -10,6 +10,7 @@ import {
 } from "@/app/(admin)/admin/events/actions";
 import { Button, FOCUS_RING } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Chip";
+import { musicPageEnabled } from "@/lib/livecuts/enabled";
 
 interface EventItem {
   id: string;
@@ -137,6 +138,11 @@ const ROW_CONTROLS = [
   { segment: "drinks", label: "Drink Menu" },
   { segment: "review", label: "Door review" },
   { segment: "analytics", label: "Analytics" },
+  // Last because a LiveCut is the after of a night: it is added once the
+  // recording is on SoundCloud. The literal stays in the tuple even while the
+  // Music switch is off — `verify:routes` [4/4] reads it here — and the render
+  // below skips it then, so the row never offers a link that answers 404.
+  { segment: "livecuts", label: "LiveCuts" },
 ] as const;
 
 export default function EventList({
@@ -305,7 +311,7 @@ export default function EventList({
                 On anyone else's night the row keeps Preview / View page alone:
                 every page this tuple names re-checks its guard on the server
                 and would refuse, so offering the link would offer a refusal. */}
-            {canManage(event) && ROW_CONTROLS.map(({ segment, label }) => (
+            {canManage(event) && ROW_CONTROLS.map(({ segment, label }) => (segment === "livecuts" && !musicPageEnabled()) ? null : (
               <Link
                 key={segment}
                 href={`/admin/events/${event.id}/${segment}`}

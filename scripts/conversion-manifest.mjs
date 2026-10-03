@@ -748,6 +748,10 @@ export const CONVERTED = [
     "/admin/events/[id]/assignments", "src/app/(admin)/admin/(work)/events/[id]/assignments/page.tsx", "default",
     "plan 41.1-08 — whole, and 'whole' here is TWO files: the route file and the client component a level out. NOT on §4's wide list and therefore default, which is not a fallback: the roster is a short stack of night cards, not a dense table. THE CAUTION, because this surface grants a capability for one night: no capability key, guard or action payload changed, the four assignable keys and the closed refusal set are byte-identical, and the composite foreign key is still the boundary behind an affordance that is still only a filter. Its one small-prefix use was paid by reading the class — a track template, not a column count — and the gate reported the entry STALE rather than this plan deleting it (D-41.1-22)",
   ],
+  [
+    "/admin/events/[id]/livecuts", "src/app/(admin)/admin/(work)/events/[id]/livecuts/page.tsx", "default",
+    "fase 52.3 — superficie di lavoro NUOVA sulla forma di assignments; guardia ORGANIZER_ACCESS + mayManageEvent; errore ≠ vuoto; 404 a interruttore spento",
+  ],
   // ── `/admin/events/[id]/media` era qui fino al 2026-10-02, ed e' uscita col
   //    suo file (DBT-13, DBT-19, D-52.1-17) ────────────────────────────────────
   //

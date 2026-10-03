@@ -381,6 +381,7 @@ export const CAPABILITY_ROUTES = {
       "/admin/events/[id]/drinks",
       "/admin/events/[id]/analytics",
       "/admin/events/[id]/assignments",
+      "/admin/events/[id]/livecuts",
     ],
   },
 
