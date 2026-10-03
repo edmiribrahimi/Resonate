@@ -833,18 +833,18 @@ Plans:
 - [ ] 52.3-02-PLAN.md — onda 2: migration `livecuts` + `livecut_artists` + RLS, tipi, [BLOCKING] applicata al laboratorio e riletta dal catalogo
 - [ ] 52.3-03-PLAN.md — onda 2: contratti `src/lib/livecuts/` (interruttore, grammatica del titolo, tipi, profilo, verifica SoundCloud), `purpose` in finalize-cover, `verify:media-strip` sui due letterali, `COVER_REASON_TEXT` condiviso
 - [ ] 52.3-16-PLAN.md — onda 2: spike del player e dell'oEmbed da `dub1` su ramo usa-e-getta, tre dispositivi → decisione in `52.3-SPIKE.md`; il lab smette di servire lo spike
-- [ ] 52.3-04-PLAN.md — onda 3: `52.3-LEGALE.md` (Q1-Q4, regola di produzione), paragrafo dell'informativa sotto l'interruttore, `52.3-PROCEDURES.md`
+- [ ] 52.3-04-PLAN.md — onda 3: `52.3-LEGALE.md` (Q1-Q4, consenso dei due dj RamaDub in testa al registro, D-LEG-4, regola di produzione), paragrafo dell'informativa sotto l'interruttore, `52.3-PROCEDURES.md`
 - [ ] 52.3-05-PLAN.md — onda 3: pagina `/music` (lettura con allow-list, schede, filtri, stati, manifesto, service worker)
-- [ ] 52.3-06-PLAN.md — onda 3: seme di laboratorio dichiarato e fittizio, sonde anonime della RLS
+- [ ] 52.3-06-PLAN.md — onda 3: seme del laboratorio = copia in sola lettura del pubblicato di produzione (serate, artisti, sede pubblica; segrete → sede segnaposto) + righe di prova dichiarate + LiveCut reale di `RamaDub x Booze 001`; sonde anonime della RLS
 - [ ] 52.3-07-PLAN.md — onda 3: server action admin (verifica del link, bozza, pubblica, ritira, cancella per chiave, guardia del luogo nell'URL)
 - [ ] 52.3-08-PLAN.md — onda 4: il player (un iframe al primo play, barra, ripiego, tre errori)
 - [ ] 52.3-09-PLAN.md — onda 4: voce Music in barra dopo Check-in, misura della pillola a 360/375, barra a interruttore spento identica a oggi (porta con `staff` assegnato)
 - [ ] 52.3-10-PLAN.md — onda 4: admin LiveCuts dalla riga dell'evento (form in linea, cover dallo stripper, dialog)
 - [ ] 52.3-11-PLAN.md — onda 5: check H di `verify:venue-surfaces` (H1-H5, H5 fuori dai `className`) provato per mutazione (nove qui, sei nel 52.3-14)
-- [ ] 52.3-12-PLAN.md — onda 6: laboratorio servito, P-523-A..H percorse (iOS/Android dallo spike, P-523-H per rimandi), pacchetto per il proprietario con Mixcloud sì/no e il conteggio delle puntate
-- [ ] 52.3-13-PLAN.md — onda 7: checkpoint unico del proprietario (giudizio, O-1..O-8, Mixcloud, MotionLab, D-LEG, strada) e cambi a una riga
+- [ ] 52.3-12-PLAN.md — onda 6: laboratorio servito, P-523-A..H percorse (iOS/Android dallo spike, P-523-H per rimandi), O-2/O-3 sul titolo pubblicato della 001, pacchetto per il proprietario con gli input da lui, Mixcloud sì/no, il conteggio delle puntate e la strada B/C/D entro il 2026-10-07
+- [ ] 52.3-13-PLAN.md — onda 7: checkpoint unico del proprietario (giudizio, O-1..O-8, Mixcloud, MotionLab, D-LEG-1..4, strada B/C/D) e cambi a una riga
 - [ ] 52.3-14-PLAN.md — onda 8: persona 1.32.0, sei mutazioni rimaste del check H, `52.3-VERIFICATION.md`, pulizia del laboratorio
-- [ ] 52.3-15-PLAN.md — onda 9: atto datato su «vai» — migration in produzione, deploy di `main` con la pagina spenta, `lab` riallineato
+- [ ] 52.3-15-PLAN.md — onda 9: atto datato su «vai» — migration in produzione, deploy di `main` con la pagina spenta (B) o, con D-LEG-4 registrato, accesa coi due LiveCut RamaDub inseriti da un organizer dal form (D), `lab` riallineato
 
 ### Phase 53: TASK
 
