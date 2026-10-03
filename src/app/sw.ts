@@ -116,6 +116,22 @@ const doorRuntimeCaching: RuntimeCaching[] = [
     matcher: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith("/events/"),
     handler: new NetworkOnly(),
   },
+  /**
+   * `/music` — never kept offline (phase 52.3, T-52.3-08).
+   *
+   * A LiveCut can be withdrawn: consent revoked, a legal request. The page is
+   * `force-dynamic` so a withdrawal disappears at once on the network; this
+   * rule makes sure the device does not keep a copy that survives it. The
+   * player's third-party widget is not ours to cache either.
+   *
+   * It does not evict what is already there: a device that cached `/music`
+   * under an older worker keeps that entry until it expires or is overwritten.
+   */
+  {
+    matcher: ({ url, sameOrigin }) =>
+      sameOrigin && (url.pathname === "/music" || url.pathname.startsWith("/music/")),
+    handler: new NetworkOnly(),
+  },
 ];
 
 const serwist = new Serwist({
