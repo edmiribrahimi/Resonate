@@ -1,5 +1,6 @@
 import type { Route } from "next";
 import { CAP, type CapabilityKey } from "@/lib/capabilities/keys";
+import { musicPageEnabled } from "@/lib/livecuts/enabled";
 import { CAPABILITY_ROUTES } from "@/lib/routes/capability-routes";
 import { sortTabsByLabel, visibleStaffTabs } from "@/lib/routes/staff-tabs";
 import type { UserRole } from "@/types/database";
@@ -53,7 +54,8 @@ import type { UserRole } from "@/types/database";
  * editorial substitution, not a paraphrase: the quotation named a file Phase 42
  * deleted, and a quotation pointing at nothing teaches the next reader less
  * than one that says what it pointed at. **That sentence was an inference, and
- * it was wrong.** All thirteen `<AppNav>` mount sites call `getAccessContext()`,
+ * it was wrong.** All fourteen `<AppNav>` mount sites (thirteen when this was
+ * written; `/music` made it fourteen, re-counted 2026-10-03) call `getAccessContext()`,
  * which reads `cookies()`, so **none of them is prerendered** — and the
  * paragraph above states, correctly, that this file is read from a
  * `"use client"` navigation, which means the throw shipped in the *client*
@@ -259,6 +261,28 @@ const EVENTS: LinkDeclaration = {
   hrefWhenAnonymous: null,
   label: "Events",
   icon: "calendar",
+  requireAuth: false,
+  capability: null,
+};
+
+// ── Music, dalla fase 52.3 (MUS-02) — dietro un interruttore di deploy ──────
+//
+// La pagina dei LiveCut delle nostre serate. **Pubblica per costruzione**: nessuna
+// capability, nessuna riga in `capability-routes.ts`, stesso indirizzo per chi ha
+// una sessione e per chi non ce l'ha. Esiste in barra solo quando esiste la
+// pagina: `getNavigation` la aggiunge se `musicPageEnabled()` e' vero, e a
+// interruttore spento `/music` risponde 404 — una voce che portasse a un 404
+// sarebbe una barra che mente.
+//
+// **Sta DOPO Check-in, non seconda** (UI-SPEC 52.3 §C, O-6): questa barra la
+// monta anche la porta (`DoorSurface.tsx`), e mettere Music seconda per tutti
+// sposterebbe Check-in al terzo posto sul telefono dello staff, al buio, con una
+// mano. La posizione e' una riga sola in `getNavigation`.
+const MUSIC: LinkDeclaration = {
+  href: "/music",
+  hrefWhenAnonymous: null,
+  label: "Music",
+  icon: "musical-note",
   requireAuth: false,
   capability: null,
 };
@@ -508,6 +532,21 @@ function toLink(
  * `staff`, che nel pannello aveva solo quella, ha Account in barra.)*
  * | contesto fallito | Events · Account (→ `/login`) | — |
  *
+ * **A interruttore Music acceso** (`NEXT_PUBLIC_MUSIC_PAGE_ENABLED=true`, fase
+ * 52.3, MUS-02) la voce Music entra **dopo Check-in e prima di TASK** — la
+ * porta resta seconda per chi lavora:
+ *
+ * | Soggetto | Barra, interruttore acceso |
+ * |---|---|
+ * | anonimo | Events · Music · Account (→ `/login`) |
+ * | `attendee` | Events · Music · Account |
+ * | `staff` non assegnato | Events · Music · TASK · Account |
+ * | `staff` assegnato a una serata in corso | Events · Check-in · Music · TASK · Account |
+ * | `organizer` / `master` | Events · Check-in · Music · TASK · Management |
+ *
+ * **A interruttore spento la tabella di sopra vale invariata**, riga per riga:
+ * nessuna voce Music per nessun soggetto, e nessuna voce spostata.
+ *
  * **Il contesto fallito non arriva qui come un ruolo.** `getAccessContext()`
  * **lancia** con la categoria `capabilities.resolve_failed` quando
  * `my_access_context` fallisce, e il middleware chiude (ramo fail-closed di
@@ -535,6 +574,9 @@ function toLink(
  * Check-in e il pannello; la sessione decide l'indirizzo di Account. Un quarto
  * criterio qui dentro e' una decisione d'accesso, non una rifinitura — e la
  * presenza del pannello, che potrebbe sembrarlo, e' derivata (D-52-04).
+ * **Nemmeno `musicPageEnabled()` e' un quarto criterio** (fase 52.3): e' un
+ * interruttore di **deploy**, letto al build e uguale per ogni soggetto, non
+ * una domanda su chi guarda. Decide se la pagina esiste, non chi la vede.
  *
  * **Decide la visibilita', mai l'accesso.** Ogni voce disegnata ha la sua riga
  * nella mappa e la sua guardia; una voce assente non protegge niente. *Hiding a
@@ -544,16 +586,18 @@ function toLink(
  *
  * This docblock used to put the navigation's mount count at **44**, and that
  * number was the reason given for *not* changing this signature. **Measured:
- * 13 mount sites**, after plan 34-05 folded every work surface into a single
- * mount; re-measured after Phase 42 and again in phase 50, **still 13**. All
- * thirteen call `getAccessContext()`, which is the premise the paragraph on the
- * failed context above rests on.
+ * 13 mounts** after plan 34-05 folded every work surface into a single mount,
+ * and still 13 after Phase 42 and phase 50. **Re-measured on 2026-10-03, phase
+ * 52.3: 14 mount sites** — the fourteenth is `/music` (plan 52.3-05), counted
+ * with `grep -rln "<AppNav" src | grep -v roles.ts`. All fourteen call
+ * `getAccessContext()`, which is the premise the paragraph on the failed
+ * context above rests on.
  *
  * @param capabilities the keys the subject holds by role
  * @param liveAssignmentCapabilities the coarser set held by a live per-night
  *   assignment, or `null` when the payload did not carry the key. **Both are
- *   required**: all 13 `<AppNav>` mount sites pass them, so a fourteenth
- *   that forgets is a build error naming the file.
+ *   required**: all 14 `<AppNav>` mount sites (measured 2026-10-03) pass
+ *   them, so a fifteenth that forgets is a build error naming the file.
  */
 export function getNavigation(
   role: UserRole | null,
@@ -569,6 +613,10 @@ export function getNavigation(
   ) {
     bar.push(toLink(CHECK_IN, isAuthenticated));
   }
+
+  // O-6 (UI-SPEC 52.3 §C): Music DOPO Check-in. Per metterla seconda si sposta
+  // questa riga sopra il blocco di Check-in — ed e' una decisione del proprietario.
+  if (musicPageEnabled()) bar.push(toLink(MUSIC, isAuthenticated));
 
   if (role !== null && (TASK_ROLES as readonly UserRole[]).includes(role)) {
     bar.push(TASK);
