@@ -37,6 +37,20 @@
  * bucket written by a second route is a filing question, not a publication,
  * and the strip it gets is check B's — the same module, the same order.
  *
+ * ── WHAT CHANGED ON 2026-10-03, AND WHY (phase 52.3, plan 52.3-03) ─────────
+ *
+ * The cover route learned a second key prefix: a LiveCut cover is written at
+ * `livecuts/<uuid>.jpg`, by the SAME route, through the SAME stripper, into the
+ * SAME bucket — never by a second writer (`media-and-storage.md`). So check
+ * B·cover now asserts that the route's live code carries BOTH whole template
+ * literals, {@link COVER_KEY_TEMPLATES}, and NO OTHER template literal built on
+ * `${crypto.randomUUID()}`: a third prefix would be a new public path nobody
+ * reviewed. The literals are matched whole on purpose — a prefix held in a
+ * variable would hide what is written, so the route spells both out.
+ * Check C·cover stays on `EventForm.tsx` alone: the LiveCut form does not exist
+ * yet, and plan 52.3-10 adds it to C·cover in the same commit as the form — a
+ * gate that demands an absent file refuses on every run.
+ *
  * ── LINE CITATIONS OF THIS FILE ELSEWHERE ───────────────────────────────────
  *
  * Eleven comments in other gates cite `verify-media-strip.mjs:51-62`, `:130`
@@ -163,6 +177,16 @@ export const COVER_BUCKET = 'event-images';
 
 /** The one file allowed to hand the cover bucket to a write. An exact path. */
 export const COVER_ROUTE = 'src/app/api/media/finalize-cover/route.ts';
+
+/**
+ * The only key templates the cover route may write (check B·cover), whole.
+ * `covers/` is the cover of a night; `livecuts/` is the cover of a LiveCut
+ * (phase 52.3). Any other template on `${crypto.randomUUID()}` is a refusal.
+ */
+export const COVER_KEY_TEMPLATES = [
+  'covers/${crypto.randomUUID()}.jpg',
+  'livecuts/${crypto.randomUUID()}.jpg',
+];
 
 /** The form that used to write the cover from the browser (check C·cover). */
 export const COVER_FORM = 'src/components/events/EventForm.tsx';
@@ -569,12 +593,28 @@ if (coverStray.length === 0 && coverRouteWrites.length > 0) {
     if (!call.includes('destinationKey')) problems.push('the call does not pass a destinationKey');
     if (!call.includes('unstrippable: null')) problems.push('the call admits un-strippable bytes (unstrippable is not null)');
   }
-  const generated = live.some((l) => l.includes('covers/${crypto.randomUUID()}.jpg'));
-  if (!generated) problems.push('the route does not generate the key as covers/${crypto.randomUUID()}.jpg');
+  // Both key literals, whole (2026-10-03, phase 52.3) — and no third one.
+  for (const template of COVER_KEY_TEMPLATES) {
+    if (!live.some((l) => l.includes(template))) {
+      problems.push(`the route does not generate the key as ${template}`);
+    }
+  }
+  const UUID_TEMPLATE_RE = /`[^`]*\$\{crypto\.randomUUID\(\)\}[^`]*`/g;
+  live.forEach((l, i) => {
+    for (const m of l.matchAll(UUID_TEMPLATE_RE)) {
+      const inner = m[0].slice(1, -1);
+      if (!COVER_KEY_TEMPLATES.includes(inner)) {
+        problems.push(
+          `line ${i + 1} builds a key template that is not one of the two allowed: ${m[0]} ` +
+            '— a new prefix in the public bucket is a new path nobody reviewed'
+        );
+      }
+    }
+  });
   if (problems.length === 0) {
     console.log(
       `  ✓ B·cover  ${COVER_ROUTE}:${start + 1} calls ${FINALIZE_CALL} with "${COVER_BUCKET}", ` +
-        'cover-jpeg, a server-generated covers/<uuid>.jpg key and no un-strippable gate'
+        'cover-jpeg, a server-generated key — covers/<uuid>.jpg or livecuts/<uuid>.jpg, no other — and no un-strippable gate'
     );
   } else {
     console.log(`  ✗ B·cover  ${COVER_ROUTE}:`);

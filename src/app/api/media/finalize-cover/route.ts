@@ -84,6 +84,17 @@ import {
  *     as before, with the `publicUrl` answered here.
  *   * **It deletes no previous cover.** A replaced cover stays reachable at its
  *     old URL — today's behaviour, declared as debt in the VERIFICATION.
+ *
+ * ── `purpose` — 2026-10-03, phase 52.3 ──────────────────────────────────────
+ *
+ * `purpose` chooses ONLY the key prefix: `"livecut"` writes
+ * `livecuts/<uuid>.jpg`, absent or `"event"` writes `covers/<uuid>.jpg`, any
+ * other value is a bad request — a closed vocabulary, never a forwarded
+ * string. Same bucket, same stripper, same guard: a LiveCut cover is public
+ * editorial material exactly like the cover of its night, and `eventId` is the
+ * night the LiveCut belongs to. The two keys are written as two whole
+ * literals, never as a prefix in a variable: `verify:media-strip` looks for
+ * both templates and refuses any third one.
  */
 
 export const runtime = "nodejs";
@@ -173,6 +184,17 @@ interface CoverRequestBody {
   eventId?: unknown;
   quarantinePath?: unknown;
   mimeType?: unknown;
+  /** Closed vocabulary: absent, `"event"` or `"livecut"`. Chooses the key prefix only. */
+  purpose?: unknown;
+}
+
+type CoverPurpose = "event" | "livecut";
+
+/** `undefined`/`"event"` → `"event"`, `"livecut"` → `"livecut"`, anything else → `null` (bad request). */
+function parsePurpose(value: unknown): CoverPurpose | null {
+  if (value === undefined || value === "event") return "event";
+  if (value === "livecut") return "livecut";
+  return null;
 }
 
 const UUID_RE =
@@ -256,7 +278,14 @@ export async function POST(request: Request) {
     const mimeType =
       typeof body.mimeType === "string" ? body.mimeType.trim() : "";
 
-    if (!UUID_RE.test(eventId) || quarantinePath === "" || mimeType === "") {
+    const purpose = parsePurpose(body.purpose);
+
+    if (
+      !UUID_RE.test(eventId) ||
+      quarantinePath === "" ||
+      mimeType === "" ||
+      purpose === null
+    ) {
       return refuse(COVER_BAD_REQUEST);
     }
     loggedEventId = eventId;
@@ -301,8 +330,12 @@ export async function POST(request: Request) {
     //
     // `covers/<uuid>.jpg`: nothing the uploader chose (file name, time, size)
     // reaches the public URL — `venue-secrecy.md`. `.jpg` because the encoding
-    // below always writes JPEG.
-    const destinationKey = `covers/${crypto.randomUUID()}.jpg`;
+    // below always writes JPEG. A LiveCut cover gets its own prefix, under the
+    // same writer (phase 52.3): both literals whole, for `verify:media-strip`.
+    const destinationKey =
+      purpose === "livecut"
+        ? `livecuts/${crypto.randomUUID()}.jpg`
+        : `covers/${crypto.randomUUID()}.jpg`;
 
     const outcome = await finalizeStrippedUpload<never>({
       quarantinePath,
