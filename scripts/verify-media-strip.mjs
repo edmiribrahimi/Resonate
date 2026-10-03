@@ -51,6 +51,14 @@
  * yet, and plan 52.3-10 adds it to C·cover in the same commit as the form — a
  * gate that demands an absent file refuses on every run.
  *
+ * ── 2026-10-03, plan 52.3-10: C·cover reads a LIST of forms ─────────────────
+ *
+ * `LiveCutForm.tsx` (`src/app/(admin)/admin/events/[id]/livecuts/`) uploads the
+ * LiveCut cover through the same quarantine and the same route. It joins
+ * {@link COVER_FORMS}: each form is REQUIRED to exist (an absent subject refuses
+ * the run, never a vacuous tick) and each must name the public bucket nowhere.
+ * `COVER_FORM` stays exported as the first entry, for anybody who imported it.
+ *
  * ── LINE CITATIONS OF THIS FILE ELSEWHERE ───────────────────────────────────
  *
  * Eleven comments in other gates cite `verify-media-strip.mjs:51-62`, `:130`
@@ -190,6 +198,15 @@ export const COVER_KEY_TEMPLATES = [
 
 /** The form that used to write the cover from the browser (check C·cover). */
 export const COVER_FORM = 'src/components/events/EventForm.tsx';
+
+/**
+ * Every form that uploads a cover (check C·cover), each required and each
+ * forbidden to name the public bucket. Plan 52.3-10 added the LiveCut form.
+ */
+export const COVER_FORMS = [
+  COVER_FORM,
+  'src/app/(admin)/admin/events/[id]/livecuts/LiveCutForm.tsx',
+];
 
 /** M-C: the migration that closes the bucket's write policies. */
 export const COVER_MIGRATION = '20261001120100_cover_server_only.sql';
@@ -518,7 +535,7 @@ if (!existsSync(`${ROOT}/${STRIP_MODULE}`)) {
       '       somewhere else would be measuring a different file. Nothing was measured.'
   );
 }
-for (const required of [COVER_ROUTE, COVER_FORM]) {
+for (const required of [COVER_ROUTE, ...COVER_FORMS]) {
   if (!existsSync(`${ROOT}/${required}`)) {
     refuse(`${required} does not exist. The cover checks have no subject. Nothing was measured.`);
   }
@@ -623,18 +640,26 @@ if (coverStray.length === 0 && coverRouteWrites.length > 0) {
   }
 }
 
-// ── C·cover. the form names the public bucket nowhere ──────────────────────
-const formHits = findBucketLines(COVER_FORM, COVER_BUCKET);
-if (formHits.length === 0) {
-  console.log(`  ✓ C·cover  ${COVER_FORM} names "${COVER_BUCKET}" nowhere`);
-} else {
-  console.log(`  ✗ C·cover  ${formHits.length} line(s) in ${COVER_FORM} name the public cover bucket:`);
-  for (const h of formHits) console.log(`         ${h.path}:${h.line}: ${h.text}`);
-  console.log(
-    '\n       This is the file the browser upload grew in. It deposits into the quarantine\n' +
-      '       and lets POST /api/media/finalize-cover publish.\n'
-  );
-  failures.push('C·cover');
+// ── C·cover. no cover form names the public bucket ─────────────────────────
+{
+  let coverFormFailed = false;
+  for (const form of COVER_FORMS) {
+    const formHits = findBucketLines(form, COVER_BUCKET);
+    if (formHits.length === 0) {
+      console.log(`  ✓ C·cover  ${form} names "${COVER_BUCKET}" nowhere`);
+    } else {
+      coverFormFailed = true;
+      console.log(`  ✗ C·cover  ${formHits.length} line(s) in ${form} name the public cover bucket:`);
+      for (const h of formHits) console.log(`         ${h.path}:${h.line}: ${h.text}`);
+    }
+  }
+  if (coverFormFailed) {
+    console.log(
+      '\n       A cover form deposits into the quarantine and lets\n' +
+        '       POST /api/media/finalize-cover publish. It never names the public bucket.\n'
+    );
+    failures.push('C·cover');
+  }
 }
 
 // ── D·cover. the migrations close the browser's write, and nothing reopens it ─
