@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "Completato 52-17-PLAN.md — verifica approvata alle 19:13:29Z; fase 52 eseguita 19/19, resta verifica e chiusura"
-last_updated: "2026-10-03T12:47:13.395Z"
+stopped_at: "Completato 52.3-02-PLAN.md — livecuts applicata al laboratorio alle 12:51:35Z e riletta dal catalogo"
+last_updated: "2026-10-03T12:53:13.507Z"
 last_activity: 2026-10-03
 progress:
   total_phases: 15
   completed_phases: 8
   total_plans: 138
-  completed_plans: 128
+  completed_plans: 129
   percent: 53
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 52.3 (La pagina Music: i LiveCut delle nostre serate) — EXECUTING
-Plan: 2 of 16
+Plan: 3 of 16
 Next: `/gsd-execute-phase 52.3` (prima `/clear`). Onda 1 = 01 (ramo `wip/52.3`, lab sveglio, interruttore solo sul preview `lab`); onda 2 = 02 (migration sul lab, BLOCKING) + 03 (contratti) + 16 (spike del player e oEmbed); onda 3 include 06 = COPIA in sola lettura delle serate e degli artisti di produzione nel lab (notti segrete su sede segnaposto). **Risposte del proprietario del 2026-10-03:** i LiveCut vengono da re:sonate E da RamaDub; la 001 e' gia' su SoundCloud (input in `.env.lab.local`), la 002 esce il 2026-10-04 (una tantum prima dell'ancora del martedi' 6/10, che per Instagram non cambia); **il titolo e' quello pubblicato** (`<artista> @ <format> - 17 Sept 26`, D-52.3-03 emendata); **consenso dei dj: regola stabile, non si chiede piu'**; **il professionista ha risposto: i set si possono pubblicare, siamo coperti** → MUS-10 chiuso salvo il paragrafo dell'informativa (piano 04). Strada D (pagina accesa in produzione con i due LiveCut) e' disponibile: l'ultimo cancello e' il «vai» del piano 15. Checkpoint del proprietario al piano 13 (O-1, O-4..O-8, Mixcloud, colore MotionLab, B o D). Servono ancora: link e durata della 002 (dal 4/10), eventuale cover 2000x2000, la scelta B/D. Scadenza: onde 1-6 entro il 6/10, checkpoint entro mercoledi' 7/10, deploy entro gio 8/10; ven 9 runbook e porta, sab 10 la 003. Prima: decidere D22-3 (porta) e leggere D22-4 in produzione.
 
 **52.2 chiusa e osservata (2026-10-01 08:28Z).** `close-pending-orders` 08:01Z: 1 considerato, `never_attempted`, checkout disattivato; `reconcile-refunds` 08:13Z: silenzio = nulla da riconciliare (non logga un riepilogo quando non fa nulla: nota per la 52.1); 0 pending residui, 0 refunds, 0 mail. CART-03 e RFD-02 osservati.
@@ -513,6 +513,9 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase ?]: 50-12: 50-VERIFICATION.md chiude passed perche' il criterio e' per REQUISITO e i sei sono chiusi da prove eseguite; la decisione contraddetta — D-50-18b, il nome dell'acquirente sullo schermo della porta — sta in frontmatter come decisions_contradicted: 1 e in una sezione sua, non in fondo
 - [Phase ?]: 50-12: CLAUDE.md entra nel perimetro benche' non sia nei files_modified del piano — i principi 1 e 8 dicevano che il referral entra subito e che member non e' approved, e si caricano su ogni risposta
 - [Phase 52]: 52-16: a zero soggetti gli strumenti media non spendono il blocco; l'atto si chiude ESAURITA per data e spent non si scrive a mano
+- [Phase 52.3]: 52.3-02: livecuts.party_id ON DELETE CASCADE come party_credits; RESTRICT alternativa dichiarata, solo se il proprietario la chiede
+- [Phase 52.3]: 52.3-02: soundcloud_track_id bigint in SQL, number in TS (id sotto 2^53)
+- [Phase 52.3]: 52.3-02: nessuna colonna title/description sui LiveCut; il Podcast resta fuori per costruzione (party_id NOT NULL, nessuna tabella podcasts)
 
 ## Accumulated Context
 
@@ -634,8 +637,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-10-03T12:47:08.354Z
-**Stopped at:** Completato 52-17-PLAN.md — verifica approvata alle 19:13:29Z; fase 52 eseguita 19/19, resta verifica e chiusura
+**Last session:** 2026-10-03T12:53:13.502Z
+**Stopped at:** Completato 52.3-02-PLAN.md — livecuts applicata al laboratorio alle 12:51:35Z e riletta dal catalogo
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 

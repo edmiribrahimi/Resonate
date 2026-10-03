@@ -838,12 +838,12 @@ in nessuna superficie, la scheda che porta all'artista.
 
 **Depends on:** Phase 52.2 (ordine deciso dal proprietario: *«subito dopo la
 52.2»*), Phase 52 (la barra di navigazione). La 52.1 resta in coda dopo.
-**Plans:** 1/16 plans executed
+**Plans:** 2/16 plans executed
 
 Plans:
 
 - [x] 52.3-01-PLAN.md — onda 1 (da solo): ramo `wip/52.3` con il checkout principale sopra, laboratorio attivo, interruttore sul solo preview `lab`, colori del catalogo del lab → `52.3-SPIKE.md` aperto
-- [ ] 52.3-02-PLAN.md — onda 2: migration `livecuts` + `livecut_artists` + RLS, tipi, [BLOCKING] applicata al laboratorio e riletta dal catalogo
+- [x] 52.3-02-PLAN.md — onda 2: migration `livecuts` + `livecut_artists` + RLS, tipi, [BLOCKING] applicata al laboratorio e riletta dal catalogo
 - [ ] 52.3-03-PLAN.md — onda 2: contratti `src/lib/livecuts/` (interruttore, grammatica del titolo, tipi, profilo, verifica SoundCloud), `purpose` in finalize-cover, `verify:media-strip` sui due letterali, `COVER_REASON_TEXT` condiviso
 - [ ] 52.3-16-PLAN.md — onda 2: spike del player e dell'oEmbed da `dub1` su ramo usa-e-getta, tre dispositivi → decisione in `52.3-SPIKE.md`; il lab smette di servire lo spike
 - [ ] 52.3-04-PLAN.md — onda 3: `52.3-LEGALE.md` (Q1-Q4, consenso dei due dj RamaDub in testa al registro, D-LEG-4, regola di produzione), paragrafo dell'informativa sotto l'interruttore, `52.3-PROCEDURES.md`
