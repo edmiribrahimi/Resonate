@@ -838,7 +838,7 @@ in nessuna superficie, la scheda che porta all'artista.
 
 **Depends on:** Phase 52.2 (ordine deciso dal proprietario: *«subito dopo la
 52.2»*), Phase 52 (la barra di navigazione). La 52.1 resta in coda dopo.
-**Plans:** 6/16 plans executed
+**Plans:** 7/16 plans executed
 
 Plans:
 
@@ -849,7 +849,7 @@ Plans:
 - [ ] 52.3-04-PLAN.md — onda 3: `52.3-LEGALE.md` (Q1-Q4, consenso dei due dj RamaDub in testa al registro, D-LEG-4, regola di produzione), paragrafo dell'informativa sotto l'interruttore, `52.3-PROCEDURES.md`
 - [x] 52.3-05-PLAN.md — onda 3: pagina `/music` (lettura con allow-list, schede, filtri, stati, manifesto, service worker)
 - [x] 52.3-06-PLAN.md — onda 3: seme del laboratorio = copia in sola lettura del pubblicato di produzione (serate, artisti, sede pubblica; segrete → sede segnaposto) + righe di prova dichiarate + LiveCut reale di `RamaDub x Booze 001`; sonde anonime della RLS
-- [ ] 52.3-07-PLAN.md — onda 3: server action admin (verifica del link, bozza, pubblica, ritira, cancella per chiave, guardia del luogo nell'URL)
+- [x] 52.3-07-PLAN.md — onda 3: server action admin (verifica del link, bozza, pubblica, ritira, cancella per chiave, guardia del luogo nell'URL)
 - [ ] 52.3-08-PLAN.md — onda 4: il player (un iframe al primo play, barra, ripiego, tre errori)
 - [ ] 52.3-09-PLAN.md — onda 4: voce Music in barra dopo Check-in, misura della pillola a 360/375, barra a interruttore spento identica a oggi (porta con `staff` assegnato)
 - [ ] 52.3-10-PLAN.md — onda 4: admin LiveCuts dalla riga dell'evento (form in linea, cover dallo stripper, dialog)
