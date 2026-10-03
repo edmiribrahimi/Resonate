@@ -15,6 +15,7 @@ import {
   civilDateLabel,
   durationLabel,
   liveCutTitle,
+  matchesSoundCloudTitle,
   nightKey,
   parseDuration,
   slotLabel,
@@ -788,10 +789,13 @@ export default function LiveCutForm({
                           Found on SoundCloud: &ldquo;{link.title ?? "untitled"}&rdquo;
                         </p>
                         {draft.artists.length > 0 &&
-                        link.title !== liveCutTitle(
-                          draft.artists.map((a) => a.name),
-                          night.formatName,
-                          night.date
+                        !matchesSoundCloudTitle(
+                          link.title,
+                          liveCutTitle(
+                            draft.artists.map((a) => a.name),
+                            night.formatName,
+                            night.date
+                          )
                         ) ? (
                           <p className="text-xs text-sem-warn">
                             SoundCloud&apos;s title is different. The page shows &ldquo;

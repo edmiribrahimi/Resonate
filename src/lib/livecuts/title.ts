@@ -100,6 +100,26 @@ export function liveCutTitle(artistNames: readonly string[], formatName: string,
   return `${artists} @ ${formatName}${LIVECUT_TITLE_SEPARATOR}${d} ${MONTHS[m - 1]} ${shortYear(y)}`;
 }
 
+/**
+ * Does the title SoundCloud answers match the computed one?
+ *
+ * The oEmbed `title` is NOT the bare title of the track: SoundCloud appends the
+ * uploader, `<track title> by <account name>`. Measured on the lab on
+ * 2026-10-03 (plan 52.3-12, P-523-F step 1): for the LiveCut of the first
+ * RamaDub event the oEmbed answered `<artist> @ RamaDub - 17 Sept 26 by
+ * re:sonate` while the track's own title is `<artist> @ RamaDub - 17 Sept 26`
+ * — equal to the computed title — and the admin warning «SoundCloud's title is
+ * different» fired on a title that is not different. Same shape on the
+ * fictitious sample track (`Flickermood by Forss`).
+ *
+ * So the comparison accepts the exact string OR the string followed by
+ * ` by <anything>`. A title that differs before ` by ` still warns.
+ */
+export function matchesSoundCloudTitle(oembedTitle: string | null, computed: string): boolean {
+  if (oembedTitle === null) return false;
+  return oembedTitle === computed || oembedTitle.startsWith(`${computed} by `);
+}
+
 /** The event key: `Lab Series 002` (fictitious), or the bare series name when the number is null. */
 export function nightKey(seriesName: string, number: number | null): string {
   return number === null ? seriesName : `${seriesName} ${String(number).padStart(3, "0")}`;
