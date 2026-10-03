@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "Completato 52.3-11-PLAN.md — check H (H1-H5) in verify:venue-surfaces, verde sull'albero; nove mutazioni asserite (M1, M2, M3, M7, M15 rossi; M9, M10, M14 verdi; M12 REFUSED exit 2); H4 scritto ma non ancora provato per mutazione: M4, M5, M6, M8, M11, M13 nel 52.3-14"
-last_updated: "2026-10-03T15:11:42.201Z"
+stopped_at: "Completato 52.3-12-PLAN.md — laboratorio servito (26362e98), P-523-A..H percorse, titolo della 001 UGUALE al pubblicato, 52.3-ESITI.md PRONTO PER IL PROPRIETARIO; la 002 si aggiunge al seme dal 2026-10-04, poi checkpoint 52.3-13 entro il 7/10"
+last_updated: "2026-10-03T17:15:23.815Z"
 last_activity: 2026-10-03
 progress:
   total_phases: 15
   completed_phases: 8
   total_plans: 138
-  completed_plans: 139
+  completed_plans: 140
   percent: 53
 ---
 
@@ -537,6 +537,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase 52.3]: 52.3-09: O-6 BLOCCANTE — a cinque voci la pillola non ci sta: 388 px (Management) / 401 px (Account) contro 326/341 utili a 360/375; l'ultima voce esce tagliata. Spostare Music seconda non cambia il conto. Decisione del proprietario al piano 52.3-13; nessuna etichetta accorciata
 - [Phase 52.3]: 52.3-11: check H in verify:venue-surfaces — perimetro H1-H4 CAMMINATO su src/app/(public)/music e src/lib/livecuts (admin esclusi perche' portano venue/secret come guardia); H5 a parola intera su pagina + tre file admin + seme, fuori dai className per posizione (breaks?/dark con confine (?![-:])); H2 rifiuta anche ogni .select( non fra doppi apici
 - [Phase 52.3]: 52.3-11: H4 NON ancora provato per mutazione — M4, M5 (H4) e M6, M8, M11, M13 nel piano 52.3-14 task 2, prima dell'atto di produzione del 52.3-15
+- [Phase 52.3]: 52.3-12: il titolo della pagina e' UGUALE al titolo pubblicato della 001 (og:title della traccia = oEmbed senza «by re:sonate» = scheda = barra); l'oEmbed `title` porta « by <account>» e l'avviso admin ora lo ignora (`matchesSoundCloudTitle`, 26362e98)
+- [Phase 52.3]: 52.3-12: P-523-A FAIL atteso a 360/375 per chi lavora (barra a cinque voci, numeri identici al 52.3-09): O-6 resta del proprietario; P-523-H NON PERCORSO per rimandi, lo status 200 della rotta admin spenta e' debito tecnico per il 52.3-14
 
 ## Accumulated Context
 
@@ -658,8 +660,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-10-03T15:11:42.197Z
-**Stopped at:** Completato 52.3-11-PLAN.md — check H (H1-H5) in verify:venue-surfaces, verde sull'albero; nove mutazioni asserite (M1, M2, M3, M7, M15 rossi; M9, M10, M14 verdi; M12 REFUSED exit 2); H4 scritto ma non ancora provato per mutazione: M4, M5, M6, M8, M11, M13 nel 52.3-14
+**Last session:** 2026-10-03T17:15:13.128Z
+**Stopped at:** Completato 52.3-12-PLAN.md — laboratorio servito (26362e98), P-523-A..H percorse, titolo della 001 UGUALE al pubblicato, 52.3-ESITI.md PRONTO PER IL PROPRIETARIO; la 002 si aggiunge al seme dal 2026-10-04, poi checkpoint 52.3-13 entro il 7/10
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 

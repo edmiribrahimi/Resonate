@@ -838,7 +838,7 @@ in nessuna superficie, la scheda che porta all'artista.
 
 **Depends on:** Phase 52.2 (ordine deciso dal proprietario: *«subito dopo la
 52.2»*), Phase 52 (la barra di navigazione). La 52.1 resta in coda dopo.
-**Plans:** 12/16 plans executed
+**Plans:** 13/16 plans executed
 
 Plans:
 
@@ -854,7 +854,7 @@ Plans:
 - [x] 52.3-09-PLAN.md — onda 4: voce Music in barra dopo Check-in, misura della pillola a 360/375, barra a interruttore spento identica a oggi (porta con `staff` assegnato)
 - [x] 52.3-10-PLAN.md — onda 4: admin LiveCuts dalla riga dell'evento (form in linea, cover dallo stripper, dialog)
 - [x] 52.3-11-PLAN.md — onda 5: check H di `verify:venue-surfaces` (H1-H5, H5 fuori dai `className`) provato per mutazione (nove qui, sei nel 52.3-14)
-- [ ] 52.3-12-PLAN.md — onda 6: laboratorio servito, P-523-A..H percorse (iOS/Android dallo spike, P-523-H per rimandi), O-2/O-3 sul titolo pubblicato della 001, pacchetto per il proprietario con gli input da lui, Mixcloud sì/no, il conteggio delle puntate e la strada B/C/D entro il 2026-10-07
+- [x] 52.3-12-PLAN.md — onda 6: laboratorio servito, P-523-A..H percorse (iOS/Android dallo spike, P-523-H per rimandi), O-2/O-3 sul titolo pubblicato della 001, pacchetto per il proprietario con gli input da lui, Mixcloud sì/no, il conteggio delle puntate e la strada B/C/D entro il 2026-10-07
 - [ ] 52.3-13-PLAN.md — onda 7: checkpoint unico del proprietario (giudizio, O-1..O-8, Mixcloud, MotionLab, D-LEG-1..4, strada B/C/D) e cambi a una riga
 - [ ] 52.3-14-PLAN.md — onda 8: persona 1.32.0, sei mutazioni rimaste del check H, `52.3-VERIFICATION.md`, pulizia del laboratorio
 - [ ] 52.3-15-PLAN.md — onda 9: atto datato su «vai» — migration in produzione, deploy di `main` con la pagina spenta (B) o, con D-LEG-4 registrato, accesa coi due LiveCut RamaDub inseriti da un organizer dal form (D), `lab` riallineato
