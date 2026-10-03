@@ -1299,6 +1299,24 @@ if (/auth\.getUser|redirect\("\/login"\)/.test(orderPageLive)) {
  *       of genre and of sonic promise. No format has a written sound manifesto
  *       (`sound-manifesto.md`), so no surface may allude to one.
  *
+ * ── PROVED BY MUTATION, AND WHAT IS NOT YET ─────────────────────────────────
+ *
+ * 2026-10-03 (52.3-11), each mutation asserted applied with `grep -c` BEFORE
+ * the gate was read, and the tree restored clean after each one:
+ *   M1  `venue_text` in the `event_parties` embed            → red H1 + H2
+ *   M2  `street_line` in the select literal                    → red H2 only
+ *   M3  import from `venue-reveal/venue-disclosure` in page    → red H1 + H3
+ *   M7  `"deep house"` in a literal of the card                 → red H5
+ *   M9  `"assistive technology"` in the page                    → green
+ *   M10 `"RamaDub dub1"` in the filter row                      → green
+ *   M14 `className="break-words dark:text-white"` in the form   → green
+ *   M15 `>A dark room<` in the page                             → red H5
+ *   M12 `queries.ts` moved away                                 → REFUSED, exit 2
+ * H4 is WRITTEN BUT NOT YET PROVED BY MUTATION: M4, M5 (H4) and M6, M8, M11,
+ * M13 (variants of H1, H2, H5) are scheduled in plan 52.3-14, task 2, before
+ * the production act of 52.3-15. Until then a green on H4 is a green nobody has
+ * seen turn red.
+ *
  * If the Music page ever goes away, remove H in the same commit and say so: a
  * check that refuses forever reads like a green to a list.
  * ──────────────────────────────────────────────────────────────────────────── */
