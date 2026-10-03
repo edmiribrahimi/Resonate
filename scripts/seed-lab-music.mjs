@@ -330,6 +330,20 @@ const EXPECTED_FK = {
   venues: ["created_by"],
 };
 
+/**
+ * Controllo positivo della ricerca: ogni stringa segreta, messa in una riga
+ * finta, deve essere trovata. Una ricerca che non trova nulla perche' e' cieca
+ * direbbe «0 corrispondenze» come una che ha guardato davvero.
+ */
+function assertSearchSees(secrets, expectedVenues) {
+  if (expectedVenues > 0 && secrets.length === 0) stop("nessuna stringa letta per le sedi segrete: la ricerca sarebbe cieca");
+  for (const s of secrets) {
+    if (secretHits("events", [{ title: `x ${s.toUpperCase()} x` }], secrets).length !== 1) {
+      stop("la ricerca non trova una stringa segreta nel controllo positivo");
+    }
+  }
+}
+
 /** Conta le corrispondenze delle stringhe segrete in un insieme di righe; mai le stringhe. */
 function secretHits(table, rows, secrets) {
   const hits = [];
@@ -506,6 +520,7 @@ async function copyProduction(ids, write) {
   }
 
   // ── LA RICERCA, prima di qualunque scrittura ──
+  assertSearchSees(secrets, prod.secretVenueIds.length);
   const hits = [
     ...secretHits("events", events, secrets),
     ...secretHits("event_parties", parties, secrets),
@@ -516,7 +531,10 @@ async function copyProduction(ids, write) {
     console.error(`STOP — dato di sede segreta in ${[...new Set(hits)].join(", ")}`);
     process.exit(1);
   }
-  console.log(`Ricerca delle stringhe delle sedi segrete (${prod.secretVenueIds.length} sedi): 0 corrispondenze. Si scrive.`);
+  console.log(
+    `Ricerca delle stringhe delle sedi segrete (${prod.secretVenueIds.length} sedi, ${secrets.length} stringhe, ` +
+      "controllo positivo superato): 0 corrispondenze. Si scrive."
+  );
 
   ids.copy = { venues: [], events: [], artists: [], event_parties: [], storage: [], preesistenti: 0 };
   write();
@@ -999,14 +1017,19 @@ async function verify() {
   );
   line(extra.length === 0, "nessuna sede oltre segnaposto, pubbliche copiate e sede finta del seme porta", `extra ${extra.length}`);
 
-  const secrets = await readSecretsForProbe();
+  const { secrets, venueCount } = await readSecretsForProbe();
+  assertSearchSees(secrets, venueCount);
   let hits = 0;
   for (const t of ["events", "event_parties", "artists", "venues"]) {
     const r = await labRest(`${t}?select=*`);
     if (r.status !== 200) throw new Error(`lettura ${t} del laboratorio: HTTP ${r.status}`);
     hits += secretHits(t, r.body, secrets).length;
   }
-  line(hits === 0, "stringhe delle sedi segrete di produzione nel laboratorio", `corrispondenze ${hits}`);
+  line(
+    hits === 0,
+    "stringhe delle sedi segrete di produzione nel laboratorio",
+    `${venueCount} sedi, ${secrets.length} stringhe, controllo positivo superato, corrispondenze ${hits}`
+  );
 
   console.log(fails ? `\n${fails} FAIL.` : "\nTutto PASS.");
   if (fails) process.exit(1);
@@ -1019,7 +1042,7 @@ async function readSecretsForProbe() {
     ? await prodGet({ rest: `event_parties?select=id,event_id,venue_id,venue_secret&event_id=in.(${events.map((e) => e.id).join(",")})` })
     : [];
   const { secretVenueIds } = classifyVenues(events, parties);
-  return readSecretStrings(secretVenueIds);
+  return { secrets: await readSecretStrings(secretVenueIds), venueCount: secretVenueIds.length };
 }
 
 /* ─────────────────────── rimozione, per chiave primaria ─────────────────────── */
