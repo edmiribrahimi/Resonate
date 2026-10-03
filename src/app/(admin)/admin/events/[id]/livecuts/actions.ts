@@ -14,6 +14,7 @@ import {
   type SoundCloudLinkRefusal,
 } from "@/lib/livecuts/soundcloud";
 import { parseDuration } from "@/lib/livecuts/title";
+import { turinToday } from "@/utils/datetime";
 
 /**
  * Writing a LiveCut from the night's admin page — MUS-07, and the half of
@@ -711,6 +712,161 @@ export async function saveLiveCut(
     if (pruneError) {
       return classifyWriteError(eventId, "save: prune artists", pruneError);
     }
+  }
+
+  revalidateAdmin(eventId);
+  return { ok: true, id };
+}
+
+/**
+ * Publish a LiveCut. From the day AFTER the night only (T-52.3-02).
+ *
+ * Order: switch → guard → id shape → row scope on this event → civil date
+ * strictly before `turinToday()` (a Saturday night publishes from Sunday) →
+ * re-read of the row by key with the cookie client → cover present → at least
+ * one artist → update by key, exactly one row.
+ *
+ * Already published: returns `ok` without writing, so a second click does not
+ * move `published_at` and reorder the page.
+ */
+export async function publishLiveCut(
+  eventId: string,
+  id: string
+): Promise<LiveCutResult> {
+  const gated = await gate(eventId);
+  if (!gated.ok) return gated;
+
+  if (!isUuid(id)) return refuse("invalid_input", eventId, "publish: id shape");
+
+  const scoped = await scopeLiveCut(eventId, id);
+  if (!scoped.ok) return scoped;
+
+  // Civil-date strings `YYYY-MM-DD` compare correctly as strings.
+  if (!(scoped.party.date < turinToday())) {
+    return refuse("night_not_over", eventId, `publish: livecut ${id}`);
+  }
+
+  const supabase = await createClient();
+  const { data: row, error: readError } = await supabase
+    .from("livecuts")
+    .select("id, cover_url, published_at")
+    .eq("id", id)
+    .maybeSingle();
+  if (readError) {
+    return refuse(
+      "write_failed",
+      eventId,
+      "publish: re-read livecut",
+      readError.code ?? "unknown"
+    );
+  }
+  if (!row) return refuse("not_found", eventId, `publish: livecut ${id} not visible`);
+  if (row.published_at) {
+    return { ok: true, id };
+  }
+  if (!row.cover_url) {
+    return refuse("missing_cover", eventId, `publish: livecut ${id}`);
+  }
+
+  const { count, error: countError } = await supabase
+    .from("livecut_artists")
+    .select("artist_id", { count: "exact", head: true })
+    .eq("livecut_id", id);
+  if (countError) {
+    return refuse(
+      "write_failed",
+      eventId,
+      "publish: count artists",
+      countError.code ?? "unknown"
+    );
+  }
+  if (!count || count < 1) {
+    return refuse("no_artists", eventId, `publish: livecut ${id}`);
+  }
+
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("livecuts")
+    .update({ published_at: now, updated_at: now })
+    .eq("id", id)
+    .select("id");
+  if (error) return classifyWriteError(eventId, "publish: update", error);
+  if (!data || data.length !== 1) {
+    return refuse("write_failed", eventId, "publish: update matched no row", NO_ROWS);
+  }
+
+  revalidateAdmin(eventId);
+  return { ok: true, id };
+}
+
+/**
+ * Unpublish: back to draft. Order: switch → guard → id shape → row scope on
+ * this event → update by key (`published_at = null`), exactly one row.
+ */
+export async function unpublishLiveCut(
+  eventId: string,
+  id: string
+): Promise<LiveCutResult> {
+  const gated = await gate(eventId);
+  if (!gated.ok) return gated;
+
+  if (!isUuid(id)) return refuse("invalid_input", eventId, "unpublish: id shape");
+
+  const scoped = await scopeLiveCut(eventId, id);
+  if (!scoped.ok) return scoped;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("livecuts")
+    .update({ published_at: null, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select("id");
+  if (error) return classifyWriteError(eventId, "unpublish: update", error);
+  if (!data || data.length !== 1) {
+    return refuse("write_failed", eventId, "unpublish: update matched no row", NO_ROWS);
+  }
+
+  revalidateAdmin(eventId);
+  return { ok: true, id };
+}
+
+/**
+ * Delete a LiveCut. Order: switch → guard → id shape → row scope on this event
+ * (THE difference from `removeGuest`: the row must belong to a night of this
+ * event) → delete by key with the cookie client, `select("id")`.
+ *
+ * Zero rows → `not_found` (the policy or the row said no). The
+ * `livecut_artists` go with it by `ON DELETE CASCADE`. The track stays on
+ * SoundCloud.
+ *
+ * ── Inherited debt, declared ─────────────────────────────────────────────────
+ *
+ * The cover object under `event-images/livecuts/<uuid>.jpg` is NOT deleted
+ * and stays reachable at its public URL (`media-and-storage.md`). Deleting it
+ * from here would make this action a second writer of the bucket next to
+ * `finalize-cover`; the cleanup belongs to a single storage owner, later.
+ */
+export async function deleteLiveCut(
+  eventId: string,
+  id: string
+): Promise<LiveCutResult> {
+  const gated = await gate(eventId);
+  if (!gated.ok) return gated;
+
+  if (!isUuid(id)) return refuse("invalid_input", eventId, "delete: id shape");
+
+  const scoped = await scopeLiveCut(eventId, id);
+  if (!scoped.ok) return scoped;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("livecuts")
+    .delete()
+    .eq("id", id)
+    .select("id");
+  if (error) return classifyWriteError(eventId, "delete", error);
+  if (!data || data.length === 0) {
+    return refuse("not_found", eventId, `delete: livecut ${id} matched no row`, NO_ROWS);
   }
 
   revalidateAdmin(eventId);
