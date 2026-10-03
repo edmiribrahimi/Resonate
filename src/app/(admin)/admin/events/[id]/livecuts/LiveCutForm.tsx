@@ -552,8 +552,13 @@ export default function LiveCutForm({
 
         return (
           <section key={night.id} aria-labelledby={`livecut-night-${night.id}`}>
+            {/* `normal-case` twice, on purpose: SectionHeading's own string
+                carries `uppercase`, and two text-transform utilities on one
+                element resolve by stylesheet order — measured on the lab, the
+                upper case won. On the inner span it wins by inheritance, so a
+                series name is rendered as the catalogue spells it. */}
             <SectionHeading className="normal-case">
-              <span id={`livecut-night-${night.id}`}>
+              <span id={`livecut-night-${night.id}`} className="normal-case">
                 {nightKey(night.seriesName, night.number)} &middot; {civilDateLabel(night.date)}
               </span>
             </SectionHeading>
