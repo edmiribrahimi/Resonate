@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "Completato 52.3-09-PLAN.md — Music in barra dopo Check-in dietro l'interruttore; a interruttore spento barra identica a oggi (P-523-H, porta con staff assegnato, Check-in indice 1); a cinque voci la pillola NON ci sta a 360/375: O-6 BLOCCANTE al proprietario (piano 13); onda 4 chiusa, prossimo 11"
-last_updated: "2026-10-03T15:03:57.203Z"
+stopped_at: "Completato 52.3-11-PLAN.md — check H (H1-H5) in verify:venue-surfaces, verde sull'albero; nove mutazioni asserite (M1, M2, M3, M7, M15 rossi; M9, M10, M14 verdi; M12 REFUSED exit 2); H4 scritto ma non ancora provato per mutazione: M4, M5, M6, M8, M11, M13 nel 52.3-14"
+last_updated: "2026-10-03T15:11:42.201Z"
 last_activity: 2026-10-03
 progress:
   total_phases: 15
   completed_phases: 8
   total_plans: 138
-  completed_plans: 138
+  completed_plans: 139
   percent: 53
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 52.3 (La pagina Music: i LiveCut delle nostre serate) — EXECUTING
-Plan: 12 of 16
+Plan: 13 of 16
 Next: `/gsd-execute-phase 52.3` (prima `/clear`). Onda 1 = 01 (ramo `wip/52.3`, lab sveglio, interruttore solo sul preview `lab`); onda 2 = 02 (migration sul lab, BLOCKING) + 03 (contratti) + 16 (spike del player e oEmbed); onda 3 include 06 = COPIA in sola lettura delle serate e degli artisti di produzione nel lab (notti segrete su sede segnaposto). **Risposte del proprietario del 2026-10-03:** i LiveCut vengono da re:sonate E da RamaDub; la 001 e' gia' su SoundCloud (input in `.env.lab.local`), la 002 esce il 2026-10-04 (una tantum prima dell'ancora del martedi' 6/10, che per Instagram non cambia); **il titolo e' quello pubblicato** (`<artista> @ <format> - 17 Sept 26`, D-52.3-03 emendata); **consenso dei dj: regola stabile, non si chiede piu'**; **il professionista ha risposto: i set si possono pubblicare, siamo coperti** → MUS-10 chiuso salvo il paragrafo dell'informativa (piano 04). Strada D (pagina accesa in produzione con i due LiveCut) e' disponibile: l'ultimo cancello e' il «vai» del piano 15. Checkpoint del proprietario al piano 13 (O-1, O-4..O-8, Mixcloud, colore MotionLab, B o D). Servono ancora: link e durata della 002 (dal 4/10), eventuale cover 2000x2000, la scelta B/D. Scadenza: onde 1-6 entro il 6/10, checkpoint entro mercoledi' 7/10, deploy entro gio 8/10; ven 9 runbook e porta, sab 10 la 003. Prima: decidere D22-3 (porta) e leggere D22-4 in produzione.
 
 **52.2 chiusa e osservata (2026-10-01 08:28Z).** `close-pending-orders` 08:01Z: 1 considerato, `never_attempted`, checkout disattivato; `reconcile-refunds` 08:13Z: silenzio = nulla da riconciliare (non logga un riepilogo quando non fa nulla: nota per la 52.1); 0 pending residui, 0 refunds, 0 mail. CART-03 e RFD-02 osservati.
@@ -535,6 +535,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase 52.3]: 52.3-08: le guardie degli eventi del widget leggono ref sincroni, non lo stato renderizzato (dopo FINISH arriva un PLAY_PROGRESS a 0); il play della scheda porta relative perche' da md: condivide la cella con la cover posizionata
 - [Phase 52.3]: 52.3-09: Music in barra DOPO Check-in e prima di TASK, dietro `musicPageEnabled()` (interruttore di deploy, non quarto criterio); a interruttore spento la barra di ogni ruolo e' identica a oggi (misurato, P-523-H)
 - [Phase 52.3]: 52.3-09: O-6 BLOCCANTE — a cinque voci la pillola non ci sta: 388 px (Management) / 401 px (Account) contro 326/341 utili a 360/375; l'ultima voce esce tagliata. Spostare Music seconda non cambia il conto. Decisione del proprietario al piano 52.3-13; nessuna etichetta accorciata
+- [Phase 52.3]: 52.3-11: check H in verify:venue-surfaces — perimetro H1-H4 CAMMINATO su src/app/(public)/music e src/lib/livecuts (admin esclusi perche' portano venue/secret come guardia); H5 a parola intera su pagina + tre file admin + seme, fuori dai className per posizione (breaks?/dark con confine (?![-:])); H2 rifiuta anche ogni .select( non fra doppi apici
+- [Phase 52.3]: 52.3-11: H4 NON ancora provato per mutazione — M4, M5 (H4) e M6, M8, M11, M13 nel piano 52.3-14 task 2, prima dell'atto di produzione del 52.3-15
 
 ## Accumulated Context
 
@@ -656,8 +658,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-10-03T15:03:57.198Z
-**Stopped at:** Completato 52.3-09-PLAN.md — Music in barra dopo Check-in dietro l'interruttore; a interruttore spento barra identica a oggi (P-523-H, porta con staff assegnato, Check-in indice 1); a cinque voci la pillola NON ci sta a 360/375: O-6 BLOCCANTE al proprietario (piano 13); onda 4 chiusa, prossimo 11
+**Last session:** 2026-10-03T15:11:42.197Z
+**Stopped at:** Completato 52.3-11-PLAN.md — check H (H1-H5) in verify:venue-surfaces, verde sull'albero; nove mutazioni asserite (M1, M2, M3, M7, M15 rossi; M9, M10, M14 verdi; M12 REFUSED exit 2); H4 scritto ma non ancora provato per mutazione: M4, M5, M6, M8, M11, M13 nel 52.3-14
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
