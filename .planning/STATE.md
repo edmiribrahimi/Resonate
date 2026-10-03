@@ -4,13 +4,13 @@ milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
 stopped_at: "Completato 52-17-PLAN.md — verifica approvata alle 19:13:29Z; fase 52 eseguita 19/19, resta verifica e chiusura"
-last_updated: "2026-10-03T12:43:49.767Z"
+last_updated: "2026-10-03T12:47:13.395Z"
 last_activity: 2026-10-03
 progress:
   total_phases: 15
   completed_phases: 8
   total_plans: 138
-  completed_plans: 127
+  completed_plans: 128
   percent: 53
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 52.3 (La pagina Music: i LiveCut delle nostre serate) — EXECUTING
-Plan: 1 of 16
+Plan: 2 of 16
 Next: `/gsd-execute-phase 52.3` (prima `/clear`). Onda 1 = 01 (ramo `wip/52.3`, lab sveglio, interruttore solo sul preview `lab`); onda 2 = 02 (migration sul lab, BLOCKING) + 03 (contratti) + 16 (spike del player e oEmbed); onda 3 include 06 = COPIA in sola lettura delle serate e degli artisti di produzione nel lab (notti segrete su sede segnaposto). **Risposte del proprietario del 2026-10-03:** i LiveCut vengono da re:sonate E da RamaDub; la 001 e' gia' su SoundCloud (input in `.env.lab.local`), la 002 esce il 2026-10-04 (una tantum prima dell'ancora del martedi' 6/10, che per Instagram non cambia); **il titolo e' quello pubblicato** (`<artista> @ <format> - 17 Sept 26`, D-52.3-03 emendata); **consenso dei dj: regola stabile, non si chiede piu'**; **il professionista ha risposto: i set si possono pubblicare, siamo coperti** → MUS-10 chiuso salvo il paragrafo dell'informativa (piano 04). Strada D (pagina accesa in produzione con i due LiveCut) e' disponibile: l'ultimo cancello e' il «vai» del piano 15. Checkpoint del proprietario al piano 13 (O-1, O-4..O-8, Mixcloud, colore MotionLab, B o D). Servono ancora: link e durata della 002 (dal 4/10), eventuale cover 2000x2000, la scelta B/D. Scadenza: onde 1-6 entro il 6/10, checkpoint entro mercoledi' 7/10, deploy entro gio 8/10; ven 9 runbook e porta, sab 10 la 003. Prima: decidere D22-3 (porta) e leggere D22-4 in produzione.
 
 **52.2 chiusa e osservata (2026-10-01 08:28Z).** `close-pending-orders` 08:01Z: 1 considerato, `never_attempted`, checkout disattivato; `reconcile-refunds` 08:13Z: silenzio = nulla da riconciliare (non logga un riepilogo quando non fa nulla: nota per la 52.1); 0 pending residui, 0 refunds, 0 mail. CART-03 e RFD-02 osservati.
@@ -321,7 +321,7 @@ SUMMARY su quindici: la fase e' eseguita.** Il piano 37-13 ha chiuso l'onda 7 il
 sostituite, e undici voci `human_needed` consolidate nel suo SUMMARY. Le onde 8 e
 9 (piani 37-14 e 37-15) hanno chiuso i reperti del code review: CR-01, WR-01,
 WR-03, WR-05, WR-06, WR-07, WR-08 e la voce 4 di `deferred-items.md`.
-Status: Executing Phase 52.3
+Status: Ready to execute
 scritto «riportato come avvenuto, non misurato da me» — ed era la cosa giusta da
 scrivere dalla sua posizione. La misura pero' esiste, ed e' dell'orchestratore
 che gliel'aveva riportato:
@@ -410,7 +410,7 @@ checkpoints is now closed (the migration is applied); three remain, plus the RLS
 half of the fourth. `31-VALIDATION.md` keeps `nyquist_compliant: false`
 deliberately.
 
-Progress: [████████░░] 81%
+Progress: [█████████░] 93%
           phase 32 — 11 plans, 0 executed
 
 ## Decisions
@@ -634,7 +634,7 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-09-23T19:14:55.430Z
+**Last session:** 2026-10-03T12:47:08.354Z
 **Stopped at:** Completato 52-17-PLAN.md — verifica approvata alle 19:13:29Z; fase 52 eseguita 19/19, resta verifica e chiusura
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
