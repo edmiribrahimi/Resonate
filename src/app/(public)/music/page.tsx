@@ -15,6 +15,8 @@ import { civilDateLabel, slotLabel } from "@/lib/livecuts/title";
 import type { NightBlock } from "@/lib/livecuts/view";
 import type { UserRole } from "@/types/database";
 import LiveCutCard, { ExternalLinkIcon } from "./LiveCutCard";
+import LiveCutPlayButton from "./LiveCutPlayButton";
+import { MusicPlayerProvider } from "./MusicPlayer";
 import MusicFilterRow, { type MusicFilterOption } from "./MusicFilterRow";
 
 /**
@@ -132,6 +134,9 @@ export default async function MusicPage({ searchParams }: MusicPageProps) {
     }
 
     const nights = filterNights(result.nights, { format: formatParam, artist: artistParam });
+    // «Now» before any play: the first card in reading order of the FILTERED
+    // result — one card, never one per block (UI-SPEC §Color, reservation 1).
+    const firstLiveCutId = nights[0]?.liveCuts[0]?.id ?? null;
 
     body = (
       <>
@@ -164,25 +169,31 @@ export default async function MusicPage({ searchParams }: MusicPageProps) {
             </Link>
           </div>
         ) : (
-          <div className="space-y-12">
-            {nights.map((block) => (
-              <section key={block.partyId} aria-labelledby={`night-${block.partyId}`}>
-                <h2 id={`night-${block.partyId}`}>
-                  {/* `min-h-11` also written here, literally: `verify:touch-targets`
-                      reads the element's own class string, not the constant. */}
-                  <Link href={`/events/${block.eventSlug}`} className={`min-h-11 ${NIGHT_KEY_CLASS} ${FOCUS_RING}`}>
-                    {block.key}
-                  </Link>
-                </h2>
-                <p className="mb-4 font-mono text-xs font-semibold text-muted">{nightMeta(block)}</p>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {block.liveCuts.map((liveCut) => (
-                    <LiveCutCard key={liveCut.id} liveCut={liveCut} play={null} />
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
+          <MusicPlayerProvider>
+            <div className="space-y-12">
+              {nights.map((block) => (
+                <section key={block.partyId} aria-labelledby={`night-${block.partyId}`}>
+                  <h2 id={`night-${block.partyId}`}>
+                    {/* `min-h-11` also written here, literally: `verify:touch-targets`
+                        reads the element's own class string, not the constant. */}
+                    <Link href={`/events/${block.eventSlug}`} className={`min-h-11 ${NIGHT_KEY_CLASS} ${FOCUS_RING}`}>
+                      {block.key}
+                    </Link>
+                  </h2>
+                  <p className="mb-4 font-mono text-xs font-semibold text-muted">{nightMeta(block)}</p>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {block.liveCuts.map((liveCut) => (
+                      <LiveCutCard
+                        key={liveCut.id}
+                        liveCut={liveCut}
+                        play={<LiveCutPlayButton liveCut={liveCut} isFirst={liveCut.id === firstLiveCutId} />}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          </MusicPlayerProvider>
         )}
       </>
     );
