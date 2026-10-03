@@ -52,7 +52,7 @@
  *   - It does NOT cover MEDIA. A photograph that frames the sign carries the
  *     same information down a road with no predicate on it at all.
  *
- * ── THE SEVEN CHECKS ────────────────────────────────────────────────────────
+ * ── THE EIGHT CHECKS ────────────────────────────────────────────────────────
  *
  *   A. The predicate's TRUTH TABLE, executed. `mayShowVenueOnPublicSurface`
  *      answers `false` for a secret night under every combination of reveal
@@ -91,6 +91,13 @@
  *      Widening it happened in the same wave that created the surface, on
  *      purpose. If the surface ever goes away, remove G in the same commit and
  *      say so.
+ *   H. THE MUSIC PAGE SELECTS NO PLACE AND SAYS NOTHING ABOUT A SOUND. The
+ *      FOURTH surface, added by phase 52.3 plan 11 (2026-10-03): `/music`, a
+ *      *never* surface like G. A negative sweep and a positive allow-list over
+ *      the walked public tree, no predicate, a dynamic route behind its switch
+ *      with no offline copy, and a whole-word sweep of the copy — page, admin
+ *      LiveCuts and lab seed — for words of genre, because no format has a
+ *      written sound manifesto. Its perimeter is written in its own header.
  *
  * Exit codes follow the repository's convention: `0 = passed · 1 = failed ·
  * 2 = refused`. A refusal is not a failure — it means the measurement did not
@@ -1232,6 +1239,428 @@ if (/auth\.getUser|redirect\("\/login"\)/.test(orderPageLive)) {
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
+ * CHECK H — the Music page selects no place and says nothing about a sound
+ *
+ * The FOURTH surface, added by phase 52.3 plan 11 (2026-10-03): `/music`, the
+ * public list of LiveCuts. Like the guest order surface it is a *never* surface
+ * — it shows no place at any moment, on any night, before or after a reveal —
+ * so it is measured the way G measures, with a negative sweep and a POSITIVE
+ * allow-list of the columns it selects, and with no predicate to consult.
+ *
+ * ── THE PERIMETER, WRITTEN OUT ──────────────────────────────────────────────
+ *
+ *   H1-H4 read the PUBLIC TREE ONLY, computed by WALKING two directories:
+ *     - every `.ts` / `.tsx` under `src/app/(public)/music/`
+ *       (page, layout, loading, the card, the cover, the filter row, the player,
+ *       the play button — and whatever is added there next, without editing
+ *       this list; `layout.tsx` was born outside its plan's file list in 52.3-05,
+ *       which is exactly why the perimeter is walked and not enumerated)
+ *     - every `.ts` / `.tsx` under `src/lib/livecuts/`
+ *
+ *   The two ADMIN directories are EXCLUDED from H1-H4, on purpose:
+ *     - `src/app/(admin)/admin/events/[id]/livecuts/`         (actions, form)
+ *     - `src/app/(admin)/admin/(work)/events/[id]/livecuts/`  (the page)
+ *   They legitimately read `venue_secret` and carry the words «venue» and
+ *   «secret» — `livecut.url_names_venue`, the action's guard against a slug
+ *   that names the place, and the cover hint that asks the organizer to keep
+ *   any place off a secret-venue event's image. Those words there are the guard, not the leak, and a
+ *   sweep that reds on its own guard gets loosened by whoever runs it.
+ *
+ *   H5 reads the public tree PLUS the three admin files PLUS the lab seed:
+ *     - `src/app/(admin)/admin/events/[id]/livecuts/actions.ts`
+ *     - `src/app/(admin)/admin/events/[id]/livecuts/LiveCutForm.tsx`
+ *     - `src/app/(admin)/admin/(work)/events/[id]/livecuts/page.tsx`
+ *     - `scripts/seed-lab-music.mjs`
+ *   because the copy an organizer reads, and the rows a lab is seeded with, can
+ *   allude to a sound as easily as the page can.
+ *
+ *   H5 does NOT read `.planning/` — the phase documents LIST the forbidden
+ *   words, and would red on their own list — and does NOT read DATA: artist and
+ *   series names are typed by the owner, and the `livecuts` table has no free
+ *   field for a genre (no description, no tags). The SoundCloud upload itself
+ *   (title, genre, tags, description) is a production exit this gate cannot see;
+ *   check D prints it on every run.
+ *
+ * ── THE FIVE PARTS ──────────────────────────────────────────────────────────
+ *
+ *   H1  negative sweep of LIVE CODE, case-insensitive substrings, the terms of
+ *       G1 plus `secret`, over every file of the public perimeter.
+ *   H2  POSITIVE allow-list: `src/lib/livecuts/queries.ts` holds the one
+ *       `.select("…")` of the page, with an exact column set; every other file
+ *       of the perimeter holds ZERO selects. A column added under a name H1 does
+ *       not know still reds here.
+ *   H3  no file of the perimeter reaches for the disclosure predicate — on a
+ *       *never* surface it has nothing to decide.
+ *   H4  the shape: a dynamic route behind its switch, no `next/script`, the
+ *       widget API loaded from `MusicPlayer.tsx` only, and a `NetworkOnly`
+ *       rule for `/music` in the service worker (a withdrawn LiveCut must not
+ *       survive in an offline copy).
+ *   H5  whole-word sweep of the COPY — string literals and JSX text — for words
+ *       of genre and of sonic promise. No format has a written sound manifesto
+ *       (`sound-manifesto.md`), so no surface may allude to one.
+ *
+ * If the Music page ever goes away, remove H in the same commit and say so: a
+ * check that refuses forever reads like a green to a list.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+const MUSIC_PUBLIC_DIRS = ["src/app/(public)/music", "src/lib/livecuts"];
+
+const MUSIC_REQUIRED = [
+  "src/app/(public)/music/page.tsx",
+  "src/lib/livecuts/queries.ts",
+  "src/app/(public)/music/MusicPlayer.tsx",
+];
+
+const MUSIC_H5_EXTRA = [
+  "src/app/(admin)/admin/events/[id]/livecuts/actions.ts",
+  "src/app/(admin)/admin/events/[id]/livecuts/LiveCutForm.tsx",
+  "src/app/(admin)/admin/(work)/events/[id]/livecuts/page.tsx",
+  "scripts/seed-lab-music.mjs",
+];
+
+function walkSources(relDir) {
+  const abs = join(ROOT, relDir);
+  if (!existsSync(abs)) return [];
+  const out = [];
+  for (const entry of readdirSync(abs, { withFileTypes: true })) {
+    const rel = `${relDir}/${entry.name}`;
+    if (entry.isDirectory()) out.push(...walkSources(rel));
+    else if (/\.tsx?$/.test(entry.name)) out.push(rel);
+  }
+  return out.sort();
+}
+
+const musicPublicFiles = MUSIC_PUBLIC_DIRS.flatMap(walkSources);
+const musicMissing = [...MUSIC_REQUIRED, ...MUSIC_H5_EXTRA].filter(
+  (rel) => !existsSync(join(ROOT, rel))
+);
+
+if (musicPublicFiles.length === 0 || musicMissing.length > 0) {
+  console.error(
+    "REFUSED — the Music page's perimeter is not on disk.\n" +
+      (musicPublicFiles.length === 0
+        ? "  The walk of src/app/(public)/music/ and src/lib/livecuts/ found no file.\n"
+        : "") +
+      musicMissing.map((rel) => `  missing: ${rel}\n`).join("") +
+      "Nothing about the fourth surface was measured, and an empty walk is not a\n" +
+      "green. If the page was deliberately removed, remove check H in the same\n" +
+      "commit and say so."
+  );
+  process.exit(2);
+}
+
+/** Live lines of a file, or a refusal: a file the stripper cannot read is not measured. */
+function musicLive(rel) {
+  const { lines, unterminated } = liveLines(join(ROOT, rel));
+  if (unterminated !== null) {
+    console.error(
+      `REFUSED — ${rel} has a ${unterminated.kind} comment opened at line ` +
+        `${unterminated.lineNo} that never closes. The stripper cannot read this\n` +
+        "file, so H measured nothing rather than measuring zero."
+    );
+    process.exit(2);
+  }
+  return lines;
+}
+
+const musicLiveByFile = new Map(
+  [...musicPublicFiles, ...MUSIC_H5_EXTRA].map((rel) => [rel, musicLive(rel)])
+);
+
+/**
+ * Per file: the exact column set of its selects, and how many it may hold.
+ * Every other file of the public perimeter may hold ZERO.
+ *
+ * 2026-10-03 (52.3-11): the set below is the tokenisation of the one select
+ * literal written by 52.3-05, unchanged. Not one of these tokens describes a
+ * place — `event_parties` is read for its date, times, number, series name,
+ * format and the event's slug, and NEVER for `venue_text`, `venue_secret` or a
+ * coordinate. Widening it is a decision about the one act in this product that
+ * has no undo: make it deliberately, and say why in the commit.
+ */
+const MUSIC_SURFACES = [
+  [
+    "src/lib/livecuts/queries.ts",
+    "artists, color, cover_url, date, duration_seconds, end_time, event_parties, events, formats, id, livecut_artists, mixcloud_url, name, number, part_number, party_id, party_series!event_parties_series_id_fkey, published_at, slot_end, slot_start, slug, sort_order, soundcloud_track_id, soundcloud_url, time",
+    1,
+  ],
+];
+
+const musicAllowed = new Map(MUSIC_SURFACES.map(([rel, cols, n]) => [rel, [cols, n]]));
+
+for (const rel of musicPublicFiles) {
+  const lines = musicLiveByFile.get(rel);
+
+  /* H1 — the negative sweep */
+  lines.forEach((line, index) => {
+    const lower = line.toLowerCase();
+    for (const term of [...GUEST_PLACE_TERMS, "secret"]) {
+      if (lower.includes(term)) {
+        fail(
+          "H1",
+          `${rel}:${index + 1} names \`${term}\` in live code: ${line.trim()}\n` +
+            "        `/music` shows no place at any moment, on any night. There is no " +
+            "reveal state that makes this line correct later — and a comment that " +
+            "needs the word belongs on its own line, where the stripper blanks it."
+        );
+      }
+    }
+  });
+
+  /* H2 — the positive allow-list */
+  const live = lines.join("\n");
+  const selects = [...live.matchAll(/\.select\(\s*"([^"]*)"/g)].map((m) => m[1]);
+  const anySelect = (live.match(/\.select\(/g) ?? []).length;
+  const [expectedColumns, expectedSelects] = musicAllowed.get(rel) ?? ["", 0];
+
+  if (anySelect !== selects.length) {
+    fail(
+      "H2",
+      `${rel} holds ${anySelect - selects.length} \`.select(\` call(s) whose argument is ` +
+        "not a double-quoted literal. This check can only weigh what it can read: " +
+        "write the columns as one `\"…\"` literal."
+    );
+  }
+
+  if (selects.length !== expectedSelects) {
+    fail(
+      "H2",
+      `${rel} contains ${selects.length} \`.select("…")\` literal(s); ${expectedSelects} ` +
+        "are authorised.\n        The Music page reads from one home. A query that " +
+        "appears without this list moving is a query nobody weighed."
+    );
+  }
+
+  if (expectedSelects > 0) {
+    const columns = asSet(
+      selects.flatMap((literal) =>
+        literal
+          .replace(/[()]/g, ",")
+          .split(",")
+          .map((column) => column.trim())
+          .filter(Boolean)
+      )
+    );
+    if (columns !== expectedColumns) {
+      fail(
+        "H2",
+        `${rel} selects {${columns}};\n        the authorised set is {${expectedColumns}}.\n` +
+          "        POSITIVE on purpose: a column that carries a place under a name " +
+          "nobody thought to forbid still reds here. A column that is never read " +
+          "cannot be printed."
+      );
+    }
+  }
+
+  /* H3 — the predicate is not consulted here */
+  if (/venue-disclosure|mayShowVenueToTicketHolder|mayShowVenueOnPublicSurface/.test(live)) {
+    fail(
+      "H3",
+      `${rel} reaches for the disclosure predicate. On \`/music\` the answer is ` +
+        "*never*, so a predicate has nothing to decide — its presence means the " +
+        "decision was reversed by an edit rather than by the owner."
+    );
+  }
+
+  /* H4 (part) — no third-party script loader anywhere in the perimeter */
+  if (/next\/script|<Script\b/.test(live)) {
+    fail(
+      "H4",
+      `${rel} imports \`next/script\` or writes \`<Script\`. The widget API is ` +
+        "loaded on the first press of Play, by `MusicPlayer.tsx`, and nowhere else: " +
+        "a script loaded with the page reaches a third party for every visitor."
+    );
+  }
+  if (rel !== "src/app/(public)/music/MusicPlayer.tsx" && live.includes("player/api.js")) {
+    fail(
+      "H4",
+      `${rel} names \`player/api.js\`. The SoundCloud widget API has one loader, ` +
+        "`MusicPlayer.tsx`."
+    );
+  }
+}
+
+/* H4 — the shape of the route */
+
+const musicPageLive = musicLiveByFile.get("src/app/(public)/music/page.tsx").join("\n");
+const musicPlayerLive = musicLiveByFile.get("src/app/(public)/music/MusicPlayer.tsx").join("\n");
+
+if (!/export const dynamic = "force-dynamic"/.test(musicPageLive)) {
+  fail(
+    "H4",
+    "src/app/(public)/music/page.tsx does not declare `force-dynamic`. A withdrawn " +
+      "LiveCut must disappear at once, not at a cache expiry."
+  );
+}
+if (!/musicPageEnabled\(\)/.test(musicPageLive) || !/notFound\(\)/.test(musicPageLive)) {
+  fail(
+    "H4",
+    "src/app/(public)/music/page.tsx does not ask `musicPageEnabled()` and answer " +
+      "`notFound()`. The page lives behind its switch until the owner turns it on."
+  );
+}
+if (!musicPlayerLive.includes("player/api.js")) {
+  fail(
+    "H4",
+    "src/app/(public)/music/MusicPlayer.tsx no longer names `player/api.js`. The one " +
+      "loader moved, and this check no longer knows where — say where in the same commit."
+  );
+}
+
+const swLive = liveLines(join(ROOT, "src/app/sw.ts")).lines.join("\n");
+const swMusic = swLive.indexOf('"/music"');
+if (swMusic === -1 || !swLive.slice(swMusic, swMusic + 400).includes("NetworkOnly")) {
+  fail(
+    "H4",
+    "src/app/sw.ts has no `NetworkOnly` rule for `\"/music\"`. Serwist serves content " +
+      "when the network is gone — including a list that still holds a LiveCut " +
+      "somebody asked us to take down."
+  );
+}
+
+/* H5 — the copy says nothing about a sound
+ *
+ * WHOLE WORDS, case-insensitive, and the boundary is load-bearing: `techno`
+ * inside `technology`, `dub` inside `RamaDub` or `dub1`, `house` inside
+ * `household` must NOT fire. A gate that cries wolf on correct copy is a gate
+ * that gets switched off — the precedent is the automatic check that flagged
+ * `RSNT-003` on a rule that was never the rule.
+ *
+ * H5 READS THE TEXT, NOT THE PRESENTATION. Before extraction it blanks, BY
+ * POSITION IN THE CODE (never by the shape of the string — a string of
+ * lowercase words can be «deep house»):
+ *   (a) every value of a `className` attribute or default, in every form:
+ *       `className="…"`, `className={"…"}`, `className={`…`}`, every literal
+ *       inside `className={…}`, and `className = "…"` as a parameter default;
+ *   (b) the arguments of a class composer — `cn(`, `clsx(`, `twMerge(`.
+ *       Counted with grep on 2026-10-03: the perimeter uses NONE of them; the
+ *       rule is here so the first one added does not open a red on `break-words`;
+ *   (c) the literal assigned to a constant already named as classes in the
+ *       perimeter: `*_CLASS` (today `NIGHT_KEY_CLASS`), `FOCUS_RING`, `ROW_*`,
+ *       `ENTRY_*`.
+ * And for the two words that are also Tailwind tokens — `breaks?` (`break-words`,
+ * `break-all`) and `dark` (`dark:bg-…`) — the right boundary excludes `-` and
+ * `:`. Both stay in the list, because in prose they are words about a sound.
+ *
+ * Why: `break-words` is already in six files of the repository, two of them the
+ * models of `LiveCutForm.tsx`. A gate that reds on `break-words` is loosened by
+ * whoever runs it, and a loosened gate no longer protects the real copy.
+ *
+ * What it reads: string literals (`"…"`, `'…'` on one line, `` `…` `` across
+ * lines) and JSX text — text between `>` and `<` on one line, and a line that is
+ * prose on its own (two words or more, no code punctuation), which is how a
+ * formatter lays out a long text child. A single-word text child alone on its
+ * line is NOT read: a known blind spot, stated.
+ */
+const MUSIC_SOUND_WORDS = new RegExp(
+  "\\b(?:" +
+    [
+      // genres
+      "house", "deep\\s*house", "tech[\\s-]*house", "techno", "minimal",
+      "electro(?:nic|nica)?", "ambient", "downtempo", "trip[\\s-]*hop", "hip[\\s-]*hop",
+      "neo[\\s-]*soul", "soul(?:ful)?", "dub(?:step)?", "jazz", "funk(?:y)?", "disco",
+      "garage", "jungle", "drum\\s*(?:and|&|n)\\s*bass", "dnb", "breakbeat", "acid",
+      "trance", "afro", "balearic", "lo[\\s-]*fi", "r&b", "grime", "bass",
+      // adjectives of sonic promise
+      "hypnotic", "groov(?:e|y)", "melodic", "dreamy", "warm", "raw", "driving",
+      "uplifting", "banging", "eclectic", "underground", "chill(?:ed)?", "vibes?", "sunset",
+    ].join("|") +
+    ")\\b" +
+    // the two Tailwind collisions: right boundary excludes `-` and `:`
+    "|\\bbreaks?\\b(?![-:])|\\bdark\\b(?![-:])",
+  "gi"
+);
+
+/** Blank a range with spaces, keeping newlines so offsets still map to lines. */
+const blankRange = (text, from, to) =>
+  text.slice(0, from) + text.slice(from, to).replace(/[^\n]/g, " ") + text.slice(to);
+
+/** Index just past the bracket that closes the one at `open`, counting nesting. */
+function closeOf(text, open, opener, closer) {
+  let depth = 0;
+  for (let i = open; i < text.length; i += 1) {
+    if (text[i] === opener) depth += 1;
+    else if (text[i] === closer) {
+      depth -= 1;
+      if (depth === 0) return i + 1;
+    }
+  }
+  return text.length;
+}
+
+function blankPresentation(source) {
+  let text = source;
+
+  // (a) className values
+  for (const m of [...source.matchAll(/\bclassName\s*[=:]\s*/g)]) {
+    const start = m.index + m[0].length;
+    const ch = text[start];
+    if (ch === "{") text = blankRange(text, start, closeOf(text, start, "{", "}"));
+    else if (ch === '"' || ch === "'" || ch === "`") {
+      const end = text.indexOf(ch, start + 1);
+      text = blankRange(text, start, end === -1 ? text.length : end + 1);
+    }
+  }
+
+  // (b) class composers
+  for (const m of [...source.matchAll(/\b(?:cn|clsx|twMerge)\(/g)]) {
+    const open = m.index + m[0].length - 1;
+    text = blankRange(text, open, closeOf(text, open, "(", ")"));
+  }
+
+  // (c) constants named as classes
+  for (const m of [
+    ...source.matchAll(/\bconst\s+(?:[A-Z0-9_]*_CLASS|FOCUS_RING|ROW_[A-Z0-9_]+|ENTRY_[A-Z0-9_]+)\s*=/g),
+  ]) {
+    const start = m.index + m[0].length;
+    const end = text.indexOf(";", start);
+    text = blankRange(text, start, end === -1 ? text.length : end);
+  }
+
+  return text;
+}
+
+/** [lineNumber, fragment] for every string literal and JSX text of `text`. */
+function copyFragments(text) {
+  const out = [];
+  const lineOf = (offset) => text.slice(0, offset).split("\n").length;
+
+  // template literals may span lines
+  for (const m of text.matchAll(/`(?:[^`\\]|\\.)*`/g)) out.push([lineOf(m.index), m[0]]);
+
+  const lines = text.replace(/`(?:[^`\\]|\\.)*`/g, (t) => t.replace(/[^\n]/g, " ")).split("\n");
+  lines.forEach((line, index) => {
+    const n = index + 1;
+    for (const m of line.matchAll(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g)) out.push([n, m[0]]);
+    for (const m of line.matchAll(/>([^<>]*)</g)) if (/[A-Za-z]/.test(m[1])) out.push([n, m[1]]);
+    const prose = line.trim().replace(/\{[^{}]*\}/g, " ");
+    if (/^[A-Za-z][A-Za-z0-9 .,!?'’&·—–-]*$/.test(prose) && /\S\s+\S/.test(prose)) {
+      out.push([n, prose]);
+    }
+  });
+  return out;
+}
+
+for (const [rel, lines] of musicLiveByFile) {
+  const text = blankPresentation(lines.join("\n"));
+  const seen = new Set();
+  for (const [lineNo, fragment] of copyFragments(text)) {
+    for (const m of fragment.matchAll(MUSIC_SOUND_WORDS)) {
+      const key = `${lineNo}:${m[0].toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      fail(
+        "H5",
+        `${rel}:${lineNo} says \`${m[0]}\` in copy: ${fragment.trim().slice(0, 120)}\n` +
+          "        No format has a written sound manifesto (`sound-manifesto.md`): " +
+          "until its owner writes one, no surface alludes to a genre or promises a " +
+          "sound. Inventing it here writes the brand for whoever owns it."
+      );
+    }
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
  * CHECK D — the exits this gate cannot see, printed every run
  *
  * The wallet pass used to be printed here. It was closed on 2026-08-24 and is
@@ -1259,6 +1688,23 @@ notes.push(
     "in this file protects a gallery."
 );
 
+notes.push(
+  "SOUNDCLOUD METADATA. The title, genre, tags and description of a LiveCut's " +
+    "upload on SoundCloud are a production exit this gate cannot see: they live on " +
+    "SoundCloud, not in this repository, and check H reads only our copy. The upload " +
+    "brief says «genre empty, no genre tags» (`sound-manifesto.md`: no format has a " +
+    "written manifesto) — and it holds only as long as the person uploading follows it."
+);
+
+notes.push(
+  "COVER PIXELS AND URL SLUG. No verifier reads the pixels of a LiveCut cover — a " +
+    "photograph can frame the sign, and the form's cover hint, which asks the organizer " +
+    "to keep any place off the image on a secret-venue event, is the only guard. And " +
+    "the slug of a SoundCloud URL is watched only by the place-name tokens in the " +
+    "action (`livecut.url_names_venue`): a slug that names the place in words the " +
+    "night's venue text does not contain goes through."
+);
+
 /* ──────────────────────────────────────────────────────────────────────────── */
 
 console.log("venue surfaces — the owner's rule of 2026-08-22, measured\n");
@@ -1270,7 +1716,10 @@ console.log("  E  no secret venue in a payload — the sweep, and the two bounda
 console.log("  F  nothing that names a place on the wallet pass — one sweep, four");
 console.log("     positive allow-lists, and no location relevance");
 console.log("  G  the guest order surface selects no place — one sweep, one positive");
-console.log("     allow-list of every column, and no predicate to reverse\n");
+console.log("     allow-list of every column, and no predicate to reverse");
+console.log("  H  the Music page selects no place and alludes to no sound — one sweep,");
+console.log("     one allow-list, no predicate, a dynamic route, and a whole-word sweep");
+console.log("     of the copy\n");
 
 if (notes.length > 0) {
   console.log("  OPEN EXITS — printed on every run, pass or fail:\n");
@@ -1293,5 +1742,7 @@ console.log("         holder's ticket renders it only once the reveal has fired,
 console.log("         the wallet pass carries neither a venue column nor a coordinate");
 console.log("         — on any night, secret or not, because a pass cannot be recalled");
 console.log("         — and the guest order surface selects no column of the place at");
-console.log("         all, on a link that is meant to be forwarded.");
+console.log("         all, on a link that is meant to be forwarded — and the Music page");
+console.log("         selects no column of the place either, keeps no offline copy, and");
+console.log("         says no word of genre in its copy, its admin or its lab seed.");
 process.exit(0);
