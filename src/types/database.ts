@@ -1302,6 +1302,90 @@ export interface PartyCreditRow {
 }
 
 /**
+ * A row of `public.livecuts` — phase 52.3's LiveCut
+ * (`supabase/migrations/20261004120000_livecuts.sql`, MUS-07, MUS-08).
+ *
+ * ── What this table is, in one sentence ──────────────────────────────────────
+ *
+ * The recorded mix of ONE slot of the timetable of a night that already
+ * happened, hosted on SoundCloud. One per slot, not one per dj: a b2b is one
+ * `LiveCutRow` with two `LiveCutArtistRow`s.
+ *
+ * ── Why no Podcast fits here by construction ─────────────────────────────────
+ *
+ * `party_id` is NOT NULL and `part_number` is a timetable position. A mix sent by
+ * a candidate dj has neither a night nor a slot, so no Podcast fits here by
+ * construction — it will get its own table and its own type when it exists.
+ *
+ * ── The fields that are not here ─────────────────────────────────────────────
+ *
+ * No title and no description. The title is COMPUTED (D-52.3-03,
+ * `src/lib/livecuts/title.ts`); a free-text field would be a public exit no
+ * predicate watches, and the first place a secret venue's address would land.
+ *
+ * ── `soundcloud_track_id` is a `number` ──────────────────────────────────────
+ *
+ * The column is `bigint`. Today's SoundCloud ids sit well below 2^53, so a JS
+ * `number` holds them without loss; the widget consumes them as a string
+ * (`String(id)`). If ids ever approach 2^53 this becomes a `string`, in a new
+ * migration and an edit here — never a silent truncation.
+ *
+ * ── The honest limit, the same one `PartyCreditRow` carries ──────────────────
+ *
+ * None of the four Supabase clients is parameterised, so this interface
+ * DOCUMENTS the shape and does not make a query against it type-checked. The
+ * database refuses a row that disagrees with the seven named constraints in that
+ * migration; `npm run build` cannot tell you that it agrees.
+ *
+ * This repository is PUBLIC: no artist name, no date and no venue belongs in
+ * this file — only the shape of the row that holds them.
+ */
+export interface LiveCutRow {
+  id: string;
+  /** The night. NOT NULL (MUS-08). `ON DELETE CASCADE`, like `party_credits`. */
+  party_id: string;
+  /** PTn — the slot's position in the timetable. Order by this, never by time. */
+  part_number: number;
+  /** `time` as Postgres returns it, `HH:MM:SS`. Denormalised from the timetable. */
+  slot_start: string;
+  /** May be EARLIER than `slot_start`: the slot crosses midnight (22:00 → 06:00). */
+  slot_end: string;
+  /** Exact host `soundcloud.com`, two path segments, no query (SQL `CHECK`). */
+  soundcloud_url: string;
+  /** From the admin oEmbed. `bigint` in SQL, see the docblock above. */
+  soundcloud_track_id: number;
+  /** Optional copy, exact host `www.mixcloud.com` (SQL `CHECK`). */
+  mixcloud_url: string | null;
+  /** `> 0` and `< 86400`. */
+  duration_seconds: number;
+  /** Public URL written ONLY by `/api/media/finalize-cover`, under `livecuts/<uuid>.jpg`. */
+  cover_url: string | null;
+  /** `null` = draft, invisible without `staff.manage`. Publishing requires `cover_url`. */
+  published_at: string | null;
+  /** Who WROTE the row — never who plays. `null` once that account is deleted. */
+  created_by: string | null;
+  created_at: string;
+  /** Written by the action on every UPDATE; no trigger. */
+  updated_at: string;
+}
+
+/**
+ * A row of `public.livecut_artists` — who plays in a LiveCut's slot, by
+ * RELATION to `public.artists`, never a name repeated here. Two rows on the same
+ * `livecut_id` are a b2b. Exactly as public as its parent LiveCut (the RLS reads
+ * the same condition through the parent). Same honest limit as `LiveCutRow`:
+ * none of the four Supabase clients is parameterised, so this DOCUMENTS the shape.
+ */
+export interface LiveCutArtistRow {
+  /** `ON DELETE CASCADE` from the LiveCut. */
+  livecut_id: string;
+  /** `ON DELETE RESTRICT`: detach before deleting the artist. */
+  artist_id: string;
+  /** Order of the names in the computed title. Display only. */
+  sort_order: number;
+}
+
+/**
  * The two `private` tables, and the payload of the one exposed function.
  *
  * ── The honest limit of these three declarations ─────────────────────────────
