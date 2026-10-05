@@ -562,6 +562,7 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
               type="button"
               aria-pressed={isSelected}
               disabled={isDisabled || isPending}
+              aria-disabled={isDisabled || undefined}
               onClick={() => setSelectedTierId(tier.id)}
               className={`min-h-11 w-full rounded-2xl border p-4 text-left transition-all active:scale-95 active:opacity-80 ${FOCUS_RING} ${
                 isDisabled

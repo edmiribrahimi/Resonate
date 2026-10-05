@@ -46,10 +46,15 @@ export function computeTierStatuses(tiers: PublicTier[], now: Date = new Date())
  *   2. la quantita' e' esaurita               → `sold_out`
  *   3. la data di fine e' passata             → `expired`
  *
- * L'ordine conta dove due ragioni valgono insieme: un tier esaurito E scaduto
- * dice «sold out», perche' e' la frase che spiega a chi compra cosa e' successo
- * mentre guardava; e un tier non ancora aperto dice «coming soon» anche se ha
- * quantita' zero, perche' la vendita non e' cominciata.
+ * L'ordine conta dove due ragioni valgono insieme: **un tier esaurito E
+ * scaduto dice «Sold out»** — confermato dal proprietario il 2026-10-05
+ * («quando un tier e' sia sold out che expired deve mostrare sold out»),
+ * scritto anche in `sales-window.ts`. Un tier non ancora
+ * aperto dice «coming soon» anche se ha quantita' zero, perche' la vendita non
+ * e' cominciata. `expires_at` qui e' la chiusura EFFETTIVA: la pagina della
+ * serata ci mette la scadenza esplicita o, se manca, fine serata − 2 h
+ * (`tierClosesAt`). Nessuno stato nasconde la riga: `TierSelection` la
+ * disegna disabilitata con la sua etichetta.
  *
  * ── La catena per prezzo NON c'e' piu', e questo paragrafo dice perche' ─────
  *

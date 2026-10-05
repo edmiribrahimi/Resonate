@@ -2,6 +2,12 @@ import "server-only";
 
 import { logMoneyPathFailure, type SafeError } from "@/lib/failure/money-path";
 import type { getServiceClient } from "@/lib/supabase/service";
+import {
+  CODE_SALES_CLOSED_MESSAGE,
+  CODE_SOLD_OUT_MESSAGE,
+  isCodeUsable,
+  isTierClosedByDefault,
+} from "@/lib/tickets/sales-window";
 
 /**
  * order-quote.ts — quanto costa un ordine di biglietti, calcolato dove non si
@@ -143,6 +149,14 @@ const QUOTE_DISCOUNT_INACTIVE = "quote_discount_inactive";
 const QUOTE_DISCOUNT_OTHER_NIGHT = "quote_discount_other_night";
 const QUOTE_DISCOUNT_OTHER_TIER = "quote_discount_other_tier";
 const QUOTE_DISCOUNT_EXHAUSTED = "quote_discount_exhausted";
+/**
+ * 2026-10-05 — la chiusura di DEFAULT (fine serata − 2 h, `sales-window.ts`).
+ * Cause proprie e non `not_on_sale`/`inactive`: a chi compra dicono che la
+ * vendita di questa serata e' finita, non che il tier o il codice hanno un
+ * problema loro; a chi legge un log dicono quale regola ha chiuso.
+ */
+const QUOTE_TIER_SALES_CLOSED = "tier_sales_closed";
+const QUOTE_DISCOUNT_SALES_CLOSED = "quote_discount_sales_closed";
 const QUOTE_BELOW_MINIMUM = "quote_below_minimum";
 /**
  * CR-01 — un livello a prezzo zero su una serata che non e' `free_rsvp`.
@@ -173,6 +187,8 @@ export type OrderQuoteRefusal =
   | typeof QUOTE_DISCOUNT_OTHER_NIGHT
   | typeof QUOTE_DISCOUNT_OTHER_TIER
   | typeof QUOTE_DISCOUNT_EXHAUSTED
+  | typeof QUOTE_TIER_SALES_CLOSED
+  | typeof QUOTE_DISCOUNT_SALES_CLOSED
   | typeof QUOTE_BELOW_MINIMUM
   | typeof QUOTE_TIER_FREE_ON_PAID_NIGHT;
 
@@ -209,7 +225,11 @@ const ORDER_QUOTE_ERROR: Record<OrderQuoteRefusal, string> = {
   [QUOTE_DISCOUNT_OTHER_NIGHT]: "That discount code is not valid for this night.",
   [QUOTE_DISCOUNT_OTHER_TIER]:
     "That discount code is not valid for this ticket type.",
-  [QUOTE_DISCOUNT_EXHAUSTED]: "That discount code has been used up.",
+  // «Sold out», parola del proprietario (2026-10-05, `CODE_SOLD_OUT_MESSAGE`).
+  [QUOTE_DISCOUNT_EXHAUSTED]: CODE_SOLD_OUT_MESSAGE,
+  [QUOTE_TIER_SALES_CLOSED]:
+    "Sales for this ticket type have closed for this night. Nothing was charged.",
+  [QUOTE_DISCOUNT_SALES_CLOSED]: CODE_SALES_CLOSED_MESSAGE,
   [QUOTE_BELOW_MINIMUM]:
     "This order is below the minimum a card payment can take (€1.00). Nothing was charged.",
   [QUOTE_TIER_FREE_ON_PAID_NIGHT]:
@@ -344,7 +364,7 @@ export async function buildOrderQuote(
   //    commento: la lista delle colonne e' qui sotto per intero.
   const { data: party, error: partyError } = await client
     .from("event_parties")
-    .select("id, event_id, title, max_tickets_per_order, access_type")
+    .select("id, event_id, title, max_tickets_per_order, access_type, date, time, end_time")
     .eq("id", partyId)
     .maybeSingle();
 
@@ -509,6 +529,8 @@ export async function buildOrderQuote(
         statusMap.set(t.id, "coming_soon");
         continue;
       }
+      // «Sold out» prima di «Expired»: decisione del proprietario del
+      // 2026-10-05, scritta in `sales-window.ts`.
       if (left !== null && left <= 0) {
         statusMap.set(t.id, "sold_out");
         continue;
@@ -541,6 +563,14 @@ export async function buildOrderQuote(
       }
     }
   }
+
+  // 2026-10-05 — chiusura di DEFAULT a fine serata − 2 h per il tier senza
+  // `expires_at` (`sales-window.ts`). Sta FUORI dal blocco di stato qui sopra,
+  // perche' quel blocco si salta quando l'elenco dei tier non si legge (si
+  // apre, D-46-05): una regola d'orario non dipende da un conteggio, e non deve
+  // aprirsi con lui. E sta DOPO, perche' un tier esaurito e chiuso dice
+  // «Sold out» (decisione del proprietario, 2026-10-05).
+  if (isTierClosedByDefault(tier, party)) return refuse(QUOTE_TIER_SALES_CLOSED);
 
   // 7. Lo sconto, validato con gli stessi quattro controlli del percorso con
   //    sessione (`admin/events/actions.ts:1486-1546`) e applicato **all'unita'**
@@ -609,6 +639,10 @@ export async function buildOrderQuote(
         return refuse(QUOTE_DISCOUNT_EXHAUSTED);
       }
     }
+
+    // 2026-10-05 — un codice non ha scadenza propria: vale fino a fine − 2 h.
+    // Dopo il controllo degli usi: esaurito e chiuso dice «Sold out».
+    if (!isCodeUsable(party)) return refuse(QUOTE_DISCOUNT_SALES_CLOSED);
 
     unitPrice =
       code.discount_type === "percentage"

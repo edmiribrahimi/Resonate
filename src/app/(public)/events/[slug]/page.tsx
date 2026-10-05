@@ -27,7 +27,8 @@ import { formatTime } from "@/utils/formatTime";
 import { buildEventMetadata } from "./event-metadata";
 import { CalendarIcon, ClockIcon, MapPinIcon, LockClosedIcon, MusicalNoteIcon } from "@/components/ui/Icons";
 import type { UserRole, AccessType } from "@/types/database";
-import { venueRevealHours } from "@/utils/datetime";
+import { partyEndInstant, turinToday, venueRevealHours } from "@/utils/datetime";
+import { tierClosesAt } from "@/lib/tickets/sales-window";
 import {
   isNightSecret,
   mayShowVenueOnPublicSurface,
@@ -693,12 +694,19 @@ export default async function EventDetailPage({
               .from("tickets")
               .select("*", { count: "exact", head: true })
               .eq("tier_id", tier.id);
+            // 2026-10-05 — la chiusura che `TierSelection` legge e' quella
+            // EFFETTIVA (`sales-window.ts`): la scadenza esplicita del tier,
+            // oppure fine serata − 2 h se nessuno l'ha scelta. Cosi' il tier
+            // chiuso dal default resta in elenco, disabilitato, con «Expired»
+            // (decisione del proprietario: non sparisce), e countdown, barra
+            // «from €N» e preventivo danno la stessa risposta.
+            const effectiveExpiresAt = tierClosesAt(tier, party)?.toISOString() ?? null;
             if (soldError || count === null) {
               logUnreadableCount("event_detail.party_tier_sold_count", soldError);
-              return { ...tier, sold: 0, available: null, soldKnown: false };
+              return { ...tier, expires_at: effectiveExpiresAt, sold: 0, available: null, soldKnown: false };
             }
             const sold = count;
-            return { ...tier, sold, available: tier.quantity !== null ? tier.quantity - sold : null, soldKnown: true };
+            return { ...tier, expires_at: effectiveExpiresAt, sold, available: tier.quantity !== null ? tier.quantity - sold : null, soldKnown: true };
           })
         );
       }
@@ -1080,7 +1088,19 @@ export default async function EventDetailPage({
 
   const partyDates = parties.map((p) => p.date);
   const dateRangeDisplay = formatDateRange(partyDates);
-  const isUpcoming = parties.some((p) => p.date >= new Date().toISOString().split("T")[0]);
+  // 2026-10-05 — «la serata non e' finita», in istanti di Torino e non piu'
+  // con la data UTC: fra mezzanotte e le 02:00 italiane il giorno UTC e' ancora
+  // quello prima, e alle 02:00 di una notte 22→06 la data UTC gia' «passata»
+  // spegneva l'elenco dei tier a serata in corso. Con `end_time` si guarda la
+  // fine vera (`partyEndInstant`); senza, il giorno civile di Torino. L'elenco
+  // resta visibile fino a fine serata anche quando ogni tier e' «Expired»
+  // (chiuso a fine − 2 h, `sales-window.ts`): la vendita la chiudono i tier,
+  // non questa riga.
+  const nowInstant = new Date();
+  const todayTurin = turinToday();
+  const isUpcoming = parties.some((p) =>
+    p.end_time ? partyEndInstant(p.date, p.end_time) > nowInstant : p.date >= todayTurin
+  );
 
   function formatPartyDate(dateStr: string): string {
     const d = new Date(dateStr + "T00:00:00");

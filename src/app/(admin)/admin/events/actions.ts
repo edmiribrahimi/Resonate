@@ -21,6 +21,13 @@ import { redactDbError } from "@/lib/errors/redact";
 // `1.00` qui tiene i due percorsi d'acquisto — con sessione e ospite —
 // allineati per costruzione: se un giorno cambia, cambia in un posto solo.
 import { SUMUP_MINIMUM_EUR } from "@/lib/tickets/order-quote";
+import {
+  CODE_SALES_CLOSED_MESSAGE,
+  CODE_SOLD_OUT_MESSAGE,
+  isCodeUsable,
+  isTierClosedByDefault,
+  type SalesWindowParty,
+} from "@/lib/tickets/sales-window";
 // Service-role client for operations where RLS blocks legitimate access
 // (e.g., master updating events they don't own)
 function getServiceClient() {
@@ -1784,6 +1791,8 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
         statusMap.set(t.id, "coming_soon");
         continue;
       }
+      // «Sold out» prima di «Expired»: decisione del proprietario del
+      // 2026-10-05, scritta in `sales-window.ts`.
       if (available !== null && available <= 0) {
         statusMap.set(t.id, "sold_out");
         continue;
@@ -1803,11 +1812,15 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
     }
   }
 
+  // 2026-10-05 — la serata letta qui sotto serve anche alla validazione del
+  // codice piu' avanti (chiusura di default a fine − 2 h, `sales-window.ts`).
+  let salesParty: SalesWindowParty | null = null;
+
   if (partyId) {
     // Verify party exists and belongs to same event
     const { data: party, error: partyError } = await supabase
       .from("event_parties")
-      .select("id, event_id, access_type")
+      .select("id, event_id, access_type, date, time, end_time")
       .eq("id", partyId)
       .single();
 
@@ -1817,6 +1830,18 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
 
     if (party.event_id !== eventId) {
       throw new Error("Tier does not belong to this sub-event's event");
+    }
+
+    salesParty = party;
+    // 2026-10-05 — un tier senza `expires_at` chiude a fine serata − 2 h. Lo
+    // stesso controllo, con la stessa causa, di `order-quote.ts`
+    // (`tier_sales_closed`): i due percorsi di prezzo devono dare la stessa
+    // risposta.
+    if (isTierClosedByDefault(tier, party)) {
+      console.error(`[tickets.tier_sales_closed] party=${partyId} tier=${tierId}`);
+      throw new Error(
+        "Sales for this ticket type have closed for this night (tier_sales_closed). Nothing was charged."
+      );
     }
 
     // ── CR-01: un livello a prezzo zero non si vende su una serata a pagamento ──
@@ -1927,8 +1952,12 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
         // database's and it fails closed.
         logPurchasePrecheckUnreadable(PRECHECK_DISCOUNT_USAGE_UNREADABLE, usageError);
       }
-      if ((count ?? 0) >= code.max_uses) throw new Error("Code usage limit reached");
+      if ((count ?? 0) >= code.max_uses) throw new Error(CODE_SOLD_OUT_MESSAGE);
     }
+
+    // 2026-10-05 — un codice vale fino a fine serata − 2 h (`sales-window.ts`).
+    // Dopo gli usi: esaurito e chiuso dice «Sold out».
+    if (salesParty && !isCodeUsable(salesParty)) throw new Error(CODE_SALES_CLOSED_MESSAGE);
 
     // Compute discounted price
     if (code.discount_type === "percentage") {

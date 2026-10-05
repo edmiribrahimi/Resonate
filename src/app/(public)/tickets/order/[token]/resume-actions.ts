@@ -116,6 +116,11 @@ const QUOTE_TO_RESUME: Record<OrderQuoteRefusal, ResumeRefusal> = {
   quote_discount_exhausted: "price_changed",
   quote_below_minimum: "price_changed",
   quote_tier_free_on_paid_night: "no_longer_on_sale",
+  // 2026-10-05 — chiusura di default a fine serata − 2 h (`sales-window.ts`):
+  // un ordine aperto prima non si riprende dopo. Il tier chiuso non e' piu' in
+  // vendita; il codice chiuso cambia il prezzo, come gli altri rifiuti di codice.
+  tier_sales_closed: "no_longer_on_sale",
+  quote_discount_sales_closed: "price_changed",
 };
 
 function toCents(euro: number): number {

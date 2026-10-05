@@ -10,6 +10,7 @@ import {
 import { CAP } from "@/lib/capabilities/keys";
 import { replayPaidOrderDelivery } from "@/lib/tickets/replay-order-delivery";
 import { redactDbError } from "@/lib/errors/redact";
+import { CODE_SALES_CLOSED_MESSAGE, CODE_SOLD_OUT_MESSAGE, isCodeUsable } from "@/lib/tickets/sales-window";
 
 // Service-role client for operations where RLS blocks legitimate access
 // (e.g., master managing tiers for events they don't own)
@@ -690,8 +691,30 @@ export async function validateDiscountCode(
       .eq("discount_code_id", discountCode.id);
 
     if ((count ?? 0) >= discountCode.max_uses) {
-      throw new Error("Code usage limit reached");
+      // «Sold out», parola del proprietario (2026-10-05): solo qui, dove un
+      // tetto c'e' ed e' pieno.
+      throw new Error(CODE_SOLD_OUT_MESSAGE);
     }
+  }
+
+  // 2026-10-05 — un codice non ha scadenza propria: vale fino a fine serata
+  // − 2 h (`src/lib/tickets/sales-window.ts`, decisione del proprietario). Chi
+  // lo prova dopo legge «Expired». Sta DOPO il controllo degli usi: esaurito e
+  // chiuso dice «Sold out» (decisione del proprietario, stesso giorno). Se la serata non si legge il controllo non
+  // si fa e lo si dice nel log: qui e' un'anteprima, e la barriera che regge e'
+  // il preventivo (`order-quote.ts`, `quote_discount_sales_closed`) e
+  // `purchaseTicket`, che rileggono la serata da soli.
+  const { data: salesParty, error: salesPartyError } = await supabase
+    .from("event_parties")
+    .select("date, time, end_time")
+    .eq("id", partyId)
+    .maybeSingle();
+  if (salesPartyError) {
+    console.error(
+      `[discount.sales_window_unreadable] party=${partyId} code=${salesPartyError.code ?? "?"}`
+    );
+  } else if (salesParty && !isCodeUsable(salesParty)) {
+    throw new Error(CODE_SALES_CLOSED_MESSAGE);
   }
 
   // Check tier restrictions
