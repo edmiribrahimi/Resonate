@@ -1281,7 +1281,7 @@ if (/auth\.getUser|redirect\("\/login"\)/.test(orderPageLive)) {
  *   (title, genre, tags, description) is a production exit this gate cannot see;
  *   check D prints it on every run.
  *
- * ── THE FIVE PARTS ──────────────────────────────────────────────────────────
+ * ── THE SIX PARTS ───────────────────────────────────────────────────────────
  *
  *   H1  negative sweep of LIVE CODE, case-insensitive substrings, the terms of
  *       G1 plus `secret`, over every file of the public perimeter.
@@ -1298,6 +1298,13 @@ if (/auth\.getUser|redirect\("\/login"\)/.test(orderPageLive)) {
  *   H5  whole-word sweep of the COPY — string literals and JSX text — for words
  *       of genre and of sonic promise. No format has a written sound manifesto
  *       (`sound-manifesto.md`), so no surface may allude to one.
+ *   H6  no series key (added 2026-10-05, plan 52.3-17): no live line of the
+ *       public perimeter — except `src/lib/livecuts/title.ts`, where `nightKey`
+ *       is defined for the admin — names `party_series`, `nightKey` or
+ *       `seriesName`. The series key is internal to us (owner's request 13 at
+ *       the checkpoint of 2026-10-05), and the series name was the only place a
+ *       venue could surface on `/music`. Two roads back, both closed: reading
+ *       the series (H2 and H6) and composing the key (H6).
  *
  * ── PROVED BY MUTATION, AND WHAT IS NOT YET ─────────────────────────────────
  *
@@ -1316,6 +1323,11 @@ if (/auth\.getUser|redirect\("\/login"\)/.test(orderPageLive)) {
  * M13 (variants of H1, H2, H5) are scheduled in plan 52.3-14, task 2, before
  * the production act of 52.3-15. Until then a green on H4 is a green nobody has
  * seen turn red.
+ *
+ * 2026-10-05 (52.3-17), same discipline, H2 narrowed and H6 added:
+ *   MP1 `party_series!event_parties_series_id_fkey(name), ` back in the literal → red H2 + H6
+ *   MP2 `import { nightKey }` and a live `nightKey("x", 1)` in page           → red H6
+ *   MP3 `, events(slug)` back inside the `event_parties` embed                 → red H2 only
  *
  * If the Music page ever goes away, remove H in the same commit and say so: a
  * check that refuses forever reads like a green to a list.
@@ -1389,6 +1401,12 @@ const musicLiveByFile = new Map(
  * Per file: the exact column set of its selects, and how many it may hold.
  * Every other file of the public perimeter may hold ZERO.
  *
+ * 2026-10-05 (52.3-17): narrowed. `end_time`, `events`, `number` and
+ * `party_series!event_parties_series_id_fkey` left the set because the page no
+ * longer shows the series key (owner's request 13: internal to us) nor links to
+ * the event; `event_parties` is now read for its date, start time and format
+ * only. Widening it again is a decision, not a fix.
+ *
  * 2026-10-03 (52.3-11): the set below is the tokenisation of the one select
  * literal written by 52.3-05, unchanged. Not one of these tokens describes a
  * place — `event_parties` is read for its date, times, number, series name,
@@ -1399,7 +1417,7 @@ const musicLiveByFile = new Map(
 const MUSIC_SURFACES = [
   [
     "src/lib/livecuts/queries.ts",
-    "artists, color, cover_url, date, duration_seconds, end_time, event_parties, events, formats, id, livecut_artists, mixcloud_url, name, number, part_number, party_id, party_series!event_parties_series_id_fkey, published_at, slot_end, slot_start, slug, sort_order, soundcloud_track_id, soundcloud_url, time",
+    "artists, color, cover_url, date, duration_seconds, event_parties, formats, id, livecut_artists, mixcloud_url, name, part_number, party_id, published_at, slot_end, slot_start, slug, sort_order, soundcloud_track_id, soundcloud_url, time",
     1,
   ],
 ];
@@ -1496,6 +1514,29 @@ for (const rel of musicPublicFiles) {
         "`MusicPlayer.tsx`."
     );
   }
+}
+
+/* H6 — no series key on the public surface (owner's request 13, 2026-10-05) */
+
+const MUSIC_H6_EXEMPT = "src/lib/livecuts/title.ts"; // `nightKey` is defined there, for the admin
+const MUSIC_SERIES_TERMS = ["party_series", "nightkey", "seriesname"];
+
+for (const rel of musicPublicFiles) {
+  if (rel === MUSIC_H6_EXEMPT) continue;
+  musicLiveByFile.get(rel).forEach((line, index) => {
+    const lower = line.toLowerCase();
+    for (const term of MUSIC_SERIES_TERMS) {
+      if (lower.includes(term)) {
+        fail(
+          "H6",
+          `${rel}:${index + 1} names \`${term}\` in live code: ${line.trim()}\n` +
+            "        The series key is internal to us (the owner's request of " +
+            "2026-10-05): the public page neither reads nor composes it — and the " +
+            "series name is where a venue would ride onto `/music`."
+        );
+      }
+    }
+  });
 }
 
 /* H4 — the shape of the route */
@@ -1737,7 +1778,7 @@ console.log("  G  the guest order surface selects no place — one sweep, one po
 console.log("     allow-list of every column, and no predicate to reverse");
 console.log("  H  the Music page selects no place and alludes to no sound — one sweep,");
 console.log("     one allow-list, no predicate, a dynamic route, and a whole-word sweep");
-console.log("     of the copy\n");
+console.log("     of the copy, and no series key (H6)\n");
 
 if (notes.length > 0) {
   console.log("  OPEN EXITS — printed on every run, pass or fail:\n");
