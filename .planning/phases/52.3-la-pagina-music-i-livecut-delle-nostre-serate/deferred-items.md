@@ -35,3 +35,7 @@
   anche l'evento (piano 52.3-07 / proprietario); non toccato qui.
 
 > **2026-10-03, orchestratore — chiuso.** La guardia del luogo in `actions.ts` (`scopeParty`) ora legge anche `events.venue_secret`: una serata non segreta dentro un evento segreto e' trattata come segreta, la stessa regola del seme del laboratorio. Nessuna riga toccata; `tsc` ed eslint verdi. Da provare dal vivo in P-523-F sul satellite di N3 (piano 52.3-12).
+
+## 2026-10-05 — piano 52.3-20 (corsa L3)
+
+- **`/music` con una sessione di chi gestisce gli eventi mostra i LiveCut di una serata non pubblicata.** Sul laboratorio, `organizer`: 5 schede e un filtro `Unclassified` (la serata N4 del seme); anonimo e `attendee`: 4. La query della pagina gira con la sessione dell'utente e la RLS lascia leggere gli eventi non pubblicati a chi li gestisce. Non e' un'esposizione al pubblico; e' una differenza di vista da decidere (filtrare `is_published` anche per chi lavora, o lasciarla come anteprima). Fuori dal perimetro del 52.3-20.
