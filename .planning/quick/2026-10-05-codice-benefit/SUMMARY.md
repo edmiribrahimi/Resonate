@@ -156,3 +156,113 @@ tabella qui sopra.
 - `a040eb9c` feat(quick-benefit): codice sconto a 0 € con benefit — migration e tipi
 - `3bd26c9c` feat(quick-benefit): codice a 0 € con benefit — admin e compratore
 - `5cc99672` feat(quick-benefit): la porta mostra il benefit del codice, online e offline
+
+---
+
+## Chiusura di default −2h (seconda richiesta, 2026-10-05)
+
+**Richiesta del proprietario:** «tiers e codici su cui non e' stata scelta una
+scadenza, possono essere acquistati/utilizzati fino a 2h prima della fine
+dell'evento?» — piu' tre aggiunte dello stesso giorno: un tier o codice scaduto
+**non sparisce**, resta disabilitato con «Expired»; un tier o codice con tetto
+pieno resta disabilitato con «Sold out» (solo se il tetto c'e'); quando valgono
+entrambe **vince «Sold out»** («quando un tier e' sia sold out che expired deve
+mostrare sold out»).
+
+**La regola, in un posto solo:** `src/lib/tickets/sales-window.ts`.
+
+- `defaultSalesCloseAt(party)` = `partyEndInstant(date, end_time)` − 2 h, in
+  `Europe/Rome` con l'ora legale risolta da `src/utils/datetime.ts`. `null` se
+  `end_time` e' nullo.
+- `tierClosesAt(tier, party)` = `expires_at` esplicito se c'e' (rispettato come
+  scritto, anche se dopo il default), altrimenti il default.
+- `isTierOnSale`, `isTierClosedByDefault`, `isCodeUsable`; risposte
+  `CODE_SALES_CLOSED_MESSAGE = "Expired"`, `CODE_SOLD_OUT_MESSAGE = "Sold out"`.
+- La regola chiude soltanto: `starts_at`, quantita', `is_active`, `max_uses`
+  restano dove erano.
+
+| Dove decide | File:riga | Cosa |
+|---|---|---|
+| Preventivo (ospite, RSVP gratuito, ripresa ordine) | `src/lib/tickets/order-quote.ts:573`, `:645` | `tier_sales_closed`; `quote_discount_sales_closed` → «Expired»; `quote_discount_exhausted` → «Sold out». Il controllo del tier sta FUORI dal blocco di stato che si apre su lettura fallita, e DOPO di esso (sold out prima) |
+| Acquisto con sessione | `src/app/(admin)/admin/events/actions.ts:1840`, `:1955`, `:1960` | stesse cause, stesso ordine |
+| Anteprima del codice | `src/app/(admin)/admin/events/[id]/tickets/actions.ts:708`, `:728` | «Sold out» poi «Expired» |
+| Pagina della serata | `src/app/(public)/events/[slug]/page.tsx:705` | ai tier va la chiusura EFFETTIVA + `closes_by_default` |
+| Pagina — `isUpcoming` | `src/app/(public)/events/[slug]/page.tsx:1104` | fine serata in istanti di Torino (prima: data UTC, spegneva l'elenco alle 02:00 di una notte in corso) |
+| Stato del tier | `src/lib/tickets/tier-status.ts:87` | ordine coming_soon → sold_out → expired, documentato |
+| Riga del tier | `src/app/(public)/events/[slug]/TierSelection.tsx:570`, `:414` | `aria-disabled` sui tier non in vendita; «Offer ends in» solo per una scadenza scelta |
+| Ripresa ordine | `src/app/(public)/tickets/order/[token]/resume-actions.ts` | le due cause nuove mappate (il build lo pretendeva) |
+
+### Prova
+
+**Helper (tsx, istanti stampati):**
+
+| Serata | Chiusura di default |
+|---|---|
+| 22:00→06:00 di sab 10/10 | `2026-10-11T02:00Z` = **04:00 di dom 11/10** a Torino |
+| 18:00→22:00 di gio 15/10 | `2026-10-15T18:00Z` = **20:00** |
+| 22:00→06:00 di sab 24/10 (cambio d'ora) | `2026-10-25T03:00Z` = **04:00 CET**, due ore vere prima delle 06:00 CET |
+| senza `end_time` | `null` |
+
+Notte del 10/10: alle 23:00 di Torino tier e codice in vendita; alle 04:00
+dell'11/10 no. Una scadenza esplicita alle 05:00 tiene il tier aperto alle 04:30.
+
+**Laboratorio** (`mgkkbdlifgrpmjdtpoax`, ore UTC, schermate in
+`~/Documents/Resonate/hotfix-benefit/`). Scritture solo-lab su `Lab Night`:
+originali salvati prima, due tier e due codici aggiunti, il tier `Lab` a 10 € e
+quantita' 1 (il biglietto seminato lo esaurisce), il biglietto seminato legato a
+`FULL-LAB` (max_uses 1).
+
+| UTC | Situazione | Osservato | Schermata |
+|---|---|---|---|
+| 20:23:20 | serata al 12/10 22→06 | `Lab` «Sold out» disabilitato (`aria-disabled`); `LAB Open`, `LAB Explicit` «Available»; nessun «Offer ends» | `20-A-on-sale-tiers.png` |
+| 20:23:27 | codice `CLOSE-LAB` | «Discount applied: 10%» | `21-A-code-usable.png` |
+| 20:23:40 | codice `FULL-LAB` (1 uso su 1) | **«Sold out»** sotto il campo | `22-A-code-sold-out.png` |
+| 20:24:03 | serata al 05/10 20:00→23:59 (chiusura 21:59 Torino, ora 22:24); `LAB Explicit` con `expires_at` a +3 h | `Lab` **«Sold out»** (esaurito E chiuso), `LAB Open` **«Expired»** disabilitato, `LAB Explicit` «Available» con «Offer ends in 2h 59m» — l'esplicito vince; nessuna riga sparita | `23-B-expired-tiers.png` |
+| 20:24:10 | `CLOSE-LAB` dopo la chiusura | **«Expired»** | `24-B-code-expired.png` |
+| 20:24:23 | `FULL-LAB` esaurito E dopo la chiusura | **«Sold out»** | `25-B-code-sold-out-and-closed.png` |
+| 20:25:08 | `buildOrderQuote` contro il lab | `LAB Open` → `tier_sales_closed`; `LAB Explicit` → OK 14 €; `+CLOSE-LAB` → `quote_discount_sales_closed` «Expired»; `+FULL-LAB` → `quote_discount_exhausted` «Sold out»; `Lab` → `quote_tier_sold_out` | — |
+| 20:25:18 | **ripristino e riconteggio da PostgREST** | serata 2026-09-28 22:00→06:00, un tier `Lab` 0 € q 10 senza scadenza, 0 codici, biglietto con `discount_code_id = null` — identici agli originali | `26-restored.png` |
+
+`npm run build` e `verify:conversion`, `verify:routes`, `verify:touch-targets`,
+`verify:breakpoints`, `verify:no-viewport-read`, `verify:venue-surfaces`: verdi.
+
+### Deviazioni
+
+**1. [Rule 1 - Bug] «Sold out» del codice non arrivava mai a un ospite.**
+`validateDiscountCode` contava gli usi con il client di chi compra: la RLS
+nasconde i biglietti altrui, il conto era sempre 0 e `FULL-LAB` rispondeva
+«applicato» (visto sul lab). Ora il conteggio (`count` in testa, nessuna riga)
+passa dalla chiave di servizio, come gia' fa il preventivo. Commit `ec6cd537`.
+
+**2. [Rule 1 - Bug] «Offer ends in» sulla chiusura di default.** Dare ai tier la
+chiusura effettiva faceva partire il countdown su ogni serata («Offer ends in
+7d 5h»), una promessa di prezzo che nessuno ha fatto. `closes_by_default` lo
+limita alle scadenze scelte. Commit `ec6cd537`.
+
+**3. Regola della mezzanotte:** la consegna chiedeva «`end_time <= time` →
+giorno dopo». Si usa `partyEndInstant` («fine prima di mezzogiorno → giorno
+dopo»), la regola gia' unica in `datetime.ts` e gemella della funzione SQL
+`party_end_instant`. Sui due casi reali (22→06, 18→22) danno la stessa
+risposta; una settima variante sarebbe la deriva che quel modulo impedisce.
+
+### Limiti
+
+- **Serata senza `end_time` → nessuna chiusura di default**: vende come prima,
+  fino a scadenza o esaurimento.
+- **La chiusura e' applicativa**: la RPC `reserve_ticket_order` controlla
+  capienza e usi, non l'orario. Un checkout aperto alle 03:59 e pagato alle
+  04:01 viene emesso (come gia' per `expires_at`).
+- **L'elenco dei tier resta visibile fino a fine serata** (non a fine − 2 h),
+  tutto disabilitato; dopo la fine la serata e' passata e l'elenco non si
+  disegna (comportamento di prima, ora in istanti di Torino e non per data UTC).
+  Il modulo RSVP gratuito resta visibile fino a fine serata e dopo −2 h riceve
+  il rifiuto del preventivo.
+- **Le frasi dei rifiuti** (`Expired`, `Sold out`, `Invalid code`) arrivano
+  come messaggi di errore di una Server Action: comportamento ereditato, non
+  provato qui su un build di produzione.
+- La card del codice in admin non mostra «Sold out» (facoltativo, non fatto).
+
+### Commit
+
+- `1c46ac45` feat(quick-benefit): chiusura di default a fine serata −2h per tier e codici senza scadenza
+- `ec6cd537` fix(quick-benefit): «Sold out» del codice anche per l'ospite, niente «Offer ends» sulla chiusura di default
