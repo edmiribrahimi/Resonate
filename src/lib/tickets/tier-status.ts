@@ -29,6 +29,13 @@ export interface PublicTier {
   show_remaining?: boolean;
   starts_at?: string | null;
   expires_at?: string | null;
+  /**
+   * 2026-10-05 — `expires_at` qui sopra e' la chiusura di DEFAULT (fine serata
+   * − 2 h, `sales-window.ts`) e non una scadenza scelta dall'organizer. Serve
+   * solo a non mostrare «Offer ends in»: un'offerta che finisce e' una
+   * promessa di prezzo, la chiusura della vendita no.
+   */
+  closes_by_default?: boolean;
 }
 
 export type TierStatus = "coming_soon" | "available" | "sold_out" | "expired";

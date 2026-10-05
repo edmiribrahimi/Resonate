@@ -408,7 +408,12 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
   // Find the currently available tier's expires_at for the countdown
   const availableTierIndex = statuses.findIndex((s) => s === "available");
   const availableTier = availableTierIndex >= 0 ? tiers[availableTierIndex] : null;
-  const countdownTarget = availableTier?.expires_at ? new Date(availableTier.expires_at) : null;
+  // Solo una scadenza SCELTA fa partire «Offer ends in»: la chiusura di default
+  // a fine serata − 2 h (2026-10-05) chiude la vendita, non un'offerta.
+  const countdownTarget =
+    availableTier?.expires_at && !availableTier.closes_by_default
+      ? new Date(availableTier.expires_at)
+      : null;
 
   function computeDiscountedPrice(price: number, disc: NonNullable<typeof discount>): number {
     if (disc.discount_type === "percentage") {

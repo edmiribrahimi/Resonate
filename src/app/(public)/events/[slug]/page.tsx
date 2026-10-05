@@ -138,6 +138,8 @@ interface PartyWithTiers {
     show_remaining?: boolean;
     starts_at?: string | null;
     expires_at?: string | null;
+    /** 2026-10-05 — `expires_at` e' la chiusura di default (fine − 2 h). */
+    closes_by_default?: boolean;
   }[];
   /**
    * OGNI biglietto di chi guarda su questa serata, non il primo.
@@ -701,12 +703,13 @@ export default async function EventDetailPage({
             // (decisione del proprietario: non sparisce), e countdown, barra
             // «from €N» e preventivo danno la stessa risposta.
             const effectiveExpiresAt = tierClosesAt(tier, party)?.toISOString() ?? null;
+            const closesByDefault = !tier.expires_at && effectiveExpiresAt !== null;
             if (soldError || count === null) {
               logUnreadableCount("event_detail.party_tier_sold_count", soldError);
-              return { ...tier, expires_at: effectiveExpiresAt, sold: 0, available: null, soldKnown: false };
+              return { ...tier, expires_at: effectiveExpiresAt, closes_by_default: closesByDefault, sold: 0, available: null, soldKnown: false };
             }
             const sold = count;
-            return { ...tier, expires_at: effectiveExpiresAt, sold, available: tier.quantity !== null ? tier.quantity - sold : null, soldKnown: true };
+            return { ...tier, expires_at: effectiveExpiresAt, closes_by_default: closesByDefault, sold, available: tier.quantity !== null ? tier.quantity - sold : null, soldKnown: true };
           })
         );
       }

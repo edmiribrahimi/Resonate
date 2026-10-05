@@ -685,10 +685,22 @@ export async function validateDiscountCode(
 
   // Check usage limits
   if (discountCode.max_uses !== null) {
-    const { count } = await supabase
+    // 2026-10-05 — il conteggio passa dalla chiave di servizio. Con il client
+    // di chi compra la RLS nasconde i biglietti altrui: per un ospite il conto
+    // era SEMPRE 0, e un codice esaurito rispondeva «applicato» (misurato sul
+    // laboratorio, `FULL-LAB`). E' un `count` in testa, nessuna riga torna
+    // indietro; la stessa lettura che `order-quote.ts` fa gia' col servizio.
+    const { count, error: usageError } = await getServiceClient()
       .from("tickets")
       .select("*", { count: "exact", head: true })
       .eq("discount_code_id", discountCode.id);
+    if (usageError) {
+      // Non si e' potuto contare: l'anteprima non dice «Sold out», e la
+      // barriera resta il preventivo e la RPC. Lo si dice nel log.
+      console.error(
+        `[discount.usage_unreadable] code_id=${discountCode.id} err=${usageError.code ?? "?"}`
+      );
+    }
 
     if ((count ?? 0) >= discountCode.max_uses) {
       // «Sold out», parola del proprietario (2026-10-05): solo qui, dove un
