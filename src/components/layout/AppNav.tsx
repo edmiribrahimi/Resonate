@@ -17,10 +17,14 @@ import { FOCUS_RING } from "@/components/ui/Button";
  *
  * ── What the bar carries, since phase 52 (D-52-01..05) ───────────────────────
  *
- * Whoever works sees four entries, in this order: **Events · Check-in · TASK ·
- * Management**. Everybody else — an `attendee`, an anonymous visitor — sees
- * **Events · Account**. TASK is drawn switched off (D-52-03) and Management
- * opens a panel instead of going anywhere. Home does not exist (D-52-02).
+ * Whoever works sees, in this order: **Events · Check-in · Management** (Check-in
+ * only where `getNavigation` admits it, Account instead of Management for whoever
+ * has no tools), with **Music** right after Check-in while the Music switch is
+ * on. Everybody else — an `attendee`, an anonymous visitor — sees **Events ·
+ * Account** (Music between them with the switch on). Management opens a panel
+ * instead of going anywhere. **TASK left the bar on 2026-10-05** (plan 52.3-19,
+ * owner's decision): it is a switched-off row at the end of the Management
+ * panel, drawn in the column and in the sheet below. Home does not exist (D-52-02).
  * **Who sees what is decided by `getNavigation` in `src/lib/rbac/roles.ts`**,
  * a pure function over session, role and capability; this file only draws what
  * it returns.
@@ -186,6 +190,8 @@ const icons: Record<string, ReactNode> = {
     </svg>
   ),
   // Phase 52 — TASK (D-52-03). Heroicons v2 outline, same form as the above.
+  // Unused since 2026-10-05 (TASK left the bar, plan 52.3-19); kept for phase
+  // 53, which decides where the task entry and its icon go.
   "clipboard-document-check": (
     <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M11.35 3.836c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m8.9-4.414c.376.023.75.05 1.124.08 1.131.094 1.976 1.057 1.976 2.192V16.5A2.25 2.25 0 0 1 18 18.75h-2.25m-7.5-10.5H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V18.75m-7.5-10.5h6.375c.621 0 1.125.504 1.125 1.125v9.375m-8.25-3 1.5 1.5 3-3.75" />
@@ -299,19 +305,8 @@ const ENTRY_RESPONSIVE =
   `${ENTRY_PHONE} md:my-0 md:min-h-11 md:flex-none md:flex-row md:items-center md:gap-3 ` +
   "md:justify-start md:gap-3 md:rounded-xl md:px-4 md:text-sm";
 
-/**
- * The column-tier restatement for the two new entries that sit in the column
- * (TASK, and nothing else: the column's Management button has its own string).
- * Only breakpoint-prefixed utilities — the unprefixed minimum is written
- * LITERALLY in each element's own class attribute below, because
- * `verify:touch-targets` reads an interpolated constant as no declaration at
- * all, and the one entry allowed to rely on constants is the link carrying
- * the `ENTRY_*` ternary (`PRIMITIVE_RAW_ELEMENTS`). The new elements do not
- * reuse that ternary (52-UI-SPEC.md §0 rule 4).
- */
-const COLUMN_TIER =
-  "md:flex-none md:flex-row md:items-center md:justify-start md:gap-3 " +
-  "md:rounded-xl md:px-4 md:text-sm";
+// `COLUMN_TIER` — the column-tier restatement of the bar's TASK entry — left
+// with that entry on 2026-10-05 (plan 52.3-19): nothing else used it.
 
 /** 2 px. An underline in the bar; a leading edge in the column. */
 // The phone indicator is the FILL behind the active entry, not a line under
@@ -336,10 +331,10 @@ const INDICATOR_EDGE = "absolute inset-y-1 start-0 w-0.5 rounded-full bg-accent"
 const INDICATOR_SHEET_ROW = "absolute inset-y-2 start-0 w-0.5 rounded-full bg-accent";
 
 /**
- * The icon well — 52-UI-SPEC.md §A.2. **Every** entry carries it, so the four
- * icons sit at the same height as TASK's, whose well shows a dashed border.
- * The border is transparent everywhere else; without the well, TASK's icon
- * would sit 2 px lower than its neighbours.
+ * The icon well — 52-UI-SPEC.md §A.2. **Every** entry carries it, with a
+ * transparent border. It was sized so the icons sat at the height of TASK's
+ * dashed well; TASK left the bar on 2026-10-05 (plan 52.3-19), and the well
+ * stays so no icon moves.
  */
 const WELL =
   "relative inline-flex h-7 w-10 items-center justify-center rounded-full border";
@@ -362,7 +357,9 @@ export default function AppNav({
   // "Am I inside the panel?" — the path starts with the address of one of its
   // rows. More precise than a `/admin/` prefix: it covers `/gallery` and
   // `/account`, and it excludes `/admin/scanner`, which is the door.
-  const inPanel = panel.some((entry) => pathname.startsWith(entry.href));
+  const inPanel = panel.some(
+    (entry) => entry.kind === "link" && pathname.startsWith(entry.href)
+  );
 
   // ── Two states, one per disclosure (never one state read by width) ───────
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -482,54 +479,13 @@ export default function AppNav({
               );
             }
 
-            if (entry.kind === "disabled") {
-              // ── TASK, drawn switched off — D-52-03, D-52-24 ─────────────
-              //
-              // A `button` with `aria-disabled`, NOT a link: no `href`, no
-              // `onClick`, no `title`, no tooltip, no placeholder page, no
-              // "Soon". It stays in the Tab order, so a screen reader finds it
-              // and hears that it is unavailable. It reads NO data and shows no
-              // count: the tasks do not exist until phase 53.
-              //
-              // Its state is not carried by the grey. `--faint` on `--ground`
-              // is 3.54:1 — the one declared use of that colour as text,
-              // exempt under WCAG 1.4.3 as an inactive component — and the
-              // non-colour channel is the DASHED border of the well ("not
-              // finished", as elsewhere in the tree) plus `aria-disabled`. No
-              // `active:` feedback and `cursor-default`: a tap does nothing and
-              // must not look as if it did something.
-              return (
-                <button
-                  key="task"
-                  type="button"
-                  aria-disabled="true"
-                  className={`relative flex min-h-11 flex-1 cursor-default flex-col items-center justify-center gap-1 text-xs text-faint ${FOCUS_RING} ${
-                    isPhone ? "" : COLUMN_TIER
-                  }`}
-                >
-                  {/*
-                    The badge slot of TASK-04, built in phase 53 — its geometry
-                    is fixed here so phase 53 finds it instead of inventing it,
-                    and NOTHING is drawn in it today (no empty span, no zero):
-                      anchor   this well (it is `relative`)
-                      place    absolute, -top-1, start at calc(100% - 0.5rem):
-                               8 px past the well's trailing edge, 4 px above
-                      size     h-4 (16 px), min-w-4, px-1, rounded-full
-                      text     font-mono text-xs font-semibold, two numbers
-                               joined by a middle dot (e.g. 3·1)
-                      extent   at most 12·12 ≈ 44 px, inside half a 90 px entry
-                      rule     absolute: it never changes the row's 5 rem nor
-                               the entry's width
-                      colour   phase 53's, from the 41 palette — never
-                               `--accent`, which is a navigation state
-                  */}
-                  <span className={`${WELL} border-dashed border-faint`}>
-                    {icons[entry.icon]}
-                  </span>
-                  <span>{entry.label}</span>
-                </button>
-              );
-            }
+            // ── TASK used to be drawn here, switched off (D-52-03, D-52-24) ──
+            //
+            // The entry left the bar on 2026-10-05 (plan 52.3-19, owner's
+            // decision); it is a switched-off row at the end of the Management
+            // panel (column and sheet below). The badge slot of TASK-04 had its
+            // geometry fixed here for phase 53: phase 53 places the badge on the
+            // panel row instead. No new geometry is invented in this file.
 
             // ── Management — two buttons, two disclosures, chosen by CSS ────
             //
@@ -610,6 +566,25 @@ export default function AppNav({
                       className="hidden md:flex md:flex-col md:gap-1"
                     >
                       {panel.map((row) => {
+                        if (row.kind === "disabled") {
+                          // TASK, switched off (2026-10-05, plan 52.3-19): a
+                          // `button` with `aria-disabled`, no `onClick`, no
+                          // hover, no `active:`. The non-colour channel of
+                          // «off» is the dashed border, as it was in the bar.
+                          return (
+                            <button
+                              key="task"
+                              type="button"
+                              aria-disabled="true"
+                              className={`relative flex min-h-11 items-center rounded-xl ps-16 pe-4 text-sm cursor-default text-faint ${FOCUS_RING}`}
+                            >
+                              <span className="rounded-full border border-dashed border-faint px-2">
+                                {row.label}
+                              </span>
+                            </button>
+                          );
+                        }
+
                         const isRowActive = pathname.startsWith(row.href);
 
                         return (
@@ -680,6 +655,22 @@ export default function AppNav({
             className={`fixed inset-x-0 z-50 mx-auto max-w-lg overflow-y-auto rounded-t-2xl border-t border-line bg-surface py-2 animate-[management-sheet-in_160ms_ease-out] motion-reduce:animate-none ${sheetBottom} ${sheetMaxHeight} ${phoneOnly}`}
           >
             {panel.map((row) => {
+              if (row.kind === "disabled") {
+                // TASK, switched off — same element as in the column above.
+                return (
+                  <button
+                    key="task"
+                    type="button"
+                    aria-disabled="true"
+                    className={`relative flex min-h-11 items-center px-6 text-sm cursor-default text-faint ${FOCUS_RING}`}
+                  >
+                    <span className="rounded-full border border-dashed border-faint px-2">
+                      {row.label}
+                    </span>
+                  </button>
+                );
+              }
+
               const isRowActive = pathname.startsWith(row.href);
 
               // A tap on a row navigates AND closes — the current row too,

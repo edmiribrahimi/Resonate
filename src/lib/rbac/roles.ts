@@ -134,10 +134,12 @@ export type { UserRole };
 //
 //   · `link` — Events, Check-in, Account. Porta a un indirizzo, ed e' l'unica
 //     delle tre che la mappa e la guardia devono mantenere.
-//   · `disabled` — TASK (D-52-03). **Nessun `href`, per costruzione**: il tipo
-//     non ha il campo, quindi nessun consumatore puo' farne un link per
-//     distrazione. La pagina non esiste ancora (fase 53); la voce e' disegnata
-//     perche' la barra abbia gia' la sua forma finale.
+//   · ~~`disabled`~~ — TASK (D-52-03) stava qui come voce spenta della barra.
+//     **E' uscita dalla barra il 2026-10-05** (piano 52.3-19, decisione del
+//     proprietario: *«nascondiamo task dalla barra (attualmente inutilizzato) e
+//     lasciamolo solo nel pannello management. così c'è spazio per music anche
+//     per chi lavora.»*). La forma spenta vive ora in `PanelEntry`, qui sotto,
+//     con la stessa disciplina: **nessun `href`, per costruzione**.
 //   · `panel` — Management. Non porta da nessuna parte: apre il pannello, il
 //     cui contenuto e' `panel` qui sotto. Anche lei senza `href`.
 //
@@ -159,11 +161,6 @@ export type BarEntry =
       readonly icon: string;
     }
   | {
-      readonly kind: "disabled";
-      readonly label: "TASK";
-      readonly icon: string;
-    }
-  | {
       readonly kind: "panel";
       readonly label: "Management";
       readonly icon: string;
@@ -172,11 +169,23 @@ export type BarEntry =
 /**
  * Una riga del pannello Management: un indirizzo e un'etichetta, niente icona
  * (UI-SPEC §B.1 — una voce per riga, nessuna icona, nessuna intestazione).
+ *
+ * **Due forme dal 2026-10-05** (piano 52.3-19): `link`, come prima, e
+ * `disabled` — la riga TASK, uscita dalla barra ed entrata qui. La riga spenta
+ * **non ha `href` per costruzione**: TASK non ha una rotta (fase 53), quindi
+ * nascondere o spostare la voce non lascia scoperta nessuna pagina e nessuna
+ * guardia server cambia (`access-gating.md`, coerenza navigazione/permessi).
  */
-export interface PanelEntry {
-  readonly href: Route;
-  readonly label: string;
-}
+export type PanelEntry =
+  | {
+      readonly kind: "link";
+      readonly href: Route;
+      readonly label: string;
+    }
+  | {
+      readonly kind: "disabled";
+      readonly label: "TASK";
+    };
 
 /** Cio' che la funzione pura restituisce: la barra e il pannello, insieme. */
 export interface Navigation {
@@ -378,7 +387,13 @@ const ACCOUNT: LinkDeclaration = {
 /**
  * I ruoli che vedono TASK spenta — D-52-03, allargato al `master` da D-52-24.
  *
- * **L'unico filtro per ruolo della barra**, e scritto come tale. TASK e' la
+ * **Dal 2026-10-05 decide la riga del pannello, non piu' una voce della barra**
+ * (piano 52.3-19). E la riga entra **solo in un pannello gia' non vuoto**: uno
+ * `staff`, che non ha strumenti, non riceve un pannello col solo TASK — quindi
+ * **lo staff non vede piu' TASK da nessuna parte**. La fase 53, che accende i
+ * task (TASK-01, e il badge di TASK-04), deve ricollocarli sapendolo.
+ *
+ * **L'unico filtro per ruolo della navigazione**, e scritto come tale. TASK e' la
  * voce di chi lavorera' sui task nella fase 53 (organizer e staff, TASK-01); il
  * `master` la vede perche' tiene tutto, e la sua barra mostra la forma finale.
  * L'`attendee` non la vede: non ha task, e una voce spenta che non si accendera'
@@ -393,10 +408,9 @@ const TASK_ROLES = [
   "staff",
 ] as const satisfies readonly UserRole[];
 
-const TASK: BarEntry = {
+const TASK: PanelEntry = {
   kind: "disabled",
   label: "TASK",
-  icon: "clipboard-document-check",
 };
 
 const MANAGEMENT: BarEntry = {
@@ -432,6 +446,7 @@ const MANAGEMENT: BarEntry = {
  */
 function panelFor(capabilities: readonly CapabilityKey[]): PanelEntry[] {
   const entries: PanelEntry[] = visibleStaffTabs(capabilities).map((tab) => ({
+    kind: "link" as const,
     href: tab.href,
     label: tab.label,
   }));
@@ -440,7 +455,7 @@ function panelFor(capabilities: readonly CapabilityKey[]): PanelEntry[] {
     return [];
   }
 
-  entries.push({ href: ACCOUNT.href, label: ACCOUNT.label });
+  entries.push({ kind: "link", href: ACCOUNT.href, label: ACCOUNT.label });
 
   return sortTabsByLabel(entries);
 }
@@ -523,38 +538,44 @@ function toLink(
  * |---|---|---|
  * | anonimo | Events · Account (→ `/login`) | — |
  * | `attendee` | Events · Account | — |
- * | `staff` non assegnato | Events · TASK · Account | — |
- * | `staff` assegnato a una serata in corso | Events · Check-in · TASK · Account | — |
- * | `organizer` | Events · Check-in · TASK · Management | 9 strumenti + Account |
- * | `master` | Events · Check-in · TASK · Management | 10 strumenti + Account |
+ * | `staff` non assegnato | Events · Account | — |
+ * | `staff` assegnato a una serata in corso | Events · Check-in · Account | — |
+ * | `organizer` | Events · Check-in · Management | 9 strumenti + Account, poi TASK spenta |
+ * | `master` | Events · Check-in · Management | 10 strumenti + Account, poi TASK spenta |
+ * | contesto fallito | Events · Account (→ `/login`) | — |
  *
  * *(2026-10-02, DBT-13: Gallery e' uscita da ogni pannello con la gallery, e lo
  * `staff`, che nel pannello aveva solo quella, ha Account in barra.)*
- * | contesto fallito | Events · Account (→ `/login`) | — |
+ *
+ * *(2026-10-05, piano 52.3-19, decisione del proprietario: **TASK e' uscita
+ * dalla barra di ogni ruolo** ed e' una riga spenta in coda al pannello di
+ * organizer e master. TASK non ha una rotta — nessun `href` per costruzione —
+ * quindi nessuna guardia cambia. **Lo staff non la vede piu' da nessuna parte**:
+ * non ha pannello, e la riga non crea un pannello. La fase 53 deve saperlo.)*
  *
  * **A interruttore Music acceso** (`NEXT_PUBLIC_MUSIC_PAGE_ENABLED=true`, fase
- * 52.3, MUS-02) la voce Music entra **dopo Check-in e prima di TASK** — la
- * porta resta seconda per chi lavora:
+ * 52.3, MUS-02) la voce Music entra **subito dopo Check-in** — la porta resta
+ * seconda per chi lavora:
  *
  * | Soggetto | Barra, interruttore acceso |
  * |---|---|
  * | anonimo | Events · Music · Account (→ `/login`) |
  * | `attendee` | Events · Music · Account |
- * | `staff` non assegnato | Events · Music · TASK · Account |
- * | `staff` assegnato a una serata in corso | Events · Check-in · Music · TASK · Account |
- * | `organizer` / `master` | Events · Check-in · Music · TASK · Management |
+ * | `staff` non assegnato | Events · Music · Account |
+ * | `staff` assegnato a una serata in corso | Events · Check-in · Music · Account |
+ * | `organizer` / `master` | Events · Check-in · Music · Management |
  *
- * **A interruttore spento la tabella di sopra vale invariata**, riga per riga:
- * nessuna voce Music per nessun soggetto, e nessuna voce spostata.
+ * **A interruttore spento vale la prima tabella**, riga per riga: nessuna voce
+ * Music per nessun soggetto, e nessuna voce spostata.
  *
- * **Misurato il 2026-10-03 sul laboratorio (piano 52.3-09), e la misura dice
- * che le righe a cinque voci NON ci stanno sul telefono.** La pillola chiede
- * 388 px (`Management`) o 401 px (`Account`) di contenuto contro i 326 / 341
- * utili a 360 / 375 px (`max-w-[calc(100vw-2rem)]`): l'ultima voce esce
- * tagliata dal bordo. A tre voci (anonimo, `attendee`) ci sta con margine; a
- * interruttore spento le quattro voci di oggi ci stanno (323 / 310 px). **O-6
- * resta del proprietario** (piano 52.3-13): niente etichette accorciate, niente
- * icone tolte, niente scorrimento — e Check-in resta seconda in ogni caso.
+ * **La misura della pillola sul telefono** — 2026-10-03 (piano 52.3-09): a
+ * cinque voci (con TASK) le righe di chi lavora NON ci stavano (388 / 401 px di
+ * contenuto contro 326 / 341 utili a 360 / 375). Rimisurata il 2026-10-05
+ * (piano 52.3-19) senza TASK: vedi la tabella qui sotto. O-6 resta del
+ * proprietario: niente etichette accorciate, niente icone tolte, niente
+ * scorrimento — e Check-in resta seconda in ogni caso.
+ *
+ * <!-- MISURA-52.3-19 -->
  *
  * **Il contesto fallito non arriva qui come un ruolo.** `getAccessContext()`
  * **lancia** con la categoria `capabilities.resolve_failed` quando
@@ -568,7 +589,7 @@ function toLink(
  * **Una conseguenza da leggere prima di chiamarla un difetto.** Uno `staff`
  * non tiene alcuna voce del pannello — l'unica era Gallery, uscita il
  * 2026-10-02 (DBT-13) — quindi il pannello e' vuoto e la sua barra e'
- * **Events · TASK · Account**. E' la derivazione che si comporta bene, non una
+ * **Events · Account** (con Check-in fra le due se assegnato stasera). E' la derivazione che si comporta bene, non una
  * voce persa: la presenza del pannello discende dalle capability, e chi non ne
  * ha non riceve un pannello con il solo Account.
  *
@@ -579,7 +600,7 @@ function toLink(
  * riparazione che chiude la porta.
  *
  * **La barra si filtra su tre cose, ed e' l'elenco intero** (D-50-09):
- * sessione, ruolo, capability. Il ruolo decide TASK; le capability decidono
+ * sessione, ruolo, capability. Il ruolo decide la riga TASK del pannello; le capability decidono
  * Check-in e il pannello; la sessione decide l'indirizzo di Account. Un quarto
  * criterio qui dentro e' una decisione d'accesso, non una rifinitura — e la
  * presenza del pannello, che potrebbe sembrarlo, e' derivata (D-52-04).
@@ -627,11 +648,19 @@ export function getNavigation(
   // questa riga sopra il blocco di Check-in — ed e' una decisione del proprietario.
   if (musicPageEnabled()) bar.push(toLink(MUSIC, isAuthenticated));
 
-  if (role !== null && (TASK_ROLES as readonly UserRole[]).includes(role)) {
-    bar.push(TASK);
-  }
-
+  // Management o Account si decide sul pannello degli STRUMENTI, prima di TASK:
+  // la presenza del pannello resta derivata dalle sole capability (D-52-04).
   bar.push(panel.length > 0 ? MANAGEMENT : toLink(ACCOUNT, isAuthenticated));
+
+  // TASK (2026-10-05, piano 52.3-19): riga spenta in coda a un pannello GIA'
+  // non vuoto, mai una voce della barra, mai la ragione di un pannello.
+  if (
+    panel.length > 0 &&
+    role !== null &&
+    (TASK_ROLES as readonly UserRole[]).includes(role)
+  ) {
+    panel.push(TASK);
+  }
 
   return { bar, panel };
 }
