@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { FOCUS_RING, IconButton } from "@/components/ui/Button";
-import { slotLabel } from "@/lib/livecuts/title";
+import { showsPartNumber, slotLabel } from "@/lib/livecuts/title";
 import type { LiveCutView } from "@/lib/livecuts/view";
 import { ExternalLinkIcon } from "./LiveCutCard";
 import LiveCutCover from "./LiveCutCover";
@@ -71,6 +71,8 @@ export const IFRAME_MODE = "hidden-with-fallback" as const;
  * on phones, the «Listen in browser» button under SoundCloud's own overlay. At
  * 80 that button touches the iframe's bottom edge; at 60 the play is covered;
  * 166 shows «Play another track» with other people's tracks after a pause.
+ * Kept at 100 by plan 52.3-19 (2026-10-05): the minimum that shows «Listen in
+ * browser» whole and away from the edge.
  */
 export const FALLBACK_IFRAME_HEIGHT_PX = 100;
 
@@ -189,7 +191,14 @@ interface PlayerState {
   status: PlayerStatus;
   /** The one iframe: its key changes only when a widget that never became ready is replaced. */
   iframe: { key: number; src: string } | null;
-  /** Once the fallback has opened, the iframe stays visible for the rest of the visit (§B.3). */
+  /**
+   * The fallback, INSIDE the bar: `refused` is the only action that opens it,
+   * and `play` / `progress` close it again — the moment the track really plays.
+   * No longer «for the rest of the visit»: after the one tap iOS demands inside
+   * the widget, pause and resume work from our bar with the iframe hidden again
+   * (`52.3-SPIKE.md:161`), and the owner asked on 2026-10-05 for one player
+   * only, ours (request 17, plan 52.3-19).
+   */
   iframeVisible: boolean;
   positionMs: number;
   relative: number;
@@ -237,6 +246,7 @@ function reducer(state: PlayerState, action: PlayerAction): PlayerState {
       return {
         ...state,
         status: "playing",
+        iframeVisible: false,
         positionMs: action.positionMs,
         relative: action.relative,
       };
@@ -699,7 +709,7 @@ function PlayerBar({
 
       {state.status === "refused" && (
         <p role="status" className="px-2 pt-2 text-xs text-muted">
-          Tap play in the player.
+          Tap “Listen in browser” in the player.
         </p>
       )}
 
@@ -712,9 +722,15 @@ function PlayerBar({
         <div className="min-w-0 flex-1 ms-2">
           <p className="truncate text-sm font-semibold text-ink normal-case">{liveCut.title}</p>
           <p className="truncate font-mono text-xs font-semibold text-muted">
-            <span aria-hidden="true">PT{liveCut.partNumber}</span>
-            <span className="sr-only">Part {liveCut.partNumber}</span>
-            {" · "}
+            {/* PT only when the night has two or more parts — the card's rule
+                (`showsPartNumber`, plan 52.3-17); otherwise the slot alone. */}
+            {showsPartNumber(liveCut) && (
+              <>
+                <span aria-hidden="true">PT{liveCut.partNumber}</span>
+                <span className="sr-only">Part {liveCut.partNumber}</span>
+                {" · "}
+              </>
+            )}
             {slotLabel(liveCut.slotStart, liveCut.slotEnd)}
           </p>
         </div>
