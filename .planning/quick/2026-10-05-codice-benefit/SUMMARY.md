@@ -343,3 +343,103 @@ Da verificare uno per uno se l'azione chiamata lancia davvero rifiuti attesi
 (alcune azioni del menu restituiscono gia' un valore: `menu/actions.ts:16-32`).
 
 **Secondo atto (solo codice), autorizzato dal proprietario il 2026-10-05 alla lettera: «comit e push in prod».** Perimetro: push di `main` con la correzione dei messaggi di rifiuto del codice; nessuna migration. Registrato alle 2026-10-05T21:29:46Z.
+
+## Quarto intervento — il rifiuto dell'acquisto del biglietto si legge anche in produzione
+
+Richiesta del proprietario (2026-10-05): «sistema anche il mascheramento nel
+pagamento del biglietto». Commit `c2ebf394`.
+
+**Cosa c'era davvero, misurato prima di toccare.** Le strade d'acquisto del
+biglietto sono due, e non erano nello stesso stato:
+
+- **La serata** (`purchaseTicketsGuest`, con o senza sessione dal 2026-09-24):
+  restituiva **gia'** `{ success: false, refusal, error }` per ogni causa —
+  `buildOrderQuote` non solleva mai (`order-quote.ts:264-271`, venti cause con
+  la loro frase in `ORDER_QUOTE_ERROR`). Mancava una cosa sola: in
+  `TierSelection.tsx` la chiamata **non aveva alcun catch**, quindi un guasto
+  vero sarebbe finito nel boundary d'errore invece che nello slot `role="alert"`.
+- **L'Event Pass** (`purchaseTicket`, solo con sessione e `partyId` nullo) e
+  `PendingIntentHandler`: ogni rifiuto era un `throw` → `err.message`, cioe' in
+  produzione il testo generico di Next.
+
+Il contratto dell'ospite **non e' stato rinominato** in `{ ok, reason, message }`:
+restituiva gia' valori, e rinominare i campi sul percorso del denaro sarebbe
+stato rischio senza effetto. La forma `{ ok: false, reason, message }` vale per
+`purchaseTicket`, che e' quella che mascherava.
+
+**Audit dei `throw` di `purchaseTicket`** (`src/app/(admin)/admin/events/actions.ts`):
+
+| Prima (`throw new Error(...)`) | Ora | Riga |
+|---|---|---|
+| «Not authenticated» | restituito `not_authenticated` | `:1666` |
+| «Profile not found» | **ancora sollevato**: sessione senza profilo = guasto; `[ticket.purchase_failed] stage=profile_read` | `:1683` |
+| «Ticket tier not found» | restituito `tier_not_found` se nessuna riga (`PGRST116`); errore di lettura → `stage=tier_read` + throw | `:1695-1699` |
+| «This ticket tier is not available (sold_out/expired/coming_soon)» | restituito `tier_not_available`, stessa frase con lo stato | `:1823` |
+| «Sub-event not found» | restituito `night_not_found`; errore di lettura → `stage=party_read` + throw | `:1843-1847` |
+| «Tier does not belong to this sub-event's event» | restituito `tier_other_night` | `:1851` |
+| «Sales for this ticket type have closed… (tier_sales_closed)» | restituito `tier_sales_closed` (il `console.error` `[tickets.tier_sales_closed]` resta) | `:1861` |
+| «…not on sale for this night (tier_free_on_paid_night)» | restituito `tier_free_on_paid_night` (log invariato) | `:1881` |
+| «You already have a ticket for this sub-event» | restituito `already_has_night_ticket` | `:1893` |
+| «You already have an Event Pass for this event» | restituito `already_has_event_pass` | `:1906` |
+| «Event not found» | restituito `event_not_found`; errore di lettura → `stage=event_read` + throw | `:1918-1922` |
+| «Invalid discount code» | restituito `discount_unknown`; errore di lettura → `stage=discount_read` + throw (prima un guasto diceva «Invalid») | `:1938-1941` |
+| «Discount code is no longer active» | restituito `discount_inactive` | `:1942` |
+| «Code not valid for this event» / «…for this tier» | restituiti `discount_other_night` / `discount_other_tier` | `:1943`, `:1954` |
+| «Sold out» (`CODE_SOLD_OUT_MESSAGE`) | restituito `discount_exhausted` | `:1978` |
+| «Expired» (`CODE_SALES_CLOSED_MESSAGE`) | restituito `discount_sales_closed` | `:1983` |
+| «Discount would bring price below minimum (€1.00)» | restituito `discount_below_minimum` | `:1994` |
+| «This order is below the minimum a card payment can take (€1.00)…» | restituito `below_minimum` (log `[tickets.quote_below_minimum]` invariato) | `:2019` |
+| `createCheckout` che solleva | **ancora sollevato**, prima `stage=checkout_create`; la chiamata e' identica | `:2049` |
+| «Failed to initiate purchase» (insert `pending_purchases`) | **ancora sollevato**, + `stage=pending_insert code=<pg>` | `:2070` |
+
+Le frasi vivono in un posto solo, `src/lib/tickets/purchase-refusals.ts`
+(`TICKET_PURCHASE_MESSAGE`), **identiche a quelle dei `throw`**: nessuna parola
+nuova. Prezzo, `pending_purchases`, chiamata SumUp e webhook invariati; il
+successo restituisce lo stesso carico di prima piu' `ok: true`.
+
+**Le pagine.** `TierSelection.tsx:540` (Event Pass) e
+`PendingIntentHandler.tsx:85` mostrano `result.message`; i catch
+(`TierSelection.tsx:515` serata — nuovo —, `:549` Event Pass,
+`PendingIntentHandler.tsx:118`) loggano `[ticket.purchase_unreachable] road=…` e
+dicono «Something went wrong. Try again.», solo su un errore sollevato.
+
+**Prova sul laboratorio con build di PRODUZIONE** (2026-10-05, UTC).
+`next build --webpack` con `.env.local` + `.env.lab.local` e il rifiuto del ref
+di produzione come prima istruzione; **`SUMUP_API_KEY` e `SUMUP_MERCHANT_CODE`
+sovrascritti con valori finti** per build e start (il lab non li sovrascrive, e
+un rifiuto mancato avrebbe aperto un checkout vero). Bundle: 9 file con il ref
+del lab, 0 con quello di produzione. `next start -p 3471`, Chrome headless
+375×812 via CDP, senza sessione (cassa unica). Serata
+`lab-secret-night` (party `046af799…`), tier «Lab Secret» `06bfc9ea…` (1,00 €,
+quantity 40, 0 venduti).
+
+| UTC | Azione | Osservato | Schermata |
+|---|---|---|---|
+| 21:58:41 → 21:58:42 | pagina caricata con il tier disponibile, tier scelto, nome e mail; poi in lab `quantity` 40 → 1 e un biglietto temporaneo `e393754a…` (esaurito) | — | — |
+| 21:58:47 | Buy Ticket | **«This ticket type is sold out. Nothing was charged.»** nello slot `role="alert"`; testo di Next assente | `~/Documents/Resonate/hotfix-benefit/prod-build-purchase-01-tier-sold-out.png` |
+| 21:58:48 | ripristino | biglietto `e393754a…` cancellato, `quantity` 40; PostgREST: 0 biglietti sul tier, `ticket_orders` della serata 9 prima e 9 dopo | — |
+| 21:59:05 → 21:59:16 | codice temporaneo `LAB-PROOF-INACTIVE` (`2076eba4…`, 10 %) applicato in anteprima | «Discount applied: 10%» | `…/prod-build-purchase-02a-code-applied.png` |
+| 21:59:16 → 21:59:22 | in lab `is_active=false`, poi Buy Ticket | **«That discount code is no longer active.»** nello slot `role="alert"`; testo di Next assente | `…/prod-build-purchase-02b-code-inactive.png` |
+| 21:59:22 | ripristino | codice cancellato; `discount_codes` 0 righe, `ticket_orders` 9, tier quantity 40 / 1,00 € | — |
+
+Nessun checkout SumUp creato: entrambi i rifiuti cadono nel preventivo, prima di
+`createCheckout`. Dopo la prova server e Chrome spenti, `.next` ricostruito con
+l'ambiente normale (0 file col ref del lab).
+
+`npm run build`, `verify:conversion`, `verify:routes`, `verify:touch-targets`,
+`verify:dialogs`: verdi.
+
+**Limiti, detti.**
+
+- La prova browser copre la **strada della serata**, quella che chi compra usa.
+  La strada dell'**Event Pass** — dove i `throw` sono stati davvero convertiti —
+  **non e' stata osservata**: il lab ha zero tier di evento (`party_id` nullo) e
+  la sezione appare solo con piu' serate; costruirla voleva dire un evento, due
+  serate, un tier e una sessione di fixture. Coperta dal typecheck del build
+  (il tipo di ritorno costringe i due chiamanti a leggere `ok`), non da una
+  corsa.
+- Il ramo `[ticket.purchase_unreachable]` non e' stato provocato.
+- **Debito invariato** (stesso schema `throw` → `err.message`, fuori perimetro):
+  `DrinkMenu.tsx:59`, `menu/GuestDrinkMenu.tsx:225`,
+  `RedeemConfirmationModal.tsx:142/170/185`, `menu/GuestTokenDisplay.tsx:461/489/504`
+  — bar e token.
