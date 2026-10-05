@@ -120,9 +120,25 @@ export function matchesSoundCloudTitle(oembedTitle: string | null, computed: str
   return oembedTitle === computed || oembedTitle.startsWith(`${computed} by `);
 }
 
-/** The event key: `Lab Series 002` (fictitious), or the bare series name when the number is null. */
+/**
+ * The event key: `Lab Series 002` (fictitious), or the bare series name when
+ * the number is null. Admin only: the public page does not use it since
+ * 2026-10-05 (the series key is internal — owner's request 13).
+ */
 export function nightKey(seriesName: string, number: number | null): string {
   return number === null ? seriesName : `${seriesName} ${String(number).padStart(3, "0")}`;
+}
+
+/**
+ * Does the `PT<n>` badge show? Only when the event has at least two published
+ * parts — owner's request 14 of 2026-10-05, verbatim *«quando c'è solo pt1 non
+ * mettiamolo»*. One rule for the card and for the player bar.
+ *
+ * Structural parameter (not `Pick<LiveCutView, …>`): this module imports
+ * nothing, not even a type.
+ */
+export function showsPartNumber(liveCut: { readonly partCount: number }): boolean {
+  return liveCut.partCount >= 2;
 }
 
 /** `2026-09-03` → `Thu 3 Sept 26` (fictitious example). */

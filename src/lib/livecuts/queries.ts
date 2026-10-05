@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { liveCutTitle, nightKey } from "@/lib/livecuts/title";
+import { liveCutTitle } from "@/lib/livecuts/title";
 import type { LiveCutArtistView, LiveCutView, NightBlock } from "@/lib/livecuts/view";
 
 /**
@@ -23,6 +23,13 @@ import type { LiveCutArtistView, LiveCutView, NightBlock } from "@/lib/livecuts/
  * This page never shows where an event happened, at any moment, so it does not
  * import the reveal predicate either.
  *
+ * Narrowed on 2026-10-05 (plan 52.3-17): the series name, the progressivo, the
+ * event's end time and the event slug are no longer read. The series key is
+ * internal to us — the owner's request 13 at the checkpoint — and the series
+ * name was also the only place the venue could surface on this page. A column
+ * that is not shown is not read; widening it again is a decision, and check H
+ * (`verify:venue-surfaces`, H2 and H6) goes red until it is taken.
+ *
  * ── Error is not empty ───────────────────────────────────────────────────────
  *
  * A failed read returns `{ ok: false, code }` and logs
@@ -33,9 +40,10 @@ import type { LiveCutArtistView, LiveCutView, NightBlock } from "@/lib/livecuts/
  *
  * ── What is not counted ──────────────────────────────────────────────────────
  *
- * No count of timetable slots, anywhere. The «number of episodes» of an event,
- * on this page, is the number of its PUBLISHED cards — computed by the page from
- * `liveCuts.length`. The timetable is production material and does not enter.
+ * No count of timetable slots, anywhere. The number of parts of an event, on
+ * this page, is the number of its PUBLISHED cards — `partCount`, set below after
+ * grouping and before any filter. The timetable is production material and
+ * does not enter.
  */
 
 export type MusicListResult =
@@ -90,16 +98,12 @@ function parseRow(raw: unknown): ParsedRow | null {
   const mixcloudUrl = str(row.mixcloud_url);
 
   const party = asObj(row.event_parties);
-  const series = asObj(party?.party_series);
   const format = asObj(party?.formats);
-  const event = asObj(party?.events);
 
   const date = str(party?.date);
-  const seriesName = str(series?.name);
   const formatName = str(format?.name);
   const formatSlug = str(format?.slug);
   const formatColor = str(format?.color);
-  const eventSlug = str(event?.slug);
 
   if (
     !id ||
@@ -113,11 +117,9 @@ function parseRow(raw: unknown): ParsedRow | null {
     !coverUrl ||
     !party ||
     !date ||
-    !seriesName ||
     !formatName ||
     !formatSlug ||
-    !formatColor ||
-    !eventSlug
+    !formatColor
   ) {
     return null;
   }
@@ -136,8 +138,6 @@ function parseRow(raw: unknown): ParsedRow | null {
   artists.sort((a, b) => a.sortOrder - b.sortOrder);
   const orderedArtists = artists.map((a) => a.artist);
 
-  const number = num(party.number);
-
   return {
     view: {
       id,
@@ -151,7 +151,7 @@ function parseRow(raw: unknown): ParsedRow | null {
       mixcloudUrl,
       artists: orderedArtists,
       // The FORMAT's name (D-52.3-03, amended 2026-10-03) — never the series
-      // name, which only builds the event key below.
+      // name, which this read does not even fetch (2026-10-05).
       title: liveCutTitle(
         orderedArtists.map((a) => a.name),
         formatName,
@@ -160,14 +160,14 @@ function parseRow(raw: unknown): ParsedRow | null {
       formatName,
       formatSlug,
       formatColor,
+      date,
+      // Set after grouping, in `listPublishedLiveCuts`.
+      partCount: 0,
     },
     night: {
       partyId,
-      eventSlug,
-      key: nightKey(seriesName, number),
       date,
       time: str(party.time),
-      endTime: str(party.end_time),
     },
     formatSortOrder: num(format?.sort_order) ?? 0,
   };
@@ -191,7 +191,7 @@ export async function listPublishedLiveCuts(): Promise<MusicListResult> {
 
   const { data, error } = await supabase
     .from("livecuts")
-    .select("id, party_id, part_number, slot_start, slot_end, soundcloud_url, soundcloud_track_id, mixcloud_url, duration_seconds, cover_url, published_at, event_parties(id, date, time, end_time, number, party_series!event_parties_series_id_fkey(name), formats(slug, name, color, sort_order), events(slug)), livecut_artists(sort_order, artists(name, slug))")
+    .select("id, party_id, part_number, slot_start, slot_end, soundcloud_url, soundcloud_track_id, mixcloud_url, duration_seconds, cover_url, published_at, event_parties(id, date, time, formats(slug, name, color, sort_order)), livecut_artists(sort_order, artists(name, slug))")
     .not("published_at", "is", null);
 
   if (error) {
@@ -244,7 +244,13 @@ export async function listPublishedLiveCuts(): Promise<MusicListResult> {
 
   const nights = [...nightsById.values()];
   // Timetable order: `part_number`, NEVER clock time — 00:30 would sort before 22:00.
-  for (const block of nights) block.liveCuts.sort((a, b) => a.partNumber - b.partNumber);
+  // Then `partCount`: the published parts of the event, counted HERE — after
+  // grouping, before any filter — so `filterNights` copies it and never
+  // recomputes it on a filtered list.
+  for (const block of nights) {
+    block.liveCuts.sort((a, b) => a.partNumber - b.partNumber);
+    for (const view of block.liveCuts) view.partCount = block.liveCuts.length;
+  }
   nights.sort(compareNightsDesc);
 
   // Only formats that have at least one published LiveCut: derived from the
@@ -262,7 +268,8 @@ export async function listPublishedLiveCuts(): Promise<MusicListResult> {
 
 /**
  * Pure. A value that matches nothing filters to zero — the filtered empty state
- * says so — and an event left without cards disappears.
+ * says so — and an event left without cards disappears. Views are copied as
+ * they are: `partCount` stays the count of the whole event.
  */
 export function filterNights(
   nights: NightBlock[],

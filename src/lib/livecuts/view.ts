@@ -50,17 +50,32 @@ export interface LiveCutView {
   formatName: string;
   formatSlug: string;
   formatColor: string;
+  /**
+   * Civil date `YYYY-MM-DD` of the event this LiveCut belongs to — for the
+   * card's line (`civilDateLabel`); never `new Date()` on it.
+   */
+  date: string;
+  /**
+   * How many PUBLISHED LiveCuts the event has, counted before any filter: with
+   * an artist filter, the PT2 card of a two-part event stays PT2. The `PT<n>`
+   * badge shows only when this is ≥ 2 (`showsPartNumber`, owner's request of
+   * 2026-10-05).
+   */
+  partCount: number;
 }
 
-/** One event and its LiveCuts, the block the page renders. */
+/**
+ * One event and its LiveCuts, the group the page renders.
+ *
+ * No series name, no progressivo, no event slug, no end time: the series key is
+ * internal to us (owner's request 13, 2026-10-05) and the public page neither
+ * reads nor composes it. The group has no visible heading; `date` and `time`
+ * only order the groups (two events on the same day sort by start time).
+ */
 export interface NightBlock {
   partyId: string;
-  eventSlug: string;
-  /** `nightKey(series, number)` — e.g. `Lab Series 002` (fictitious). */
-  key: string;
   /** Civil date `YYYY-MM-DD`. */
   date: string;
   time: string | null;
-  endTime: string | null;
   liveCuts: LiveCutView[];
 }
