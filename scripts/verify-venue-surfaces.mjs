@@ -1256,6 +1256,16 @@ if (/auth\.getUser|redirect\("\/login"\)/.test(orderPageLive)) {
  *       this list; `layout.tsx` was born outside its plan's file list in 52.3-05,
  *       which is exactly why the perimeter is walked and not enumerated)
  *     - every `.ts` / `.tsx` under `src/lib/livecuts/`
+ *   PLUS one file named, not walked (added 2026-10-05, plan 52.3-18):
+ *     - `src/app/(public)/artists/[slug]/page.tsx` — the artist profile, which
+ *       since the owner's request 15 carries the artist's LiveCuts with the
+ *       Music page's card and player. It is the SECOND surface of the LiveCuts,
+ *       and a surface of the LiveCuts is a *never* surface of the place: a gate
+ *       written for one page while the data crosses two is a gate that does not
+ *       load where the data goes. It enters H1-H4, H5 and H6 whole — its bio,
+ *       its events block and its own two selects included, with their columns
+ *       unchanged: the LiveCuts section adds no select, it filters the Music
+ *       page's single read by artist.
  *
  *   The two ADMIN directories are EXCLUDED from H1-H4, on purpose:
  *     - `src/app/(admin)/admin/events/[id]/livecuts/`         (actions, form)
@@ -1329,16 +1339,27 @@ if (/auth\.getUser|redirect\("\/login"\)/.test(orderPageLive)) {
  *   MP2 `import { nightKey }` and a live `nightKey("x", 1)` in page           → red H6
  *   MP3 `, events(slug)` back inside the `event_parties` embed                 → red H2 only
  *
+ * 2026-10-05 (52.3-18), same discipline, the artist profile in the perimeter:
+ *   MA1 `, venue_text` in the artist page's events select                     → red H1 + H2
+ *   MA2 `export const dynamic = "force-dynamic"` removed from the artist page → red H4
+ *   MA3 `musicPageEnabled() ?` replaced by `true ?` in the artist page        → red H4
+ *   MA4 the `/artists/` rule removed from `sw.ts`                              → red H4
+ *   MA5 JSX text `Warm sets` in the artist page's LiveCuts section             → red H5
+ *
  * If the Music page ever goes away, remove H in the same commit and say so: a
  * check that refuses forever reads like a green to a list.
  * ──────────────────────────────────────────────────────────────────────────── */
 
 const MUSIC_PUBLIC_DIRS = ["src/app/(public)/music", "src/lib/livecuts"];
 
+/** The second surface of the LiveCuts (2026-10-05, owner's request 15). */
+const MUSIC_ARTIST_PAGE = "src/app/(public)/artists/[slug]/page.tsx";
+
 const MUSIC_REQUIRED = [
   "src/app/(public)/music/page.tsx",
   "src/lib/livecuts/queries.ts",
   "src/app/(public)/music/MusicPlayer.tsx",
+  MUSIC_ARTIST_PAGE,
 ];
 
 const MUSIC_H5_EXTRA = [
@@ -1360,15 +1381,18 @@ function walkSources(relDir) {
   return out.sort();
 }
 
-const musicPublicFiles = MUSIC_PUBLIC_DIRS.flatMap(walkSources);
+const musicWalked = MUSIC_PUBLIC_DIRS.flatMap(walkSources);
+const musicPublicFiles = existsSync(join(ROOT, MUSIC_ARTIST_PAGE))
+  ? [...musicWalked, MUSIC_ARTIST_PAGE]
+  : musicWalked;
 const musicMissing = [...MUSIC_REQUIRED, ...MUSIC_H5_EXTRA].filter(
   (rel) => !existsSync(join(ROOT, rel))
 );
 
-if (musicPublicFiles.length === 0 || musicMissing.length > 0) {
+if (musicWalked.length === 0 || musicMissing.length > 0) {
   console.error(
     "REFUSED — the Music page's perimeter is not on disk.\n" +
-      (musicPublicFiles.length === 0
+      (musicWalked.length === 0
         ? "  The walk of src/app/(public)/music/ and src/lib/livecuts/ found no file.\n"
         : "") +
       musicMissing.map((rel) => `  missing: ${rel}\n`).join("") +
@@ -1401,6 +1425,12 @@ const musicLiveByFile = new Map(
  * Per file: the exact column set of its selects, and how many it may hold.
  * Every other file of the public perimeter may hold ZERO.
  *
+ * 2026-10-05 (52.3-18): the artist profile enters with ITS OWN two selects —
+ * the artist row and the events of its line-up — and their columns as they
+ * were before the LiveCuts section existed. The section adds none: it reads
+ * through `listPublishedLiveCutsByArtist`, i.e. the one literal above, filtered.
+ * A column of place added to the profile reds here as on `/music`.
+ *
  * 2026-10-05 (52.3-17): narrowed. `end_time`, `events`, `number` and
  * `party_series!event_parties_series_id_fkey` left the set because the page no
  * longer shows the series key (owner's request 13: internal to us) nor links to
@@ -1419,6 +1449,11 @@ const MUSIC_SURFACES = [
     "src/lib/livecuts/queries.ts",
     "artists, color, cover_url, date, duration_seconds, event_parties, formats, id, livecut_artists, mixcloud_url, name, part_number, party_id, published_at, slot_end, slot_start, slug, sort_order, soundcloud_track_id, soundcloud_url, time",
     1,
+  ],
+  [
+    MUSIC_ARTIST_PAGE,
+    "bio, cover_image, date, id, instagram_url, name, photo_url, slug, soundcloud_url, spotify_url, title, website_url",
+    2,
   ],
 ];
 
@@ -1566,6 +1601,26 @@ if (!musicPlayerLive.includes("player/api.js")) {
   );
 }
 
+/* H4 — the artist profile, the second surface (2026-10-05, plan 52.3-18) */
+
+const artistPageLive = musicLiveByFile.get(MUSIC_ARTIST_PAGE).join("\n");
+
+if (!/export const dynamic = "force-dynamic"/.test(artistPageLive)) {
+  fail(
+    "H4",
+    `${MUSIC_ARTIST_PAGE} does not declare \`force-dynamic\`. Since 2026-10-05 the ` +
+      "profile carries LiveCuts, and a withdrawn LiveCut must disappear from it at " +
+      "once, not at a cache expiry."
+  );
+}
+if (!/musicPageEnabled\(\)/.test(artistPageLive)) {
+  fail(
+    "H4",
+    `${MUSIC_ARTIST_PAGE} does not ask \`musicPageEnabled()\`. With the switch off the ` +
+      "profile's LiveCuts section must not exist and its query must not start."
+  );
+}
+
 const swLive = liveLines(join(ROOT, "src/app/sw.ts")).lines.join("\n");
 const swMusic = swLive.indexOf('"/music"');
 if (swMusic === -1 || !swLive.slice(swMusic, swMusic + 400).includes("NetworkOnly")) {
@@ -1573,6 +1628,15 @@ if (swMusic === -1 || !swLive.slice(swMusic, swMusic + 400).includes("NetworkOnl
     "H4",
     "src/app/sw.ts has no `NetworkOnly` rule for `\"/music\"`. Serwist serves content " +
       "when the network is gone — including a list that still holds a LiveCut " +
+      "somebody asked us to take down."
+  );
+}
+const swArtists = swLive.indexOf('"/artists/"');
+if (swArtists === -1 || !swLive.slice(swArtists, swArtists + 400).includes("NetworkOnly")) {
+  fail(
+    "H4",
+    "src/app/sw.ts has no `NetworkOnly` rule for `\"/artists/\"`. The artist profile " +
+      "carries LiveCuts since 2026-10-05, and an offline copy would keep one " +
       "somebody asked us to take down."
   );
 }
@@ -1778,7 +1842,8 @@ console.log("  G  the guest order surface selects no place — one sweep, one po
 console.log("     allow-list of every column, and no predicate to reverse");
 console.log("  H  the Music page selects no place and alludes to no sound — one sweep,");
 console.log("     one allow-list, no predicate, a dynamic route, and a whole-word sweep");
-console.log("     of the copy, and no series key (H6)\n");
+console.log("     of the copy, and no series key (H6) — on /music AND on the artist");
+console.log("     profile, the second surface of the LiveCuts since 2026-10-05\n");
 
 if (notes.length > 0) {
   console.log("  OPEN EXITS — printed on every run, pass or fail:\n");
@@ -1803,5 +1868,6 @@ console.log("         — on any night, secret or not, because a pass cannot be 
 console.log("         — and the guest order surface selects no column of the place at");
 console.log("         all, on a link that is meant to be forwarded — and the Music page");
 console.log("         selects no column of the place either, keeps no offline copy, and");
-console.log("         says no word of genre in its copy, its admin or its lab seed.");
+console.log("         says no word of genre in its copy, its admin or its lab seed —");
+console.log("         and neither does the artist profile that carries the LiveCuts.");
 process.exit(0);

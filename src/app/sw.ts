@@ -132,6 +132,23 @@ const doorRuntimeCaching: RuntimeCaching[] = [
       sameOrigin && (url.pathname === "/music" || url.pathname.startsWith("/music/")),
     handler: new NetworkOnly(),
   },
+  /**
+   * `/artists/` — never kept offline (phase 52.3, plan 18, 2026-10-05).
+   *
+   * Since the owner's request 15 the artist profile carries the artist's
+   * LiveCuts, and a withdrawn LiveCut must not survive in a copy kept on the
+   * device. The page is `force-dynamic`; this rule is its offline half, the
+   * twin of the `/music` rule above.
+   *
+   * The door does not open this page and does not depend on it: the two door
+   * rules at the top and `/events/` are unchanged, and this entry comes after
+   * every explicit rule, before the defaults. Like `/music`, it does not evict
+   * what an older worker already cached.
+   */
+  {
+    matcher: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith("/artists/"),
+    handler: new NetworkOnly(),
+  },
 ];
 
 const serwist = new Serwist({
