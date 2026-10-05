@@ -266,3 +266,9 @@ risposta; una settima variante sarebbe la deriva che quel modulo impedisce.
 
 - `1c46ac45` feat(quick-benefit): chiusura di default a fine serata −2h per tier e codici senza scadenza
 - `ec6cd537` fix(quick-benefit): «Sold out» del codice anche per l'ospite, niente «Offer ends» sulla chiusura di default
+
+## Autorizzazione all'atto in produzione
+
+- **Concessa dal proprietario il 2026-10-05**, in chat, alla lettera: *«se nel lab funziona, procedi a migration e deploy in prod. per ora la pagina musica invece è da rivedere quindi non pusharla ancora»*.
+- **Condizione**: la prova sul laboratorio e' passata (sezioni sopra). **Perimetro**: una sola migration (`20261005120000_discount_code_benefit`) dalla Management API, merge fast-forward di `hotfix/codice-chupito` su `main`, push, deploy. **Esclusa**: la pagina Music (`wip/52.3`), che resta sul laboratorio.
+- **Registrata dall'orchestratore alle 2026-10-05T20:43:15Z**; l'atto si consuma una volta e si chiude con la riga di esito sotto.
