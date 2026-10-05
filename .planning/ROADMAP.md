@@ -880,7 +880,7 @@ in nessuna superficie, la scheda che porta all'artista.
 
 **Depends on:** Phase 52.2 (ordine deciso dal proprietario: *«subito dopo la
 52.2»*), Phase 52 (la barra di navigazione). La 52.1 resta in coda dopo.
-**Plans:** 15/20 plans executed
+**Plans:** 16/20 plans executed
 
 Plans:
 
@@ -899,7 +899,7 @@ Plans:
 - [x] 52.3-12-PLAN.md — onda 6: laboratorio servito, P-523-A..H percorse (iOS/Android dallo spike, P-523-H per rimandi), O-2/O-3 sul titolo pubblicato della 001, pacchetto per il proprietario con gli input da lui, Mixcloud sì/no, il conteggio delle puntate e la strada B/C/D entro il 2026-10-07
 - [x] 52.3-13-PLAN.md — onda 7: checkpoint unico del proprietario (percorso il 2026-10-05: sette richieste fuori opzioni → ripianificazione); task 2 ripianificato: decisioni registrate, solo D-LEG-1/D-LEG-2 nel codice
 - [x] 52.3-17-PLAN.md — onda 7: `/music` senza serie, senza intestazioni e senza frase sotto il titolo; scheda con `data · fascia · durata`, senza titolo, PT solo se ≥2; select senza serie; check H2 aggiornato e H6
-- [ ] 52.3-18-PLAN.md — onda 8: sezione LiveCuts sul profilo artista (stessa scheda, un player, dietro l'interruttore, `force-dynamic`, `NetworkOnly` per `/artists/`), check H esteso alla pagina artista
+- [x] 52.3-18-PLAN.md — onda 8: sezione LiveCuts sul profilo artista (stessa scheda, un player, dietro l'interruttore, `force-dynamic`, `NetworkOnly` per `/artists/`), check H esteso alla pagina artista
 - [ ] 52.3-19-PLAN.md — onda 8: TASK fuori dalla barra e nel pannello, Music per chi lavora, pillola rimisurata con la porta (Critical); ripiego del player dentro la barra che si richiude al primo `PLAY_PROGRESS`
 - [ ] 52.3-20-PLAN.md — onda 9: laboratorio servito, P-523-A/B/C/D/E e P-523-J, secondo sguardo del proprietario (strada B/D, profilo SoundCloud, anteprima del link) e cambi a una riga
 - [ ] 52.3-14-PLAN.md — onda 10: persona 1.32.0 (anche `src/app/(public)/artists/**`), sei mutazioni rimaste del check H, `52.3-VERIFICATION.md`, pulizia del laboratorio

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "Completato 52.3-17-PLAN.md — /music senza serie, ne' intestazione ne' frase; scheda data · slot · durata, PT solo se >=2; check H con H2 stretto e H6 (45622bdf); prossimi 52.3-18 e 19 (onda 8), poi 20"
-last_updated: "2026-10-05T18:26:36.105Z"
+stopped_at: Completato 52.3-18-PLAN.md — LiveCuts sul profilo artista dietro l'interruttore, force-dynamic, NetworkOnly per /artists/, check H esteso (MA1-MA5 rosse) (e6dd14c7); prossimo 52.3-19 (onda 8), poi 20
+last_updated: "2026-10-05T18:40:01.391Z"
 last_activity: 2026-10-05
 progress:
   total_phases: 15
   completed_phases: 8
   total_plans: 142
-  completed_plans: 142
+  completed_plans: 143
   percent: 53
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 52.3 (La pagina Music: i LiveCut delle nostre serate) — EXECUTING
-Plan: 17 of 20 (17 completo; prossimi 52.3-18 e 52.3-19, onda 8, poi 20)
+Plan: 18 of 20 (18 completo; prossimo 52.3-19, onda 8, poi 20)
 Next: `/gsd-execute-phase 52.3` (prima `/clear`). Onda 1 = 01 (ramo `wip/52.3`, lab sveglio, interruttore solo sul preview `lab`); onda 2 = 02 (migration sul lab, BLOCKING) + 03 (contratti) + 16 (spike del player e oEmbed); onda 3 include 06 = COPIA in sola lettura delle serate e degli artisti di produzione nel lab (notti segrete su sede segnaposto). **Risposte del proprietario del 2026-10-03:** i LiveCut vengono da re:sonate E da RamaDub; la 001 e' gia' su SoundCloud (input in `.env.lab.local`), la 002 esce il 2026-10-04 (una tantum prima dell'ancora del martedi' 6/10, che per Instagram non cambia); **il titolo e' quello pubblicato** (`<artista> @ <format> - 17 Sept 26`, D-52.3-03 emendata); **consenso dei dj: regola stabile, non si chiede piu'**; **il professionista ha risposto: i set si possono pubblicare, siamo coperti** → MUS-10 chiuso salvo il paragrafo dell'informativa (piano 04). Strada D (pagina accesa in produzione con i due LiveCut) e' disponibile: l'ultimo cancello e' il «vai» del piano 15. Checkpoint del proprietario al piano 13 (O-1, O-4..O-8, Mixcloud, colore MotionLab, B o D). Servono ancora: link e durata della 002 (dal 4/10), eventuale cover 2000x2000, la scelta B/D. Scadenza: onde 1-6 entro il 6/10, checkpoint entro mercoledi' 7/10, deploy entro gio 8/10; ven 9 runbook e porta, sab 10 la 003. Prima: decidere D22-3 (porta) e leggere D22-4 in produzione.
 
 **52.2 chiusa e osservata (2026-10-01 08:28Z).** `close-pending-orders` 08:01Z: 1 considerato, `never_attempted`, checkout disattivato; `reconcile-refunds` 08:13Z: silenzio = nulla da riconciliare (non logga un riepilogo quando non fa nulla: nota per la 52.1); 0 pending residui, 0 refunds, 0 mail. CART-03 e RFD-02 osservati.
@@ -410,7 +410,7 @@ checkpoints is now closed (the migration is applied); three remain, plus the RLS
 half of the fourth. `31-VALIDATION.md` keeps `nyquist_compliant: false`
 deliberately.
 
-Progress: [██████████] 99%
+Progress: [██████████] 100%
           phase 32 — 11 plans, 0 executed
 
 ## Decisions
@@ -540,6 +540,10 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase 52.3]: 52.3-12: il titolo della pagina e' UGUALE al titolo pubblicato della 001 (og:title della traccia = oEmbed senza «by re:sonate» = scheda = barra); l'oEmbed `title` porta « by <account>» e l'avviso admin ora lo ignora (`matchesSoundCloudTitle`, 26362e98)
 - [Phase 52.3]: 52.3-12: P-523-A FAIL atteso a 360/375 per chi lavora (barra a cinque voci, numeri identici al 52.3-09): O-6 resta del proprietario; P-523-H NON PERCORSO per rimandi, lo status 200 della rotta admin spenta e' debito tecnico per il 52.3-14
 - [Phase 52.3]: 52.3-13: D-LEG-1 e D-LEG-2 applicate come raccomandate (LEGAL_UPDATED 8 October 2026, da correggere prima del merge se il deploy slitta; informativa senza galleria); opzioni al default invariate; O-8 e strada B/D aperte per 52.3-20
+- [Phase 52.3]: 52.3-18 — D-52.3-18-1: il profilo artista riusa la lettura unica di /music filtrata per slug (listPublishedLiveCutsByArtist), nessuna seconda select
+- [Phase 52.3]: 52.3-18 — D-52.3-18-2: artista senza LiveCut = nessuna sezione; lettura fallita = sezione col solo avviso role=alert
+- [Phase 52.3]: 52.3-18 — D-52.3-18-3: check H misura il profilo artista come seconda superficie dei LiveCut (H1-H6, voce H2 a 2 select); MA1-MA5 provate rosse
+- [Phase 52.3]: 52.3-18 — D-52.3-18-4: /artists/ NetworkOnly nel service worker, in coda alle esplicite; regole della porta e /events/ invariate
 
 ## Accumulated Context
 
@@ -661,8 +665,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-10-05T18:26:36.100Z
-**Stopped at:** Completato 52.3-17-PLAN.md — /music senza serie, ne' intestazione ne' frase; scheda data · slot · durata, PT solo se >=2; check H con H2 stretto e H6 (45622bdf); prossimi 52.3-18 e 19 (onda 8), poi 20
+**Last session:** 2026-10-05T18:39:31.583Z
+**Stopped at:** Completato 52.3-18-PLAN.md — LiveCuts sul profilo artista dietro l'interruttore, force-dynamic, NetworkOnly per /artists/, check H esteso (MA1-MA5 rosse) (e6dd14c7); prossimo 52.3-19 (onda 8), poi 20
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
