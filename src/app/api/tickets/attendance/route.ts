@@ -292,6 +292,13 @@ interface AttendeeItem {
   hasEmail: boolean;
   ticketType: string;
   tierName: string | null;
+  /**
+   * The perk of the discount code the ticket was bought with («1 chupito»),
+   * shown under the ticket kind at the door, online and offline (quick task
+   * 2026-10-05). `null` for guest-list and refunded entries, and when the code
+   * carries none or could not be read.
+   */
+  benefit: string | null;
 }
 
 /** The operator column is NULL: the moment had nowhere to be written before 2026-08-05. */
@@ -714,7 +721,7 @@ export async function GET(request: Request) {
         serviceClient
           .from("tickets")
           .select(
-            "id, party_id, tier_id, checked_in, checked_in_at, checked_in_by, user_id, ticket_type, holder_label",
+            "id, party_id, tier_id, checked_in, checked_in_at, checked_in_by, user_id, ticket_type, holder_label, discount_code_id",
           )
           .eq("event_id", party.event_id)
           .or(`party_id.eq.${party.id},party_id.is.null`)
@@ -879,6 +886,34 @@ export async function GET(request: Request) {
         }
       }
 
+      // Benefits of the codes the tickets were bought with — a separate read
+      // that never fails the manifest: a missing perk line is a lost chupito,
+      // a missing manifest is a door that cannot admit anyone offline.
+      const codeIds = [
+        ...new Set(
+          tickets
+            .map((t) => (t as { discount_code_id?: string | null }).discount_code_id)
+            .filter(Boolean),
+        ),
+      ] as string[];
+      const benefitMap = new Map<string, string>();
+      if (codeIds.length > 0) {
+        const { data: codes, error: codesError } = await serviceClient
+          .from("discount_codes")
+          .select("id, benefit")
+          .in("id", codeIds);
+        if (codesError) {
+          console.error("[attendance] benefit read failed", {
+            partyId: party.id,
+            message: codesError.message,
+          });
+        }
+        for (const c of (codes ?? []) as { id: string; benefit: string | null }[]) {
+          const value = c.benefit?.trim();
+          if (value) benefitMap.set(c.id, value);
+        }
+      }
+
       const ticketAttendees: AttendeeItem[] = tickets.map((t) => {
         // Resolved once and used twice — as the row's tier and, when nothing
         // else names the row, as part of its label. Two reads of one fact are
@@ -899,6 +934,10 @@ export async function GET(request: Request) {
           hasEmail: true,
           ticketType: t.ticket_type || "purchased",
           tierName,
+          benefit:
+            benefitMap.get(
+              (t as { discount_code_id?: string | null }).discount_code_id ?? "",
+            ) ?? null,
         };
       });
 
@@ -922,6 +961,7 @@ export async function GET(request: Request) {
           hasEmail: !!g.email,
           ticketType: "guest_list",
           tierName: null,
+          benefit: null,
         };
       });
 
@@ -957,6 +997,7 @@ export async function GET(request: Request) {
           hasEmail: false,
           ticketType: "purchased",
           tierName: null,
+          benefit: null,
         }));
 
       const allAttendees = [

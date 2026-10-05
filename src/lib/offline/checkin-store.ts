@@ -185,6 +185,16 @@ export interface AttendeeRecord {
    * as before: refusing a valid guest is worse than admitting a double.
    */
   refundedBeforeNight?: boolean;
+  /**
+   * The perk of the discount code the ticket was bought with («1 chupito»),
+   * shown under the ticket kind in the offline overlay (quick task
+   * 2026-10-05). Optional and **without a version bump**, like
+   * `refundedBeforeNight` above: IndexedDB stores a structured clone, so a row
+   * cached before this field existed simply lacks it, loads unchanged and
+   * shows no perk line. A bump would add an upgrade the door does not need and
+   * a `versionchange` that a second open tab of the old bundle can block.
+   */
+  benefit?: string | null;
   guestListEntryId?: string;
   /** ISO of the last refresh that saw this row. Only {@link pruneParty} reads it. */
   lastSeenAt: string;
@@ -801,6 +811,8 @@ export interface AttendeeRow {
   refundedAt?: string | null;
   /** Server-computed; see {@link CachedAttendee.refundedBeforeNight}. Missing = admit. */
   refundedBeforeNight?: boolean;
+  /** The code's perk; absent on a manifest older than 2026-10-05. */
+  benefit?: string | null;
   isGuestList?: boolean;
 }
 
@@ -961,6 +973,13 @@ export async function mergeAttendees(
       // Strictly `=== true`: a missing field (older manifest) is false, and
       // false admits (plan 52.2-11).
       refundedBeforeNight: row.refundedBeforeNight === true,
+      // The server is the source when it sends the field (a code edited or
+      // cleared in the admin reaches the phone on the next download); an
+      // older manifest that lacks it leaves what the phone already holds.
+      benefit:
+        row.benefit !== undefined
+          ? (labelOrNull(row.benefit) ?? null)
+          : (local?.benefit ?? null),
       lastSeenAt: now,
     });
     merged++;

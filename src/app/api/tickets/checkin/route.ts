@@ -158,6 +158,12 @@ interface LegacyFields {
   ticket_event_id?: string | null;
   /** Only on `not_valid` / `refunded` (52.2-12): the screen prints the date. */
   refunded_at?: string | null;
+  /**
+   * The perk carried by the discount code the ticket was bought with
+   * («1 chupito»), shown under the ticket kind (quick task 2026-10-05). Only on
+   * the two admitting branches; null when there is none or it could not be read.
+   */
+  benefit?: string | null;
 }
 
 type ScanEventInsert = Omit<DoorScanEvent, "id">;
@@ -782,7 +788,7 @@ export async function POST(request: Request) {
       // sua assenza **non ferma l'ingresso**: `checkin-offline.md` fissa
       // l'asimmetria — rifiutare un ospite valido e' l'errore caro.
       .select(
-        "id, checked_in, checked_in_at, checked_in_by, event_id, party_id, user_id, ticket_type, ticket_tiers(name)",
+        "id, checked_in, checked_in_at, checked_in_by, event_id, party_id, user_id, ticket_type, discount_code_id, ticket_tiers(name)",
       )
       .eq("id", ticketId)
       .single();
@@ -1001,6 +1007,34 @@ export async function POST(request: Request) {
       );
     }
 
+    // --- The perk of the code (quick task 2026-10-05) ---------------------------
+    // A SEPARATE read, not an embed in the ticket lookup above, on purpose: an
+    // embed that fails (a deploy that lands before the migration, a schema cache
+    // not yet reloaded) would fail the whole lookup and refuse every guest at
+    // the door. Here a failure costs one line on the screen and nothing else —
+    // refusing a valid guest is the expensive error (`checkin-offline.md`).
+    let benefit: string | null = null;
+    const ticketDiscountCodeId =
+      (ticket as { discount_code_id?: string | null }).discount_code_id ?? null;
+    if (ticketDiscountCodeId) {
+      const { data: codeRow, error: benefitError } = await serviceClient
+        .from("discount_codes")
+        .select("benefit")
+        .eq("id", ticketDiscountCodeId)
+        .maybeSingle();
+      if (benefitError) {
+        console.error("checkin:benefit_unreadable", {
+          ticketId,
+          partyId,
+          code: benefitError.code,
+          message: benefitError.message,
+        });
+      } else {
+        const value = (codeRow as { benefit?: string | null } | null)?.benefit;
+        benefit = typeof value === "string" && value.trim() ? value.trim() : null;
+      }
+    }
+
     // --- Already recorded ------------------------------------------------------
     if (ticket.checked_in) {
       const checkedInBy = ticket.checked_in_by as string | null;
@@ -1048,6 +1082,7 @@ export async function POST(request: Request) {
           party_id: ticket.party_id,
           event_id: ticket.event_id,
           checked_in_at: ticket.checked_in_at,
+          benefit,
         },
       );
     }
@@ -1106,6 +1141,7 @@ export async function POST(request: Request) {
         party_id: ticket.party_id,
         event_id: ticket.event_id,
         checked_in_at: checkedInAt,
+        benefit,
       },
     );
   } catch (error) {

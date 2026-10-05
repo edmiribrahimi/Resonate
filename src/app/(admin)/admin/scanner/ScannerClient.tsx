@@ -624,6 +624,8 @@ interface Attendee {
   hasEmail: boolean;
   ticketType: string;
   tierName: string | null;
+  /** The code's perk from the manifest (quick task 2026-10-05); absent on an older API. */
+  benefit?: string | null;
 }
 
 /** Per-party diagnostics from `/api/tickets/attendance` (plan 31-06). Optional: an older API does not send them. */
@@ -664,6 +666,8 @@ interface ScanRecord {
   canUndo: boolean;
   /** For a local reversal while the radio is off: `partyId:subjectType:subjectId`. */
   localKey?: string;
+  /** The code's perk, carried so the undo overlay can show it too. */
+  benefit?: string | null;
 }
 
 /**
@@ -709,6 +713,8 @@ export default function ScannerClient() {
     type: ScanFlashType;
     title: string;
     subtitle?: string;
+    /** The code's perk, «+ 1 chupito» on its own line (quick task 2026-10-05). */
+    benefit?: string | null;
   } | null>(null);
   const scannerInstanceRef = useRef<unknown>(null);
   const isProcessingRef = useRef(false);
@@ -1789,7 +1795,12 @@ export default function ScannerClient() {
    * all on iOS, which is why colour and icon carry the same distinction.
    */
   const showFlash = useCallback(
-    (type: ScanFlashType, title: string, subtitle?: string) => {
+    (
+      type: ScanFlashType,
+      title: string,
+      subtitle?: string,
+      benefit?: string | null
+    ) => {
       if (type === "success") {
         vibrateSuccess();
       } else if (type === "already_recorded") {
@@ -1798,7 +1809,7 @@ export default function ScannerClient() {
         vibrateError();
       }
       setStatus(type);
-      setFlash({ type, title, subtitle });
+      setFlash({ type, title, subtitle, benefit: benefit ?? null });
     },
     []
   );
@@ -1985,7 +1996,8 @@ export default function ScannerClient() {
             "Undone on this device",
             result.reversalHeld
               ? `${ticketKindLabel(record.type, record.ticketType)} — held here, not yet reported`
-              : `${ticketKindLabel(record.type, record.ticketType)} — the server already has the entry, undo it again with signal`
+              : `${ticketKindLabel(record.type, record.ticketType)} — the server already has the entry, undo it again with signal`,
+            record.benefit
           );
         } catch (error) {
           console.error("scanner:local_undo_failed", { key: record.localKey, error });
@@ -2036,7 +2048,8 @@ export default function ScannerClient() {
           showFlash(
             "error",
             "Check-in undone",
-            ticketKindLabel(record.type, record.ticketType)
+            ticketKindLabel(record.type, record.ticketType),
+            record.benefit
           );
           fetchAttendance(searchQuery || undefined);
           return;
@@ -2265,6 +2278,8 @@ export default function ScannerClient() {
         const flagged = flags.length > 0;
         const tier = readString(parsed, "tier_name");
         const isGuestList = readString(parsed, "ticket_type") === "guest_list";
+        // The code's perk (quick task 2026-10-05): its own line, under the kind.
+        const benefit = readString(parsed, "benefit");
         const kind = ticketKindLabel(isGuestList ? "guest" : "ticket", tier);
         const subtitle =
           [kind, flagged ? flagSentence(flags) : null].filter(Boolean).join(" · ") ||
@@ -2284,12 +2299,13 @@ export default function ScannerClient() {
         //
         // Amber for a flagged admission: the person is admitted either way, and
         // the colour says *look at this afterwards*, never *stop*.
-        showFlash(flagged ? "already_recorded" : "success", "Admitted", subtitle);
+        showFlash(flagged ? "already_recorded" : "success", "Admitted", subtitle, benefit);
         addScanRecord({
           id: ticketId,
           type: isGuestList ? "guest" : "ticket",
           name: readSubjectLabel(parsed) ?? "Admitted",
           ticketType: tier ?? undefined,
+          benefit,
           status: flagged ? "already_recorded" : "success",
           reason: flagged ? flagSentence(flags) : undefined,
           timestamp: Date.now(),
@@ -2323,11 +2339,13 @@ export default function ScannerClient() {
         // after the other. The name went; the fact stayed.
         const label = readSubjectLabel(parsed) ?? "Ticket holder";
         const fact = recordedFact(readString(parsed, "at"), readOperatorLabel(parsed));
-        showFlash("already_recorded", "Already recorded", fact);
+        const benefit = readString(parsed, "benefit");
+        showFlash("already_recorded", "Already recorded", fact, benefit);
         addScanRecord({
           id: ticketId,
           type: "ticket",
           name: label,
+          benefit,
           status: "already_recorded",
           reason: fact,
           timestamp: Date.now(),
@@ -2393,11 +2411,17 @@ export default function ScannerClient() {
           // `Offline` so the operator knows which memory answered. The cached
           // name stays in the history row below and out of the verdict
           // (D-51-05).
-          showFlash("already_recorded", "Already recorded", `${fact} · Offline`);
+          showFlash(
+            "already_recorded",
+            "Already recorded",
+            `${fact} · Offline`,
+            cached.benefit
+          );
           addScanRecord({
             id: ticketId,
             type: cached.ticketType === "guest_list" ? "guest" : "ticket",
             name: cached.name,
+            benefit: cached.benefit ?? null,
             status: "already_recorded",
             reason: fact,
             timestamp: Date.now(),
@@ -2466,12 +2490,18 @@ export default function ScannerClient() {
         // `deferred-items.md` §7 names as `:2186` — the offline admission, the
         // one read most often at 02:00 — and it is the one place the name was
         // read straight off this device's own cache rather than off a response.
-        showFlash(flagged ? "already_recorded" : "success", "Admitted", subtitle);
+        showFlash(
+          flagged ? "already_recorded" : "success",
+          "Admitted",
+          subtitle,
+          cached.benefit
+        );
         addScanRecord({
           id: ticketId,
           type: cached.ticketType === "guest_list" ? "guest" : "ticket",
           name: cached.name,
           ticketType: cached.tierName || undefined,
+          benefit: cached.benefit ?? null,
           status: flagged ? "already_recorded" : "success",
           reason: flagged ? FLAG_MESSAGE.refunded_before_night : undefined,
           timestamp: Date.now(),
@@ -3728,6 +3758,7 @@ export default function ScannerClient() {
             type={flash.type}
             title={flash.title}
             subtitle={flash.subtitle}
+            benefit={flash.benefit}
             onDismiss={dismissFlash}
           />
         )}
@@ -4015,6 +4046,11 @@ export default function ScannerClient() {
                         {a.tierName && !a.isGuestList && (
                           <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent">
                             {a.tierName}
+                          </span>
+                        )}
+                        {a.benefit && !a.isGuestList && (
+                          <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent">
+                            + {a.benefit}
                           </span>
                         )}
                       </div>
