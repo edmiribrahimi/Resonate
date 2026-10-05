@@ -798,6 +798,36 @@ senza un aggettivo sul suono e senza un indirizzo che non sia gia' pubblico.
 | **MUS-09** | **Prima sul laboratorio.** La pagina si costruisce sul ramo `lab`, si serve da `lab.resonatemotion.com` con dati di prova dichiarati (artisti fittizi o gia' pubblici, nessuna data non annunciata), si mostra al proprietario con screenshot e numeri, e va in produzione **solo su «vai»** — con la stessa disciplina del `verify:venue-surfaces` e del build. |
 | **MUS-10** | **I diritti prima della prima pubblicazione (legale).** Tre domande al professionista, registrate con la data: il consenso scritto del dj alla registrazione e alla pubblicazione (riga del brief di booking), gli adempimenti SIAE/SCF per un set suonato in un locale e pubblicato online, la copertura della registrazione nell'accordo col locale. L'informativa acquista il paragrafo sul player di terzi caricato al play. Nessun LiveCut reale va in produzione prima delle tre risposte. |
 
+> **Emendamenti del 2026-10-05, dopo il primo sguardo del proprietario sulla
+> pagina del laboratorio** (sette richieste alla lettera in
+> `52.3-ESITI.md` §«Decisioni del proprietario»; piani 52.3-17..20). Il testo della
+> tabella resta com'era: queste sono le sue correzioni datate.
+>
+> - **MUS-02** — la barra: *«nascondiamo task dalla barra (attualmente
+>   inutilizzato) e lasciamolo solo nel pannello management. così c'è spazio per
+>   music anche per chi lavora.»* TASK esce dalla barra di ogni ruolo ed e' una riga
+>   spenta del pannello Management; Music e' in barra anche per chi lavora, dopo
+>   Check-in. La barra della porta cambia anche a pagina spenta (piano 52.3-19).
+> - **MUS-03** — *«la serie (come ad es ramadub x booze 001) non voglio che si veda,
+>   è una cosa interna nostra»*. I LiveCut restano raggruppati per serata
+>   nell'ordine della timetable, ma **senza la chiave della serata, senza
+>   intestazione e senza il numero di puntate** (il conteggio cade con
+>   l'intestazione). Data e orario passano dentro la scheda (MUS-04).
+> - **MUS-04** — la scheda porta copertina, format, artista collegato, la riga
+>   `<data> · <fascia dello slot> · <durata>`, e **non porta il titolo** (*«dentro
+>   la scheda non deve leggersi il titolo del brano ripreso da soundcloud, è una
+>   ripetizione»*); `PT<n>` solo se la serata ha almeno due parti. **Il nome del
+>   locale non compare piu' in nessun punto della pagina**: compariva solo dentro il
+>   nome della serie, che non si mostra. E i LiveCut di un artista compaiono anche
+>   **sul suo profilo**, dopo bio ed eventi (*«i livecut di un artista devono essere
+>   visibili anche sulla pagina del profilo artista»*), con le stesse regole della
+>   pagina (piano 52.3-18).
+> - **MUS-06** — *«vorrei avere solo il nostro di player»*: il player di SoundCloud
+>   compare solo quando iPhone lo pretende (un tocco per brano nuovo, misurato
+>   nello spike), dentro la nostra barra, e sparisce appena il brano parte. Su
+>   computer e Android non compare mai. Il limite iPhone e' dichiarato al
+>   proprietario, non nascosto.
+
 **Decisioni gia' prese (D-52.3):**
 
 - **D-52.3-01** — SoundCloud resta la casa dei LiveCut; Mixcloud e' una seconda
@@ -826,9 +856,21 @@ senza un aggettivo sul suono e senza un indirizzo che non sia gia' pubblico.
   > della serie (MUS-04 invariato). Il testo qui sopra resta com'era: e' la
   > decisione del 2026-08-15, e questa e' la sua correzione datata.
 
+  > **Emendata di nuovo il 2026-10-05.** L'intestazione del blocco non esiste piu'
+  > (MUS-03 emendato): la chiave di serata non si mostra, e il titolo non si legge
+  > piu' sulla scheda (MUS-04 emendato). La grammatica del titolo resta quella del
+  > 2026-10-03 e vive dove serve ancora: nome accessibile del play, barra del
+  > player, confronto col titolo pubblicato nell'admin.
+
 - **D-52.3-04** — Il canvas del 2026-09-30 non e' il riferimento visivo: e' un
   ordine di lettura (titolo, una frase, ascolta altrove, filtri, serata con i
   suoi slot, player in fondo). Il riferimento visivo e' l'app com'e' oggi.
+
+  > **Emendata il 2026-10-05.** L'ordine di lettura diventa: titolo, ascolta
+  > altrove, filtri, schede raggruppate per serata **senza intestazione**, player
+  > in fondo. **«Una frase» esce** per richiesta del proprietario (*«togliere la
+  > scritta "LiveCuts are the recordings of our events, one for each set."»*), senza
+  > sostituti.
 
 **Verifica, in un repo senza test:** `npm run build`, `npm run
 verify:venue-surfaces` esteso, e la prova sul laboratorio davanti al
@@ -838,7 +880,7 @@ in nessuna superficie, la scheda che porta all'artista.
 
 **Depends on:** Phase 52.2 (ordine deciso dal proprietario: *«subito dopo la
 52.2»*), Phase 52 (la barra di navigazione). La 52.1 resta in coda dopo.
-**Plans:** 13/16 plans executed
+**Plans:** 13/20 plans executed
 
 Plans:
 
@@ -855,9 +897,13 @@ Plans:
 - [x] 52.3-10-PLAN.md — onda 4: admin LiveCuts dalla riga dell'evento (form in linea, cover dallo stripper, dialog)
 - [x] 52.3-11-PLAN.md — onda 5: check H di `verify:venue-surfaces` (H1-H5, H5 fuori dai `className`) provato per mutazione (nove qui, sei nel 52.3-14)
 - [x] 52.3-12-PLAN.md — onda 6: laboratorio servito, P-523-A..H percorse (iOS/Android dallo spike, P-523-H per rimandi), O-2/O-3 sul titolo pubblicato della 001, pacchetto per il proprietario con gli input da lui, Mixcloud sì/no, il conteggio delle puntate e la strada B/C/D entro il 2026-10-07
-- [ ] 52.3-13-PLAN.md — onda 7: checkpoint unico del proprietario (giudizio, O-1..O-8, Mixcloud, MotionLab, D-LEG-1..4, strada B/C/D) e cambi a una riga
-- [ ] 52.3-14-PLAN.md — onda 8: persona 1.32.0, sei mutazioni rimaste del check H, `52.3-VERIFICATION.md`, pulizia del laboratorio
-- [ ] 52.3-15-PLAN.md — onda 9: atto datato su «vai» — migration in produzione, deploy di `main` con la pagina spenta (B) o, con D-LEG-4 registrato, accesa coi due LiveCut RamaDub inseriti da un organizer dal form (D), `lab` riallineato
+- [ ] 52.3-13-PLAN.md — onda 7: checkpoint unico del proprietario (percorso il 2026-10-05: sette richieste fuori opzioni → ripianificazione); task 2 ripianificato: decisioni registrate, solo D-LEG-1/D-LEG-2 nel codice
+- [ ] 52.3-17-PLAN.md — onda 7: `/music` senza serie, senza intestazioni e senza frase sotto il titolo; scheda con `data · fascia · durata`, senza titolo, PT solo se ≥2; select senza serie; check H2 aggiornato e H6
+- [ ] 52.3-18-PLAN.md — onda 8: sezione LiveCuts sul profilo artista (stessa scheda, un player, dietro l'interruttore, `force-dynamic`, `NetworkOnly` per `/artists/`), check H esteso alla pagina artista
+- [ ] 52.3-19-PLAN.md — onda 8: TASK fuori dalla barra e nel pannello, Music per chi lavora, pillola rimisurata con la porta (Critical); ripiego del player dentro la barra che si richiude al primo `PLAY_PROGRESS`
+- [ ] 52.3-20-PLAN.md — onda 9: laboratorio servito, P-523-A/B/C/D/E e P-523-J, secondo sguardo del proprietario (strada B/D, profilo SoundCloud, anteprima del link) e cambi a una riga
+- [ ] 52.3-14-PLAN.md — onda 10: persona 1.32.0 (anche `src/app/(public)/artists/**`), sei mutazioni rimaste del check H, `52.3-VERIFICATION.md`, pulizia del laboratorio
+- [ ] 52.3-15-PLAN.md — onda 11: atto datato su «vai» — migration in produzione, deploy di `main` con la pagina spenta (B) o, con D-LEG-4 registrato, accesa coi due LiveCut RamaDub inseriti da un organizer dal form (D), `lab` riallineato
 
 ### Phase 53: TASK
 
