@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: Completato 52.3-18-PLAN.md — LiveCuts sul profilo artista dietro l'interruttore, force-dynamic, NetworkOnly per /artists/, check H esteso (MA1-MA5 rosse) (e6dd14c7); prossimo 52.3-19 (onda 8), poi 20
-last_updated: "2026-10-05T18:40:01.391Z"
+stopped_at: Completato 52.3-19-PLAN.md — TASK fuori dalla barra e riga spenta nel pannello, Music per chi lavora con la regola di densita' (px-3 con 4+ voci), pillola rimisurata con la porta (Check-in indice 1 ovunque), ripiego del player che si richiude al primo PLAY_PROGRESS (62e696aa); prossimo 52.3-20 (onda 9)
+last_updated: "2026-10-05T19:01:26.152Z"
 last_activity: 2026-10-05
 progress:
   total_phases: 15
   completed_phases: 8
   total_plans: 142
-  completed_plans: 143
+  completed_plans: 144
   percent: 53
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 52.3 (La pagina Music: i LiveCut delle nostre serate) — EXECUTING
-Plan: 18 of 20 (18 completo; prossimo 52.3-19, onda 8, poi 20)
+Plan: 19 of 20 (19 completo; prossimo 52.3-20, onda 9)
 Next: `/gsd-execute-phase 52.3` (prima `/clear`). Onda 1 = 01 (ramo `wip/52.3`, lab sveglio, interruttore solo sul preview `lab`); onda 2 = 02 (migration sul lab, BLOCKING) + 03 (contratti) + 16 (spike del player e oEmbed); onda 3 include 06 = COPIA in sola lettura delle serate e degli artisti di produzione nel lab (notti segrete su sede segnaposto). **Risposte del proprietario del 2026-10-03:** i LiveCut vengono da re:sonate E da RamaDub; la 001 e' gia' su SoundCloud (input in `.env.lab.local`), la 002 esce il 2026-10-04 (una tantum prima dell'ancora del martedi' 6/10, che per Instagram non cambia); **il titolo e' quello pubblicato** (`<artista> @ <format> - 17 Sept 26`, D-52.3-03 emendata); **consenso dei dj: regola stabile, non si chiede piu'**; **il professionista ha risposto: i set si possono pubblicare, siamo coperti** → MUS-10 chiuso salvo il paragrafo dell'informativa (piano 04). Strada D (pagina accesa in produzione con i due LiveCut) e' disponibile: l'ultimo cancello e' il «vai» del piano 15. Checkpoint del proprietario al piano 13 (O-1, O-4..O-8, Mixcloud, colore MotionLab, B o D). Servono ancora: link e durata della 002 (dal 4/10), eventuale cover 2000x2000, la scelta B/D. Scadenza: onde 1-6 entro il 6/10, checkpoint entro mercoledi' 7/10, deploy entro gio 8/10; ven 9 runbook e porta, sab 10 la 003. Prima: decidere D22-3 (porta) e leggere D22-4 in produzione.
 
 **52.2 chiusa e osservata (2026-10-01 08:28Z).** `close-pending-orders` 08:01Z: 1 considerato, `never_attempted`, checkout disattivato; `reconcile-refunds` 08:13Z: silenzio = nulla da riconciliare (non logga un riepilogo quando non fa nulla: nota per la 52.1); 0 pending residui, 0 refunds, 0 mail. CART-03 e RFD-02 osservati.
@@ -544,6 +544,9 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase 52.3]: 52.3-18 — D-52.3-18-2: artista senza LiveCut = nessuna sezione; lettura fallita = sezione col solo avviso role=alert
 - [Phase 52.3]: 52.3-18 — D-52.3-18-3: check H misura il profilo artista come seconda superficie dei LiveCut (H1-H6, voce H2 a 2 select); MA1-MA5 provate rosse
 - [Phase 52.3]: 52.3-18 — D-52.3-18-4: /artists/ NetworkOnly nel service worker, in coda alle esplicite; regole della porta e /events/ invariate
+- [Phase 52.3]: 52.3-19 — D-52.3-19-1: TASK fuori da ogni barra; riga spenta in coda al pannello Management solo se il pannello esiste gia' (Management/Account deciso prima, D-52-04). Lo staff non vede piu' TASK: la fase 53 ricolloca TASK-01/TASK-04
+- [Phase 52.3]: 52.3-19 — D-52.3-19-2: regola di densita' ENTRY_PHONE_DENSE (voci-link px-3 solo con bar.length >= 4, mai per viewport): organizer/master 303.6 e porta 300.6 su 328 a 360 — scelta da portare al proprietario in 52.3-20 (alternativa: Music fuori dalla barra di chi lavora)
+- [Phase 52.3]: 52.3-19 — D-52.3-19-3: il ripiego del player si apre solo su refused e si richiude su play/progress; frase «Tap “Listen in browser” in the player.»; PT in barra solo con showsPartNumber
 
 ## Accumulated Context
 
@@ -665,8 +668,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-10-05T18:39:31.583Z
-**Stopped at:** Completato 52.3-18-PLAN.md — LiveCuts sul profilo artista dietro l'interruttore, force-dynamic, NetworkOnly per /artists/, check H esteso (MA1-MA5 rosse) (e6dd14c7); prossimo 52.3-19 (onda 8), poi 20
+**Last session:** 2026-10-05T19:01:26.147Z
+**Stopped at:** Completato 52.3-19-PLAN.md — TASK fuori dalla barra e riga spenta nel pannello, Music per chi lavora con la regola di densita' (px-3 con 4+ voci), pillola rimisurata con la porta (Check-in indice 1 ovunque), ripiego del player che si richiude al primo PLAY_PROGRESS (62e696aa); prossimo 52.3-20 (onda 9)
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
