@@ -248,6 +248,7 @@ export default async function TicketTiersPage({ params }: PageProps) {
         discount_amount: dc.discount_amount,
         max_uses: dc.max_uses,
         is_active: dc.is_active,
+        benefit: (dc.benefit as string | null) ?? null,
         used: count ?? 0,
         tier_names: tierNames,
       };

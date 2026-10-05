@@ -331,6 +331,7 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
     id: string;
     discount_type: "percentage" | "fixed";
     discount_amount: number;
+    benefit: string | null;
     applicable_tier_ids: string[] | null;
   } | null>(null);
   const [discountError, setDiscountError] = useState<string | null>(null);
@@ -603,7 +604,7 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
                     on this surface takes, and D-41.1-25's refusal of a tone per
                     outcome is kept.
                   */}
-                  {discount && (discount.applicable_tier_ids === null || discount.applicable_tier_ids.includes(tier.id)) && computeDiscountedPrice(tier.price, discount) >= 1.00 ? (
+                  {discount && (discount.applicable_tier_ids === null || discount.applicable_tier_ids.includes(tier.id)) && computeDiscountedPrice(tier.price, discount) >= 1.00 && computeDiscountedPrice(tier.price, discount) < tier.price ? (
                     <>
                       <p className="text-xs text-muted line-through">{formatPrice(tier.price)}</p>
                       <p className="text-sm font-bold text-accent">{formatPrice(computeDiscountedPrice(tier.price, discount))}</p>
@@ -659,10 +660,18 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
             </>
           ) : (
             <div className="flex items-center justify-between rounded-xl border border-line bg-surface px-3 py-2">
+              {/*
+                A 0 code carries only a perk the door shows (quick task
+                2026-10-05): it reads as the perk, never as «-€0.00».
+              */}
               <p className="text-xs text-ink-2">
-                Discount applied: {discount.discount_type === "percentage"
-                  ? `${discount.discount_amount}%`
-                  : formatPrice(discount.discount_amount)}
+                {Number(discount.discount_amount) === 0 && discount.benefit
+                  ? `Code applied: ${discount.benefit}`
+                  : `Discount applied: ${
+                      discount.discount_type === "percentage"
+                        ? `${discount.discount_amount}%`
+                        : formatPrice(discount.discount_amount)
+                    }${discount.benefit ? ` + ${discount.benefit}` : ""}`}
               </p>
               <Button size="sm" variant="ghost" onClick={handleClearDiscount}>
                 Rimuovi

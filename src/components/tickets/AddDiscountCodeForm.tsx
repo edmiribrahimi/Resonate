@@ -59,6 +59,16 @@ export default function AddDiscountCodeForm({
     const form = e.currentTarget;
     const formData = new FormData(form);
 
+    // Stessa regola dell'azione e del catalogo, ripetuta qui perche' in
+    // produzione Next omette il messaggio di un'eccezione lanciata da una
+    // server action: senza questo controllo il rifiuto arriverebbe generico.
+    const amount = parseFloat(String(formData.get("discount_amount") ?? ""));
+    const benefitValue = String(formData.get("benefit") ?? "").trim();
+    if (amount === 0 && benefitValue === "") {
+      setError("A 0 code needs a benefit shown at the door");
+      return;
+    }
+
     // Set tier_ids as JSON string
     formData.set(
       "tier_ids",
@@ -139,11 +149,24 @@ export default function AddDiscountCodeForm({
             name="discount_amount"
             type="number"
             required
-            min={0.01}
+            min={0}
             step={0.01}
             placeholder="0.00"
           />
         </div>
+
+        {/*
+          The perk the door shows when a ticket bought with this code is scanned
+          ('+ 1 chupito'). Required when the discount is 0.
+        */}
+        <Input
+          id={`dc-benefit-${partyId}`}
+          label="Benefit shown at the door (e.g. 1 chupito)"
+          name="benefit"
+          type="text"
+          maxLength={60}
+          placeholder="Optional — required for a 0 code"
+        />
 
         <Input
           id={`dc-max-${partyId}`}

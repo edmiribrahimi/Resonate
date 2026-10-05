@@ -381,6 +381,23 @@ export async function deleteTier(tierId: string, eventId: string) {
 // =============================================================
 
 /**
+ * Benefit di un codice: l'omaggio che la porta mostra (es. «1 chupito»).
+ * Vuoto = nessun benefit; un codice a 0 € senza benefit non fa niente e il
+ * compratore lo leggerebbe come applicato: si rifiuta qui e nel catalogo
+ * (discount_codes_zero_needs_benefit_check, migration 20261005120000).
+ */
+function parseBenefit(formData: FormData, discountAmount: number): string | null {
+  const benefit = ((formData.get("benefit") as string | null) ?? "").trim() || null;
+  if (benefit !== null && benefit.length > 60) {
+    throw new Error("Benefit must be at most 60 characters");
+  }
+  if (discountAmount === 0 && benefit === null) {
+    throw new Error("A 0 code needs a benefit shown at the door");
+  }
+  return benefit;
+}
+
+/**
  * Create a new discount code for a party.
  */
 export async function createDiscountCode(
@@ -406,9 +423,11 @@ export async function createDiscountCode(
 
   const discountAmountRaw = formData.get("discount_amount") as string;
   const discountAmount = parseFloat(discountAmountRaw);
-  if (isNaN(discountAmount) || discountAmount <= 0) {
-    throw new Error("Discount amount must be greater than 0");
+  if (isNaN(discountAmount) || discountAmount < 0) {
+    throw new Error("Discount amount cannot be negative");
   }
+
+  const benefit = parseBenefit(formData, discountAmount);
 
   if (discountType === "percentage" && discountAmount > 100) {
     throw new Error("Discount percentage cannot exceed 100%");
@@ -446,6 +465,7 @@ export async function createDiscountCode(
       discount_amount: discountAmount,
       max_uses: maxUses,
       is_active: isActive,
+      benefit,
     })
     .select("id")
     .single();
@@ -503,9 +523,11 @@ export async function updateDiscountCode(
 
   const discountAmountRaw = formData.get("discount_amount") as string;
   const discountAmount = parseFloat(discountAmountRaw);
-  if (isNaN(discountAmount) || discountAmount <= 0) {
-    throw new Error("Discount amount must be greater than 0");
+  if (isNaN(discountAmount) || discountAmount < 0) {
+    throw new Error("Discount amount cannot be negative");
   }
+
+  const benefit = parseBenefit(formData, discountAmount);
 
   if (discountType === "percentage" && discountAmount > 100) {
     throw new Error("Discount percentage cannot exceed 100%");
@@ -541,6 +563,7 @@ export async function updateDiscountCode(
       discount_amount: discountAmount,
       max_uses: maxUses,
       is_active: isActive,
+      benefit,
       updated_at: new Date().toISOString(),
     })
     .eq("id", discountCodeId);
@@ -639,13 +662,14 @@ export async function validateDiscountCode(
   id: string;
   discount_type: "percentage" | "fixed";
   discount_amount: number;
+  benefit: string | null;
   applicable_tier_ids: string[] | null;
 }> {
   const supabase = await createClient();
 
   const { data: discountCode, error } = await supabase
     .from("discount_codes")
-    .select("id, discount_type, discount_amount, max_uses, is_active")
+    .select("id, discount_type, discount_amount, max_uses, is_active, benefit")
     .eq("party_id", partyId)
     .ilike("code", code.trim())
     .single();
@@ -685,6 +709,7 @@ export async function validateDiscountCode(
     id: discountCode.id,
     discount_type: discountCode.discount_type as "percentage" | "fixed",
     discount_amount: discountCode.discount_amount,
+    benefit: (discountCode.benefit as string | null) ?? null,
     applicable_tier_ids: applicableTierIds,
   };
 }
