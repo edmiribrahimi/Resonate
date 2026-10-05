@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import FormatMarker from "@/components/formats/FormatMarker";
 import { FOCUS_RING } from "@/components/ui/Button";
-import { B2B_JOINER, durationLabel, slotLabel } from "@/lib/livecuts/title";
+import { B2B_JOINER, civilDateLabel, durationLabel, showsPartNumber, slotLabel } from "@/lib/livecuts/title";
 import type { LiveCutView } from "@/lib/livecuts/view";
 import LiveCutCover from "./LiveCutCover";
 
@@ -46,10 +46,26 @@ export function ExternalLinkIcon({ className = "h-4 w-4 shrink-0" }: { className
  * ── What it says, and what it never says ─────────────────────────────────────
  *
  * Who (artists, each linked to `/artists/<slug>`; a b2b is ONE card with two
- * links), when (slot · duration), which format (name and colour from the
- * catalogue row, via `FormatMarker` — no colour literal in this file), and
- * where to listen (SoundCloud, Mixcloud only if the copy exists). It has no
+ * links), when (date · slot · duration, one monospace line that wraps between
+ * the date and the slot, never inside a time), which format (name and colour
+ * from the catalogue row, via `FormatMarker` — no colour literal in this file),
+ * and where to listen (SoundCloud, Mixcloud only if the copy exists). It has no
  * line of place, in any state (O-1 (a)): the page talks about music.
+ *
+ * Never the series key — internal to us (owner's request 13, 2026-10-05) — and
+ * never the SoundCloud title: it repeats artist, format and date, which the
+ * card already says (request 16). The computed title lives on as the play
+ * button's accessible name and in the player bar. `PT<n>` shows only when the
+ * event has at least two published parts (request 14, `showsPartNumber`).
+ * The duration stays: it was already on the card and request 16 does not
+ * remove it — a declared choice, one line to take out if the owner wants it.
+ *
+ * ── `headingLevel` and `currentArtistSlug` ───────────────────────────────────
+ *
+ * On `/music` the artists line is an `h2` (no event heading sits above it any
+ * more); on an artist's page, under its `LiveCuts` heading, it is an `h3`. There
+ * the page's own artist is plain text — a link to the page you are on goes
+ * nowhere — while a b2b partner stays a link.
  *
  * ── The `play` slot ──────────────────────────────────────────────────────────
  *
@@ -61,12 +77,17 @@ export function ExternalLinkIcon({ className = "h-4 w-4 shrink-0" }: { className
 export default function LiveCutCard({
   liveCut,
   play,
+  headingLevel = 2,
+  currentArtistSlug = null,
 }: {
   liveCut: LiveCutView;
   play: ReactNode;
+  headingLevel?: 2 | 3;
+  currentArtistSlug?: string | null;
 }) {
   const titleId = `livecut-${liveCut.id}-title`;
   const joiner = B2B_JOINER.trim();
+  const Heading = headingLevel === 3 ? "h3" : "h2";
 
   return (
     <article
@@ -82,13 +103,15 @@ export default function LiveCutCard({
       <div className="col-start-2 row-start-1 flex min-w-0 flex-col gap-1 ps-4 py-2 md:col-start-1 md:row-start-2 md:p-4">
         <div className="flex items-center justify-between gap-2">
           <FormatMarker name={liveCut.formatName} color={liveCut.formatColor} />
-          <span className="font-mono text-xs font-semibold text-muted">
-            <span aria-hidden="true">PT{liveCut.partNumber}</span>
-            <span className="sr-only">Part {liveCut.partNumber}</span>
-          </span>
+          {showsPartNumber(liveCut) && (
+            <span className="font-mono text-xs font-semibold text-muted">
+              <span aria-hidden="true">PT{liveCut.partNumber}</span>
+              <span className="sr-only">Part {liveCut.partNumber}</span>
+            </span>
+          )}
         </div>
 
-        <h3
+        <Heading
           id={titleId}
           className="flex flex-wrap items-center gap-x-1 gap-y-4 text-base font-semibold text-ink"
         >
@@ -97,21 +120,26 @@ export default function LiveCutCard({
               {index > 0 && (
                 <span className="text-sm font-normal text-muted">{joiner}</span>
               )}
-              <Link
-                href={`/artists/${artist.slug}`}
-                className={`-my-2 inline-flex min-h-11 items-center normal-case hover:underline underline-offset-4 ${FOCUS_RING}`}
-              >
-                {artist.name}
-              </Link>
+              {artist.slug === currentArtistSlug ? (
+                <span className="inline-flex items-center normal-case">{artist.name}</span>
+              ) : (
+                <Link
+                  href={`/artists/${artist.slug}`}
+                  className={`-my-2 inline-flex min-h-11 items-center normal-case hover:underline underline-offset-4 ${FOCUS_RING}`}
+                >
+                  {artist.name}
+                </Link>
+              )}
             </span>
           ))}
-        </h3>
+        </Heading>
 
-        <p className="font-mono text-xs font-semibold text-muted">
-          {slotLabel(liveCut.slotStart, liveCut.slotEnd)} · {durationLabel(liveCut.durationSeconds)}
+        <p className="flex flex-wrap gap-x-1 font-mono text-xs font-semibold text-muted">
+          <span className="whitespace-nowrap">{civilDateLabel(liveCut.date)} ·</span>
+          <span className="whitespace-nowrap">
+            {slotLabel(liveCut.slotStart, liveCut.slotEnd)} · {durationLabel(liveCut.durationSeconds)}
+          </span>
         </p>
-
-        <p className="truncate text-sm text-muted md:whitespace-normal">{liveCut.title}</p>
       </div>
 
       <div className="col-start-3 row-start-1 pe-2 md:col-start-1 md:row-start-1 md:self-end md:justify-self-end md:m-2 md:pe-0">

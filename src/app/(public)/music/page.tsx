@@ -11,8 +11,7 @@ import { getAccessContext } from "@/lib/capabilities/server";
 import { musicPageEnabled } from "@/lib/livecuts/enabled";
 import { MUSIC_SOUNDCLOUD_PROFILE_URL } from "@/lib/livecuts/profile";
 import { filterNights, listPublishedLiveCuts } from "@/lib/livecuts/queries";
-import { civilDateLabel, slotLabel } from "@/lib/livecuts/title";
-import type { NightBlock } from "@/lib/livecuts/view";
+import { civilDateLabel } from "@/lib/livecuts/title";
 import type { UserRole } from "@/types/database";
 import LiveCutCard, { ExternalLinkIcon } from "./LiveCutCard";
 import LiveCutPlayButton from "./LiveCutPlayButton";
@@ -48,33 +47,9 @@ export const metadata: Metadata = {
   },
 };
 
-/**
- * The event key's class — Orbitron, the one dated deviation from 41 §7.1
- * (UI-SPEC §Typography). Option O-7: to return to Inter, remove `font-display`
- * from this line and nothing else.
- */
-const NIGHT_KEY_CLASS =
-  "inline-flex min-h-11 items-center font-display text-base font-semibold tracking-normal normal-case text-ink hover:underline underline-offset-4";
-
 /** Same shape as `events/page.tsx`: a repeated parameter arrives as an array and means no value. */
 interface MusicPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}
-
-/**
- * The meta line of an event block: date · time · N LiveCut(s).
- *
- * N is how this page reads MUS-03's «number of episodes»: the PUBLISHED cards
- * of that event, `liveCuts.length` — not the slots of the timetable. An episode
- * not yet published is not counted, and the timetable count is production
- * material that does not enter this page (UI-SPEC §A.3, meta line).
- */
-function nightMeta(block: NightBlock): string {
-  const parts = [civilDateLabel(block.date)];
-  if (block.time && block.endTime) parts.push(slotLabel(block.time, block.endTime));
-  const n = block.liveCuts.length;
-  parts.push(`${n} ${n === 1 ? "LiveCut" : "LiveCuts"}`);
-  return parts.join(" · ");
 }
 
 export default async function MusicPage({ searchParams }: MusicPageProps) {
@@ -170,27 +145,29 @@ export default async function MusicPage({ searchParams }: MusicPageProps) {
           </div>
         ) : (
           <MusicPlayerProvider>
-            <div className="space-y-12">
+            {/* One group per event, newest first, cards in timetable order — and no
+                heading: the series key is internal to us (owner's request 13,
+                2026-10-05), so the group says only its civil date, to assistive
+                technology. A group, not a landmark per event; a hairline, no text. */}
+            <div className="space-y-8">
               {nights.map((block) => (
-                <section key={block.partyId} aria-labelledby={`night-${block.partyId}`}>
-                  <h2 id={`night-${block.partyId}`}>
-                    {/* `min-h-11` also written here, literally: `verify:touch-targets`
-                        reads the element's own class string, not the constant. */}
-                    <Link href={`/events/${block.eventSlug}`} className={`min-h-11 ${NIGHT_KEY_CLASS} ${FOCUS_RING}`}>
-                      {block.key}
-                    </Link>
-                  </h2>
-                  <p className="mb-4 font-mono text-xs font-semibold text-muted">{nightMeta(block)}</p>
+                <div
+                  key={block.partyId}
+                  role="group"
+                  aria-label={civilDateLabel(block.date)}
+                  className="border-t border-line-soft pt-8 first:border-t-0 first:pt-0"
+                >
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {block.liveCuts.map((liveCut) => (
                       <LiveCutCard
                         key={liveCut.id}
                         liveCut={liveCut}
+                        headingLevel={2}
                         play={<LiveCutPlayButton liveCut={liveCut} isFirst={liveCut.id === firstLiveCutId} />}
                       />
                     ))}
                   </div>
-                </section>
+                </div>
               ))}
             </div>
           </MusicPlayerProvider>
@@ -206,10 +183,9 @@ export default async function MusicPage({ searchParams }: MusicPageProps) {
             `scripts/conversion-manifest.mjs`; changing it is a decision with both lines. */}
         <PageShell width="default">
           <header className="mb-6">
+            {/* No sentence under the title (owner, 2026-10-05). It lives on only
+                as the link preview's description above — a question for plan 52.3-20. */}
             <PageTitle>Music</PageTitle>
-            <p className="mt-2 text-sm text-muted">
-              LiveCuts are the recordings of our events, one for each set.
-            </p>
             {/* Mounted only when the profile URL exists (O-8): never a button without a destination. */}
             {MUSIC_SOUNDCLOUD_PROFILE_URL !== null && (
               <div className="mt-4 flex flex-wrap items-center gap-2">

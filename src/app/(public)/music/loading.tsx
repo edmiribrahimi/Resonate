@@ -15,13 +15,12 @@ export default function MusicLoading() {
     <PageShell width="default">
       <header className="mb-6">
         <SkeletonLine className="h-9 w-32" />
-        <SkeletonLine className="mt-2 h-5 w-64" />
       </header>
 
-      <div className="space-y-12">
+      {/* Same groups as the page since 2026-10-05: no sentence, no event key, a hairline. */}
+      <div className="space-y-8">
         {Array.from({ length: 2 }).map((_, block) => (
-          <div key={block}>
-            <SkeletonLine className="mb-4 h-11 w-48" />
+          <div key={block} className="border-t border-line-soft pt-8 first:border-t-0 first:pt-0">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 3 }).map((_, i) => (
                 <SkeletonCard key={i} />
