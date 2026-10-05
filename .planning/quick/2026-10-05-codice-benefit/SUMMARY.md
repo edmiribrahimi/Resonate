@@ -443,3 +443,5 @@ l'ambiente normale (0 file col ref del lab).
   `DrinkMenu.tsx:59`, `menu/GuestDrinkMenu.tsx:225`,
   `RedeemConfirmationModal.tsx:142/170/185`, `menu/GuestTokenDisplay.tsx:461/489/504`
   — bar e token.
+
+**Terzo atto (solo codice), nel perimetro della richiesta del proprietario «sistema anche il mascheramento nel pagamento del biglietto» (2026-10-05/06).** Push di `main` con i rifiuti dell'acquisto resi leggibili; nessuna migration. Registrato alle 2026-10-05T22:01:15Z.
