@@ -82,11 +82,14 @@ export default function PendingIntentHandler({ eventSlug }: PendingIntentHandler
         if (intent.type === "purchase") {
           const result = await purchaseTicket(intent.partyId, intent.tierId);
           localStorage.removeItem("resonate_intent");
-          if (result.success && result.checkoutId) {
-            setCheckoutId(result.checkoutId);
-            setProcessing(false);
+          if (!result.ok) {
+            // Rifiuto atteso, restituito con la sua frase (2026-10-05).
+            setError(result.message);
             return;
           }
+          setCheckoutId(result.checkoutId);
+          setProcessing(false);
+          return;
         } else if (intent.type === "rsvp") {
           // ── UN'INTENZIONE CHE NESSUNO SCRIVE PIU', 2026-09-21 ──────────────
           //
@@ -111,7 +114,10 @@ export default function PendingIntentHandler({ eventSlug }: PendingIntentHandler
           );
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Something went wrong");
+        console.error(
+          `[ticket.purchase_unreachable] road=intent ${err instanceof Error ? err.message : String(err)}`
+        );
+        setError("Something went wrong. Try again.");
         localStorage.removeItem("resonate_intent");
       } finally {
         setProcessing(false);

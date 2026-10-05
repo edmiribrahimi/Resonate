@@ -252,6 +252,13 @@ function CountdownDisplay({ targetDate }: { targetDate: Date }) {
 //
 // Rimandato e dichiarato: il Buy che SOSTITUISCE l'ordine aperto (confronto di
 // tier e quantita'), `52.2-CONTEXT.md` §Deferred.
+/**
+ * La sola frase generica dell'acquisto: compare SOLO quando l'azione ha
+ * sollevato — un guasto vero, il cui messaggio in produzione non arriva. Ogni
+ * rifiuto atteso ha la sua frase e torna come valore (2026-10-05).
+ */
+const PURCHASE_UNREACHABLE_MESSAGE = "Something went wrong. Try again.";
+
 const OPEN_ORDER_KEY_PREFIX = "resonate_ticket_order_";
 const OPEN_ORDER_MAX_AGE_MS = 48 * 60 * 60 * 1000;
 
@@ -489,16 +496,27 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
       // `email` e `fullName` sono stringhe vuote e l'azione li ignora comunque,
       // prendendo l'identita' dalla sessione lato server.
       startTransition(async () => {
-        const result = await purchaseTicketsGuest({
-          partyId,
-          tierId: selectedTierId,
-          quantity,
-          email,
-          fullName,
-          discountCodeId: discount?.id ?? null,
-          // Il grezzo del link; il server lo riduce a cinque parole.
-          entrySource: readEntrySource(),
-        });
+        // I rifiuti tornano come valore; il catch copre solo il guasto vero,
+        // che in produzione arriva senza messaggio (2026-10-05).
+        let result: Awaited<ReturnType<typeof purchaseTicketsGuest>>;
+        try {
+          result = await purchaseTicketsGuest({
+            partyId,
+            tierId: selectedTierId,
+            quantity,
+            email,
+            fullName,
+            discountCodeId: discount?.id ?? null,
+            // Il grezzo del link; il server lo riduce a cinque parole.
+            entrySource: readEntrySource(),
+          });
+        } catch (err) {
+          console.error(
+            `[ticket.purchase_unreachable] road=night ${err instanceof Error ? err.message : String(err)}`
+          );
+          setError(PURCHASE_UNREACHABLE_MESSAGE);
+          return;
+        }
 
         if (result.success) {
           rememberOpenOrder(partyId, result.orderToken);
@@ -519,14 +537,18 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
     startTransition(async () => {
       try {
         const result = await purchaseTicket(partyId, selectedTierId, discount?.id ?? null);
-        if (result.success && result.checkoutId) {
-          setCheckoutOrderToken(null);
-          setCheckoutId(result.checkoutId);
+        if (!result.ok) {
+          // Il rifiuto atteso, con la sua frase (`purchase-refusals.ts`).
+          setError(result.message);
+          return;
         }
+        setCheckoutOrderToken(null);
+        setCheckoutId(result.checkoutId);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to initiate purchase"
+        console.error(
+          `[ticket.purchase_unreachable] road=event_pass ${err instanceof Error ? err.message : String(err)}`
         );
+        setError(PURCHASE_UNREACHABLE_MESSAGE);
       }
     });
   }

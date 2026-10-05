@@ -22,12 +22,16 @@ import { redactDbError } from "@/lib/errors/redact";
 // allineati per costruzione: se un giorno cambia, cambia in un posto solo.
 import { SUMUP_MINIMUM_EUR } from "@/lib/tickets/order-quote";
 import {
-  CODE_SALES_CLOSED_MESSAGE,
-  CODE_SOLD_OUT_MESSAGE,
   isCodeUsable,
   isTierClosedByDefault,
   type SalesWindowParty,
 } from "@/lib/tickets/sales-window";
+import {
+  logTicketPurchaseFailure,
+  POSTGREST_NO_ROWS,
+  refuseTicketPurchase,
+  type TicketPurchaseRefusal,
+} from "@/lib/tickets/purchase-refusals";
 // Service-role client for operations where RLS blocks legitimate access
 // (e.g., master updating events they don't own)
 function getServiceClient() {
@@ -1647,7 +1651,11 @@ function logPurchasePrecheckUnreadable(
  *
  * partyId can be null for event-level (master) tickets.
  */
-export async function purchaseTicket(partyId: string | null, tierId: string, discountCodeId?: string | null) {
+export async function purchaseTicket(partyId: string | null, tierId: string, discountCodeId?: string | null): Promise<
+  { ok: true; success: true; checkoutId: string; purchaseId: string } | TicketPurchaseRefusal
+> {
+  // 2026-10-05 — i rifiuti attesi tornano come valore (`purchase-refusals.ts`):
+  // in produzione il messaggio di un errore sollevato non arriva a chi compra.
   const supabase = await createClient();
   const {
     data: { user },
@@ -1655,7 +1663,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    throw new Error("Not authenticated");
+    return refuseTicketPurchase("not_authenticated");
   }
 
   // Verify user has a profile. The read stays — it is an EXISTENCE check, and
@@ -1671,6 +1679,8 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
     .single();
 
   if (profileError || !profile) {
+    // Una sessione senza profilo non e' un rifiuto da spiegare: e' un guasto.
+    logTicketPurchaseFailure("profile_read", null);
     throw new Error("Profile not found");
   }
 
@@ -1681,8 +1691,12 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
     .eq("id", tierId)
     .single();
 
-  if (tierError || !tier) {
-    throw new Error("Ticket tier not found");
+  if (tierError && tierError.code !== POSTGREST_NO_ROWS) {
+    logTicketPurchaseFailure("tier_read", tierError.code);
+    throw new Error("Ticket tier unreadable");
+  }
+  if (!tier) {
+    return refuseTicketPurchase("tier_not_found");
   }
 
   const eventId = tier.event_id;
@@ -1806,8 +1820,9 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
 
     const requestedStatus = statusMap.get(tierId);
     if (requestedStatus !== "available") {
-      throw new Error(
-        `This ticket tier is not available (${requestedStatus ?? "unknown"})`
+      return refuseTicketPurchase(
+        "tier_not_available",
+        `(${requestedStatus ?? "unknown"})`
       );
     }
   }
@@ -1824,12 +1839,16 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
       .eq("id", partyId)
       .single();
 
-    if (partyError || !party) {
-      throw new Error("Sub-event not found");
+    if (partyError && partyError.code !== POSTGREST_NO_ROWS) {
+      logTicketPurchaseFailure("party_read", partyError.code);
+      throw new Error("Sub-event unreadable");
+    }
+    if (!party) {
+      return refuseTicketPurchase("night_not_found");
     }
 
     if (party.event_id !== eventId) {
-      throw new Error("Tier does not belong to this sub-event's event");
+      return refuseTicketPurchase("tier_other_night");
     }
 
     salesParty = party;
@@ -1839,9 +1858,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
     // risposta.
     if (isTierClosedByDefault(tier, party)) {
       console.error(`[tickets.tier_sales_closed] party=${partyId} tier=${tierId}`);
-      throw new Error(
-        "Sales for this ticket type have closed for this night (tier_sales_closed). Nothing was charged."
-      );
+      return refuseTicketPurchase("tier_sales_closed");
     }
 
     // ── CR-01: un livello a prezzo zero non si vende su una serata a pagamento ──
@@ -1861,9 +1878,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
         `[tickets.tier_free_on_paid_night] party=${partyId} tier=${tierId} ` +
           `access_type=${party.access_type}`
       );
-      throw new Error(
-        "This ticket type is not on sale for this night (tier_free_on_paid_night). Nothing was charged."
-      );
+      return refuseTicketPurchase("tier_free_on_paid_night");
     }
 
     // Check user doesn't already have a ticket for this party
@@ -1875,7 +1890,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
       .maybeSingle();
 
     if (existingTicket) {
-      throw new Error("You already have a ticket for this sub-event");
+      return refuseTicketPurchase("already_has_night_ticket");
     }
   } else {
     // Event-level master ticket: check duplicate
@@ -1888,7 +1903,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
       .maybeSingle();
 
     if (existingTicket) {
-      throw new Error("You already have an Event Pass for this event");
+      return refuseTicketPurchase("already_has_event_pass");
     }
   }
 
@@ -1899,8 +1914,12 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
     .eq("id", eventId)
     .single();
 
-  if (eventError || !event) {
-    throw new Error("Event not found");
+  if (eventError && eventError.code !== POSTGREST_NO_ROWS) {
+    logTicketPurchaseFailure("event_read", eventError.code);
+    throw new Error("Event unreadable");
+  }
+  if (!event) {
+    return refuseTicketPurchase("event_not_found");
   }
 
   // Discount validation (only for party-specific tiers with a discount code)
@@ -1915,9 +1934,13 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
       .eq("id", discountCodeId)
       .single();
 
-    if (codeError || !code) throw new Error("Invalid discount code");
-    if (!code.is_active) throw new Error("Discount code is no longer active");
-    if (code.party_id !== partyId) throw new Error("Code not valid for this event");
+    if (codeError && codeError.code !== POSTGREST_NO_ROWS) {
+      logTicketPurchaseFailure("discount_read", codeError.code);
+      throw new Error("Discount code unreadable");
+    }
+    if (!code) return refuseTicketPurchase("discount_unknown");
+    if (!code.is_active) return refuseTicketPurchase("discount_inactive");
+    if (code.party_id !== partyId) return refuseTicketPurchase("discount_other_night");
 
     // Check tier applicability
     const { data: tierRestrictions } = await supabase
@@ -1928,7 +1951,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
     if (tierRestrictions && tierRestrictions.length > 0) {
       const applicableTierIds = tierRestrictions.map(t => t.tier_id);
       if (!applicableTierIds.includes(tierId)) {
-        throw new Error("Code not valid for this tier");
+        return refuseTicketPurchase("discount_other_tier");
       }
     }
 
@@ -1952,12 +1975,12 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
         // database's and it fails closed.
         logPurchasePrecheckUnreadable(PRECHECK_DISCOUNT_USAGE_UNREADABLE, usageError);
       }
-      if ((count ?? 0) >= code.max_uses) throw new Error(CODE_SOLD_OUT_MESSAGE);
+      if ((count ?? 0) >= code.max_uses) return refuseTicketPurchase("discount_exhausted");
     }
 
     // 2026-10-05 — un codice vale fino a fine serata − 2 h (`sales-window.ts`).
     // Dopo gli usi: esaurito e chiuso dice «Sold out».
-    if (salesParty && !isCodeUsable(salesParty)) throw new Error(CODE_SALES_CLOSED_MESSAGE);
+    if (salesParty && !isCodeUsable(salesParty)) return refuseTicketPurchase("discount_sales_closed");
 
     // Compute discounted price
     if (code.discount_type === "percentage") {
@@ -1968,7 +1991,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
 
     // SumUp minimum EUR 1.00
     if (finalPrice < 1.00) {
-      throw new Error("Discount would bring price below minimum (€1.00)");
+      return refuseTicketPurchase("discount_below_minimum");
     }
 
     validatedDiscountCodeId = code.id;
@@ -1993,9 +2016,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
       `[tickets.quote_below_minimum] tier=${tierId} party=${partyId ?? "none"} ` +
         `amount=${finalPrice.toFixed(2)}`
     );
-    throw new Error(
-      "This order is below the minimum a card payment can take (\u20AC1.00). Nothing was charged."
-    );
+    return refuseTicketPurchase("below_minimum");
   }
 
   // Use one UUID as both the pending_purchases.id AND the SumUp checkout_reference,
@@ -2012,14 +2033,22 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
   redirectUrl.searchParams.set("ctx", "ticket");
 
   // Create SumUp checkout
-  const response = await createCheckout({
-    amount: finalPrice,
-    currency: "EUR",
-    description: `${event.title} - ${tier.name}`,
-    checkoutReference: purchaseId,
-    returnUrl,
-    redirectUrl: redirectUrl.toString(),
-  });
+  // La chiamata e' la stessa di prima; il try esiste solo per dare al guasto
+  // la sua categoria prima di sollevarlo.
+  let response: Awaited<ReturnType<typeof createCheckout>>;
+  try {
+    response = await createCheckout({
+      amount: finalPrice,
+      currency: "EUR",
+      description: `${event.title} - ${tier.name}`,
+      checkoutReference: purchaseId,
+      returnUrl,
+      redirectUrl: redirectUrl.toString(),
+    });
+  } catch (error) {
+    logTicketPurchaseFailure("checkout_create", null);
+    throw error;
+  }
 
   // Create pending purchase record using service-role client (bypass RLS)
   const serviceClient = getServiceClient();
@@ -2038,10 +2067,11 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
 
   if (insertError) {
     console.error(`[tickets.pending_purchase_insert_failed] ${redactDbError(insertError)}`);
+    logTicketPurchaseFailure("pending_insert", insertError.code);
     throw new Error("Failed to initiate purchase");
   }
 
-  return { success: true, checkoutId: response.id, purchaseId };
+  return { ok: true, success: true, checkoutId: response.id, purchaseId };
 }
 
 // =============================================================
