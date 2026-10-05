@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: Completato 52.3-19-PLAN.md — TASK fuori dalla barra e riga spenta nel pannello, Music per chi lavora con la regola di densita' (px-3 con 4+ voci), pillola rimisurata con la porta (Check-in indice 1 ovunque), ripiego del player che si richiude al primo PLAY_PROGRESS (62e696aa); prossimo 52.3-20 (onda 9)
-last_updated: "2026-10-05T19:01:26.152Z"
+stopped_at: 52.3-20 al checkpoint (task 2 di 3): laboratorio su ca48893f, corsa L3 P-523-A/B/C/D/E/J in ESITI (88fabb01), frase del ripiego iOS corretta (ca48893f); attende il secondo sguardo del proprietario (strada B/D entro 2026-10-07, profilo SoundCloud, anteprima del link, barra a quattro voci)
+last_updated: "2026-10-05T19:31:08.382Z"
 last_activity: 2026-10-05
 progress:
   total_phases: 15
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 52.3 (La pagina Music: i LiveCut delle nostre serate) — EXECUTING
-Plan: 19 of 20 (19 completo; prossimo 52.3-20, onda 9)
+Plan: 20 of 20 (in corso: al checkpoint del task 2, secondo sguardo del proprietario)
 Next: `/gsd-execute-phase 52.3` (prima `/clear`). Onda 1 = 01 (ramo `wip/52.3`, lab sveglio, interruttore solo sul preview `lab`); onda 2 = 02 (migration sul lab, BLOCKING) + 03 (contratti) + 16 (spike del player e oEmbed); onda 3 include 06 = COPIA in sola lettura delle serate e degli artisti di produzione nel lab (notti segrete su sede segnaposto). **Risposte del proprietario del 2026-10-03:** i LiveCut vengono da re:sonate E da RamaDub; la 001 e' gia' su SoundCloud (input in `.env.lab.local`), la 002 esce il 2026-10-04 (una tantum prima dell'ancora del martedi' 6/10, che per Instagram non cambia); **il titolo e' quello pubblicato** (`<artista> @ <format> - 17 Sept 26`, D-52.3-03 emendata); **consenso dei dj: regola stabile, non si chiede piu'**; **il professionista ha risposto: i set si possono pubblicare, siamo coperti** → MUS-10 chiuso salvo il paragrafo dell'informativa (piano 04). Strada D (pagina accesa in produzione con i due LiveCut) e' disponibile: l'ultimo cancello e' il «vai» del piano 15. Checkpoint del proprietario al piano 13 (O-1, O-4..O-8, Mixcloud, colore MotionLab, B o D). Servono ancora: link e durata della 002 (dal 4/10), eventuale cover 2000x2000, la scelta B/D. Scadenza: onde 1-6 entro il 6/10, checkpoint entro mercoledi' 7/10, deploy entro gio 8/10; ven 9 runbook e porta, sab 10 la 003. Prima: decidere D22-3 (porta) e leggere D22-4 in produzione.
 
 **52.2 chiusa e osservata (2026-10-01 08:28Z).** `close-pending-orders` 08:01Z: 1 considerato, `never_attempted`, checkout disattivato; `reconcile-refunds` 08:13Z: silenzio = nulla da riconciliare (non logga un riepilogo quando non fa nulla: nota per la 52.1); 0 pending residui, 0 refunds, 0 mail. CART-03 e RFD-02 osservati.
@@ -668,8 +668,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-10-05T19:01:26.147Z
-**Stopped at:** Completato 52.3-19-PLAN.md — TASK fuori dalla barra e riga spenta nel pannello, Music per chi lavora con la regola di densita' (px-3 con 4+ voci), pillola rimisurata con la porta (Check-in indice 1 ovunque), ripiego del player che si richiude al primo PLAY_PROGRESS (62e696aa); prossimo 52.3-20 (onda 9)
+**Last session:** 2026-10-05T19:31:08.377Z
+**Stopped at:** 52.3-20 al checkpoint (task 2 di 3): laboratorio su ca48893f, corsa L3 P-523-A/B/C/D/E/J in ESITI (88fabb01), frase del ripiego iOS corretta (ca48893f); attende il secondo sguardo del proprietario (strada B/D entro 2026-10-07, profilo SoundCloud, anteprima del link, barra a quattro voci)
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
