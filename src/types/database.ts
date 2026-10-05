@@ -466,6 +466,8 @@ export interface DiscountCode {
   discount_amount: number;
   max_uses: number | null;
   is_active: boolean;
+  /** Omaggio mostrato alla porta (es. «1 chupito»); obbligatorio se discount_amount = 0. Migration 20261005120000. */
+  benefit: string | null;
   created_at: string;
   updated_at: string;
 }
