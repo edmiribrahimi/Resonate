@@ -301,9 +301,30 @@ const ENTRY_PHONE =
   "relative isolate my-1 flex min-h-11 flex-none flex-col items-center justify-center gap-0.5 px-5 " +
   `rounded-full text-xs transition-all active:scale-95 active:opacity-80 ${FOCUS_RING}`;
 
-const ENTRY_RESPONSIVE =
-  `${ENTRY_PHONE} md:my-0 md:min-h-11 md:flex-none md:flex-row md:items-center md:gap-3 ` +
+const ENTRY_COLUMN_RESTATEMENT =
+  "md:my-0 md:min-h-11 md:flex-none md:flex-row md:items-center md:gap-3 " +
   "md:justify-start md:gap-3 md:rounded-xl md:px-4 md:text-sm";
+
+const ENTRY_RESPONSIVE = `${ENTRY_PHONE} ${ENTRY_COLUMN_RESTATEMENT}`;
+
+/**
+ * The density rule — ONE declared rule, 2026-10-05 (plan 52.3-19).
+ *
+ * Measured on the lab with the Music switch on, after TASK left the bar: the
+ * rows of whoever works still asked for 344 px (Management) or 357 px (Account,
+ * the door) of content against 326 / 341 usable at 360 / 375 px. The rule: the
+ * phone pill's LINK entries take `px-3` instead of `px-5` **only when the bar
+ * has four or more entries** — chosen by item count, never by viewport (no
+ * viewport is read anywhere in this file). Every three-entry bar — public, and
+ * every bar with the switch off — keeps the classes it had. From `md:` nothing
+ * changes: the column restatement rewrites the padding. No label shortened, no
+ * icon dropped, no scrolling. It goes to the owner as a choice (plan 52.3-20).
+ */
+const ENTRY_PHONE_DENSE =
+  "relative isolate my-1 flex min-h-11 flex-none flex-col items-center justify-center gap-0.5 px-3 " +
+  `rounded-full text-xs transition-all active:scale-95 active:opacity-80 ${FOCUS_RING}`;
+
+const ENTRY_RESPONSIVE_DENSE = `${ENTRY_PHONE_DENSE} ${ENTRY_COLUMN_RESTATEMENT}`;
 
 // `COLUMN_TIER` — the column-tier restatement of the bar's TASK entry — left
 // with that entry on 2026-10-05 (plan 52.3-19): nothing else used it.
@@ -357,6 +378,8 @@ export default function AppNav({
   // "Am I inside the panel?" — the path starts with the address of one of its
   // rows. More precise than a `/admin/` prefix: it covers `/gallery` and
   // `/account`, and it excludes `/admin/scanner`, which is the door.
+  // The density rule (see ENTRY_PHONE_DENSE): by item count, never by width.
+  const dense = bar.length >= 4;
   const inPanel = panel.some(
     (entry) => entry.kind === "link" && pathname.startsWith(entry.href)
   );
@@ -461,7 +484,13 @@ export default function AppNav({
                   key={entry.href}
                   href={entry.href}
                   aria-current={isActive ? "page" : undefined}
-                  className={`${isPhone ? ENTRY_PHONE : ENTRY_RESPONSIVE} ${
+                  className={`${
+                    dense
+                      ? isPhone
+                        ? ENTRY_PHONE_DENSE
+                        : ENTRY_RESPONSIVE_DENSE
+                      : isPhone ? ENTRY_PHONE : ENTRY_RESPONSIVE
+                  } ${
                     isActive ? "text-accent" : "text-muted"
                   }`}
                 >

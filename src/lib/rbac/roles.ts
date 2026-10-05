@@ -575,7 +575,28 @@ function toLink(
  * proprietario: niente etichette accorciate, niente icone tolte, niente
  * scorrimento — e Check-in resta seconda in ogni caso.
  *
- * <!-- MISURA-52.3-19 -->
+ * **Misura del 2026-10-05, laboratorio** (piano 52.3-19; Chrome headless via
+ * CDP, `mobile: true`, DPR 2; pillola = riquadro di `ROW_PHONE`, disponibile =
+ * `innerWidth - 2rem`; contenuto = `scrollWidth`). A interruttore acceso le
+ * righe a quattro voci chiedevano ancora 344 px (Management) e 357 px (porta,
+ * Account) contro 326 / 341 utili: si applica UNA regola dichiarata in
+ * `AppNav.tsx` (`ENTRY_PHONE_DENSE`: voci-link `px-3` invece di `px-5` solo con
+ * `bar.length >= 4`, mai per larghezza dello schermo). Numeri dopo la regola:
+ *
+ * | Soggetto | Interruttore | Barra | Pillola / disponibile a 360 | a 375 | Check-in |
+ * |---|---|---|---|---|---|
+ * | anonimo | acceso | Events · Music · Account | 269.3 / 328 | 269.3 / 343 | — |
+ * | `attendee` | acceso | Events · Music · Account | 269.3 / 328 | 269.3 / 343 | — |
+ * | `staff` non assegnato | acceso | Events · Music · Account | 269.3 / 328 | 269.3 / 343 | — |
+ * | `staff` assegnato, su `/door` | acceso | Events · Check-in · Music · Account | 300.6 / 328 | 300.6 / 343 | indice 1 |
+ * | `organizer` | acceso | Events · Check-in · Music · Management | 303.6 / 328 | 303.6 / 343 | indice 1 |
+ * | `master` (anche su `/door`) | acceso | Events · Check-in · Music · Management | 303.6 / 328 | 303.6 / 343 | indice 1 |
+ * | anonimo, `attendee`, `staff` non assegnato | spento | Events · Account | 185.3 / 328 | 185.3 / 343 | — |
+ * | `staff` assegnato, su `/door` | spento | Events · Check-in · Account | 280.6 / 328 | 280.6 / 343 | indice 1 |
+ * | `organizer` / `master` | spento | Events · Check-in · Management | 267.6 / 328 | 267.6 / 343 | indice 1 |
+ *
+ * Nessuna riga con `scrollWidth > clientWidth`; nessuna voce TASK in nessuna
+ * barra. Le barre a tre voci tengono le classi di prima.
  *
  * **Il contesto fallito non arriva qui come un ruolo.** `getAccessContext()`
  * **lancia** con la categoria `capabilities.resolve_failed` quando
