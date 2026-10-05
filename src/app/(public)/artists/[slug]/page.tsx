@@ -5,6 +5,11 @@ import AppNav from "@/components/layout/AppNav";
 import EditArtistButton from "@/components/artists/EditArtistButton";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/capabilities/server";
+import { musicPageEnabled } from "@/lib/livecuts/enabled";
+import { listPublishedLiveCutsByArtist } from "@/lib/livecuts/queries";
+import LiveCutCard from "@/app/(public)/music/LiveCutCard";
+import LiveCutPlayButton from "@/app/(public)/music/LiveCutPlayButton";
+import { MusicPlayerProvider } from "@/app/(public)/music/MusicPlayer";
 import { Button, FOCUS_RING } from "@/components/ui/Button";
 import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle, SectionHeading } from "@/components/ui/Typography";
@@ -69,6 +74,19 @@ import type { UserRole } from "@/types/database";
  * with its class string byte-identical, so the entry written later matches on
  * the first run instead of refusing as stale.
  */
+
+/**
+ * DECLARED, not derived (owner's request 15, 2026-10-05).
+ *
+ * The page was already dynamic — `getAccessContext()` reads the cookies — so
+ * nothing changes for the events below. The reason written here is its own:
+ * since 2026-10-05 the profile carries the artist's LiveCuts, and a LiveCut
+ * withdrawn (consent revoked, a legal request) must disappear from this page
+ * AT ONCE, not at a cache expiry. Same rule as `/music`, and for the same
+ * reason the service worker never keeps `/artists/` offline (`src/app/sw.ts`).
+ */
+export const dynamic = "force-dynamic";
+
 export default async function ArtistPage({
   params,
 }: {
@@ -103,6 +121,12 @@ export default async function ArtistPage({
     .eq("is_published", true)
     .contains("lineup", [artist.name])
     .order("date", { ascending: false });
+
+  // The artist's LiveCuts — read ONLY when the Music page exists. With the
+  // switch off (road B in production) no query starts and the profile is the
+  // one it was before. The read is the Music page's single read, filtered by
+  // artist: no column is added to this page by it.
+  const liveCuts = musicPageEnabled() ? await listPublishedLiveCutsByArtist(artist.slug) : null;
 
   const socialLinks = [
     { url: artist.instagram_url, label: "Instagram", icon: "instagram" },
@@ -273,6 +297,41 @@ export default async function ArtistPage({
                 ))}
               </div>
             </div>
+          )}
+
+          {/* LiveCuts (owner's request 15, 2026-10-05) — after the bio and the
+              events, with the Music page's own card and its single player.
+
+              No LiveCut, no section: like the Events block above, an artist
+              without a published recording (or whose recording was withdrawn)
+              leaves no heading and no empty line. A failed read is NOT empty:
+              the section stays with the notice alone, because an empty section
+              in place of an error is a lie nothing in this project would
+              report. The artist of this page is text, not a link, inside the
+              card (`currentArtistSlug`); a b2b partner stays linked. */}
+          {liveCuts !== null && (!liveCuts.ok || liveCuts.liveCuts.length > 0) && (
+            <section className="mt-10" aria-labelledby="artist-livecuts">
+              <div id="artist-livecuts">
+                <SectionHeading as="h2">LiveCuts</SectionHeading>
+              </div>
+              {!liveCuts.ok ? (
+                <p role="alert" className="text-sm text-muted">The recordings could not be loaded.</p>
+              ) : (
+                <MusicPlayerProvider>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {liveCuts.liveCuts.map((lc) => (
+                      <LiveCutCard
+                        key={lc.id}
+                        liveCut={lc}
+                        headingLevel={3}
+                        currentArtistSlug={artist.slug}
+                        play={<LiveCutPlayButton liveCut={lc} isFirst={lc.id === liveCuts.liveCuts[0].id} />}
+                      />
+                    ))}
+                  </div>
+                </MusicPlayerProvider>
+              )}
+            </section>
           )}
         </PageShell>
       </div>

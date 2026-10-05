@@ -287,3 +287,33 @@ export function filterNights(
   }
   return result;
 }
+
+/**
+ * The LiveCuts of one artist, for the artist profile (owner's request 15,
+ * 2026-10-05) — credited alone or in a b2b.
+ *
+ * ── Why it reuses the Music read instead of writing its own ──────────────────
+ *
+ * No second `.select`: one query to weigh, one allow-list for check H to count,
+ * and the profile can never read a column the Music page does not (no place, no
+ * series key). Published LiveCuts are few by construction — one per timetable
+ * slot of events that already happened — so filtering the whole read in memory
+ * costs nothing worth a second home for the same columns.
+ *
+ * Order: event newest first, then `part_number` — the order of the read itself,
+ * flattened. `partCount` stays the count of the WHOLE event (set before any
+ * filter), so the `PT` badge follows the event's rule (≥2 parts), never the
+ * number of parts this artist played.
+ *
+ * On error the `[music.list_query_failed]` line has already been written by the
+ * read; the code is handed on so the profile says the recordings could not be
+ * loaded, and never shows an empty section in place of the error.
+ */
+export async function listPublishedLiveCutsByArtist(
+  slug: string,
+): Promise<{ ok: true; liveCuts: LiveCutView[] } | { ok: false; code: string }> {
+  const result = await listPublishedLiveCuts();
+  if (!result.ok) return { ok: false, code: result.code };
+  const nights = filterNights(result.nights, { format: null, artist: slug });
+  return { ok: true, liveCuts: nights.flatMap((block) => block.liveCuts) };
+}
