@@ -341,3 +341,5 @@ mostra il testo generico di Next al posto del rifiuto:
 
 Da verificare uno per uno se l'azione chiamata lancia davvero rifiuti attesi
 (alcune azioni del menu restituiscono gia' un valore: `menu/actions.ts:16-32`).
+
+**Secondo atto (solo codice), autorizzato dal proprietario il 2026-10-05 alla lettera: «comit e push in prod».** Perimetro: push di `main` con la correzione dei messaggi di rifiuto del codice; nessuna migration. Registrato alle 2026-10-05T21:29:46Z.
