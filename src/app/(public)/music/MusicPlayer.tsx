@@ -707,7 +707,11 @@ function PlayerBar({
         )}
       </div>
 
-      {state.status === "refused" && (
+      {/* Bound to the visible fallback, not to `status === "refused"`: on iOS
+          the widget sends PAUSE after the refusal (spike: PLAY then PAUSE), the
+          status turns `paused` while the widget stays visible, and the sentence
+          vanished with it (simulator, L3 run of 52.3-20, 2026-10-05). */}
+      {visible && (
         <p role="status" className="px-2 pt-2 text-xs text-muted">
           Tap “Listen in browser” in the player.
         </p>
