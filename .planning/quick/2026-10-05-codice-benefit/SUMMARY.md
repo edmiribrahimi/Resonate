@@ -274,3 +274,70 @@ risposta; una settima variante sarebbe la deriva che quel modulo impedisce.
 - **Registrata dall'orchestratore alle 2026-10-05T20:43:15Z**; l'atto si consuma una volta e si chiude con la riga di esito sotto.
 
 **Esito dell'atto (orchestratore):** migration applicata in produzione alle 20:43:55Z (http 200) e riletta alle 20:43:56Z — colonna `benefit`, `discount_amount >= 0`, i due vincoli nuovi, riga `20261005204356:20261005120000_discount_code_benefit` nel registro; `main` portato a `83d1cec9` e spinto alle 20:49:02Z; deploy Vercel **completato** (stato del commit su GitHub: success); `/events/club-house` 200 sulla build nuova; `/music` 404 in produzione (la pagina Music resta sul laboratorio, come chiesto). **Atto consumato.** Restano al proprietario: creare il codice dall'admin della 003 (importo 0, benefit «1 chupito»); allo staff: riaprire la serata con la rete prima della porta.
+---
+
+## Terzo intervento — il rifiuto del codice si legge anche in produzione
+
+**Difetto.** `validateDiscountCode` segnalava i rifiuti con `throw new Error(...)`.
+In una build di produzione Next toglie il messaggio agli errori lanciati da una
+server action: chi compra leggeva «An error occurred in the Server Components
+render…» per «Invalid code», «Code is no longer active», «Sold out» ed
+«Expired» allo stesso modo — quattro rifiuti resi uno (`meta-gates.md`, zero
+fallimenti silenziosi). In `next dev` il messaggio passava, per questo le prove
+precedenti (dev server) non lo vedevano.
+
+**Correzione** (commit `a6359db2`):
+
+| File:riga | Cosa |
+|---|---|
+| `src/app/(admin)/admin/events/[id]/tickets/actions.ts:671-681` | tipo `ValidateDiscountCodeResult` = `{ ok: true, ...anteprima } \| { ok: false, reason: "invalid" \| "inactive" \| "sold_out" \| "expired", message }` |
+| idem `:706`, `:710`, `:735`, `:756` | i quattro rifiuti si restituiscono con le frasi di prima, invariate |
+| idem `:697-704` | `.maybeSingle()`: «nessuna riga» = `invalid`; un errore della lettura NON e' piu' «Invalid code» ma `[discount.validate_failed] stage=lookup` e throw |
+| idem `:765-771` | la lettura dei tier del codice, prima ignorata (un errore dava `null` = «vale su tutti i tier» e un prezzo scontato sbagliato in anteprima), ora `[discount.validate_failed] stage=tiers` e throw |
+| `src/app/(public)/events/[slug]/TierSelection.tsx:431-445` | `result.ok` → anteprima; altrimenti `result.message` nello stesso slot `role="alert"`; il catch copre solo il guasto: «Could not check the code. Try again.» + `[discount.validate_unreachable]` in console |
+
+Nessun altro chiamante (`grep validateDiscountCode src`: solo `TierSelection.tsx`).
+Il rifiuto «tier non applicabile» non esiste nell'azione: l'applicabilita' la
+decide la pagina con `applicable_tier_ids` (prezzo barrato solo sui tier
+ammessi), quindi nessuna frase da preservare.
+
+**Prova sul laboratorio con build di PRODUZIONE** (ore UTC, 2026-10-05).
+`next build --webpack` con `.env.local` + `.env.lab.local` caricati e il rifiuto
+del ref di produzione come prima istruzione (stessa ricetta di
+`scripts/dev-lab.sh`); controllato il bundle: 9 file in `.next/static` con il
+ref del lab, 0 con quello di produzione. `next start -p 3471`, Chrome headless
+375×812 via CDP.
+
+| UTC | Pagina | Azione | Osservato | Schermata |
+|---|---|---|---|---|
+| 21:25:38 | `/events/lab-secret-night` (Lab Secret Night, 1 € in vendita) | codice `WRONG-CODE-XYZ` → Apply | **«Invalid code»** esatto, nello slot `role="alert"` sotto il campo | `~/Documents/Resonate/hotfix-benefit/prod-build-01-invalid-code.png` |
+
+**Cosa non si e' potuto leggere.** Il lab ha **zero** `discount_codes` (letto
+via PostgREST alle 21:24 UTC): le fixture della prova precedente (`CLOSE-LAB`,
+`FULL-LAB`) sono state ripristinate alle 20:25:18. Secondo la consegna non si
+sono scritte righe nuove, quindi **«Code applied: …», «Sold out», «Expired» e
+«Code is no longer active» non sono stati osservati sulla build di
+produzione**: passano per lo stesso ramo `ok: false` → `result.message` di
+«Invalid code», ma restano non visti. Fermato prima di ogni acquisto. Dopo la
+prova server e Chrome spenti, e `.next` ricostruito con l'ambiente normale
+(0 file col ref del lab).
+
+`npm run build`, `verify:conversion`, `verify:routes`, `verify:touch-targets`:
+verdi.
+
+**Lo stesso schema `throw` → `err.message` a chi compra esiste altrove** (grep
+in `src/app/(public)/**`, NON corretti qui). In produzione ognuno di questi
+mostra il testo generico di Next al posto del rifiuto:
+
+- `src/app/(public)/events/[slug]/TierSelection.tsx:528` — **acquisto del
+  biglietto** (`purchaseTicket`): e' lo stesso flusso del codice, e un codice
+  esaurito o scaduto fra l'anteprima e il pagamento verrebbe rifiutato li' con
+  il messaggio perso. Il piu' vicino a questo intervento.
+- `src/app/(public)/events/[slug]/PendingIntentHandler.tsx:114`
+- `src/app/(public)/events/[slug]/DrinkMenu.tsx:59`
+- `src/app/(public)/events/[slug]/menu/GuestDrinkMenu.tsx:225`
+- `src/app/(public)/events/[slug]/RedeemConfirmationModal.tsx:142`, `:170`, `:185`
+- `src/app/(public)/events/[slug]/menu/GuestTokenDisplay.tsx:461`, `:489`, `:504`
+
+Da verificare uno per uno se l'azione chiamata lancia davvero rifiuti attesi
+(alcune azioni del menu restituiscono gia' un valore: `menu/actions.ts:16-32`).
