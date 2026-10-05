@@ -29,7 +29,7 @@ import { SiteFooter } from "@/components/legal/SiteFooter";
  * una superficie si legge dove la superficie e' dichiarata.
  */
 export const LEGAL_CONTACT = "info@resonatemotion.com";
-export const LEGAL_UPDATED = "21 September 2026";
+export const LEGAL_UPDATED = "8 October 2026";
 
 export function LegalBody({
   title,

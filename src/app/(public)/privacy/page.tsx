@@ -41,9 +41,14 @@ export const metadata: Metadata = {
  * `52.3-LEGALE.md` non e' un cancello; Q1-Q3 hanno risposta datata il
  * 2026-10-03. «Nothing from SoundCloud loads until you press play» e' vera per
  * costruzione: `api.js` e l'iframe del widget si iniettano solo al primo tocco
- * su play (MUS-06). NON toccati qui, perche' sono decisioni del proprietario
- * (D-LEG-1, D-LEG-2 in `52.3-LEGALE.md`): `LEGAL_UPDATED`, la riga sulle foto
- * caricate e la riga sulla gallery.
+ * su play (MUS-06).
+ *
+ * Cambiato il 2026-10-05 (fase 52.3, piano 13), per decisione del proprietario
+ * al checkpoint (D-LEG-1, D-LEG-2 in `52.3-LEGALE.md`, applicate come
+ * raccomandate): tolta la frase sulle foto e i video caricati dai partecipanti,
+ * e tolta la galleria dai luoghi di pubblicazione delle foto — la superficie
+ * e' uscita dal prodotto il 2026-10-02 (`media-and-storage.md`). La data unica
+ * delle tre pagine (`LEGAL_UPDATED`) e' ora quella del deploy dichiarato.
  */
 export default async function PrivacyPage() {
   // La navigazione, come su ogni pagina pubblica: il wrapper dichiara lo
@@ -101,10 +106,6 @@ export default async function PrivacyPage() {
           drinks you redeem with your tokens.
         </p>
         <p>
-          <strong>If you upload photos or videos</strong> from an event, we keep the file, who
-          uploaded it and when.
-        </p>
-        <p>
           <strong>If you subscribe to the newsletter:</strong> your email address, until you
           unsubscribe.
         </p>
@@ -152,7 +153,7 @@ export default async function PrivacyPage() {
       <LegalSection heading="Photos and video at events">
         <p>
           Events are photographed and filmed, and the material may be published in recaps, after
-          movies, the gallery and social media. We do this in our legitimate interest to tell what
+          movies and social media. We do this in our legitimate interest to tell what
           re:sonate is. If you appear in a published image and want it removed, write to{" "}
           <a href={`mailto:${LEGAL_CONTACT}`} className="inline-flex min-h-11 items-center text-accent">{LEGAL_CONTACT}</a>: we will
           remove it from everything we control.
