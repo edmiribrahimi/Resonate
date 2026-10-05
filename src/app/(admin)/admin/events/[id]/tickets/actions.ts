@@ -653,19 +653,37 @@ export async function deleteDiscountCode(
 }
 
 /**
- * Validate a discount code for buyer-side display.
- * This is a PUBLIC action -- any authenticated user can validate.
+ * Anteprima di un codice sconto per chi compra. Azione PUBBLICA.
+ *
+ * 2026-10-05 — i rifiuti attesi si RESTITUISCONO, non si lanciano. In una build
+ * di produzione Next toglie il messaggio a ogni errore lanciato da una server
+ * action, e chi compra leggeva «An error occurred in the Server Components
+ * render…» al posto di «Invalid code», «Sold out» o «Expired»: quattro rifiuti
+ * diversi resi uguali (`meta-gates.md`, zero fallimenti silenziosi). Si lancia
+ * solo per un guasto vero, dopo averlo scritto nel log con la sua categoria.
  */
-export async function validateDiscountCode(
-  partyId: string,
-  code: string
-): Promise<{
+export type DiscountCodePreview = {
   id: string;
   discount_type: "percentage" | "fixed";
   discount_amount: number;
   benefit: string | null;
   applicable_tier_ids: string[] | null;
-}> {
+};
+
+export type DiscountCodeRefusal = "invalid" | "inactive" | "sold_out" | "expired";
+
+export type ValidateDiscountCodeResult =
+  | ({ ok: true } & DiscountCodePreview)
+  | { ok: false; reason: DiscountCodeRefusal; message: string };
+
+function refuse(reason: DiscountCodeRefusal, message: string): ValidateDiscountCodeResult {
+  return { ok: false, reason, message };
+}
+
+export async function validateDiscountCode(
+  partyId: string,
+  code: string
+): Promise<ValidateDiscountCodeResult> {
   const supabase = await createClient();
 
   const { data: discountCode, error } = await supabase
@@ -673,14 +691,23 @@ export async function validateDiscountCode(
     .select("id, discount_type, discount_amount, max_uses, is_active, benefit")
     .eq("party_id", partyId)
     .ilike("code", code.trim())
-    .single();
+    .maybeSingle();
 
-  if (error || !discountCode) {
-    throw new Error("Invalid code");
+  // Nessuna riga e' un rifiuto («Invalid code»); un errore della lettura no:
+  // prima i due collassavano nello stesso messaggio. Piu' righe per lo stesso
+  // testo (ilike) restano «Invalid code», come con `.single()`.
+  if (error && error.code !== "PGRST116") {
+    console.error(
+      `[discount.validate_failed] stage=lookup party=${partyId} err=${error.code ?? "?"}`
+    );
+    throw new Error("discount.validate_failed");
+  }
+  if (!discountCode) {
+    return refuse("invalid", "Invalid code");
   }
 
   if (!discountCode.is_active) {
-    throw new Error("Code is no longer active");
+    return refuse("inactive", "Code is no longer active");
   }
 
   // Check usage limits
@@ -705,7 +732,7 @@ export async function validateDiscountCode(
     if ((count ?? 0) >= discountCode.max_uses) {
       // «Sold out», parola del proprietario (2026-10-05): solo qui, dove un
       // tetto c'e' ed e' pieno.
-      throw new Error(CODE_SOLD_OUT_MESSAGE);
+      return refuse("sold_out", CODE_SOLD_OUT_MESSAGE);
     }
   }
 
@@ -726,14 +753,22 @@ export async function validateDiscountCode(
       `[discount.sales_window_unreadable] party=${partyId} code=${salesPartyError.code ?? "?"}`
     );
   } else if (salesParty && !isCodeUsable(salesParty)) {
-    throw new Error(CODE_SALES_CLOSED_MESSAGE);
+    return refuse("expired", CODE_SALES_CLOSED_MESSAGE);
   }
 
-  // Check tier restrictions
-  const { data: tierRestrictions } = await supabase
+  // Check tier restrictions. Se la lettura fallisce non si tira a indovinare:
+  // `null` qui vuol dire «vale su ogni tier», e mostrerebbe un prezzo scontato
+  // su tier dove il codice non vale. E' un guasto, non un rifiuto.
+  const { data: tierRestrictions, error: tiersError } = await supabase
     .from("discount_code_tiers")
     .select("tier_id")
     .eq("discount_code_id", discountCode.id);
+  if (tiersError) {
+    console.error(
+      `[discount.validate_failed] stage=tiers code_id=${discountCode.id} err=${tiersError.code ?? "?"}`
+    );
+    throw new Error("discount.validate_failed");
+  }
 
   const applicableTierIds =
     tierRestrictions && tierRestrictions.length > 0
@@ -741,6 +776,7 @@ export async function validateDiscountCode(
       : null;
 
   return {
+    ok: true,
     id: discountCode.id,
     discount_type: discountCode.discount_type as "percentage" | "fixed",
     discount_amount: discountCode.discount_amount,

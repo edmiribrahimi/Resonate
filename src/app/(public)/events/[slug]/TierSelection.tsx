@@ -428,10 +428,21 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
     setDiscount(null);
     setIsValidating(true);
     try {
+      // I rifiuti tornano come valore con il loro testo («Invalid code», «Sold
+      // out», «Expired», …): in produzione un errore lanciato arriva senza
+      // messaggio, quindi il catch copre solo il guasto vero (2026-10-05).
       const result = await validateDiscountCode(partyId, discountCode.trim());
-      setDiscount(result);
+      if (result.ok) {
+        const { ok: _ok, ...preview } = result;
+        setDiscount(preview);
+      } else {
+        setDiscountError(result.message);
+      }
     } catch (err) {
-      setDiscountError(err instanceof Error ? err.message : "Invalid code");
+      console.error(
+        `[discount.validate_unreachable] ${err instanceof Error ? err.message : String(err)}`
+      );
+      setDiscountError("Could not check the code. Try again.");
     } finally {
       setIsValidating(false);
     }
