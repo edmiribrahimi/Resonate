@@ -2,9 +2,12 @@
  * The SoundCloud profile behind the «Listen elsewhere» line (UI-SPEC §A.1,
  * block 3; option O-8).
  *
- * It is `null` on purpose: the profile URL has not been given, and a profile
- * is not something to invent. While it stays `null` the «Listen elsewhere»
- * line is not mounted at all — no placeholder, no dead link. When the owner
- * gives the URL, this line is the only one that changes.
+ * Set on 2026-10-06 (plan 52.3-23): the collective's public profile, the one
+ * that hosts the LiveCuts the owner linked on 2026-10-03 and 2026-10-06. It
+ * is ALSO the URL the player's widget loads (`MusicPlayer.tsx`): a profile is
+ * a multi-sound widget, so ⏮/⏭ are `skip(i)` calls that never reload the
+ * iframe — measured on Chrome and the iOS simulator (`52.3-SPIKE.md`,
+ * «skip() sul profilo»). Were it `null` again the «Listen elsewhere» line
+ * would unmount and the player would fall back to one `load()` per track.
  */
-export const MUSIC_SOUNDCLOUD_PROFILE_URL: string | null = null;
+export const MUSIC_SOUNDCLOUD_PROFILE_URL: string | null = "https://soundcloud.com/resonatemotion";

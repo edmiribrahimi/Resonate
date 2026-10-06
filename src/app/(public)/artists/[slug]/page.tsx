@@ -317,8 +317,8 @@ export default async function ArtistPage({
               {!liveCuts.ok ? (
                 <p role="alert" className="text-sm text-muted">The recordings could not be loaded.</p>
               ) : (
-                <MusicPlayerProvider>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <MusicPlayerProvider order={liveCuts.liveCuts}>
+                  <div className="flex flex-col gap-2">
                     {liveCuts.liveCuts.map((lc) => (
                       <LiveCutCard
                         key={lc.id}

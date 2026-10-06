@@ -144,20 +144,25 @@ export default async function MusicPage({ searchParams }: MusicPageProps) {
             </Link>
           </div>
         ) : (
-          <MusicPlayerProvider>
+          // `order` is the list as the visitor sees it, filters applied: what ⏮/⏭
+          // step through (plan 52.3-23 — every player measured steps the
+          // visible queue, never «the artist's tracks»).
+          <MusicPlayerProvider order={nights.flatMap((block) => block.liveCuts)}>
             {/* One group per event, newest first, cards in timetable order — and no
                 heading: the series key is internal to us (owner's request 13,
                 2026-10-05), so the group says only its civil date, to assistive
-                technology. A group, not a landmark per event; a hairline, no text. */}
-            <div className="space-y-8">
+                technology. A group, not a landmark per event; a hairline, no text.
+                One column on every width since 2026-10-06 (plan 52.3-21): the
+                three-column tile grid showed 1.3 cards per desktop viewport. */}
+            <div className="space-y-6">
               {nights.map((block) => (
                 <div
                   key={block.partyId}
                   role="group"
                   aria-label={civilDateLabel(block.date)}
-                  className="border-t border-line-soft pt-8 first:border-t-0 first:pt-0"
+                  className="border-t border-line-soft pt-6 first:border-t-0 first:pt-0"
                 >
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  <div className="flex flex-col gap-2">
                     {block.liveCuts.map((liveCut) => (
                       <LiveCutCard
                         key={liveCut.id}

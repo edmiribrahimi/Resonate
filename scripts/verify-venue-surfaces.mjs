@@ -1447,7 +1447,8 @@ const musicLiveByFile = new Map(
 const MUSIC_SURFACES = [
   [
     "src/lib/livecuts/queries.ts",
-    "artists, color, cover_url, date, duration_seconds, event_parties, formats, id, livecut_artists, mixcloud_url, name, part_number, party_id, published_at, slot_end, slot_start, slug, sort_order, soundcloud_track_id, soundcloud_url, time",
+    // `waveform_peaks` added ON PURPOSE by plan 52.3-22: amplitude numbers 0..255 from our own recording, public by nature, no place in them.
+    "artists, color, cover_url, date, duration_seconds, event_parties, formats, id, livecut_artists, mixcloud_url, name, part_number, party_id, published_at, slot_end, slot_start, slug, sort_order, soundcloud_track_id, soundcloud_url, time, waveform_peaks",
     1,
   ],
   [

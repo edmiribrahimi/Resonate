@@ -43,7 +43,7 @@ export default function LiveCutCover({
         src={coverUrl}
         alt=""
         fill
-        sizes="(min-width: 1024px) 315px, (min-width: 768px) 240px, 96px"
+        sizes="(min-width: 768px) 56px, 96px"
         className="object-cover"
         onError={() => {
           console.error(`[music.cover_failed] ${id}`);

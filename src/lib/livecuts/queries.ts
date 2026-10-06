@@ -76,6 +76,21 @@ function num(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+/**
+ * `waveform_peaks` → `peaks`: an array of finite numbers, or null. Anything
+ * else — null, a string, a malformed array — is null too, NEVER a skipped row:
+ * the waveform is decoration on top of a LiveCut that plays without it.
+ */
+function peaksOf(value: unknown): number[] | null {
+  if (!Array.isArray(value) || value.length === 0) return null;
+  const out: number[] = [];
+  for (const v of value) {
+    if (typeof v !== "number" || !Number.isFinite(v)) return null;
+    out.push(v);
+  }
+  return out;
+}
+
 interface ParsedRow {
   view: LiveCutView;
   night: Omit<NightBlock, "liveCuts">;
@@ -96,6 +111,7 @@ function parseRow(raw: unknown): ParsedRow | null {
   const durationSeconds = num(row.duration_seconds);
   const coverUrl = str(row.cover_url);
   const mixcloudUrl = str(row.mixcloud_url);
+  const peaks = peaksOf(row.waveform_peaks);
 
   const party = asObj(row.event_parties);
   const format = asObj(party?.formats);
@@ -163,6 +179,7 @@ function parseRow(raw: unknown): ParsedRow | null {
       date,
       // Set after grouping, in `listPublishedLiveCuts`.
       partCount: 0,
+      peaks,
     },
     night: {
       partyId,
@@ -191,7 +208,7 @@ export async function listPublishedLiveCuts(): Promise<MusicListResult> {
 
   const { data, error } = await supabase
     .from("livecuts")
-    .select("id, party_id, part_number, slot_start, slot_end, soundcloud_url, soundcloud_track_id, mixcloud_url, duration_seconds, cover_url, published_at, event_parties(id, date, time, formats(slug, name, color, sort_order)), livecut_artists(sort_order, artists(name, slug))")
+    .select("id, party_id, part_number, slot_start, slot_end, soundcloud_url, soundcloud_track_id, mixcloud_url, duration_seconds, cover_url, published_at, waveform_peaks, event_parties(id, date, time, formats(slug, name, color, sort_order)), livecut_artists(sort_order, artists(name, slug))")
     .not("published_at", "is", null);
 
   if (error) {

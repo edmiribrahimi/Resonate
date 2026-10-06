@@ -62,6 +62,8 @@ export interface LiveCutView {
    * 2026-10-05).
    */
   partCount: number;
+  /** Amplitude peaks 0..255 from our own recording (plan 52.3-22); null = no waveform, the bar shows a plain line. */
+  peaks: number[] | null;
 }
 
 /**

@@ -11,10 +11,12 @@ import {
   type ReactNode,
 } from "react";
 import { FOCUS_RING, IconButton } from "@/components/ui/Button";
+import { MUSIC_SOUNDCLOUD_PROFILE_URL } from "@/lib/livecuts/profile";
 import { showsPartNumber, slotLabel } from "@/lib/livecuts/title";
 import type { LiveCutView } from "@/lib/livecuts/view";
 import { ExternalLinkIcon } from "./LiveCutCard";
 import LiveCutCover from "./LiveCutCover";
+import Waveform, { SEEK_STEP_S } from "./Waveform";
 
 /**
  * The Music page's player — ONE SoundCloud iframe for the whole page, created
@@ -92,7 +94,31 @@ export const PLAY_REFUSED_TIMEOUT_MS = 3000;
  */
 export const READY_TIMEOUT_MS = 10000;
 
+/**
+ * 200 ms (spike «skip() sul profilo», 2026-10-06): a refusal on iOS is a PAUSE
+ * that follows the PLAY by 340–520 ms (measured +134→+522 today, 1036→1501,
+ * 262→777, 185→527 on 2026-10-03); the PAUSE the widget emits while it
+ * re-seats after `skip(i)+play()` arrives in the SAME millisecond as the PLAY.
+ * A PAUSE closer than this to the PLAY is the widget, not the listener's iOS.
+ */
+export const REFUSAL_MIN_GAP_MS = 200;
+
 const API_URL = "https://w.soundcloud.com/player/api.js";
+
+/**
+ * ── One widget, the PROFILE, loaded once (plan 52.3-23) ──────────────────────
+ *
+ * The iframe is created on the first tap with the collective's profile URL: a
+ * MULTI-SOUND widget, whose `getSounds()` lists every public track and whose
+ * `skip(i)` switches track WITHOUT reloading the iframe. Measured on
+ * 2026-10-06 (`52.3-SPIKE.md`): on the iOS simulator, after the one tap inside
+ * the widget that the first play demands, `skip(1)` with the iframe hidden
+ * played the next track in 2040 ms with no further tap; on Chrome in 755 ms.
+ * `load()` — which reloads the document and brings the iOS refusal back on
+ * every track — is now only the fallback for a LiveCut that is not on the
+ * profile (the laboratory's fixtures, a track hosted elsewhere).
+ */
+const PROFILE_URL = MUSIC_SOUNDCLOUD_PROFILE_URL;
 
 /**
  * The widget's colour, written ALREADY ENCODED: it is the accent, because the
@@ -117,11 +143,18 @@ function trackApiUrl(trackId: string): string {
   return `https://api.soundcloud.com/tracks/${trackId}`;
 }
 
+/**
+ * The first iframe: the profile when there is one (no autoplay — the READY
+ * handler skips to the requested track and plays), else the single track with
+ * autoplay, as before plan 52.3-23.
+ */
 function widgetSrc(trackId: string): string {
+  const url = PROFILE_URL ?? trackApiUrl(trackId);
+  const autoPlay = PROFILE_URL ? "false" : "true";
   return (
     "https://w.soundcloud.com/player/?url=" +
-    encodeURIComponent(trackApiUrl(trackId)) +
-    "&auto_play=true&color=%23FF5C93&show_artwork=false&show_user=true&buying=false&sharing=false&download=false&show_playcount=false"
+    encodeURIComponent(url) +
+    `&auto_play=${autoPlay}&color=%23FF5C93&show_artwork=false&show_user=true&buying=false&sharing=false&download=false&show_playcount=false`
   );
 }
 
@@ -146,11 +179,21 @@ interface ScLoadOptions {
   callback?: () => void;
 }
 
+interface ScSound {
+  id?: number;
+}
+
 interface ScWidget {
   bind(eventName: string, listener: (payload?: ScProgress) => void): void;
   unbind(eventName: string): void;
   play(): void;
   pause(): void;
+  /** Multi-sound widgets only (a set or a profile): switches track in place, no reload. */
+  skip(soundIndex: number): void;
+  /** The sounds of a multi-sound widget, in the widget's order; only `id` is read. */
+  getSounds(callback: (sounds: ScSound[]) => void): void;
+  /** Milliseconds. Documented by the Widget API; one postMessage per call. */
+  seekTo(milliseconds: number): void;
   load(url: string, options: ScLoadOptions): void;
 }
 
@@ -211,6 +254,7 @@ type PlayerAction =
   | { type: "play"; positionMs: number; relative: number }
   | { type: "progress"; positionMs: number; relative: number }
   | { type: "pause" }
+  | { type: "seek"; positionMs: number }
   | { type: "finish" }
   | { type: "refused" }
   | { type: "api_unreachable" }
@@ -252,6 +296,17 @@ function reducer(state: PlayerState, action: PlayerAction): PlayerState {
       };
     case "pause":
       return { ...state, status: "paused" };
+    case "seek": {
+      // Optimistic: the bar moves at once; the next PLAY_PROGRESS confirms it.
+      const durationMs = state.current ? state.current.durationSeconds * 1000 : 0;
+      const positionMs = Math.min(durationMs, Math.max(0, action.positionMs));
+      return {
+        ...state,
+        positionMs,
+        relative: durationMs > 0 ? positionMs / durationMs : 0,
+        status: state.status === "finished" ? "paused" : state.status,
+      };
+    }
     case "finish":
       return {
         ...state,
@@ -275,9 +330,27 @@ interface MusicPlayerContextValue {
   status: PlayerStatus;
   play: (liveCut: LiveCutView) => void;
   pause: () => void;
+  /** ⏮ / ⏭ over `order` — the list as the visitor sees it (plan 52.3-23). */
+  previous: () => void;
+  next: () => void;
+  hasPrevious: boolean;
+  hasNext: boolean;
+  /** Seconds, clamped to the current LiveCut. */
+  seek: (seconds: number) => void;
+}
+
+/**
+ * The position lives in its OWN context: PLAY_PROGRESS arrives several times
+ * a second, and only the two waveforms (bar, current row) need to re-render
+ * for it — not every play button of the list.
+ */
+interface MusicPositionValue {
+  positionMs: number;
+  relative: number;
 }
 
 const MusicPlayerContext = createContext<MusicPlayerContextValue | null>(null);
+const MusicPositionContext = createContext<MusicPositionValue>({ positionMs: 0, relative: 0 });
 
 /** Throws outside the provider: a play button without a player is a wiring defect, not a state. */
 export function useMusicPlayer(): MusicPlayerContextValue {
@@ -286,14 +359,40 @@ export function useMusicPlayer(): MusicPlayerContextValue {
   return ctx;
 }
 
+export function useMusicPosition(): MusicPositionValue {
+  return useContext(MusicPositionContext);
+}
+
+/** True when a global shortcut must NOT steal the key (a field, a select, an editable). */
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  return (
+    tag === "INPUT" ||
+    tag === "TEXTAREA" ||
+    tag === "SELECT" ||
+    target.isContentEditable ||
+    target.getAttribute("role") === "slider"
+  );
+}
+
 type Timer = ReturnType<typeof setTimeout> | null;
 
 /**
  * Renders the page's event blocks, then — only after the first tap — the bar.
  * The bar sits in the flow after the last block, so at the end of the page it
  * covers no card and needs no spacer (UI-SPEC §B.1).
+ *
+ * `order` is what ⏮ / ⏭ step through: the page's list, filters applied, in
+ * reading order (plan 52.3-23). The provider never derives it from the DOM.
  */
-export function MusicPlayerProvider({ children }: { children: ReactNode }) {
+export function MusicPlayerProvider({
+  children,
+  order,
+}: {
+  children: ReactNode;
+  order: LiveCutView[];
+}) {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
 
   const stateRef = useRef(state);
@@ -335,6 +434,16 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
    * desktop that then played normally.
    */
   const sawPlayRef = useRef(false);
+  /** `performance.now()` of that PLAY — a PAUSE closer than REFUSAL_MIN_GAP_MS is not a refusal. */
+  const sawPlayAtRef = useRef(0);
+  /**
+   * The profile's sounds, `soundcloudTrackId` → index for `skip(i)`, filled
+   * from `getSounds()` at READY (and again after a `load(<profile>)`).
+   * Empty while the widget shows a single track (fallback mode).
+   */
+  const soundIndexRef = useRef<Map<string, number>>(new Map());
+  /** What the iframe currently holds. `single` after a `load(<track>)` fallback. */
+  const widgetModeRef = useRef<"profile" | "single">("single");
 
   const clearTimer = useCallback((ref: { current: Timer }) => {
     if (ref.current !== null) {
@@ -433,11 +542,50 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
             return;
           }
         }
-        // Another track (or a retry after an error): the same iframe, `load()`.
+        // Another track (or a retry after an error).
         dispatch({ type: "tap", liveCut, resume: false, dropIframe: false });
         clearTimers();
         erroredRef.current = false;
+
+        const index = soundIndexRef.current.get(liveCut.soundcloudTrackId);
+        if (widgetModeRef.current === "profile" && index !== undefined) {
+          // On the profile: `skip(i)` + `play()`, synchronously inside the tap,
+          // no reload — the iOS refusal does not come back (spike 2026-10-06).
+          // `play()` after `skip()` because `auto_play` alone left a track
+          // paused on Android with `load()` (finding 2) and it does not hurt
+          // on Chrome or iOS (measured). The refusal timer counts from here:
+          // there is no callback; PLAY_PROGRESS came at 755 / 2040 ms.
+          widget.skip(index);
+          widget.play();
+          startRefusedTimer(liveCut.id);
+          return;
+        }
+
+        if (PROFILE_URL && widgetModeRef.current === "single" && index !== undefined) {
+          // Back to a profile track from a single-track fallback: reload the
+          // PROFILE once, then skip inside its callback.
+          awaitingCallbackRef.current = true;
+          startReadyTimer(liveCut.id, "load(profile) callback");
+          widget.load(PROFILE_URL, {
+            ...WIDGET_FLAGS,
+            auto_play: false,
+            color: decodeURIComponent(WIDGET_COLOR_PARAM),
+            callback: () => {
+              awaitingCallbackRef.current = false;
+              clearTimer(readyTimerRef);
+              widgetModeRef.current = "profile";
+              if (erroredRef.current) return;
+              widget.skip(index);
+              widget.play();
+              startRefusedTimer(liveCut.id);
+            },
+          });
+          return;
+        }
+
+        // Not on the profile: the single-track `load()`, as before 52.3-23.
         awaitingCallbackRef.current = true;
+        widgetModeRef.current = "single";
         startReadyTimer(liveCut.id, "load() callback");
         widget.load(trackApiUrl(liveCut.soundcloudTrackId), {
           ...WIDGET_FLAGS,
@@ -495,6 +643,108 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "pause" });
   }, [clearTimer]);
 
+  /**
+   * One `seekTo` per gesture (the waveform commits on `pointerup`, the keys
+   * once per press). Before the widget is ready there is nothing to seek in;
+   * the gesture is dropped, not queued — a queued seek on a track that then
+   * refuses to play would be a surprise later.
+   */
+  const seek = useCallback((seconds: number) => {
+    const current = stateRef.current.current;
+    const widget = widgetRef.current;
+    if (!current || !widget || !widgetReadyRef.current) return;
+    const ms = Math.round(Math.min(current.durationSeconds, Math.max(0, seconds)) * 1000);
+    widget.seekTo(ms);
+    dispatch({ type: "seek", positionMs: ms });
+  }, []);
+
+  const orderRef = useRef(order);
+  useEffect(() => {
+    orderRef.current = order;
+  }, [order]);
+
+  const currentIndex = state.current ? order.findIndex((lc) => lc.id === state.current?.id) : -1;
+  const hasPrevious = currentIndex > 0;
+  const hasNext = currentIndex >= 0 && currentIndex < order.length - 1;
+
+  const step = useCallback(
+    (delta: -1 | 1) => {
+      const id = stateRef.current.current?.id;
+      if (!id) return;
+      const list = orderRef.current;
+      const i = list.findIndex((lc) => lc.id === id);
+      const target = i >= 0 ? list[i + delta] : undefined;
+      if (target) play(target);
+    },
+    [play],
+  );
+  const previous = useCallback(() => step(-1), [step]);
+  const next = useCallback(() => step(1), [step]);
+
+  // Keyboard, only while the bar exists (a LiveCut was chosen): Space
+  // play/pause, Shift+←/→ previous/next (SoundCloud's own grammar), ←/→ ±5 s.
+  // Never inside a field, and never on the waveform slider, which handles its
+  // own keys and stops them (plan 52.3-23, research §2).
+  const hasBar = state.current !== null;
+  useEffect(() => {
+    if (!hasBar) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (isTypingTarget(e.target)) return;
+      const s = stateRef.current;
+      switch (e.key) {
+        case " ":
+          e.preventDefault();
+          if (s.status === "playing") pause();
+          else if (s.current && s.status !== "loading") play(s.current);
+          return;
+        case "ArrowLeft":
+          e.preventDefault();
+          if (e.shiftKey) previous();
+          else seek(s.positionMs / 1000 - SEEK_STEP_S);
+          return;
+        case "ArrowRight":
+          e.preventDefault();
+          if (e.shiftKey) next();
+          else seek(s.positionMs / 1000 + SEEK_STEP_S);
+          return;
+        default:
+          return;
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [hasBar, pause, play, previous, next, seek]);
+
+  // Media Session: registered best-effort and NOT promised. While the audio
+  // plays inside the cross-origin SoundCloud iframe the user agent routes the
+  // hardware keys to that frame (W3C Media Session, Chromium `GetRoutedFrame`);
+  // the handlers below answer only when the page itself holds the session.
+  useEffect(() => {
+    if (!hasBar || typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+    const ms = navigator.mediaSession;
+    try {
+      ms.setActionHandler("previoustrack", () => previous());
+      ms.setActionHandler("nexttrack", () => next());
+      ms.setActionHandler("play", () => {
+        const s = stateRef.current;
+        if (s.current && s.status !== "loading") play(s.current);
+      });
+      ms.setActionHandler("pause", () => pause());
+    } catch {
+      // An action the user agent does not support throws: nothing to do.
+    }
+    return () => {
+      try {
+        for (const a of ["previoustrack", "nexttrack", "play", "pause"] as const) {
+          ms.setActionHandler(a, null);
+        }
+      } catch {
+        // Same.
+      }
+    };
+  }, [hasBar, previous, next, play, pause]);
+
   // Binds the widget ONCE per iframe: `load()` keeps these listeners (spike
   // `load_keeps_listeners: yes`). This effect never loads `api.js`: it runs
   // only after `play()` has, because the iframe exists only then.
@@ -521,8 +771,48 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
         widget.pause();
         return;
       }
-      widget.play();
-      startRefusedTimer(currentId());
+      if (!PROFILE_URL) {
+        // Single-track widget with autoplay, as before plan 52.3-23.
+        widgetModeRef.current = "single";
+        widget.play();
+        startRefusedTimer(currentId());
+        return;
+      }
+      // The profile: read its sounds once, then skip to the requested track.
+      widget.getSounds((sounds) => {
+        const map = new Map<string, number>();
+        sounds.forEach((s, i) => {
+          if (typeof s?.id === "number") map.set(String(s.id), i);
+        });
+        soundIndexRef.current = map;
+        widgetModeRef.current = "profile";
+        if (erroredRef.current || userPauseRef.current) return;
+        const requested = trackIdRef.current;
+        const index = requested ? map.get(requested) : undefined;
+        if (index === undefined) {
+          // The first LiveCut is not on the profile: fall back to its own track.
+          const id = currentId();
+          if (!requested) return;
+          awaitingCallbackRef.current = true;
+          widgetModeRef.current = "single";
+          startReadyTimer(id, "load() callback");
+          widget.load(trackApiUrl(requested), {
+            ...WIDGET_FLAGS,
+            color: decodeURIComponent(WIDGET_COLOR_PARAM),
+            callback: () => {
+              awaitingCallbackRef.current = false;
+              clearTimer(readyTimerRef);
+              if (erroredRef.current) return;
+              widget.play();
+              startRefusedTimer(id);
+            },
+          });
+          return;
+        }
+        if (index > 0) widget.skip(index);
+        widget.play();
+        startRefusedTimer(currentId());
+      });
     });
 
     // Deliberately NOT "playing" (spike finding 1): spurious after `load()`,
@@ -532,6 +822,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     widget.bind(E.PLAY, (payload) => {
       if (awaitingCallbackRef.current || !isRequested(payload)) return;
       sawPlayRef.current = true;
+      sawPlayAtRef.current = performance.now();
     });
 
     widget.bind(E.PLAY_PROGRESS, (payload) => {
@@ -554,8 +845,10 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       }
       if (refusedTimerRef.current !== null) {
         // Inside the refusal window: before the PLAY it is the widget
-        // resetting (Chrome); after it, it is the refusal (iOS).
-        if (sawPlayRef.current) {
+        // resetting (Chrome); in the same instant as the PLAY it is the widget
+        // re-seating after `skip()` (spike 2026-10-06); 340–520 ms after it,
+        // it is the refusal (iOS).
+        if (sawPlayRef.current && performance.now() - sawPlayAtRef.current >= REFUSAL_MIN_GAP_MS) {
           refuse(currentId(), "PAUSE right after PLAY, not asked by the listener");
         }
         return;
@@ -585,19 +878,45 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       }
       if (widgetRef.current === widget) widgetRef.current = null;
     };
-  }, [iframeKey, clearTimer, clearTimers, refuse, startRefusedTimer]);
+  }, [iframeKey, clearTimer, clearTimers, refuse, startRefusedTimer, startReadyTimer]);
 
   const value = useMemo<MusicPlayerContextValue>(
-    () => ({ current: state.current?.id ?? null, status: state.status, play, pause }),
-    [state.current, state.status, play, pause],
+    () => ({
+      current: state.current?.id ?? null,
+      status: state.status,
+      play,
+      pause,
+      previous,
+      next,
+      hasPrevious,
+      hasNext,
+      seek,
+    }),
+    [state.current, state.status, play, pause, previous, next, hasPrevious, hasNext, seek],
+  );
+  const position = useMemo<MusicPositionValue>(
+    () => ({ positionMs: state.positionMs, relative: state.relative }),
+    [state.positionMs, state.relative],
   );
 
   return (
     <MusicPlayerContext.Provider value={value}>
-      {children}
-      {state.current && (
-        <PlayerBar state={state} iframeRef={iframeRef} play={play} pause={pause} />
-      )}
+      <MusicPositionContext.Provider value={position}>
+        {children}
+        {state.current && (
+          <PlayerBar
+            state={state}
+            iframeRef={iframeRef}
+            play={play}
+            pause={pause}
+            previous={previous}
+            next={next}
+            hasPrevious={hasPrevious}
+            hasNext={hasNext}
+            seek={seek}
+          />
+        )}
+      </MusicPositionContext.Provider>
     </MusicPlayerContext.Provider>
   );
 }
@@ -608,7 +927,7 @@ export function PlayerIcon({
   name,
   className = "h-5 w-5",
 }: {
-  name: "play" | "pause" | "arrow-path";
+  name: "play" | "pause" | "arrow-path" | "previous" | "next";
   className?: string;
 }) {
   const d =
@@ -616,7 +935,13 @@ export function PlayerIcon({
       ? "M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z"
       : name === "pause"
         ? "M15.75 5.25v13.5m-7.5-13.5v13.5"
-        : "M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99";
+        : name === "previous"
+          ? // Heroicons v2 outline `backward`.
+            "M21 16.811c0 .864-.933 1.406-1.683.977l-7.108-4.061a1.125 1.125 0 0 1 0-1.954l7.108-4.061A1.125 1.125 0 0 1 21 8.689v8.122ZM11.25 16.811c0 .864-.933 1.406-1.683.977l-7.108-4.061a1.125 1.125 0 0 1 0-1.954l7.108-4.061a1.125 1.125 0 0 1 1.683.977v8.122Z"
+          : name === "next"
+            ? // Heroicons v2 outline `forward`.
+              "M3 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061A1.125 1.125 0 0 1 3 16.811V8.69ZM12.75 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061a1.125 1.125 0 0 1-1.683-.977V8.69Z"
+            : "M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99";
   const spin = name === "arrow-path" ? " animate-spin motion-reduce:animate-none" : "";
   return (
     <svg
@@ -646,16 +971,40 @@ function minutes(seconds: number): number {
   return Math.floor(seconds / 60);
 }
 
+/**
+ * The bar (UI-SPEC §B, re-laid out by plans 52.3-22/23 after the research of
+ * 2026-10-06, `52.3-PLAYER-RESEARCH.md`):
+ *
+ *   cover 56 · title / slot  ·  ⏮ play ⏭  ·  waveform  ·  SoundCloud
+ *
+ * The controls sit in the middle, as on every bar that has ⏮/⏭ (Mutant,
+ * Deezer, YouTube Music); the waveform, when the LiveCut has peaks, takes the
+ * width between them and the link on a desktop and its own full row on a
+ * phone (one instance, flex order — never two canvases). Without peaks the
+ * thin progress line on the top edge stays, as before: no fake wave.
+ * Measured heights elsewhere: 42–65 px without a wave, 84–106 with one; ours
+ * is ~72 on a desktop and ~130 on a phone with the wave row.
+ */
 function PlayerBar({
   state,
   iframeRef,
   play,
   pause,
+  previous,
+  next,
+  hasPrevious,
+  hasNext,
+  seek,
 }: {
   state: PlayerState;
   iframeRef: { current: HTMLIFrameElement | null };
   play: (liveCut: LiveCutView) => void;
   pause: () => void;
+  previous: () => void;
+  next: () => void;
+  hasPrevious: boolean;
+  hasNext: boolean;
+  seek: (seconds: number) => void;
 }) {
   const liveCut = state.current;
   if (!liveCut) return null;
@@ -667,6 +1016,7 @@ function PlayerBar({
   const playing = state.status === "playing";
   const errorSentence = ERROR_SENTENCES[state.status];
   const visible = state.iframeVisible;
+  const peaks = liveCut.peaks;
 
   return (
     // `relative` from §B.1 is not written: `sticky` already positions the bar
@@ -676,17 +1026,19 @@ function PlayerBar({
       aria-label="Player"
       className="sticky bottom-[calc(var(--nav-inset-block-end)+0.5rem)] z-40 mt-12 overflow-hidden rounded-2xl border border-line bg-surface"
     >
-      <div
-        role="progressbar"
-        aria-label="Playback position"
-        aria-valuemin={0}
-        aria-valuemax={durationS}
-        aria-valuenow={positionS}
-        aria-valuetext={`${minutes(positionS)} min of ${minutes(durationS)} min`}
-        className="absolute inset-x-0 top-0 h-1 bg-raised"
-      >
-        <div className="h-full bg-accent" style={{ width: widthPct }} />
-      </div>
+      {!peaks && (
+        <div
+          role="progressbar"
+          aria-label="Playback position"
+          aria-valuemin={0}
+          aria-valuemax={durationS}
+          aria-valuenow={positionS}
+          aria-valuetext={`${minutes(positionS)} min of ${minutes(durationS)} min`}
+          className="absolute inset-x-0 top-0 h-1 bg-raised"
+        >
+          <div className="h-full bg-accent" style={{ width: widthPct }} />
+        </div>
+      )}
 
       {/* The one iframe. Its container switches class between hidden and
           visible; the iframe itself is never unmounted between the two, so the
@@ -717,13 +1069,13 @@ function PlayerBar({
         </p>
       )}
 
-      <div className="flex items-center gap-2 p-2">
+      <div className="flex flex-wrap items-center gap-x-1 gap-y-1 p-2">
         <LiveCutCover
           id={liveCut.id}
           coverUrl={liveCut.coverUrl}
           className="h-14 w-14 shrink-0 rounded-xl object-cover"
         />
-        <div className="min-w-0 flex-1 ms-2">
+        <div className="min-w-0 flex-1 ms-2 md:flex-none md:w-52">
           <p className="truncate text-sm font-semibold text-ink normal-case">{liveCut.title}</p>
           <p className="truncate font-mono text-xs font-semibold text-muted">
             {/* PT only when the night has two or more parts — the card's rule
@@ -736,28 +1088,68 @@ function PlayerBar({
               </>
             )}
             {slotLabel(liveCut.slotStart, liveCut.slotEnd)}
+            {/* The elapsed time from `md:` only: at 375 px it truncated the slot
+                (simulator, 2026-10-06); the waveform's `aria-valuetext` says it. */}
+            <span className="hidden md:inline">
+              <span aria-hidden="true"> · </span>
+              <span className="tabular-nums">{minutes(positionS)}:{String(positionS % 60).padStart(2, "0")}</span>
+            </span>
           </p>
         </div>
-        <IconButton
-          variant="primary"
-          className="min-h-11 min-w-11"
-          aria-label={loading ? "Loading" : playing ? "Pause" : "Play"}
-          aria-busy={loading ? true : undefined}
-          onClick={() => {
-            if (playing) pause();
-            else if (!loading) play(liveCut);
-          }}
-        >
-          <PlayerIcon name={loading ? "arrow-path" : playing ? "pause" : "play"} />
-        </IconButton>
+        <div className="flex items-center gap-0.5 md:mx-2" role="group" aria-label="Playback">
+          <IconButton
+            variant="ghost"
+            className="min-h-11 min-w-11"
+            aria-label="Previous LiveCut"
+            disabled={!hasPrevious}
+            onClick={previous}
+          >
+            <PlayerIcon name="previous" />
+          </IconButton>
+          <IconButton
+            variant="primary"
+            className="min-h-11 min-w-11"
+            aria-label={loading ? "Loading" : playing ? "Pause" : "Play"}
+            aria-busy={loading ? true : undefined}
+            onClick={() => {
+              if (playing) pause();
+              else if (!loading) play(liveCut);
+            }}
+          >
+            <PlayerIcon name={loading ? "arrow-path" : playing ? "pause" : "play"} />
+          </IconButton>
+          <IconButton
+            variant="ghost"
+            className="min-h-11 min-w-11"
+            aria-label="Next LiveCut"
+            disabled={!hasNext}
+            onClick={next}
+          >
+            <PlayerIcon name="next" />
+          </IconButton>
+        </div>
+        {peaks && (
+          <Waveform
+            peaks={peaks}
+            durationSeconds={durationS}
+            positionSeconds={state.positionMs / 1000}
+            onSeek={seek}
+            className="order-last basis-full md:order-none md:min-w-40 md:basis-0 md:flex-1"
+          />
+        )}
         <a
           href={liveCut.soundcloudUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full px-0 text-xs font-semibold text-ink-2 hover:text-ink md:px-4 ${FOCUS_RING}`}
+          // Icon only, on every width: the card's row already carries the text
+          // link, and the width goes to the waveform (every bar measured on
+          // 2026-10-06 puts the service mark alone at the right).
+          // Hidden on a phone: at 375 px the three controls left the title
+          // 80 px (measured 2026-10-06), and the card's row has the same link.
+          className={`hidden min-h-11 min-w-11 items-center justify-center rounded-full text-ink-2 hover:text-ink md:inline-flex ${FOCUS_RING}`}
         >
           <ExternalLinkIcon className="h-5 w-5 shrink-0" />
-          <span className="sr-only md:not-sr-only">Open on SoundCloud</span>
+          <span className="sr-only">Open on SoundCloud</span>
         </a>
       </div>
 

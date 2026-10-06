@@ -1362,6 +1362,8 @@ export interface LiveCutRow {
   cover_url: string | null;
   /** `null` = draft, invisible without `staff.manage`. Publishing requires `cover_url`. */
   published_at: string | null;
+  /** Amplitude peaks 0..255 from our own recording (`smallint[]`, 2..2000, plan 52.3-22); `null` = no waveform. */
+  waveform_peaks: number[] | null;
   /** Who WROTE the row — never who plays. `null` once that account is deleted. */
   created_by: string | null;
   created_at: string;
