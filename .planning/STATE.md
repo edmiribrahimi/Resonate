@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: 52.3-20 al checkpoint (task 2 di 3): laboratorio su ca48893f, corsa L3 P-523-A/B/C/D/E/J in ESITI (88fabb01), frase del ripiego iOS corretta (ca48893f); attende il secondo sguardo del proprietario (strada B/D entro 2026-10-07, profilo SoundCloud, anteprima del link, barra a quattro voci)
-last_updated: "2026-10-05T19:31:08.382Z"
-last_activity: 2026-10-05
+stopped_at: 52.3-20 al checkpoint (task 2 di 3): laboratorio su ca48893f (dal 2026-10-06 08:30Z con il LiveCut RamaDub 002 seminato e PUBBLICATO, verify tutto PASS), corsa L3 P-523-A/B/C/D/E/J in ESITI (88fabb01), frase del ripiego iOS corretta (ca48893f); attende il secondo sguardo del proprietario (strada B/D entro 2026-10-07, profilo SoundCloud, anteprima del link, barra a quattro voci)
+last_updated: "2026-10-06T08:35:00.000Z"
+last_activity: 2026-10-06
 progress:
   total_phases: 15
   completed_phases: 8
