@@ -126,7 +126,7 @@ interface PartyInput {
   number?: number | null;
 }
 
-const VALID_ACCESS_TYPES: AccessType[] = ["free_public", "free_rsvp", "paid"];
+const VALID_ACCESS_TYPES: AccessType[] = ["free_public", "paid"];
 
 /** The same shape as `[id]/assignments/actions.ts:85`. */
 const UUID_PATTERN =
@@ -302,31 +302,6 @@ export type NightRefusal =
       sortOrder: number | null;
       nightTitle: string | null;
     }
-  /**
-   * REG-06 — la serata e' stata scritta, ma il suo livello di prenotazione no.
-   *
-   * ── Perche' una categoria propria e non `write_failed` ───────────────────
-   *
-   * Le altre di questo elenco dicono *quella serata non e' stata scritta*.
-   * Questa dice l'opposto: **la serata c'e'**, ed e' il livello a prezzo zero —
-   * quello che porta la capienza dentro la transazione che emette — a non
-   * esserci. Chi legge deve sapere quale delle due cose e' successa, perche' il
-   * gesto e' diverso: qui non si ricontrolla il numero di serie, si risalva.
-   *
-   * ── E perche' non e' un avviso ──────────────────────────────────────────
-   *
-   * Senza quel livello **una serata gratuita non prende prenotazioni**, e
-   * l'azione pubblica rifiuta con `free_tier_missing`: cioe' il difetto si
-   * scoprirebbe da un ospite, non da chi ha salvato. Questo progetto non ha
-   * error tracking, quindi l'unico effetto osservabile disponibile e' la frase
-   * che l'organizer legge adesso (`meta-gates.md`).
-   */
-  | {
-      kind: "rsvp_tier_failed";
-      sortOrder: number | null;
-      nightTitle: string | null;
-      code: string | null;
-    }
   /** Any other database failure. That night was not written. */
   | { kind: "write_failed"; sortOrder: number | null; nightTitle: string | null; code: string | null };
 
@@ -420,12 +395,6 @@ function nightRefusalSentence(refusal: NightRefusal): string {
         `keep naming the old one. If the venue is genuinely wrong, a master ` +
         `takes the night back to secret from the reveal panel first; that act ` +
         `is recorded, and the address can then be set and revealed again.`
-      );
-    case "rsvp_tier_failed":
-      return (
-        `${where}the night was saved, but its free booking could not be opened ` +
-        `(${refusal.code ?? "no code"}). Until it is, nobody can book a place ` +
-        `on it. Save the event again — nothing is duplicated by doing so.`
       );
     case "write_failed":
       return `${where}saving this night failed (${refusal.code ?? "no code"}). Nothing was written for it.`;
@@ -709,208 +678,9 @@ type EventWriteClient =
   | Awaited<ReturnType<typeof createClient>>
   | ReturnType<typeof getServiceClient>;
 
-/**
- * Il nome del livello che una serata gratuita porta con se', identico a quello
- * che la migration `20260921120100_free_order.sql` ha dato alle serate che
- * esistevano gia'. Due nomi per lo stesso oggetto sarebbero due oggetti per chi
- * legge una lista.
- */
-const FREE_RSVP_TIER_NAME = "RSVP";
-
-/**
- * REG-06 — una serata `free_rsvp` nasce **gia' capace** di prendere
- * prenotazioni.
- *
- * ── Perche' qui, alla scrittura della serata ─────────────────────────────────
- *
- * `ticket_orders.tier_id` e' `NOT NULL`, quindi un ordine a totale zero ha
- * bisogno di un livello a prezzo zero — ed e' anche il livello che porta la
- * **capienza** dentro la transazione di `reserve_ticket_order`, l'unico posto
- * dove regge sotto concorrenza. Deve esistere prima che qualcuno prenoti.
- *
- * L'alternativa era crearlo alla prima prenotazione, cioe' **da un percorso
- * pubblico e concorrente**: sarebbe una seconda strada verso l'emissione, e
- * pretenderebbe una guardia di unicita' che lo schema dichiara di non volere
- * (`20260921120100:245-258`). Qui la strada e' una sola, e sta dove
- * `access_type` viene deciso.
- *
- * ── Cosa fa, e cosa NON fa ───────────────────────────────────────────────────
- *
- *   - se la serata non e' `free_rsvp`, **non tocca niente e non cancella
- *     niente**: quel livello puo' gia' avere biglietti emessi, e
- *     `ticket_orders.tier_id` e' `ON DELETE RESTRICT` — il database rifiuterebbe
- *     la cancellazione, ma l'intenzione sarebbe comunque sbagliata, perche'
- *     quei biglietti devono continuare a passare dalla porta;
- *   - se il livello manca, lo crea con la **stessa forma** del riempimento
- *     della migration: nome `RSVP`, prezzo `0`, `quantity` dalla capienza;
- *   - se c'e' e la capienza e' cambiata, **allinea `quantity`**. Senza,
- *     l'organizer cambierebbe la capienza sulla serata e quella vera resterebbe
- *     la vecchia, dentro la RPC, dove nessuno la vede: un numero ha una casa
- *     sola, ed e' `event_parties.capacity`;
- *   - `quantity` nullo quando la capienza e' nulla, perche' `NULL` significa
- *     *illimitato* su un livello e *non dichiarata* su una serata — la stessa
- *     cosa detta due volte. Un numero inventato dichiarerebbe un limite che la
- *     serata non ha dichiarato.
- *
- * Non solleva: chi chiama e' a meta' di una scrittura e deve poter rispondere
- * con la propria categoria invece di trovarsi un'eccezione addosso.
- */
-async function ensureFreeRsvpTier(
-  client: EventWriteClient,
-  night: {
-    id: string;
-    eventId: string;
-    accessType: AccessType;
-    capacity: number | null;
-    /** `external_tickets_seller` della serata: valorizzato = venduta da un terzo. */
-    externalSeller: string | null;
-  }
-): Promise<{ ok: true } | { ok: false; error: WriteError }> {
-  // ── CR-01: una serata che smette di essere gratuita chiude il suo livello ──
-  //
-  // Qui c'era `return { ok: true }`, e quel silenzio ERA il difetto. Il livello
-  // `RSVP` a prezzo zero restava agganciato alla serata; la pagina pubblica lo
-  // elencava — ordinato per prezzo crescente, quindi per PRIMO — e il percorso
-  // ordinario d'acquisto non ha mai avuto motivo di sospettare un prezzo nullo.
-  // Una serata appena salvata come `paid` mostrava percio' un'opzione gratuita
-  // acquistabile: l'esatto contrario dell'invariante che questa fase dichiara.
-  //
-  // **Non si cancella.** La ragione del docblock qui sopra resta intatta:
-  // `tickets.tier_id` e `ticket_orders.tier_id` sono `ON DELETE RESTRICT`, e i
-  // biglietti gia' emessi devono continuare a passare dalla porta.
-  //
-  // **E non si scrive `quantity = 0`**, che era la correzione suggerita dalla
-  // revisione: il vincolo inline `CHECK (quantity > 0)` di
-  // `20260225110000_phase6_ticketing.sql:14` e' ancora in vigore — la migration
-  // `20260227100000` ha tolto il `NOT NULL` e il `DEFAULT`, non il `CHECK` —
-  // quindi quella scrittura verrebbe rifiutata dal database, e il rifiuto
-  // arriverebbe come `rsvp_tier_failed` su un salvataggio legittimo.
-  //
-  // Lo strumento e' `expires_at`, che il modello del livello gia' porta e che
-  // **entrambe** le catene di disponibilita' gia' onorano: `order-quote.ts:461`
-  // sul percorso ospite/gratuito, `purchaseTicket` (`:1674`) e
-  // `TierSelection.tsx:198` su quello con sessione. Un livello scaduto e'
-  // `expired`, cioe' non acquistabile e non selezionabile, senza toccare lo
-  // schema e senza perdere una sola riga.
-  if (night.accessType !== "free_rsvp") {
-    // Serata venduta da un terzo (2026-10-13, decisione del proprietario): un
-    // tier a 0 € e' un biglietto gratuito che EMETTE IL VENDITORE, non un
-    // ordine gratuito nostro — la cassa nostra e' comunque spenta su quella
-    // serata, su entrambe le strade. Non si chiude.
-    if (night.externalSeller !== null) return { ok: true };
-    return closeZeroPriceTiers(client, night.id);
-  }
-
-  const { data: existing, error: readError } = await client
-    .from("ticket_tiers")
-    .select("id, quantity, expires_at")
-    .eq("party_id", night.id)
-    .eq("price", 0)
-    .order("created_at", { ascending: true })
-    .limit(1);
-
-  if (readError) return { ok: false, error: readError };
-
-  const tier = (existing ?? [])[0] as
-    | { id: string; quantity: number | null; expires_at: string | null }
-    | undefined;
-
-  if (!tier) {
-    const { error: insertError } = await client.from("ticket_tiers").insert({
-      event_id: night.eventId,
-      party_id: night.id,
-      name: FREE_RSVP_TIER_NAME,
-      price: 0,
-      quantity: night.capacity,
-    });
-    if (insertError) return { ok: false, error: insertError };
-    return { ok: true };
-  }
-
-  // Due allineamenti in una scrittura sola.
-  //
-  //   - `quantity` dalla capienza, come prima;
-  //   - `expires_at` a `null` — **CR-01 nel verso opposto**. Una serata puo'
-  //     tornare `free_rsvp` dopo essere passata da `paid`, e il livello che il
-  //     ramo qui sopra ha chiuso deve riaprirsi: senza, la serata gratuita si
-  //     ritroverebbe con l'unico livello capace di emettere i suoi biglietti
-  //     scaduto, e la prenotazione si rifiuterebbe da sola con
-  //     `quote_tier_not_on_sale` — un no che nessuno ha deciso.
-  const patch: { quantity?: number | null; expires_at?: null; updated_at: string } = {
-    updated_at: new Date().toISOString(),
-  };
-  if ((tier.quantity ?? null) !== (night.capacity ?? null)) {
-    patch.quantity = night.capacity;
-  }
-  if (tier.expires_at !== null) {
-    patch.expires_at = null;
-  }
-
-  if ("quantity" in patch || "expires_at" in patch) {
-    const { error: updateError } = await client
-      .from("ticket_tiers")
-      .update(patch)
-      .eq("id", tier.id);
-    if (updateError) return { ok: false, error: updateError };
-  }
-
-  return { ok: true };
-}
-
-/**
- * CR-01 — rende NON acquistabili i livelli a prezzo zero di una serata che non
- * e' `free_rsvp`, senza cancellarne nessuno.
- *
- * Filtra per `price = 0` e non per nome: il nome di un livello e' modificabile
- * dall'organizer, il prezzo e' la proprieta' pericolosa. Un livello gia'
- * scaduto non viene riscritto — cosi' un salvataggio ripetuto non sposta in
- * avanti una scadenza gia' passata, e la scrittura avviene solo quando c'e'
- * davvero qualcosa da chiudere.
- *
- * Non solleva, come tutto il resto di questa catena: restituisce l'errore a chi
- * sta a meta' di una scrittura e ha la propria categoria di rifiuto da dire.
- */
-async function closeZeroPriceTiers(
-  client: EventWriteClient,
-  partyId: string
-): Promise<{ ok: true } | { ok: false; error: WriteError }> {
-  const nowIso = new Date().toISOString();
-  const nowMs = Date.now();
-
-  const { data: rows, error: readError } = await client
-    .from("ticket_tiers")
-    .select("id, expires_at")
-    .eq("party_id", partyId)
-    .eq("price", 0);
-
-  if (readError) return { ok: false, error: readError };
-
-  const open = ((rows ?? []) as { id: string; expires_at: string | null }[]).filter(
-    (t) => t.expires_at === null || new Date(t.expires_at).getTime() > nowMs
-  );
-  if (open.length === 0) return { ok: true };
-
-  const { error: updateError } = await client
-    .from("ticket_tiers")
-    .update({ expires_at: nowIso, updated_at: nowIso })
-    .in(
-      "id",
-      open.map((t) => t.id)
-    );
-
-  if (updateError) return { ok: false, error: updateError };
-
-  // Effetto osservabile con la sua categoria. Chiudere un livello cambia cosa
-  // la pagina pubblica mostra: un cambiamento del genere non deve essere
-  // deducibile solo guardando il risultato (`meta-gates.md`, zero fallimenti
-  // silenziosi). Nessun prezzo, nessun nome, nessuna riga: solo la serata e il
-  // conteggio.
-  console.info(
-    `[event_parties.rsvp_tier_closed] party=${partyId} tiers=${open.length}`
-  );
-
-  return { ok: true };
-}
+// Fase 52.4 (D-52.4-01): una serata con biglietti puo' avere tier a 0 €, che si
+// prenotano dalla strada a totale zero (`reserveFreeTickets`, per tier). Nessun
+// tier si crea o si chiude da solo al cambio di tipo: i tier li decide l'organizer.
 
 /**
  * T-36-10-04 — an archived night must not be silently reassigned, and a NEW
@@ -1106,15 +876,9 @@ export async function createEvent(formData: FormData): Promise<EventWriteResult>
     number: p.number ?? null,
   }));
 
-  // `.select(...)` sul bulk insert, e le colonne che tornano servono davvero:
-  // senza gli id appena coniati non si puo' agganciare il livello di
-  // prenotazione alla serata giusta (REG-06). `access_type` e `capacity`
-  // arrivano dalla stessa risposta invece che da una seconda lettura, che
-  // potrebbe gia' vedere un'altra verita'.
-  const { data: insertedParties, error: partyError } = await supabase
+  const { error: partyError } = await supabase
     .from("event_parties")
-    .insert(partyRows)
-    .select("id, access_type, capacity, sort_order, title, external_tickets_seller");
+    .insert(partyRows);
 
   if (partyError) {
     // ONE bulk insert, so the database names no row. The refusal therefore
@@ -1137,51 +901,6 @@ export async function createEvent(formData: FormData): Promise<EventWriteResult>
       console.error(
         `[events.orphan_draft] event=${inserted.id} could not be removed after its ` +
           `nights were refused. code=${cleanupError.code ?? "none"} message=${cleanupError.message}`
-      );
-    }
-
-    return { success: false, error: nightRefusalSentence(refusal), refusal };
-  }
-
-  // ── REG-06: una serata gratuita nasce gia' capace di prendere prenotazioni ──
-  //
-  // Il rifiuto **cancella la bozza**, come fa il ramo qui sopra e per la stessa
-  // ragione: questa funzione crea anche la riga dell'evento, e restituire un no
-  // lasciandola dietro significa che chi riprova si ritrova due bozze. Il
-  // taglio in cascata dell'evento porta via anche le serate appena scritte.
-  for (const row of (insertedParties ?? []) as {
-    id: string;
-    access_type: AccessType;
-    capacity: number | null;
-    sort_order: number;
-    title: string;
-    external_tickets_seller: string | null;
-  }[]) {
-    const tier = await ensureFreeRsvpTier(supabase, {
-      id: row.id,
-      eventId: inserted.id,
-      accessType: row.access_type,
-      capacity: row.capacity,
-      externalSeller: row.external_tickets_seller ?? null,
-    });
-    if (tier.ok) continue;
-
-    const refusal: NightRefusal = {
-      kind: "rsvp_tier_failed",
-      sortOrder: row.sort_order ?? null,
-      nightTitle: row.title?.trim() || null,
-      code: tier.error.code ?? null,
-    };
-    logNightRefusal(refusal, tier.error);
-
-    const { error: cleanupError } = await supabase
-      .from("events")
-      .delete()
-      .eq("id", inserted.id);
-    if (cleanupError) {
-      console.error(
-        `[events.orphan_draft] event=${inserted.id} could not be removed after its ` +
-          `free booking could not be opened. code=${cleanupError.code ?? "none"} message=${cleanupError.message}`
       );
     }
 
@@ -1468,10 +1187,6 @@ export async function updateEvent(
     }
 
     let nightError: WriteError | null = null;
-    // L'id della serata dopo la scrittura: quello che c'era, o quello appena
-    // coniato. Serve al livello di prenotazione (REG-06), che si aggancia a una
-    // serata e non a un evento.
-    let writtenNightId: string | null = null;
 
     if (party.id && existingIds.has(party.id)) {
       const { error: updateError } = await client
@@ -1479,18 +1194,11 @@ export async function updateEvent(
         .update({ ...nightFields, updated_at: new Date().toISOString() })
         .eq("id", party.id);
       nightError = updateError;
-      writtenNightId = party.id;
     } else {
-      // `.select("id").single()`: l'id di una serata nuova non e' deducibile da
-      // nient'altro in questa funzione, e senza di lui il livello di
-      // prenotazione non avrebbe a cosa attaccarsi.
-      const { data: insertedNight, error: insertError } = await client
+      const { error: insertError } = await client
         .from("event_parties")
-        .insert({ event_id: eventId, ...nightFields })
-        .select("id")
-        .single();
+        .insert({ event_id: eventId, ...nightFields });
       nightError = insertError;
-      writtenNightId = insertedNight?.id ?? null;
     }
 
     if (nightError) {
@@ -1502,32 +1210,6 @@ export async function updateEvent(
       });
       logNightRefusal(refusal, nightError);
       return { success: false, error: nightRefusalSentence(refusal), refusal };
-    }
-
-    // ── REG-06: il livello di prenotazione segue la serata ───────────────────
-    //
-    // Dopo la scrittura e non prima, perche' prima la serata potrebbe non
-    // esistere o portare ancora la vecchia capienza. Si ferma alla prima
-    // serata rifiutata, come tutto il resto di questo ciclo: la serata E'
-    // scritta, e la frase lo dice invece di lasciarlo dedurre.
-    if (writtenNightId) {
-      const tier = await ensureFreeRsvpTier(client, {
-        id: writtenNightId,
-        eventId,
-        accessType: party.access_type,
-        capacity: party.capacity ?? null,
-        externalSeller: party.external_tickets_seller ?? null,
-      });
-      if (!tier.ok) {
-        const refusal: NightRefusal = {
-          kind: "rsvp_tier_failed",
-          sortOrder: party.sort_order,
-          nightTitle: party.title?.trim() || null,
-          code: tier.error.code ?? null,
-        };
-        logNightRefusal(refusal, tier.error);
-        return { success: false, error: nightRefusalSentence(refusal), refusal };
-      }
     }
   }
 

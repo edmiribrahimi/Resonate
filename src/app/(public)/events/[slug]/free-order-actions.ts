@@ -17,8 +17,14 @@ import { resolveGuestIdentity } from "@/lib/tickets/guest-identity";
 import { sendOrderConfirmation } from "@/lib/tickets/order-confirmation";
 
 /**
- * free-order-actions.ts — la prenotazione di una serata gratuita, che e' un
- * ordine come gli altri con un totale di zero.
+ * free-order-actions.ts — la prenotazione di un tier a 0 € su una serata con
+ * biglietti, che e' un ordine come gli altri con un totale di zero.
+ *
+ * Fase 52.4 (D-52.4-01, MIX-02): non esiste piu' la «serata gratuita su
+ * prenotazione». Esiste la serata `paid`, che puo' avere tier a pagamento e
+ * tier a 0 € insieme; questa e' la cassa a totale zero, **indirizzata per
+ * tier**. La stessa persona puo' prenotare un gratuito e poi comprare un
+ * pagante: nessun limite per persona, e' il perimetro dichiarato di BUY-02.
  *
  * Parole del proprietario, `D-50-18`: *«dev'essere uguale a comprare un ticket
  * ma senza acquisto»*. Quindi **niente di nuovo** dove qualcosa esiste gia': lo
@@ -61,7 +67,7 @@ import { sendOrderConfirmation } from "@/lib/tickets/order-confirmation";
  * registrato come T-50-17, e un perimetro dichiarato e' l'opposto di un buco
  * scoperto dopo.
  *
- * ── LE UNDICI CAUSE, E PERCHE' NESSUNA COLLASSA NELL'ALTRA ─────────────────
+ * ── LE TREDICI CAUSE, E PERCHE' NESSUNA COLLASSA NELL'ALTRA ────────────────
  *
  * Questo progetto **non ha error tracking** (`meta-gates.md`, verificato): una
  * riga di log non raggiunge nessun essere umano da sola, quindi la sola
@@ -76,8 +82,10 @@ import { sendOrderConfirmation } from "@/lib/tickets/order-confirmation";
  *   - `free_name_missing`     — il campo del nome e' vuoto
  *   - `free_name_too_long`    — il nome supera il tetto dichiarato
  *   - `free_unreadable`       — una lettura non ha risposto: **non e' un no**
- *   - `free_not_free_rsvp`    — quella serata non prende prenotazioni gratuite
- *   - `free_tier_missing`     — manca il livello a prezzo zero, o non e' a zero
+ *   - `free_night_not_ticketed` — la serata non esiste o non ha biglietti (non `paid`)
+ *   - `free_night_sold_elsewhere` — la serata la vende un terzo: niente cassa nostra
+ *   - `free_tier_not_found`   — il tier non esiste o non e' di quella serata
+ *   - `free_tier_not_free`    — il tier non e' a 0 €, o il preventivo non e' a zero
  *   - `free_order_not_saved`  — la riga d'ordine non si e' scritta
  *   - `free_identity_failed`  — l'account non si e' potuto trovare ne' coniare
  *   - `free_buyer_not_attached` — l'ordine non si e' potuto legare al conto
@@ -88,10 +96,13 @@ import { sendOrderConfirmation } from "@/lib/tickets/order-confirmation";
  *
  * ── COSA QUESTO FILE NON FA ────────────────────────────────────────────────
  *
- *   - **non crea livelli di biglietto.** Se il livello a prezzo zero manca,
- *     rifiuta e dice all'organizer cosa fare. Un percorso pubblico che conia un
- *     livello sarebbe una **seconda strada verso l'emissione**, dentro un
- *     percorso concorrente;
+ *   - **non crea livelli di biglietto.** Prenota il tier che il chiamante
+ *     nomina, se e' a 0 € e appartiene alla serata. Un percorso pubblico che
+ *     conia un livello sarebbe una **seconda strada verso l'emissione**, dentro
+ *     un percorso concorrente;
+ *   - **non controlla la capienza della serata** (D-52.4-06): e' un conteggio
+ *     in pagina, e i gratuiti ci contano perche' sono righe `tickets`. La cassa
+ *     si ferma sul massimo del tier e su `sold_out`, come per i paganti;
  *   - **non tocca il fornitore di pagamento** e non apre nessun checkout;
  *   - **non scrive niente su `tickets`**: i biglietti li fa la RPC, in una
  *     transazione, e l'etichetta del portatore resta un progressivo — il nome
@@ -109,8 +120,10 @@ const FREE_EMAIL_MALFORMED = "free_email_malformed";
 const FREE_NAME_MISSING = "free_name_missing";
 const FREE_NAME_TOO_LONG = "free_name_too_long";
 const FREE_UNREADABLE = "free_unreadable";
-const FREE_NOT_FREE_RSVP = "free_not_free_rsvp";
-const FREE_TIER_MISSING = "free_tier_missing";
+const FREE_NIGHT_NOT_TICKETED = "free_night_not_ticketed";
+const FREE_NIGHT_SOLD_ELSEWHERE = "free_night_sold_elsewhere";
+const FREE_TIER_NOT_FOUND = "free_tier_not_found";
+const FREE_TIER_NOT_FREE = "free_tier_not_free";
 const FREE_ORDER_NOT_SAVED = "free_order_not_saved";
 const FREE_IDENTITY_FAILED = "free_identity_failed";
 const FREE_BUYER_NOT_ATTACHED = "free_buyer_not_attached";
@@ -122,8 +135,10 @@ type FreeOrderOwnRefusal =
   | typeof FREE_NAME_MISSING
   | typeof FREE_NAME_TOO_LONG
   | typeof FREE_UNREADABLE
-  | typeof FREE_NOT_FREE_RSVP
-  | typeof FREE_TIER_MISSING
+  | typeof FREE_NIGHT_NOT_TICKETED
+  | typeof FREE_NIGHT_SOLD_ELSEWHERE
+  | typeof FREE_TIER_NOT_FOUND
+  | typeof FREE_TIER_NOT_FREE
   | typeof FREE_ORDER_NOT_SAVED
   | typeof FREE_IDENTITY_FAILED
   | typeof FREE_BUYER_NOT_ATTACHED
@@ -156,10 +171,14 @@ const FREE_ORDER_ERROR: Record<FreeOrderOwnRefusal, string> = {
   [FREE_NAME_TOO_LONG]: `Names here stop at ${FULL_NAME_MAX_LENGTH} characters. Shorten it and try again.`,
   [FREE_UNREADABLE]:
     "We could not check this night just now, so nothing was booked. This is not a refusal — please try again in a moment.",
-  [FREE_NOT_FREE_RSVP]:
-    "This night does not take free bookings. If it sells tickets, buy one from the night's page instead.",
-  [FREE_TIER_MISSING]:
-    "Bookings are not open on this night yet: it has no free ticket type. Whoever runs the night has to open it — tell them, and nothing was booked.",
+  [FREE_NIGHT_NOT_TICKETED]: "This night has no tickets to reserve.",
+  // La stessa voce del preventivo (`QUOTE_NIGHT_SOLD_ELSEWHERE`), su una
+  // strada che non incassa: «booked» invece di «charged».
+  [FREE_NIGHT_SOLD_ELSEWHERE]:
+    "Tickets for this night are sold elsewhere, not here. Nothing was booked.",
+  [FREE_TIER_NOT_FOUND]: "This ticket type does not belong to this night.",
+  [FREE_TIER_NOT_FREE]:
+    "This ticket type is not free: pick it and pay instead.",
   [FREE_ORDER_NOT_SAVED]:
     "Your booking could not be saved, so no ticket was issued. Please try again — and if it happens twice, tell us.",
   [FREE_IDENTITY_FAILED]:
@@ -190,7 +209,8 @@ const UUID_SHAPE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * Prenota uno o piu' biglietti su una serata gratuita — `REG-06`.
+ * Prenota uno o piu' biglietti di un tier a 0 € su una serata `paid` — fase
+ * 52.4, MIX-02 (prima `REG-06`, sulle serate `free_rsvp` che non esistono piu').
  *
  * La sequenza e' quella del webhook del percorso pagato, **in sincrono**:
  * preventivo → riga d'ordine → identita' → portatore → conio → mail. L'ordine
@@ -208,6 +228,7 @@ const UUID_SHAPE =
  */
 export async function reserveFreeTickets(input: {
   partyId: string;
+  tierId: string;
   quantity: number;
   email: string;
   fullName: string;
@@ -244,22 +265,28 @@ export async function reserveFreeTickets(input: {
     // Un id fuori forma diventerebbe un `22P02` alla prima lettura, e quel
     // fallimento cadrebbe nel ramo *non si e' potuto rispondere* — che dice
     // «riprova fra un momento» per una cosa che non funzionera' mai.
-    return refuse(FREE_NOT_FREE_RSVP, "identificativo di serata fuori forma");
+    return refuse(FREE_NIGHT_NOT_TICKETED, "identificativo di serata fuori forma");
+  }
+  if (typeof input.tierId !== "string" || !UUID_SHAPE.test(input.tierId)) {
+    // Stessa ragione: un `22P02` non e' un «riprova».
+    return refuse(FREE_TIER_NOT_FOUND, "identificativo di tier fuori forma");
   }
   const partyId = input.partyId;
+  const tierId = input.tierId;
 
   const serviceClient = getServiceClient();
 
   // ── 2. La serata, riletta dal database ────────────────────────────────────
   //
-  // **E' il controllo che impedisce a questo percorso di emettere biglietti su
-  // una serata A PAGAMENTO** (T-50-16), ed e' autoritativo qui: non si deduce
-  // da cosa la superficie ha mostrato, perche' la superficie non e' il confine.
+  // Solo una serata con biglietti (`paid`) prende prenotazioni a 0 €, e solo se
+  // la vendiamo noi: una serata venduta da un terzo (`external_tickets_seller`)
+  // non ha cassa nostra, nemmeno a totale zero (MIX-03, T-52.4-11). Il
+  // controllo e' autoritativo qui, non dedotto dalla superficie.
   // Nessuna colonna del luogo in questa `select`: una colonna che non si legge
   // non si puo' stampare (`venue-secrecy.md`, gate *default chiuso*).
   const { data: party, error: partyError } = await serviceClient
     .from("event_parties")
-    .select("id, access_type")
+    .select("id, access_type, external_tickets_seller")
     .eq("id", partyId)
     .maybeSingle();
 
@@ -270,66 +297,58 @@ export async function reserveFreeTickets(input: {
     );
   }
   if (!party) {
-    return refuse(FREE_NOT_FREE_RSVP, `serata ${partyId} inesistente`);
+    return refuse(FREE_NIGHT_NOT_TICKETED, `serata ${partyId} inesistente`);
   }
-  if (party.access_type !== "free_rsvp") {
+  if (party.access_type !== "paid") {
     return refuse(
-      FREE_NOT_FREE_RSVP,
-      `serata ${partyId} e' ${party.access_type}: il percorso a totale zero non la tocca`
+      FREE_NIGHT_NOT_TICKETED,
+      `serata ${partyId} e' ${party.access_type}: non ha biglietti da prenotare`
+    );
+  }
+  if (party.external_tickets_seller !== null) {
+    return refuse(
+      FREE_NIGHT_SOLD_ELSEWHERE,
+      `serata ${partyId} venduta da un terzo: niente prenotazione a 0 €`
     );
   }
 
-  // ── 3. Il livello a prezzo zero, che NON si crea da qui ───────────────────
+  // ── 3. Il tier, letto PER ID, che NON si crea da qui ──────────────────────
   //
-  // Lo crea la serata: la migration per quelle che esistevano gia', la scrittura
-  // della serata da qui in avanti. Se manca, questa azione **rifiuta dicendo a
-  // chi legge cosa deve succedere**; coniarlo sarebbe una seconda strada verso
-  // l'emissione dentro un percorso concorrente (T-50-14).
-  //
-  // Due righe e non una: se ce ne fosse piu' d'una, la scelta deve essere
-  // **deterministica** — la piu' vecchia — e l'ambiguita' va scritta, perche'
-  // significa che qualcosa ne ha creato un secondo.
-  const { data: tiers, error: tierError } = await serviceClient
+  // Il chiamante nomina il tier; il database dice se e' di questa serata e se e'
+  // a 0 €. Un id di un tier a pagamento scritto a mano qui darebbe un biglietto
+  // gratis di un tier pagante (T-52.4-10): per questo il prezzo si rilegge, e il
+  // totale del preventivo e' la terza guardia.
+  const { data: tier, error: tierError } = await serviceClient
     .from("ticket_tiers")
-    .select("id, price")
-    .eq("party_id", partyId)
-    .eq("price", 0)
-    .order("created_at", { ascending: true })
-    .limit(2);
+    .select("id, price, party_id")
+    .eq("id", tierId)
+    .maybeSingle();
 
   if (tierError) {
     return refuse(
       FREE_UNREADABLE,
-      `lettura del livello non riuscita: ${redactDbError(tierError)}`
+      `lettura del tier non riuscita: ${redactDbError(tierError)}`
     );
   }
-
-  const tier = (tiers ?? [])[0];
-  if (!tier) {
+  if (!tier || tier.party_id !== partyId) {
     return refuse(
-      FREE_TIER_MISSING,
-      `serata ${partyId} senza livello a prezzo zero: l'organizer deve aprirla`
+      FREE_TIER_NOT_FOUND,
+      `tier ${tierId} ${tier ? `di un'altra serata (${tier.party_id})` : "inesistente"}, chiesto su ${partyId}`
     );
   }
   if (Number(tier.price) !== 0) {
-    // Controllo di sanita' su un dato che decide se qualcuno paga: il filtro
-    // sopra dovrebbe averlo gia' garantito, e proprio per questo un valore
-    // diverso qui significa che il filtro non ha fatto quello che crediamo.
     return refuse(
-      FREE_TIER_MISSING,
-      `livello ${tier.id} letto con prezzo ${tier.price} da un filtro a zero`
-    );
-  }
-  if ((tiers ?? []).length > 1) {
-    console.error(
-      `[tickets.free_tier_ambiguous] serata ${partyId} ha piu' di un livello a prezzo zero: preso il piu' vecchio`
+      FREE_TIER_NOT_FREE,
+      `tier ${tierId} a ${tier.price}: si compra, non si prenota`
     );
   }
 
   // ── 4. Il preventivo, lo STESSO del percorso pagato ───────────────────────
   //
-  // Tetto per ordine, catena dei livelli, capienza, catalogo, pubblicazione
-  // dell'evento: identici a zero euro, e ogni loro rifiuto viaggia intatto.
+  // Tetto per ordine, chiusura a fine serata − 2 h salvo `expires_at`, massimo
+  // del tier, `sold_out`, catalogo, pubblicazione dell'evento: identici a zero
+  // euro, e ogni loro rifiuto viaggia intatto. Nessuna capienza di serata
+  // (D-52.4-06).
   // `goesToPaymentProvider: false` salta **una sola** riga, quella del minimo
   // di una carta — senza, un ordine gratuito verrebbe rifiutato per non aver
   // raggiunto il minimo di un pagamento che nessuno sta facendo.
@@ -349,10 +368,10 @@ export async function reserveFreeTickets(input: {
   const quote = quoted.quote;
 
   if (quote.totalAmount !== 0) {
-    // Il terzo dei tre controlli indipendenti su T-50-16 — serata gratuita,
-    // livello a zero, totale a zero. Nessuno dei tre e' dedotto dagli altri.
+    // Il terzo dei tre controlli indipendenti — serata con biglietti nostra,
+    // tier a zero, totale a zero (T-52.4-10). Nessuno e' dedotto dagli altri.
     return refuse(
-      FREE_TIER_MISSING,
+      FREE_TIER_NOT_FREE,
       `preventivo a ${quote.totalAmount} su un percorso che non incassa`
     );
   }
@@ -459,14 +478,15 @@ export async function reserveFreeTickets(input: {
 
   // ── 8. I biglietti: N righe in UNA transazione ────────────────────────────
   //
-  // `p_issued_via: "free_rsvp"` e' l'attribuzione, e sta sul **biglietto**. La
+  // `p_issued_via` vale `free_tier`: e' l'attribuzione, e sta sul **biglietto**
+  // (fase 52.4; lo storico `free_rsvp` resta sui biglietti gia' emessi). La
   // colonna e' testo nudo con default, senza `CHECK` da allargare, e la sua
   // migration dichiara che `NULL` significa «scritto prima che la colonna
   // esistesse», mai «acquisto ordinario»: un valore proprio e' il modo corretto
   // di distinguere un biglietto che nessuno ha pagato.
   const { data: mintedIds, error: mintError } = await serviceClient.rpc(
     "reserve_ticket_order",
-    { p_order_id: orderId, p_issued_via: "free_rsvp" }
+    { p_order_id: orderId, p_issued_via: "free_tier" }
   );
 
   if (mintError) {
