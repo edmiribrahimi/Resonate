@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
-status: verifying
-stopped_at: "Completato 52.4-12-PLAN.md — fase 52.4 e quick biglietteria esterna in produzione su «vai» del 2026-10-13 (main 450b3098)"
-last_updated: "2026-10-13T19:51:22.310Z"
+status: ready_to_execute
+stopped_at: "Phase 52.4 complete (12/12), in produzione il 2026-10-13 sera su «vai» (main 9ed2cd70) — next: 52.3 (planned, 16 plans, ramo wip/52.3)"
+last_updated: 2026-10-13T20:16:08.588Z
 last_activity: 2026-10-13
 progress:
   total_phases: 16
   completed_phases: 9
-  total_plans: 150
-  completed_plans: 139
-  percent: 56
+  total_plans: 166
+  completed_plans: 151
+  percent: 91
 ---
 
 # State: Resonate
@@ -30,12 +30,12 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 52.4 — tier-misti-gratis-pagamento-nella-stessa-serata-e-ora-limite
+**Current Focus:** Phase 52.3 — la pagina Music (pianificata, 16 piani). Fase 52.4 chiusa e in produzione il 2026-10-13 sera; lo staff riscarica la lista sullo scanner prima della prossima serata
 
 ## Current Position
 
-Phase: 52.4 (tier-misti-gratis-pagamento-nella-stessa-serata-e-ora-limite) — EXECUTING
-Plan: 12 of 12
+Phase: 52.3 (la-pagina-music-i-livecut-delle-nostre-serate) — PLANNED, 0/16. Fase 52.4 chiusa il 2026-10-13 (12/12, VERIFICATION passed, in produzione)
+Plan: Not started
 Next: `/gsd-execute-phase 52.3` (prima `/clear`). Onda 1 = 01 (ramo `wip/52.3`, lab sveglio, interruttore solo sul preview `lab`); onda 2 = 02 (migration sul lab, BLOCKING) + 03 (contratti) + 16 (spike del player e oEmbed); onda 3 include 06 = COPIA in sola lettura delle serate e degli artisti di produzione nel lab (notti segrete su sede segnaposto). **Risposte del proprietario del 2026-10-03:** i LiveCut vengono da re:sonate E da RamaDub; la 001 e' gia' su SoundCloud (input in `.env.lab.local`), la 002 esce il 2026-10-04 (una tantum prima dell'ancora del martedi' 6/10, che per Instagram non cambia); **il titolo e' quello pubblicato** (`<artista> @ <format> - 17 Sept 26`, D-52.3-03 emendata); **consenso dei dj: regola stabile, non si chiede piu'**; **il professionista ha risposto: i set si possono pubblicare, siamo coperti** → MUS-10 chiuso salvo il paragrafo dell'informativa (piano 04). Strada D (pagina accesa in produzione con i due LiveCut) e' disponibile: l'ultimo cancello e' il «vai» del piano 15. Checkpoint del proprietario al piano 13 (O-1, O-4..O-8, Mixcloud, colore MotionLab, B o D). Servono ancora: link e durata della 002 (dal 4/10), eventuale cover 2000x2000, la scelta B/D. Scadenza: onde 1-6 entro il 6/10, checkpoint entro mercoledi' 7/10, deploy entro gio 8/10; ven 9 runbook e porta, sab 10 la 003. Prima: decidere D22-3 (porta) e leggere D22-4 in produzione.
 
 **52.2 chiusa e osservata (2026-10-01 08:28Z).** `close-pending-orders` 08:01Z: 1 considerato, `never_attempted`, checkout disattivato; `reconcile-refunds` 08:13Z: silenzio = nulla da riconciliare (non logga un riepilogo quando non fa nulla: nota per la 52.1); 0 pending residui, 0 refunds, 0 mail. CART-03 e RFD-02 osservati.

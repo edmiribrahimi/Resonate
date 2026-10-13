@@ -84,6 +84,7 @@ per assecondare una decisione presa dopo che e' stata citata.
 - [ ] **52.1** — Chiusura del debito della fase 52 (`DBT`) — **inserita il 2026-09-23**: il debito di `52-VERIFICATION.md` e gli avvisi di `52-REVIEW.md`, DBT-04..07, 09, 10, 13, 14 (DBT-01/02/03/08/11/12 ritirati alle 20:30Z: via la gallery)
 - [ ] **52.2** — Il carrello che non si chiude, e il rimborsato alla porta (`CART`, `RFD`) — **inserita il 2026-09-30**: sospesi chiusi con la verita' di SumUp, ripresa dello stesso ordine, una sola mail a +1h (Garante), rimborsato avvisato e poi rifiutato alla porta; indipendente dalla 52.1
 - [ ] **52.3** — La pagina Music: i LiveCut delle nostre serate (`MUS`) — **inserita il 2026-09-30**: ricerca con screenshot prima della forma, pagina pubblica per serata e slot, un player caricato al play, niente genere e niente venue segreto, prima sul laboratorio; i diritti al legale prima del primo LiveCut reale
+- [x] **52.4** — Tier misti (gratis + pagamento) nella stessa serata e ora limite d'ingresso alla porta (`MIX`) — **inserita e chiusa il 2026-10-13**: 12 piani, VERIFICATION passed, revisione con 1 critico + 5 avvisi corretti, in produzione dalle 21:47 Torino su «vai» insieme alla biglietteria esterna; debito dichiarato in `52.4-VERIFICATION.md`
 - [ ] **53** — TASK (`TASK`)
 - [ ] **54** — Location, alla pari con il tracker (`LOC`)
 - [ ] **55** — Visual, una pagina per format (`VIS`)
