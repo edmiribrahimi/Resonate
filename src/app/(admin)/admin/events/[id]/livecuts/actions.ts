@@ -455,7 +455,10 @@ function checkLinkBeforeOembed(
 
 /** The exact public URL `finalize-cover` writes for this project, or `null`. */
 function coverUrlPattern(): RegExp | null {
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  // `.trim()`: measured 2026-10-13 in production — the Vercel value ended with
+  // a newline, `getPublicUrl` drops it, this regex did not, and every cover was
+  // refused as `cover_not_ours` (same defect class as NEXT_PUBLIC_APP_URL).
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   if (!base) return null;
   const escaped = base.replace(/\/+$/, "").replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
   return new RegExp(
