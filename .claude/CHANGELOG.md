@@ -3,6 +3,78 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.33.0] - 2026-10-13
+
+### Changed — la pagina Music e i LiveCut del profilo artista caricano il segreto del venue: `venue-secrecy.md`, `meta-gates.md`, `sound-manifesto.md`, `CLAUDE.md`
+
+**Cosa e' cambiato.**
+
+- **`venue-secrecy.md`** — `paths:` allargati a `src/app/(public)/music/**`,
+  `src/lib/livecuts/**` e `src/app/(public)/artists/**` (dal 2026-10-05 il
+  profilo artista porta i LiveCut, piano 52.3-18). Si sommano ai `paths:` e alla
+  riga dei chiamanti riletta nella 1.32.0, che restano come sono. Gate nuovo *la
+  pagina Music e' una superficie «mai»*: una sola select in `queries.ts` senza
+  colonne di luogo, nessun predicato, nessuna chiave della serie (interna, decisione
+  del proprietario del 2026-10-05), lo slug SoundCloud di una serata segreta fermato
+  da `livecut.url_names_venue`, misurato dal check H di `verify:venue-surfaces`. Un
+  imperativo.
+- **`CLAUDE.md`** — i tre glob nella riga Venue Secrecy dell'indice (controllo B).
+- **`meta-gates.md`** — una riga nella tabella di priorita': i tre glob →
+  `venue-secrecy` primario, `nextjs-architecture` e `media-and-storage` (la cover)
+  supplementari; il controllo G la verifica sui file reali (28 righe). Prima la
+  pagina artista caricava solo `nextjs-architecture`, e `src/lib/livecuts/` nessun
+  modulo di dominio.
+- **`sound-manifesto.md`** — una frase nel gate *la grafica non anticipa il suono*:
+  sulla pagina Music lo misura H5 (parole intere: pagina, admin LiveCuts, seme del
+  laboratorio); titolo, genere e tag del caricamento su SoundCloud sono un'uscita di
+  produzione fuori dal gate.
+- **`meta-gates.md`, per pagare il budget** — il riquadro storico del 2026-08-25
+  sui «quattro cron di notte» e' ridotto da 842 a 406 byte: restano il fatto
+  (numero e ora sbagliati, nessun cron di notte per scelta) e la regola (*una riga
+  che descrive male il prodotto e' peggio di una riga assente*); esce la
+  narrazione. Nessuna regola tolta. Il conteggio degli **otto** cron e' riletto
+  oggi: 8 voci in `vercel.json`, 8 directory sotto `src/app/api/cron/`.
+
+**Perche'.** Piano 52.3-14, T-52.3-01: `/music` e `src/lib/livecuts/` sono
+superficie del segreto del venue, e un gate che non si carica dove passa il dato e'
+indistinguibile da un gate assente (`ai-engineering.md`, *un gate deve poter
+caricarsi*). Situazione che fa scattare il gate nuovo: aggiungere alla select di
+`queries.ts` una colonna «per dire dove», o rimettere il nome della serie sulla
+scheda.
+
+**Caso peggiore rimisurato, dopo tutte le modifiche.** Invariato il file e
+invariati i moduli: **`src/app/(admin)/admin/scanner/DoorSurface.tsx`**, 5 file
+(`CLAUDE.md`, `meta-gates`, `access-gating`, `checkin-offline`,
+`nextjs-architecture`) — i glob nuovi non lo toccano. Prima (1.32.0): 53.993 byte
+≈ 14.998 token, margine 2. Con le sole aggiunte (+237 byte su `CLAUDE.md` e
+`meta-gates`, sempre caricati): 54.230 byte ≈ 15.064 token, **controllo E rosso**.
+Dopo il taglio del riquadro: **53.794 byte ≈ 14.943 token su 15.000, margine 57**.
+Il tetto non e' stato toccato. **Secondo caso, misurato a mano:** la pagina pubblica
+della serata (`CLAUDE.md`, `meta-gates`, `venue-secrecy`, `ticketing-payments`,
+`nextjs-architecture`) sale a **53.386 byte ≈ 14.829 token, margine 171**, perche'
+`venue-secrecy.md` passa da 10.376 a 11.233 byte. La pagina Music carica
+`CLAUDE.md`, `meta-gates`, `venue-secrecy`, `nextjs-architecture`: 43.886 byte ≈
+12.191 token. **Il margine e' il piu' stretto mai registrato: la prossima prosa in
+`CLAUDE.md`, `meta-gates.md` o in uno dei moduli della porta va pagata nello stesso
+commit.**
+
+**Prova per mutazione** (controllo B sul glob nuovo). Tolto
+`src/app/(public)/music/**` dalla riga dell'indice (asserito applicato: 0
+occorrenze rimaste) → `verify:persona` **FALLITI 1/7**, B; ripristinato → 7/7.
+
+**Scenari di carico e scatto.**
+
+- `src/lib/livecuts/queries.ts` → `venue-secrecy.md` (primario, **nuovo**: prima
+  nessun modulo di dominio); modifica-tipo: `venue_text` nell'embed
+  `event_parties` → scatta *la pagina Music e' una superficie «mai»*, e H1+H2 lo
+  fanno rosso.
+- `src/app/(public)/artists/[slug]/page.tsx` → `venue-secrecy.md` (primario,
+  **nuovo**), `nextjs-architecture.md`; modifica-tipo: mostrare la sigla della
+  serie accanto al LiveCut → scatta lo stesso gate, e H6 lo fa rosso.
+- `src/app/(public)/music/MusicFilterRow.tsx` → `venue-secrecy.md`,
+  `nextjs-architecture.md`; modifica-tipo: un'etichetta «deep» sul filtro → scatta
+  *la grafica non anticipa il suono* (consultato a mano), e H5 lo fa rosso.
+
 ## [1.32.0] - 2026-10-13
 
 ### Changed — la porta ha un'ora limite per tier: `checkin-offline.md`; i chiamanti della rivelazione riletti: `venue-secrecy.md`
