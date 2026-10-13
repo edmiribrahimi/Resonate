@@ -4,14 +4,14 @@ milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
 stopped_at: "Completato 52-17-PLAN.md — verifica approvata alle 19:13:29Z; fase 52 eseguita 19/19, resta verifica e chiusura"
-last_updated: "2026-10-03T12:43:49.767Z"
+last_updated: "2026-10-13T13:29:36.855Z"
 last_activity: 2026-10-03
 progress:
-  total_phases: 15
+  total_phases: 16
   completed_phases: 8
   total_plans: 138
   completed_plans: 127
-  percent: 53
+  percent: 50
 ---
 
 # State: Resonate
@@ -745,3 +745,4 @@ does not exist on this machine, though GSD's own generated text uses it.
 - Phase 52.1 inserted after Phase 52: Chiusura del debito della fase 52: la tabella del debito di 52-VERIFICATION.md piu' gli 8 WR e le 8 IN di 52-REVIEW.md, DBT-01..10 (decisione del proprietario: «chiudiamo tutto il debito») (URGENT)
 - Phase 52.2 inserted after Phase 52: Il carrello che non si chiude, e il rimborsato alla porta (URGENT)
 - Phase 52.3 inserted after Phase 52.2: La pagina Music: i LiveCut delle nostre serate (URGENT)
+- Phase 52.4 inserted after Phase 52.3: Tier misti (gratis + pagamento) nella stessa serata e ora limite d'ingresso alla porta (URGENT)

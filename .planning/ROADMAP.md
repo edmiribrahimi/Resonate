@@ -859,6 +859,59 @@ Plans:
 - [ ] 52.3-14-PLAN.md — onda 8: persona 1.32.0, sei mutazioni rimaste del check H, `52.3-VERIFICATION.md`, pulizia del laboratorio
 - [ ] 52.3-15-PLAN.md — onda 9: atto datato su «vai» — migration in produzione, deploy di `main` con la pagina spenta (B) o, con D-LEG-4 registrato, accesa coi due LiveCut RamaDub inseriti da un organizer dal form (D), `lab` riallineato
 
+### Phase 52.4: Tier misti (gratis + pagamento) nella stessa serata e ora limite d'ingresso alla porta (INSERTED)
+
+**Inserita il 2026-10-13, decisione del proprietario**, nata mentre si
+preparava la serata venduta da un terzo (quick `2026-10-13-biglietteria-esterna`):
+*«anche vendessimo noi i tickets, c'e' la possibilita' che ci siano dei tier
+gratuiti e tier a pagamento per lo stesso evento. esempio: free tier: entry
+before 00:00 // oppure tier regular: 5 euro»*; e sul modello: *«quando creo un
+evento potro' scegliere se crearlo gratuito (come RamaDub in cui non serve qr
+code per entrare), oppure a pagamento (dove potra' esserci anche un solo tier
+gratuito)»*. Le risposte a scelta multipla del 2026-10-13 sono le decisioni
+D-52.4 qui sotto. Va nello **stesso rilascio** della biglietteria esterna
+(ramo `feat/biglietteria-esterna`), prima del «vai» in produzione.
+
+**Goal:** una serata «con biglietti» puo' avere tier da 0 € in su; il tier
+gratuito produce biglietti veri; un tier puo' portare un'ora limite d'ingresso
+che la porta applica — rifiuto con la ragione, eccezione tracciata — online e
+offline. «Free (RSVP required)» esce dal prodotto, sostituito dal tier a 0 €.
+
+> **Cio' che governa la fase.** `ticketing-payments.md`: la cassa a 0 € e' la
+> strada a totale zero gia' esistente (REG-06), e nessuna strada verso SumUp
+> puo' accettare un tier a 0 €. `checkin-offline.md`: il default della porta
+> resta **ammettere** su dato mancante — il rifiuto per ora limite scatta solo
+> con l'istante presente e superato, e un manifesto vecchio senza il campo non
+> rifiuta nessuno; rifiutare un ospite valido e' peggio che ammetterne uno
+> doppio, quindi l'eccezione esiste e si registra. `access-gating.md`:
+> l'eccezione e' un atto alla porta, in `door_scan_events`, con chi e quando.
+
+| ID | Requisito |
+|---|---|
+| **MIX-01** | **Due tipi di serata.** «Free (open, no ticket)» (`free_public`, nessun QR) e «With tickets» (`paid`, tier da 0 € in su). `free_rsvp` sparisce dal vincolo di schema; la riga storica migra a `paid` tenendo il suo tier a 0 €; nessun tier nasce o muore da solo con un cambio di tipo. |
+| **MIX-02** | **Il biglietto gratuito e' un biglietto vero.** Un tier a 0 € su una serata con biglietti si prenota dalla pagina con la strada a totale zero, per tier: ordine a zero, biglietti con QR, mail, conteggio nella capienza unica della serata (massimo opzionale per tier), fino al tetto per ordine. La stessa persona puo' prendere un gratuito e poi un pagante. Chiusura −2 h salvo `expires_at`. |
+| **MIX-03** | **Nessuna strada verso SumUp accetta uno 0 €.** `purchaseTicketsGuest` e `purchaseTicket` rifiutano un tier a 0 € con una frase che rimanda alla prenotazione, non a «below minimum». Le serate vendute da un terzo restano con la cassa spenta su entrambe le strade. |
+| **MIX-04** | **Ora limite d'ingresso sul tier** (`entry_until`, ora di Torino; «prima mezzanotte dopo l'inizio», regola di `partyEndInstant`), impostata dall'admin, mostrata sul tier in pagina («Entry until 00:00») e nella card admin. |
+| **MIX-05** | **La porta online rifiuta dopo l'ora limite** con ragione propria e ora sullo schermo; con `override` esplicito e `door.operate` ammette e registra in `door_scan_events` una cause propria con operatore e istante. Prima dell'ora: ammesso senza flag. Lettura del tier separata e non bloccante, come il benefit. |
+| **MIX-06** | **La porta offline fa lo stesso**: il manifesto porta l'istante limite per biglietto (`null` dove non c'e'); lo scanner rifiuta sul telefono e offre «Admit anyway»; l'eccezione viaggia nella stessa entrata della coda e il server la registra alla sincronizzazione senza rigiudicare lo scan come rifiuto. |
+| **MIX-07** | **La lista di revisione e i contatori** distinguono «refused: entry time» e «admitted after entry time». |
+| **MIX-08** | **Gate verdi senza allentarli**: `verify:scan-legibility` (nessun quarto stato del flash: l'eccezione e' un pannello sotto il flash), `verify:dialogs`, `verify:touch-targets` (pulsante ≥ 44 px dichiarato), `verify:capabilities`, `verify:external-tickets`, `verify:venue-surfaces`; build verde. |
+| **MIX-09** | **Prima sul laboratorio, poi la prova dal telefono.** Migration sul lab, serata di prova con tier Free `entry_until` + Regular, prenotazione gratuita e acquisto dalla stessa persona, check-in prima/dopo/eccezione via rotta, manifesto; poi la prova offline dal telefono con il proprietario; produzione **solo su «vai»**, migration prima del deploy. VERIFICATION.md con evidenza `file:riga` per ogni MIX. |
+
+**Decisioni gia' prese (D-52.4):**
+
+- **D-52.4-01** — Due tipi di serata, `free_rsvp` sparisce (scelta multipla, 2026-10-13).
+- **D-52.4-02** — Dopo l'ora limite lo scanner **rifiuta**, e lo staff puo' ammettere con un tocco **tracciato** (chi, quando), come l'annullamento alla porta. L'eccezione la da' chi ha la porta (`door.operate`), non solo chi supervisiona: alle due di notte in fila non c'e' tempo di cercare un responsabile.
+- **D-52.4-03** — Capienza unica: gratuiti e paganti contano insieme; massimo opzionale per tier.
+- **D-52.4-04** — Nello stesso rilascio della biglietteria esterna, prima del «vai».
+- **D-52.4-05** — L'ora limite sta sul tier come ora di Torino; un'ora < 12 cade il giorno dopo la data della serata (stessa regola di `partyEndInstant`).
+
+**Depends on:** Phase 52.2 (vocabolario della porta e predicato unico `refund-refusal.ts`, modello per il predicato dell'ora limite); quick `2026-10-13-biglietteria-esterna` (stesso ramo, `sold_out` e `external_tickets_*`).
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 52.4 to break down)
+
 ### Phase 53: TASK
 
 La checklist a quattro fasi del tracker di produzione entra nell'app, e
