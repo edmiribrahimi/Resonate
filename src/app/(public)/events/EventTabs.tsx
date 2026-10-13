@@ -94,7 +94,7 @@ interface EventCard {
   formats: CardFormat[];
   is_draft?: boolean;
   /** What the control on the right says: decided by the page from the nights' access types. Absent means «Tickets». */
-  entry?: "tickets" | "rsvp" | "free";
+  entry?: "tickets" | "free";
 }
 
 /**
@@ -513,9 +513,7 @@ function EventList({
                   ? "Details"
                   : event.entry === "free"
                     ? "Free entry"
-                    : event.entry === "rsvp"
-                      ? "Free RSVP"
-                      : "Tickets"}
+                    : "Tickets"}
               </span>
             </div>
           </Link>

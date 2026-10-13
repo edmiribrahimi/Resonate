@@ -260,16 +260,21 @@ export default function SecretVenueDialog({
                     "by hand", which is our word for the manual reveal and
                     nobody else's. What stays is every fact the 2026-08-22
                     rewrite established — ticket holders get it on the ticket at
-                    the window or earlier, RSVP holders by mail once revealed,
-                    and this page never — because each of those is a promise
-                    the system keeps, and the last one is the 2026-08-22
-                    decision itself. The lead sentence is new: it says WHY
+                    the window or earlier, and this page never — because each
+                    of those is a promise the system keeps, and the last one is
+                    the 2026-08-22 decision itself. The lead sentence is new: it says WHY
                     before HOW, which is the sentence that justifies a secret.
 
                     ONE ROAD, AND IT LEAVES THIS PAGE. The bullets that once
                     described the page's own reveal ladder (removed 2026-08-22)
                     are not here in any wording, because none would be true of
                     THIS surface.
+
+                    2026-10-13 (phase 52.4): the RSVP road is gone (D-52.4-01),
+                    and a free ticket reveals the venue exactly like a paid one
+                    (D-52.4-07) — so the bullet about RSVP nights went with it,
+                    and the dialog has one bullet. Nothing new is promised and
+                    no predicate or venue read changed.
                   */}
                   <p>The address goes only to people who are coming.</p>
                   <ul className="list-disc list-inside space-y-1">
@@ -277,10 +282,6 @@ export default function SecretVenueDialog({
                       Ticket holders see it on their ticket{" "}
                       {formatRevealWindow(revealHours)} before the night, or
                       earlier if we choose to reveal it.
-                    </li>
-                    <li>
-                      On an RSVP night, we email it to you once it&apos;s
-                      revealed.
                     </li>
                   </ul>
                   {/*
