@@ -2692,6 +2692,23 @@ export default function ScannerClient() {
         });
       }
       await admitAnywayOffline(pending);
+    } catch (error) {
+      // WR-03 (52.4 review, approved by the owner on 2026-10-13). The lock taken
+      // above is released only by `dismissFlash`, so a throw outside the two
+      // inner `try`s — a malformed answer reaching `reportServerFault`,
+      // `showFlash` or `turinWallClock` — used to leave no flash, hence no
+      // dismissal, hence a camera ignoring every scan until the operator
+      // changed night. Same last resort as `handleVerify`'s, with its own
+      // category: this flash is what releases the lock.
+      console.error("scanner:admit_anyway_unexpected", {
+        ticketId: pending.ticketId,
+        error,
+      });
+      showFlash(
+        "error",
+        "Admit anyway hit an unexpected failure",
+        "Scan again — nothing was recorded"
+      );
     } finally {
       setPendingOverride(null);
       setAdmittingAnyway(false);
