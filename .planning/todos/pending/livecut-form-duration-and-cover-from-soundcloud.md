@@ -44,3 +44,9 @@ dal proprio dispositivo (stripper via `finalize-cover`, `purpose: "livecut"`).
   `.env.lab.local`), poi sulla serata vera dal form.
 - La pagina Music e' gia' in produzione (2026-10-13): la modifica e' al form
   admin, non alla superficie pubblica; nessuna rivelazione in gioco.
+
+**API ufficiale di SoundCloud — letto il 2026-10-14 da `developers.soundcloud.com/docs/api/register-app` e `/docs/api/guide`**
+- Registrazione in «Your Apps» (`soundcloud.com/you/apps`: nome, descrizione, sito) o dalla CLI `sc-api-auth.mjs`; **serve un abbonamento SoundCloud Artist Pro** sull'account che registra. Si ottengono `client_id` e `client_secret`.
+- Flusso client credentials (nessuna sessione utente, solo risorse pubbliche): `POST https://secure.soundcloud.com/oauth/token`, `Authorization: Basic base64(client_id:client_secret)`, body `grant_type=client_credentials`; risposta con `access_token` (~1 ora), `refresh_token` monouso, `expires_in`. **Limiti: 50 token ogni 12 ore per app, 30 l'ora per IP** → il token si tiene in cache lato server e si rinnova, mai un token per chiamata.
+- `GET https://api.soundcloud.com/resolve?url=<link pubblico>` restituisce la traccia; i campi `duration` (ms) e `artwork_url` vanno confermati sullo schema OpenAPI (`/docs/api/explorer/api.json`) prima di scrivere il codice.
+- Le chiavi stanno su Vercel come variabili **server-only** (mai `NEXT_PUBLIC_*`), scritte con `printf '%s'` per non ripetere l'a capo del 2026-10-13; la chiamata parte da `verifyLiveCutLink`, lato server.
