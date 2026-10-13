@@ -66,9 +66,10 @@ export function zonedInstant(date: string, time: string | null): Date {
  * the hour in the runtime's zone; here it is applied to the declared Turin
  * hour, before the conversion, where it cannot drift.
  *
- * Private on purpose: the two closing times a night has — when the drink menu
- * shuts and when the party ends — are the same arithmetic under two names, and
- * they must not be allowed to become two implementations again.
+ * Private on purpose: the three boundaries a night has — when the drink menu
+ * shuts, when the party ends, and when a tier stops admitting at the door
+ * (`entryUntilInstant`, D-52.4-05) — are the same arithmetic under three names,
+ * and they must not be allowed to become three implementations.
  */
 function nightBoundaryInstant(date: string, time: string): Date {
   const hour = Number(time.split(":")[0] ?? "0");
@@ -132,6 +133,41 @@ export function partyEndInstant(date: string, endTime: string): Date {
  */
 export function menuCloseInstant(date: string, closeTime: string): Date {
   return nightBoundaryInstant(date, closeTime);
+}
+
+/**
+ * When a tier stops admitting at the door, as an instant (D-52.4-05).
+ *
+ * `ticket_tiers.entry_until` is a Postgres `time` without a zone: a Turin
+ * wall-clock hour on the night of `date`, with the same crossing-midnight rule
+ * as `partyEndInstant` and `menuCloseInstant` — an hour before noon belongs to
+ * the *next* calendar day. So «Free · entry before 00:00» on a night dated the
+ * Saturday resolves to Sunday 00:00 in Turin, and 23:30 stays on the Saturday.
+ *
+ * A night whose start hour is itself after midnight (say 01:00) with an
+ * entry-until of 02:00: both hours are < 12, and the entry-until resolves to
+ * the day after `date` exactly as `partyEndInstant` resolves that night's end
+ * (Review Focus 4) — the two boundaries a door compares against can never
+ * disagree on which morning they mean. ⚠ `partyStartInstant` does NOT shift:
+ * it reads 01:00 on `date` itself. That is today's behaviour for the end too
+ * (a 01:00 → 06:00 night dated D runs D 01:00 → D+1 06:00), so such a night is
+ * meant to carry the date of the evening it belongs to; this function keeps
+ * the end's convention rather than inventing a third.
+ *
+ * Postgres returns `time` as `HH:MM:SS`; `zonedInstant` reads the first two
+ * fields and ignores the seconds, so both `HH:MM` and `HH:MM:SS` are accepted
+ * here and the caller passes the column untouched. Validating the shape is the
+ * caller's job (`src/lib/door/entry-until.ts`), which treats anything it cannot
+ * read as "no limit" rather than as a refusal.
+ *
+ * **The conversion happens ONLY here.** The online check-in route, the offline
+ * manifest and the scanner never write `new Date(`${date}T${time}`)`: that
+ * parses in the runtime's zone (UTC on Vercel, the phone's zone at the door)
+ * and moves the limit by one or two hours without an error. No SQL twin exists
+ * — unlike `party_end_instant`, this boundary is not read by any RLS policy.
+ */
+export function entryUntilInstant(date: string, entryUntil: string): Date {
+  return nightBoundaryInstant(date, entryUntil);
 }
 
 /** Start of the Turin day that contains `instant`, as `YYYY-MM-DD`. */

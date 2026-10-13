@@ -185,6 +185,25 @@ export interface AttendeeRecord {
    * as before: refusing a valid guest is worse than admitting a double.
    */
   refundedBeforeNight?: boolean;
+  /**
+   * The perk of the discount code the ticket was bought with («1 chupito»),
+   * shown under the ticket kind in the offline overlay (quick task
+   * 2026-10-05). Optional and **without a version bump**, like
+   * `refundedBeforeNight` above: IndexedDB stores a structured clone, so a row
+   * cached before this field existed simply lacks it, loads unchanged and
+   * shows no perk line. A bump would add an upgrade the door does not need and
+   * a `versionchange` that a second open tab of the old bundle can block.
+   */
+  benefit?: string | null;
+  /**
+   * The ticket's entry limit (plan 52.4-05, MIX-06): the ISO **instant**
+   * computed by the server for the manifest — the phone compares it with
+   * `entryUntilPassed` (`src/lib/door/entry-until.ts`) and never converts a
+   * Turin wall-clock time itself. Absent or `null` means no limit, and no
+   * limit admits. Optional and **without a version bump**, like `benefit`
+   * above: a row cached before this field existed loads unchanged and admits.
+   */
+  entryUntil?: string | null;
   guestListEntryId?: string;
   /** ISO of the last refresh that saw this row. Only {@link pruneParty} reads it. */
   lastSeenAt: string;
@@ -241,6 +260,29 @@ export interface PendingCheckin {
   undoneAt?: string;
   /** Who reversed it, so the record can say. Never a bare "somebody". */
   undoneBy?: string;
+  /**
+   * ── «Admit anyway» given on this device after the entry limit ─────────────
+   *
+   * D-52.4-02: past the ticket's entry limit the door refuses, and the
+   * operator may admit anyway. The exception travels in **this same entry**,
+   * which stays `state: "pending"` and is drained like every other admission —
+   * no new path, so nothing new can be forgotten by the drain. The drain sends
+   * `override: "entry_until"` to the route, which records the admission as
+   * `entry_until_overridden` instead of re-judging it at `scannedAt` as a
+   * refusal.
+   *
+   * Optional, **without a version bump**: an entry queued by an older bundle
+   * simply lacks the three fields and drains as a plain admission.
+   */
+  override?: "entry_until";
+  /**
+   * The id of THIS device (`deviceId`): `CachedDoorAuth` carries no user id,
+   * so the person is recorded by the server as the `operator_id` of the
+   * session that drains. Never a bare "somebody".
+   */
+  overrideBy?: string;
+  /** Device clock at the tap — equal to `scannedAt` of the entry written with it. Evidence, not authority. */
+  overrideAt?: string;
 }
 
 /** A scan that can never succeed. Never deleted — a lost entry and a synced one are indistinguishable to a counter. */
@@ -801,6 +843,10 @@ export interface AttendeeRow {
   refundedAt?: string | null;
   /** Server-computed; see {@link CachedAttendee.refundedBeforeNight}. Missing = admit. */
   refundedBeforeNight?: boolean;
+  /** The code's perk; absent on a manifest older than 2026-10-05. */
+  benefit?: string | null;
+  /** Server-computed entry-limit instant; absent on a manifest older than plan 52.4-04. */
+  entryUntil?: string | null;
   isGuestList?: boolean;
 }
 
@@ -961,6 +1007,20 @@ export async function mergeAttendees(
       // Strictly `=== true`: a missing field (older manifest) is false, and
       // false admits (plan 52.2-11).
       refundedBeforeNight: row.refundedBeforeNight === true,
+      // The server is the source when it sends the field (a code edited or
+      // cleared in the admin reaches the phone on the next download); an
+      // older manifest that lacks it leaves what the phone already holds.
+      benefit:
+        row.benefit !== undefined
+          ? (labelOrNull(row.benefit) ?? null)
+          : (local?.benefit ?? null),
+      // Same direction as `benefit`: the server wins when it sends the field
+      // (a tier's limit edited in the admin reaches the phone on the next
+      // download); a manifest without it never erases a limit already known.
+      entryUntil:
+        row.entryUntil !== undefined
+          ? row.entryUntil
+          : (local?.entryUntil ?? null),
       lastSeenAt: now,
     });
     merged++;
@@ -1045,7 +1105,12 @@ export async function checkInLocally(
   partyId: string,
   subjectType: QueueableSubjectType,
   subjectId: string,
-  opts: { token: string | null; name?: string }
+  opts: {
+    token: string | null;
+    name?: string;
+    /** «Admit anyway» after the entry limit (D-52.4-02); see {@link PendingCheckin.override}. */
+    override?: "entry_until";
+  }
 ): Promise<LocalCheckinResult> {
   const db = await getDB();
   // Resolved before the transaction opens: `getDeviceId` runs its own, and
@@ -1095,6 +1160,11 @@ export async function checkInLocally(
   // The first queued entry is the one that gets reported. A second read of the
   // same subject at the same party must not overwrite it: that would move
   // `scannedAt` forward and erase when the person actually came in.
+  //
+  // Declared case (plan 52.4-05): if this ticket was already queued on this
+  // phone, an `override` passed now is NOT written. The earlier scan was
+  // already an admission, so the entry-limit refusal could not have fired on
+  // it — the queued entry reports the first entry, as it always did.
   if (!queued) {
     await pending.put({
       key,
@@ -1106,6 +1176,11 @@ export async function checkInLocally(
       deviceId,
       attempts: 0,
       state: "pending",
+      // The exception rides in the same pending entry; `overrideAt` is the tap,
+      // which is this entry's `scannedAt`.
+      ...(opts.override
+        ? { override: opts.override, overrideBy: deviceId, overrideAt: now }
+        : {}),
     });
   }
 

@@ -32,6 +32,8 @@ richiesta la fa chi spedisce.
 
 **v1.6 «Piattaforma, non community», in corso (2026-09-23).** Fasi 47–52 eseguite; la 52 — barra a quattro voci, gallery chiusa anche nei dati (`gallery.view`, bucket privato, URL firmati) — e' chiusa e in produzione dal 2026-09-23 con verifica `passed` approvata dal proprietario. Il suo debito dichiarato apre la fase 52.1. Restano 53–58. La riscrittura di questo documento e' `DOC-01`, fase 57.
 
+**2026-10-13 — fase 52.4 chiusa e in produzione.** Due soli tipi di serata (`free_public`, `paid`), tier a 0 € con biglietto vero accanto ai paganti nella stessa serata, ora limite d'ingresso sul tier con rifiuto alla porta e «Admit anyway» tracciato, anche offline. Migration e deploy la sera del 2026-10-13 su «vai» del proprietario, nello stesso rilascio della biglietteria esterna; verifica `passed`. Prima della prossima serata lo staff riscarica la lista sullo scanner.
+
 **Next Milestone:** da definire — `/gsd:new-milestone`
 
 > **La direzione e' gia' decisa dal proprietario il 2026-08-14, e aspetta un
@@ -220,4 +222,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-23 — fase 52 chiusa, v1.6 in corso*
+*Last updated: 2026-10-13 — fase 52.4 chiusa e in produzione, v1.6 in corso*

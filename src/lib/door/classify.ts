@@ -123,6 +123,13 @@ export interface ClassifiedEntry {
 export interface NightClassification {
   /** What a supervisor reads. Conflicts only, and deliberately empty on a normal night. */
   listed: ClassifiedEntry[];
+  /**
+   * Le entrate ORDINARIE — `recorded` senza causa — dalla piu' recente, con
+   * l'ora e l'operatore. Non sono «attenzione»: sono la risposta a «a che ora
+   * e' entrato?» (proprietario, 2026-10-13), che la lista delle eccezioni non
+   * dava. Gli annullamenti restano fuori: hanno la loro riga nella lista.
+   */
+  ordinary: ClassifiedEntry[];
   /** Every derived or stored cause, counted — including the ones `listed` hides. */
   counters: Record<DoorScanCause, number>;
   /**
@@ -146,6 +153,10 @@ function emptyCounters(): Record<DoorScanCause, number> {
     wrong_night: 0,
     refunded_before_night: 0,
     refunded_after_night: 0,
+    // Plan 52.4-01: the entry-time refusal and its staff override. Both are
+    // exceptions to look at afterwards, so `listed` does not hide them.
+    after_entry_until: 0,
+    entry_until_overridden: 0,
   };
 }
 
@@ -365,5 +376,10 @@ export function classifyNight(rows: DoorScanEvent[]): NightClassification {
   // thing that just happened.
   listed.sort((a, b) => (a.scannedAt < b.scannedAt ? 1 : a.scannedAt > b.scannedAt ? -1 : 0));
 
-  return { listed, counters, unclassified, total: rows.length };
+  const ordinary = entries.filter(
+    (entry) => entry.cause === null && entry.outcome === "recorded"
+  );
+  ordinary.sort((a, b) => (a.scannedAt < b.scannedAt ? 1 : a.scannedAt > b.scannedAt ? -1 : 0));
+
+  return { listed, ordinary, counters, unclassified, total: rows.length };
 }

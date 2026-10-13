@@ -69,7 +69,12 @@ const FORM_ID = "create-artist-form";
 type Stage = "photo" | "create";
 
 interface CreateArtistModalProps {
-  name: string;
+  /**
+   * The name carried in from the event form, rendered read-only. When omitted,
+   * the dialog is opened from the artists catalogue and asks for the name
+   * itself — the one difference between the two mounts.
+   */
+  name?: string;
   open: boolean;
   onClose: () => void;
   onCreated: (slug: string) => void;
@@ -86,6 +91,8 @@ export default function CreateArtistModal({
 }: CreateArtistModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const nameIsEditable = name === undefined;
+  const [typedName, setTypedName] = useState("");
   const [bio, setBio] = useState("");
   const [instagramUrl, setInstagramUrl] = useState("");
   const [soundcloudUrl, setSoundcloudUrl] = useState("");
@@ -100,6 +107,7 @@ export default function CreateArtistModal({
   // Reset all state when modal opens (fixes stale data between consecutive creations)
   useEffect(() => {
     if (open) {
+      setTypedName("");
       setBio(""); setInstagramUrl(""); setSoundcloudUrl("");
       setSpotifyUrl(""); setWebsiteUrl("");
       setImageFile(null); setImagePreview(null); setImageError(null); setError(null);
@@ -190,7 +198,7 @@ export default function CreateArtistModal({
       stage = "create";
 
       const formData = new FormData();
-      formData.set("name", name);
+      formData.set("name", name ?? typedName.trim());
       formData.set("bio", bio);
       formData.set("photo_url", photoUrl ?? "");
       formData.set("instagram_url", instagramUrl);
@@ -212,6 +220,7 @@ export default function CreateArtistModal({
    * close control, for Escape and for the platform's own close event alike.
    */
   function resetAndClose() {
+    setTypedName("");
     setBio("");
     setInstagramUrl("");
     setSoundcloudUrl("");
@@ -238,7 +247,7 @@ export default function CreateArtistModal({
             type="submit"
             form={FORM_ID}
             className="flex-1"
-            disabled={isSubmitting}
+            disabled={isSubmitting || (nameIsEditable && !typedName.trim())}
           >
             {isSubmitting ? "Creating..." : "Create Profile"}
           </Button>
@@ -253,15 +262,32 @@ export default function CreateArtistModal({
       }
     >
       <form id={FORM_ID} onSubmit={handleSubmit} className="space-y-4">
-        {/* Name — carried in from the lineup field, rendered verbatim. */}
-        <Input
-          id="artist-name"
-          label="Name"
-          type="text"
-          value={name}
-          readOnly
-          className="opacity-70"
-        />
+        {/*
+          Name — carried in from the lineup field and rendered verbatim, or
+          typed here when the dialog is opened from the catalogue. Either way
+          nothing transforms it: the spelling is published as entered.
+        */}
+        {nameIsEditable ? (
+          <Input
+            id="artist-name"
+            label="Name"
+            type="text"
+            value={typedName}
+            onChange={(e) => setTypedName(e.target.value)}
+            required
+            maxLength={120}
+            data-initial-focus
+          />
+        ) : (
+          <Input
+            id="artist-name"
+            label="Name"
+            type="text"
+            value={name}
+            readOnly
+            className="opacity-70"
+          />
+        )}
 
         <Textarea
           id="artist-bio"

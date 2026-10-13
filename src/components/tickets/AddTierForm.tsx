@@ -8,6 +8,11 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { Input, Textarea } from "@/components/ui/Input";
 import { SectionHeading } from "@/components/ui/Typography";
 import { TIER_DESCRIPTION_HINT } from "@/components/tickets/tier-description";
+import {
+  ENTRY_UNTIL_HINT,
+  entryUntilShapeError,
+  entryUntilBeforeStartError,
+} from "@/components/tickets/tier-entry-until";
 
 /**
  * The form that creates a ticket tier — converted onto the primitives in plan
@@ -39,9 +44,15 @@ import { TIER_DESCRIPTION_HINT } from "@/components/tickets/tier-description";
 interface AddTierFormProps {
   eventId: string;
   partyId: string | null;
+  /**
+   * Date and opening time of the night, when the page knows them (WR-05):
+   * the entry-until hour must fall after the opening, and production omits
+   * the message the server throws. Absent → only the server checks.
+   */
+  night?: { date: string; time: string | null } | null;
 }
 
-export default function AddTierForm({ eventId, partyId }: AddTierFormProps) {
+export default function AddTierForm({ eventId, partyId, night }: AddTierFormProps) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -56,6 +67,15 @@ export default function AddTierForm({ eventId, partyId }: AddTierFormProps) {
 
     const form = e.currentTarget;
     const formData = new FormData(form);
+
+    // Same rule as the action, repeated because production omits the message
+    // of an error thrown by a server action.
+    const entryUntilError =
+      entryUntilShapeError(formData) ?? entryUntilBeforeStartError(formData, night);
+    if (entryUntilError) {
+      setError(entryUntilError);
+      return;
+    }
 
     startTransition(async () => {
       try {
@@ -154,6 +174,15 @@ export default function AddTierForm({ eventId, partyId }: AddTierFormProps) {
           />
           <input type="hidden" name="show_remaining" value="false" />
         </div>
+        <div>
+          <Checkbox
+            id={`tier-sold-out-${scope}`}
+            name="sold_out"
+            value="true"
+            label="Sold out (set by hand — wins over quantity and dates)"
+          />
+          <input type="hidden" name="sold_out" value="false" />
+        </div>
 
         <div className="grid gap-3 md:grid-cols-2">
           <Input
@@ -171,6 +200,19 @@ export default function AddTierForm({ eventId, partyId }: AddTierFormProps) {
             className="min-w-0"
           />
         </div>
+
+        {/*
+          The door limit (52.4, MIX-04): a Turin wall-clock time, empty = none.
+          It holds for any tier, free or paid.
+        */}
+        <Input
+          id={`tier-entry-until-${scope}`}
+          label="Entry until (optional, Turin time)"
+          name="entry_until"
+          type="time"
+          className="min-w-0"
+          hint={ENTRY_UNTIL_HINT}
+        />
 
         <Button type="submit" disabled={isPending} className="w-full">
           {isPending ? "Adding..." : "Add Tier"}

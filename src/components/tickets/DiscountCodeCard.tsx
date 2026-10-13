@@ -46,6 +46,8 @@ export interface DiscountCodeWithUsage {
   discount_amount: number;
   max_uses: number | null;
   is_active: boolean;
+  /** Perk the door shows («+ 1 chupito»); required when discount_amount is 0. */
+  benefit: string | null;
   used: number;
   tier_names: string[];
 }
@@ -86,6 +88,14 @@ export default function DiscountCodeCard({
     setError(null);
 
     const formData = new FormData(e.currentTarget);
+
+    // Same rule as the action and the catalog: a production build hides the
+    // message of an error thrown by a server action, so it is checked here too.
+    const amount = parseFloat(String(formData.get("discount_amount") ?? ""));
+    if (amount === 0 && String(formData.get("benefit") ?? "").trim() === "") {
+      setError("A 0 code needs a benefit shown at the door");
+      return;
+    }
 
     // Set tier_ids as JSON string
     formData.set(
@@ -189,11 +199,21 @@ export default function DiscountCodeCard({
               name="discount_amount"
               type="number"
               required
-              min={0.01}
+              min={0}
               step={0.01}
               defaultValue={discountCode.discount_amount}
             />
           </div>
+
+          <Input
+            id={`dc-edit-benefit-${discountCode.id}`}
+            label="Benefit shown at the door (e.g. 1 chupito)"
+            name="benefit"
+            type="text"
+            maxLength={60}
+            defaultValue={discountCode.benefit ?? ""}
+            placeholder="Optional — required for a 0 code"
+          />
 
           <Input
             id={`dc-edit-max-${discountCode.id}`}
@@ -292,6 +312,11 @@ export default function DiscountCodeCard({
                     ? `${discountCode.used}/${discountCode.max_uses} used`
                     : `${discountCode.used} used`}
                 </span>
+                {discountCode.benefit && (
+                  <span className="font-semibold text-ink">
+                    + {discountCode.benefit}
+                  </span>
+                )}
                 <span>
                   {discountCode.tier_names.length === 0
                     ? "All tiers"

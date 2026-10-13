@@ -29,6 +29,23 @@ export interface PublicTier {
   show_remaining?: boolean;
   starts_at?: string | null;
   expires_at?: string | null;
+  /**
+   * 2026-10-05 — `expires_at` qui sopra e' la chiusura di DEFAULT (fine serata
+   * − 2 h, `sales-window.ts`) e non una scadenza scelta dall'organizer. Serve
+   * solo a non mostrare «Offer ends in»: un'offerta che finisce e' una
+   * promessa di prezzo, la chiusura della vendita no.
+   */
+  closes_by_default?: boolean;
+  /** Esaurito a mano da chi organizza (`ticket_tiers.sold_out`): vince su tutto. */
+  sold_out?: boolean;
+  /**
+   * 2026-10-13 (52.4, MIX-04) — l'ora limite d'ingresso del tier come «HH:MM»
+   * di Torino, calcolata dalla pagina sul server con `entryUntilAt` +
+   * `turinWallClock`. `null` o assente = nessuna ora limite. Solo testo da
+   * mostrare («Entry until HH:MM»): non entra in nessun calcolo di stato — la
+   * porta decide da `src/lib/door/entry-until.ts`.
+   */
+  entry_until_label?: string | null;
 }
 
 export type TierStatus = "coming_soon" | "available" | "sold_out" | "expired";
@@ -46,10 +63,15 @@ export function computeTierStatuses(tiers: PublicTier[], now: Date = new Date())
  *   2. la quantita' e' esaurita               → `sold_out`
  *   3. la data di fine e' passata             → `expired`
  *
- * L'ordine conta dove due ragioni valgono insieme: un tier esaurito E scaduto
- * dice «sold out», perche' e' la frase che spiega a chi compra cosa e' successo
- * mentre guardava; e un tier non ancora aperto dice «coming soon» anche se ha
- * quantita' zero, perche' la vendita non e' cominciata.
+ * L'ordine conta dove due ragioni valgono insieme: **un tier esaurito E
+ * scaduto dice «Sold out»** — confermato dal proprietario il 2026-10-05
+ * («quando un tier e' sia sold out che expired deve mostrare sold out»),
+ * scritto anche in `sales-window.ts`. Un tier non ancora
+ * aperto dice «coming soon» anche se ha quantita' zero, perche' la vendita non
+ * e' cominciata. `expires_at` qui e' la chiusura EFFETTIVA: la pagina della
+ * serata ci mette la scadenza esplicita o, se manca, fine serata − 2 h
+ * (`tierClosesAt`). Nessuno stato nasconde la riga: `TierSelection` la
+ * disegna disabilitata con la sua etichetta.
  *
  * ── La catena per prezzo NON c'e' piu', e questo paragrafo dice perche' ─────
  *
@@ -68,9 +90,13 @@ export function computeTierStatuses(tiers: PublicTier[], now: Date = new Date())
  * tier che il preventivo rifiuta.
  */
 export function tierStatus(
-  tier: Pick<PublicTier, "available" | "starts_at" | "expires_at">,
+  tier: Pick<PublicTier, "available" | "starts_at" | "expires_at" | "sold_out">,
   now: Date = new Date()
 ): TierStatus {
+  // A mano vince su tutto: e' la parola di chi organizza, non un conteggio
+  // (`ticket_tiers.sold_out`, 2026-10-13). Sulle serate vendute da un terzo e'
+  // l'unico modo di saperlo; sulle nostre vale comunque.
+  if (tier.sold_out) return "sold_out";
   if (tier.starts_at && now < new Date(tier.starts_at)) return "coming_soon";
   if (tier.available !== null && tier.available <= 0) return "sold_out";
   if (tier.expires_at && now >= new Date(tier.expires_at)) return "expired";

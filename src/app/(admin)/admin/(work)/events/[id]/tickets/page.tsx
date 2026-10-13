@@ -178,7 +178,8 @@ export default async function TicketTiersPage({ params }: PageProps) {
   // Fetch paid parties for this event
   const { data: parties } = await supabase
     .from("event_parties")
-    .select("id, title, date, access_type")
+    // `time` per il controllo dell'ora limite nel client (revisione 52.4, WR-05).
+    .select("id, title, date, time, access_type")
     .eq("event_id", eventId)
     .eq("access_type", "paid")
     .order("sort_order", { ascending: true });
@@ -248,6 +249,7 @@ export default async function TicketTiersPage({ params }: PageProps) {
         discount_amount: dc.discount_amount,
         max_uses: dc.max_uses,
         is_active: dc.is_active,
+        benefit: (dc.benefit as string | null) ?? null,
         used: count ?? 0,
         tier_names: tierNames,
       };
@@ -316,7 +318,8 @@ export default async function TicketTiersPage({ params }: PageProps) {
             <p className="text-muted">No paid sub-events for this event. Change a sub-event&apos;s access type to &quot;Paid&quot; to add ticket tiers.</p>
           </Card>
         ) : (
-          (parties ?? []).map((party: { id: string; title: string; date: string }) => {
+          (parties ?? []).map((party: { id: string; title: string; date: string; time: string | null }) => {
+            const night = { date: party.date, time: party.time };
             const partyTiers = tiersByParty.get(party.id) ?? [];
 
             return (
@@ -325,7 +328,7 @@ export default async function TicketTiersPage({ params }: PageProps) {
                   {party.title} &middot; {formatPartyDate(party.date)}
                 </SectionHeading>
 
-                <AddTierForm eventId={eventId} partyId={party.id} />
+                <AddTierForm eventId={eventId} partyId={party.id} night={night} />
 
                 {partyTiers.length === 0 ? (
                   <Card className="text-center">
@@ -340,7 +343,7 @@ export default async function TicketTiersPage({ params }: PageProps) {
                     tiers={partyTiers.map((t) => ({ id: t.id, name: t.name, price: t.price }))}
                   >
                     {partyTiers.map((tier) => (
-                      <TierCard key={tier.id} tier={tier} eventId={eventId} />
+                      <TierCard key={tier.id} tier={tier} eventId={eventId} night={night} />
                     ))}
                   </TierReorderList>
                 )}

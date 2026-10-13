@@ -11,6 +11,11 @@ import { Badge } from "@/components/ui/Chip";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Input, Textarea } from "@/components/ui/Input";
 import { TIER_DESCRIPTION_HINT } from "@/components/tickets/tier-description";
+import {
+  ENTRY_UNTIL_HINT,
+  entryUntilShapeError,
+  entryUntilBeforeStartError,
+} from "@/components/tickets/tier-entry-until";
 
 /**
  * One ticket tier, read and edited in place — converted in plan 41.1-22.
@@ -64,16 +69,28 @@ interface TierWithSold {
   quantity: number | null;
   sold: number;
   show_remaining: boolean;
+  /** Esaurito a mano (2026-10-13): vince su quantita' e date, in UI e in cassa. */
+  sold_out: boolean;
   starts_at: string | null;
   expires_at: string | null;
+  /**
+   * Ora limite alla porta (52.4, MIX-04): orario di Torino, `HH:MM:SS` come lo
+   * restituisce Postgres; `null` = nessun limite.
+   */
+  entry_until: string | null;
 }
 
 interface TierCardProps {
   tier: TierWithSold;
   eventId: string;
+  /**
+   * Date and opening time of the tier's night, when known (WR-05): same
+   * client-side check as `AddTierForm`, the server stays the boundary.
+   */
+  night?: { date: string; time: string | null } | null;
 }
 
-export default function TierCard({ tier, eventId }: TierCardProps) {
+export default function TierCard({ tier, eventId, night }: TierCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +100,15 @@ export default function TierCard({ tier, eventId }: TierCardProps) {
     setError(null);
 
     const formData = new FormData(e.currentTarget);
+
+    // Same rule as the action, repeated because production omits the message
+    // of an error thrown by a server action.
+    const entryUntilError =
+      entryUntilShapeError(formData) ?? entryUntilBeforeStartError(formData, night);
+    if (entryUntilError) {
+      setError(entryUntilError);
+      return;
+    }
 
     startTransition(async () => {
       try {
@@ -191,6 +217,16 @@ export default function TierCard({ tier, eventId }: TierCardProps) {
             />
             <input type="hidden" name="show_remaining" value="false" />
           </div>
+          <div>
+            <Checkbox
+              id={`tier-edit-sold-out-${tier.id}`}
+              name="sold_out"
+              defaultChecked={tier.sold_out}
+              value="true"
+              label="Sold out (set by hand — wins over quantity and dates)"
+            />
+            <input type="hidden" name="sold_out" value="false" />
+          </div>
 
           <div className="grid gap-3 md:grid-cols-2">
             <Input
@@ -210,6 +246,17 @@ export default function TierCard({ tier, eventId }: TierCardProps) {
               className="min-w-0"
             />
           </div>
+
+          {/* Empty removes the limit. Postgres returns HH:MM:SS; the field takes HH:MM. */}
+          <Input
+            id={`tier-edit-entry-until-${tier.id}`}
+            label="Entry until (optional, Turin time)"
+            name="entry_until"
+            type="time"
+            defaultValue={tier.entry_until?.slice(0, 5) ?? ""}
+            className="min-w-0"
+            hint={ENTRY_UNTIL_HINT}
+          />
 
           <div className="flex flex-wrap items-center gap-2">
             <Button type="submit" size="sm" disabled={isPending}>
@@ -242,6 +289,8 @@ export default function TierCard({ tier, eventId }: TierCardProps) {
                 {tier.expires_at && new Date(tier.expires_at) < new Date() && (
                   <Badge>Expired</Badge>
                 )}
+                {tier.sold_out && <Badge>Sold out</Badge>}
+                {Number(tier.price) === 0 && <Badge>Free</Badge>}
               </div>
               {tier.description ? (
                 <p className="mt-1 whitespace-pre-line text-sm text-ink-2">
@@ -263,6 +312,9 @@ export default function TierCard({ tier, eventId }: TierCardProps) {
                   <span>
                     Expires {(() => { const d = new Date(tier.expires_at); const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return `${d.getDate()} ${M[d.getMonth()]}, ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; })()}
                   </span>
+                )}
+                {tier.entry_until && (
+                  <span>Entry until {tier.entry_until.slice(0, 5)}</span>
                 )}
               </div>
             </div>

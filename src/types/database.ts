@@ -125,7 +125,16 @@ export type UserRole = "master" | "organizer" | "staff" | "attendee";
 // l'onda precedente, e toglierlo prima avrebbe reso rosso ogni build intermedio
 // — in un repository dove il compilatore e' l'unico controllo automatico che
 // esiste.
-export type AccessType = "free_public" | "free_rsvp" | "paid";
+//
+// ── Due tipi di serata, dal 2026-10-13 (fase 52.4, D-52.4-01) ───────────────
+//
+// Specchio del CHECK `event_parties_access_type_check` della migration
+// `20261013150000_mixed_tiers_entry_until.sql`, che accetta solo
+// `'free_public', 'paid'`. Il terzo valore — la serata su RSVP — e' uscito quel
+// giorno: il gratuito e' ora un tier a 0 € su una serata con biglietti, e le
+// righe storiche di quel tipo sono state migrate a `paid` dalla stessa
+// migration. Il letterale non sta piu' in `src/` nemmeno in un commento.
+export type AccessType = "free_public" | "paid";
 
 export interface Profile {
   id: string;
@@ -386,6 +395,12 @@ export interface EventParty {
    * richieste in volo passano un controllo di UI e non passano quello della RPC.
    */
   max_tickets_per_order: number;
+  /** Chi vende i biglietti quando non siamo noi; valorizzato = serata venduta altrove. Migration 20261013120000. */
+  external_tickets_seller: string | null;
+  /** Link unico dell'evento dal venditore, https; NULL = «Tickets soon». */
+  external_tickets_url: string | null;
+  /** Testo del bottone in uscita; NULL = «Get tickets». */
+  external_tickets_label: string | null;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -452,6 +467,16 @@ export interface TicketTier {
    */
   sort_order: number;
   show_remaining: boolean;
+  /** Esaurito a mano: vince su quantita', date e conteggi. Migration 20261013120000. */
+  sold_out: boolean;
+  /**
+   * Ora limite d'ingresso del tier, ora di Torino `HH:MM:SS` come la
+   * restituisce Postgres (`time`). Un'ora < 12 cade la mattina dopo la data
+   * della serata. NULL = nessun limite. L'istante si calcola SOLO con
+   * `entryUntilInstant` di `src/utils/datetime.ts`, mai a mano.
+   * Migration 20261013150000 (fase 52.4, D-52.4-05).
+   */
+  entry_until: string | null;
   starts_at: string | null;
   expires_at: string | null;
   created_at: string;
@@ -466,6 +491,8 @@ export interface DiscountCode {
   discount_amount: number;
   max_uses: number | null;
   is_active: boolean;
+  /** Omaggio mostrato alla porta (es. «1 chupito»); obbligatorio se discount_amount = 0. Migration 20261005120000. */
+  benefit: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -579,7 +606,8 @@ export interface TicketOrder {
   quantity: number;
   /**
    * **`NULL` significa ordine a totale zero** — l'RSVP di una serata
-   * `free_rsvp`, che nessuno paga (REG-06, D-50-19). Mai «checkout perso»:
+   * su RSVP (tipo uscito il 2026-10-13, fase 52.4), o la prenotazione di un tier
+   * a 0 €, che nessuno paga (REG-06, D-50-19). Mai «checkout perso»:
    * l'ordine pagato scrive questo campo prima di ogni altra cosa, all'apertura
    * del checkout.
    *

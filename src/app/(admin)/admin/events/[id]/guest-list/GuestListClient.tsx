@@ -84,7 +84,12 @@ export default function GuestListClient({
   // Form state
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [partyId, setPartyId] = useState("");
+  // Con UNA serata la scelta non esiste: la voce e' di quella serata, e il
+  // menu «All Parties» non si mostra (proprietario, 2026-10-13: «se ho cliccato
+  // su guest list di uno specifico evento, e' ovvio che sto aggiungendo guests
+  // solo per quell'evento»). Con piu' serate il menu resta, perche' una voce
+  // senza serata vale su tutte le serate dell'evento (party_id nullo).
+  const [partyId, setPartyId] = useState(parties.length === 1 ? parties[0].id : "");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Status counts
@@ -210,14 +215,14 @@ export default function GuestListClient({
             hint="If provided, the guest will be auto-registered and receive an invitation email with their ticket."
           />
 
-          {parties.length > 0 && (
+          {parties.length > 1 && (
             <Select
               id="guest-party"
-              label="Party"
+              label="Night"
               value={partyId}
               onChange={(e) => setPartyId(e.target.value)}
             >
-              <option value="">All Parties</option>
+              <option value="">Every night of this event</option>
               {parties.map((party) => (
                 <option key={party.id} value={party.id}>
                   {party.title}

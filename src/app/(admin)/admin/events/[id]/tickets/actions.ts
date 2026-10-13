@@ -10,6 +10,11 @@ import {
 import { CAP } from "@/lib/capabilities/keys";
 import { replayPaidOrderDelivery } from "@/lib/tickets/replay-order-delivery";
 import { redactDbError } from "@/lib/errors/redact";
+import { CODE_SALES_CLOSED_MESSAGE, CODE_SOLD_OUT_MESSAGE, isCodeUsable } from "@/lib/tickets/sales-window";
+import {
+  ENTRY_UNTIL_BEFORE_START_MESSAGE,
+  entryUntilFallsBeforeStart,
+} from "@/components/tickets/tier-entry-until";
 
 // Service-role client for operations where RLS blocks legitimate access
 // (e.g., master managing tiers for events they don't own)
@@ -83,6 +88,85 @@ function readTierDescription(formData: FormData): string | null {
 }
 
 /**
+ * L'ora limite d'ingresso di un tier (52.4, MIX-04, D-52.4-05): un orario da
+ * parete, ora di Torino, che la porta trasforma in un istante a partire dalla
+ * data della serata (`entryUntilInstant`, `src/lib/door/entry-until.ts`; un
+ * orario prima delle 12:00 e' la mattina dopo). Vale per OGNI tier, gratuito o
+ * a pagamento: nessuna regola «solo sui gratuiti».
+ *
+ * Vuoto → `null`, cioe' nessun limite — e in modifica un campo vuoto TOGLIE il
+ * limite. Un `<input type="time">` puo' inviare `HH:MM:SS`: i secondi si
+ * accettano e si scartano, qualunque altra coda e' un rifiuto (T-52.4-23: niente
+ * fuori forma arriva al database, dove il tipo `time` accetterebbe anche forme
+ * che la porta non si aspetta). La stessa regola e' ripetuta nel client
+ * (`@/components/tickets/tier-entry-until`), perche' in produzione Next omette
+ * il messaggio di questo throw.
+ */
+function normaliseEntryUntil(entryUntilRaw: string | null): string | null {
+  if (entryUntilRaw === null) return null;
+  if (!/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(entryUntilRaw)) {
+    console.error(
+      `[tickets.entry_until_malformed] valore rifiutato (${entryUntilRaw.length} caratteri)`
+    );
+    throw new Error("Entry until must be a time like 23:30.");
+  }
+  return entryUntilRaw.slice(0, 5);
+}
+
+/**
+ * L'ora limite non puo' cadere all'apertura della serata o prima — revisione
+ * 52.4, WR-05, fix approvato dal proprietario il 2026-10-13.
+ *
+ * Senza questo controllo «20:00» su una notte delle 22:00 si salva, e la porta
+ * rifiuta ogni biglietto di quel tier dal primo scan con «Entry closed at
+ * 20:00»: ogni ingresso passa da «Admit anyway», una riga
+ * `entry_until_overridden` per persona, e nessuno se ne accorge prima della
+ * fila. Il confronto e' quello di `entryUntilFallsBeforeStart`
+ * (`@/components/tickets/tier-entry-until`), che usa la stessa aritmetica della
+ * porta; la frase e' la stessa del client.
+ *
+ * Si controlla solo quando c'e' un limite e una serata: un tier di Event Pass
+ * (`party_id` nullo) non ha un'apertura sola contro cui misurare. **Una serata
+ * senza orario d'apertura non blocca**: nessun orario = nessun confronto
+ * possibile, e inventarne uno rifiuterebbe valori legittimi.
+ *
+ * Una lettura della serata fallita **ferma il salvataggio**, con la sua
+ * categoria: e' un form di lavoro, si riprova, e un limite salvato senza
+ * controllo e' esattamente il difetto che questa funzione esiste per evitare.
+ */
+async function assertEntryUntilAfterStart(
+  client: ReturnType<typeof getServiceClient>,
+  partyId: string | null,
+  entryUntil: string | null,
+  tierLabel: string
+): Promise<void> {
+  if (entryUntil === null || partyId === null) return;
+
+  const { data: party, error } = await client
+    .from("event_parties")
+    .select("id, date, time")
+    .eq("id", partyId)
+    .maybeSingle();
+
+  if (error || !party) {
+    console.error(
+      `[tickets.entry_until_night_unreadable] tier=${tierLabel} party=${partyId} ` +
+        (error ? redactDbError(error) : "nessuna riga")
+    );
+    throw new Error(
+      "Could not read the night's start time, so the entry-until hour was not saved. Please try again."
+    );
+  }
+
+  if (entryUntilFallsBeforeStart(party.date, party.time, entryUntil)) {
+    console.error(
+      `[tickets.entry_until_before_start] tier=${tierLabel} party=${party.id}`
+    );
+    throw new Error(ENTRY_UNTIL_BEFORE_START_MESSAGE);
+  }
+}
+
+/**
  * Create a new ticket tier for an event.
  */
 export async function createTier(eventId: string, partyId: string | null, formData: FormData) {
@@ -110,6 +194,9 @@ export async function createTier(eventId: string, partyId: string | null, formDa
   }
 
   const showRemaining = formData.get("show_remaining") !== "false";
+  // Esaurito a mano (2026-10-13): il campo nascosto «false» sta DOPO la casella,
+  // quindi «true» arriva solo se la casella e' spuntata.
+  const soldOut = formData.get("sold_out") === "true";
 
   const startsAtRaw = (formData.get("starts_at") as string)?.trim() || null;
   const starts_at = startsAtRaw ? new Date(startsAtRaw).toISOString() : null;
@@ -118,6 +205,10 @@ export async function createTier(eventId: string, partyId: string | null, formDa
   const expires_at = expiresAtRaw ? new Date(expiresAtRaw).toISOString() : null;
 
   const description = readTierDescription(formData);
+
+  // Vuoto = nessun limite; in modifica un campo vuoto toglie il limite.
+  const entryUntilRaw = (formData.get("entry_until") as string | null)?.trim() || null;
+  const entry_until = normaliseEntryUntil(entryUntilRaw);
 
   // Use service-role client for master (bypasses RLS ownership check)
   const client = ctx.capabilities.has(CAP.MASTER_MANAGE)
@@ -133,6 +224,10 @@ export async function createTier(eventId: string, partyId: string | null, formDa
   // righe. Il tier RSVP automatico (`admin/events/actions.ts`) resta a 0: e'
   // l'unico tier di una serata gratuita.
   const listPartyId = partyId || null;
+
+  // WR-05: l'ora limite dopo l'apertura, prima di scrivere qualunque cosa.
+  await assertEntryUntilAfterStart(client, listPartyId, entry_until, "new");
+
   const lastQuery = client
     .from("ticket_tiers")
     .select("sort_order")
@@ -162,8 +257,10 @@ export async function createTier(eventId: string, partyId: string | null, formDa
     price,
     quantity,
     show_remaining: showRemaining,
+    sold_out: soldOut,
     starts_at,
     expires_at,
+    entry_until,
     sort_order: sortOrder,
   });
 
@@ -309,6 +406,9 @@ export async function updateTier(
   }
 
   const showRemaining = formData.get("show_remaining") !== "false";
+  // Esaurito a mano (2026-10-13): il campo nascosto «false» sta DOPO la casella,
+  // quindi «true» arriva solo se la casella e' spuntata.
+  const soldOut = formData.get("sold_out") === "true";
 
   const startsAtRaw = (formData.get("starts_at") as string)?.trim() || null;
   const starts_at = startsAtRaw ? new Date(startsAtRaw).toISOString() : null;
@@ -318,14 +418,43 @@ export async function updateTier(
 
   const description = readTierDescription(formData);
 
+  // Vuoto = nessun limite; in modifica un campo vuoto toglie il limite.
+  const entryUntilRaw = (formData.get("entry_until") as string | null)?.trim() || null;
+  const entry_until = normaliseEntryUntil(entryUntilRaw);
+
   // Use service-role client for master (bypasses RLS ownership check)
   const client = ctx.capabilities.has(CAP.MASTER_MANAGE)
     ? getServiceClient()
     : supabase;
 
+  // WR-05: la serata del tier, riletta per id, e l'ora limite dopo l'apertura.
+  // Solo se c'e' un limite: togliere il limite non ha niente da controllare.
+  if (entry_until !== null) {
+    const { data: tierRow, error: tierRowError } = await client
+      .from("ticket_tiers")
+      .select("party_id")
+      .eq("id", tierId)
+      .maybeSingle();
+    if (tierRowError || !tierRow) {
+      console.error(
+        `[tickets.entry_until_tier_unreadable] tier=${tierId} ` +
+          (tierRowError ? redactDbError(tierRowError) : "nessuna riga")
+      );
+      throw new Error(
+        "Could not read this tier's night, so the entry-until hour was not saved. Please try again."
+      );
+    }
+    await assertEntryUntilAfterStart(
+      client,
+      (tierRow.party_id as string | null) ?? null,
+      entry_until,
+      tierId
+    );
+  }
+
   const { error } = await client
     .from("ticket_tiers")
-    .update({ name, description, price, quantity, show_remaining: showRemaining, starts_at, expires_at })
+    .update({ name, description, price, quantity, show_remaining: showRemaining, sold_out: soldOut, starts_at, expires_at, entry_until })
     .eq("id", tierId);
 
   if (error) {
@@ -381,6 +510,23 @@ export async function deleteTier(tierId: string, eventId: string) {
 // =============================================================
 
 /**
+ * Benefit di un codice: l'omaggio che la porta mostra (es. «1 chupito»).
+ * Vuoto = nessun benefit; un codice a 0 € senza benefit non fa niente e il
+ * compratore lo leggerebbe come applicato: si rifiuta qui e nel catalogo
+ * (discount_codes_zero_needs_benefit_check, migration 20261005120000).
+ */
+function parseBenefit(formData: FormData, discountAmount: number): string | null {
+  const benefit = ((formData.get("benefit") as string | null) ?? "").trim() || null;
+  if (benefit !== null && benefit.length > 60) {
+    throw new Error("Benefit must be at most 60 characters");
+  }
+  if (discountAmount === 0 && benefit === null) {
+    throw new Error("A 0 code needs a benefit shown at the door");
+  }
+  return benefit;
+}
+
+/**
  * Create a new discount code for a party.
  */
 export async function createDiscountCode(
@@ -406,9 +552,11 @@ export async function createDiscountCode(
 
   const discountAmountRaw = formData.get("discount_amount") as string;
   const discountAmount = parseFloat(discountAmountRaw);
-  if (isNaN(discountAmount) || discountAmount <= 0) {
-    throw new Error("Discount amount must be greater than 0");
+  if (isNaN(discountAmount) || discountAmount < 0) {
+    throw new Error("Discount amount cannot be negative");
   }
+
+  const benefit = parseBenefit(formData, discountAmount);
 
   if (discountType === "percentage" && discountAmount > 100) {
     throw new Error("Discount percentage cannot exceed 100%");
@@ -446,6 +594,7 @@ export async function createDiscountCode(
       discount_amount: discountAmount,
       max_uses: maxUses,
       is_active: isActive,
+      benefit,
     })
     .select("id")
     .single();
@@ -503,9 +652,11 @@ export async function updateDiscountCode(
 
   const discountAmountRaw = formData.get("discount_amount") as string;
   const discountAmount = parseFloat(discountAmountRaw);
-  if (isNaN(discountAmount) || discountAmount <= 0) {
-    throw new Error("Discount amount must be greater than 0");
+  if (isNaN(discountAmount) || discountAmount < 0) {
+    throw new Error("Discount amount cannot be negative");
   }
+
+  const benefit = parseBenefit(formData, discountAmount);
 
   if (discountType === "percentage" && discountAmount > 100) {
     throw new Error("Discount percentage cannot exceed 100%");
@@ -541,6 +692,7 @@ export async function updateDiscountCode(
       discount_amount: discountAmount,
       max_uses: maxUses,
       is_active: isActive,
+      benefit,
       updated_at: new Date().toISOString(),
     })
     .eq("id", discountCodeId);
@@ -629,52 +781,122 @@ export async function deleteDiscountCode(
 }
 
 /**
- * Validate a discount code for buyer-side display.
- * This is a PUBLIC action -- any authenticated user can validate.
+ * Anteprima di un codice sconto per chi compra. Azione PUBBLICA.
+ *
+ * 2026-10-05 — i rifiuti attesi si RESTITUISCONO, non si lanciano. In una build
+ * di produzione Next toglie il messaggio a ogni errore lanciato da una server
+ * action, e chi compra leggeva «An error occurred in the Server Components
+ * render…» al posto di «Invalid code», «Sold out» o «Expired»: quattro rifiuti
+ * diversi resi uguali (`meta-gates.md`, zero fallimenti silenziosi). Si lancia
+ * solo per un guasto vero, dopo averlo scritto nel log con la sua categoria.
  */
-export async function validateDiscountCode(
-  partyId: string,
-  code: string
-): Promise<{
+export type DiscountCodePreview = {
   id: string;
   discount_type: "percentage" | "fixed";
   discount_amount: number;
+  benefit: string | null;
   applicable_tier_ids: string[] | null;
-}> {
+};
+
+export type DiscountCodeRefusal = "invalid" | "inactive" | "sold_out" | "expired";
+
+export type ValidateDiscountCodeResult =
+  | ({ ok: true } & DiscountCodePreview)
+  | { ok: false; reason: DiscountCodeRefusal; message: string };
+
+function refuse(reason: DiscountCodeRefusal, message: string): ValidateDiscountCodeResult {
+  return { ok: false, reason, message };
+}
+
+export async function validateDiscountCode(
+  partyId: string,
+  code: string
+): Promise<ValidateDiscountCodeResult> {
   const supabase = await createClient();
 
   const { data: discountCode, error } = await supabase
     .from("discount_codes")
-    .select("id, discount_type, discount_amount, max_uses, is_active")
+    .select("id, discount_type, discount_amount, max_uses, is_active, benefit")
     .eq("party_id", partyId)
     .ilike("code", code.trim())
-    .single();
+    .maybeSingle();
 
-  if (error || !discountCode) {
-    throw new Error("Invalid code");
+  // Nessuna riga e' un rifiuto («Invalid code»); un errore della lettura no:
+  // prima i due collassavano nello stesso messaggio. Piu' righe per lo stesso
+  // testo (ilike) restano «Invalid code», come con `.single()`.
+  if (error && error.code !== "PGRST116") {
+    console.error(
+      `[discount.validate_failed] stage=lookup party=${partyId} err=${error.code ?? "?"}`
+    );
+    throw new Error("discount.validate_failed");
+  }
+  if (!discountCode) {
+    return refuse("invalid", "Invalid code");
   }
 
   if (!discountCode.is_active) {
-    throw new Error("Code is no longer active");
+    return refuse("inactive", "Code is no longer active");
   }
 
   // Check usage limits
   if (discountCode.max_uses !== null) {
-    const { count } = await supabase
+    // 2026-10-05 — il conteggio passa dalla chiave di servizio. Con il client
+    // di chi compra la RLS nasconde i biglietti altrui: per un ospite il conto
+    // era SEMPRE 0, e un codice esaurito rispondeva «applicato» (misurato sul
+    // laboratorio, `FULL-LAB`). E' un `count` in testa, nessuna riga torna
+    // indietro; la stessa lettura che `order-quote.ts` fa gia' col servizio.
+    const { count, error: usageError } = await getServiceClient()
       .from("tickets")
       .select("*", { count: "exact", head: true })
       .eq("discount_code_id", discountCode.id);
+    if (usageError) {
+      // Non si e' potuto contare: l'anteprima non dice «Sold out», e la
+      // barriera resta il preventivo e la RPC. Lo si dice nel log.
+      console.error(
+        `[discount.usage_unreadable] code_id=${discountCode.id} err=${usageError.code ?? "?"}`
+      );
+    }
 
     if ((count ?? 0) >= discountCode.max_uses) {
-      throw new Error("Code usage limit reached");
+      // «Sold out», parola del proprietario (2026-10-05): solo qui, dove un
+      // tetto c'e' ed e' pieno.
+      return refuse("sold_out", CODE_SOLD_OUT_MESSAGE);
     }
   }
 
-  // Check tier restrictions
-  const { data: tierRestrictions } = await supabase
+  // 2026-10-05 — un codice non ha scadenza propria: vale fino a fine serata
+  // − 2 h (`src/lib/tickets/sales-window.ts`, decisione del proprietario). Chi
+  // lo prova dopo legge «Expired». Sta DOPO il controllo degli usi: esaurito e
+  // chiuso dice «Sold out» (decisione del proprietario, stesso giorno). Se la serata non si legge il controllo non
+  // si fa e lo si dice nel log: qui e' un'anteprima, e la barriera che regge e'
+  // il preventivo (`order-quote.ts`, `quote_discount_sales_closed`) e
+  // `purchaseTicket`, che rileggono la serata da soli.
+  const { data: salesParty, error: salesPartyError } = await supabase
+    .from("event_parties")
+    .select("date, time, end_time")
+    .eq("id", partyId)
+    .maybeSingle();
+  if (salesPartyError) {
+    console.error(
+      `[discount.sales_window_unreadable] party=${partyId} code=${salesPartyError.code ?? "?"}`
+    );
+  } else if (salesParty && !isCodeUsable(salesParty)) {
+    return refuse("expired", CODE_SALES_CLOSED_MESSAGE);
+  }
+
+  // Check tier restrictions. Se la lettura fallisce non si tira a indovinare:
+  // `null` qui vuol dire «vale su ogni tier», e mostrerebbe un prezzo scontato
+  // su tier dove il codice non vale. E' un guasto, non un rifiuto.
+  const { data: tierRestrictions, error: tiersError } = await supabase
     .from("discount_code_tiers")
     .select("tier_id")
     .eq("discount_code_id", discountCode.id);
+  if (tiersError) {
+    console.error(
+      `[discount.validate_failed] stage=tiers code_id=${discountCode.id} err=${tiersError.code ?? "?"}`
+    );
+    throw new Error("discount.validate_failed");
+  }
 
   const applicableTierIds =
     tierRestrictions && tierRestrictions.length > 0
@@ -682,9 +904,11 @@ export async function validateDiscountCode(
       : null;
 
   return {
+    ok: true,
     id: discountCode.id,
     discount_type: discountCode.discount_type as "percentage" | "fixed",
     discount_amount: discountCode.discount_amount,
+    benefit: (discountCode.benefit as string | null) ?? null,
     applicable_tier_ids: applicableTierIds,
   };
 }

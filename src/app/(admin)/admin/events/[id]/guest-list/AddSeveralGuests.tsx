@@ -211,7 +211,8 @@ export default function AddSeveralGuests({
   const [isRefreshing, startTransition] = useTransition();
 
   const [text, setText] = useState("");
-  const [partyId, setPartyId] = useState("");
+  // Stessa regola del modulo singolo: con una serata la scelta non esiste.
+  const [partyId, setPartyId] = useState(parties.length === 1 ? parties[0].id : "");
   const [rows, setRows] = useState<PreviewRow[] | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [phase, setPhase] = useState<"preview" | "saving" | "done">("preview");
@@ -347,15 +348,15 @@ export default function AddSeveralGuests({
       <div className="space-y-4">
         <h2 className="text-base font-semibold text-ink">Add several</h2>
 
-        {parties.length > 0 && (
+        {parties.length > 1 && (
           <Select
             id="several-party"
-            label="Party"
+            label="Night"
             value={partyId}
             onChange={(e) => setPartyId(e.target.value)}
             disabled={locked}
           >
-            <option value="">All Parties</option>
+            <option value="">Every night of this event</option>
             {parties.map((party) => (
               <option key={party.id} value={party.id}>
                 {party.title}

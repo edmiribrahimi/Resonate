@@ -82,6 +82,10 @@ interface ReviewListClientProps {
   parties: { id: string; title: string }[];
   selectedPartyId: string | null;
   entries: ClassifiedEntry[];
+  /** Le entrate ordinarie, dalla piu' recente (2026-10-13): «a che ora e' entrato?». */
+  ordinary: ClassifiedEntry[];
+  /** Subject id → nome di chi e' entrato (profilo, ordine o voce di guest list). Prose view only. */
+  subjectLabels: Record<string, string>;
   counters: Record<DoorScanCause, number>;
   unclassified: number;
   total: number;
@@ -146,6 +150,9 @@ const PROSE: Record<DoorScanCause, (entry: ClassifiedEntry) => string> = {
   // are written out so the record stays total.
   double_read: () => "the same code was read twice within seconds",
   refunded_after_night: () => "refunded after the night began",
+  // Plan 52.4-01 (MIX-07): the tier's entry time, refused or overridden.
+  after_entry_until: () => "refused: entry time",
+  entry_until_overridden: () => "admitted after entry time",
 };
 
 /** What each cause asks of the person reading. Never a verdict on a guest. */
@@ -153,6 +160,7 @@ const NOTE: Partial<Record<DoorScanCause, string>> = {
   two_devices: "Worth a look: two people may have entered on one ticket.",
   second_ticket_same_holder: "No action beyond making the entry count add up.",
   invalid_signature: "The door was told at the time, when the network allowed.",
+  entry_until_overridden: "Admitted by staff after the ticket's entry time.",
 };
 
 const COUNTER_LABEL: Record<DoorScanCause, string> = {
@@ -164,6 +172,8 @@ const COUNTER_LABEL: Record<DoorScanCause, string> = {
   wrong_night: "tickets for another night",
   refunded_before_night: "refunded before the night (admitted with a flag, or refused)",
   refunded_after_night: "refunded after the night began (accounting)",
+  after_entry_until: "Refused: entry time",
+  entry_until_overridden: "Admitted after entry time",
 };
 
 /**
@@ -287,6 +297,8 @@ export default function ReviewListClient({
   parties,
   selectedPartyId,
   entries,
+  ordinary,
+  subjectLabels,
   counters,
   unclassified,
   total,
@@ -296,6 +308,9 @@ export default function ReviewListClient({
   readError,
 }: ReviewListClientProps) {
   const router = useRouter();
+  // Le entrate ordinarie si aprono su richiesta: la pagina resta, per
+  // default, la lista di cio' che ha avuto bisogno di attenzione.
+  const [showOrdinary, setShowOrdinary] = useState(false);
 
   const nightEnd = nightEndIso ? Date.parse(nightEndIso) : NaN;
   const landedAfterTheNight = (entry: ClassifiedEntry) => {
@@ -571,6 +586,50 @@ export default function ReviewListClient({
         </ul>
       )}
 
+      {/*
+        ── TUTTE LE ENTRATE, SU RICHIESTA (2026-10-13) ───────────────────────
+        Il proprietario chiedeva «a che ora e' entrato un ospite?» e la pagina
+        rispondeva solo per le eccezioni. Le entrate ordinarie stanno dietro
+        un interruttore: il nome di chi e' entrato, l'ora di Torino, chi ha
+        letto. Il pulsante dichiara il minimo di 44 px sull'elemento, come
+        `verify:touch-targets` pretende.
+      */}
+      {!readError && ordinary.length > 0 && (
+        <section className="mt-6">
+          <button
+            type="button"
+            aria-expanded={showOrdinary}
+            onClick={() => setShowOrdinary((v) => !v)}
+            className="inline-flex min-h-11 items-center rounded-xl border border-line bg-surface px-4 text-sm font-medium text-ink transition-colors hover:border-accent/50"
+          >
+            {showOrdinary ? "Hide" : "Show"} all admissions ({ordinary.length})
+          </button>
+          {showOrdinary && (
+            <ul className="mt-3 space-y-3">
+              {ordinary.map((entry) => (
+                <li key={entry.id}>
+                  <Card>
+                    <p className="text-sm text-ink">
+                      At {timeInTurin(entry.scannedAt)},{" "}
+                      {(entry.subjectId && subjectLabels[entry.subjectId]) ||
+                        (entry.subjectType === "ticket"
+                          ? `ticket ${shortId(entry.subjectId)}`
+                          : entry.subjectType === "guest_list_entry"
+                            ? `guest-list entry ${shortId(entry.subjectId)}`
+                            : `membership ${shortId(entry.subjectId)}`)}{" "}
+                      entered.
+                    </p>
+                    <p className="mt-1 text-xs text-muted">
+                      Read by {operatorLabels[entry.operatorId] || "an unnamed operator"}
+                      {entry.source === "offline_sync" ? ", synced from offline" : ""}.
+                    </p>
+                  </Card>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
       {(doubleReads > 0 || otherCounters.length > 0) && (
         <section className="mt-6">
           <Card>

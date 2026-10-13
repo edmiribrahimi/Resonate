@@ -109,7 +109,7 @@ export async function buildEventMetadata(slug: string): Promise<Metadata> {
     .from("event_parties")
     // No column of place — `venue_text`, `venue_id` and the hint stay out, by
     // construction and not by predicate.
-    .select("id, date, time, end_time, venue_secret, access_type, sort_order")
+    .select("id, date, time, end_time, venue_secret, access_type, sort_order, external_tickets_seller")
     .eq("event_id", event.id)
     .order("sort_order", { ascending: true });
 
@@ -127,24 +127,34 @@ export async function buildEventMetadata(slug: string): Promise<Metadata> {
     venue_secret: boolean | null;
     access_type: string;
     sort_order: number;
+    external_tickets_seller: string | null;
   }>;
   const first = nights[0] ?? null;
 
-  let minPrice: number | null = null;
-  const paidIds = nights.filter((n) => n.access_type === "paid").map((n) => n.id);
+  // Two facts, not one minimum (phase 52.4, 2026-10-13): the cheapest PAID tier
+  // and whether any tier is free. On every night with tickets — sold by us or
+  // by an external seller alike — a 0 € tier is a real free ticket, not a list,
+  // so the old skip of 0 € tiers on external nights is gone.
+  let minPaid: number | null = null;
+  let hasFreeTier = false;
+  const paidNights = nights.filter((n) => n.access_type === "paid");
+  const paidIds = paidNights.map((n) => n.id);
   if (paidIds.length > 0) {
     const { data: tiers, error: tiersError } = await supabase
       .from("ticket_tiers")
-      .select("price")
+      .select("price, party_id")
       .in("party_id", paidIds);
     if (tiersError) {
       console.error(
         `[event_metadata.tiers_query_refused] ${tiersError.code || "transport"}: ${tiersError.message}`
       );
     } else {
-      for (const t of (tiers ?? []) as Array<{ price: number | null }>) {
-        if (typeof t.price === "number" && (minPrice === null || t.price < minPrice)) {
-          minPrice = t.price;
+      for (const t of (tiers ?? []) as Array<{ price: number | null; party_id: string | null }>) {
+        if (typeof t.price !== "number") continue;
+        if (t.price === 0) {
+          hasFreeTier = true;
+        } else if (t.price > 0 && (minPaid === null || t.price < minPaid)) {
+          minPaid = t.price;
         }
       }
     }
@@ -165,10 +175,15 @@ export async function buildEventMetadata(slug: string): Promise<Metadata> {
   if (anySecret) {
     parts.push("Secret venue");
   }
-  // A paid night whose cheapest tier is 0 € (a free tier, a guest tier) is not
-  // «from 0 €»: that reads like a defect on a preview nobody can correct later.
-  if (minPrice !== null) {
-    parts.push(minPrice > 0 ? `from ${formatPrice(minPrice)} €` : "free entry");
+  // Never «from 0 €»: that reads like a defect on a preview nobody can correct
+  // later. Free and paid tiers together say both; only free tiers say «free
+  // tickets» — a ticket you hold, not open entry (phase 52.4, D-52.4-01).
+  if (minPaid !== null && hasFreeTier) {
+    parts.push(`free tier · from ${formatPrice(minPaid)} €`);
+  } else if (minPaid !== null) {
+    parts.push(`from ${formatPrice(minPaid)} €`);
+  } else if (hasFreeTier) {
+    parts.push("free tickets");
   }
 
   const title = `${event.title} — ${day}`;

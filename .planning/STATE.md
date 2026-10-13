@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: 52.3-20 al checkpoint (task 2 di 3) + onda 12 ESEGUITA il 2026-10-06 (piani 21-23: righe su desktop, forma d'onda dai nostri file, indietro/avanti con skip() sul profilo — spike iOS passato); laboratorio da riservire con il nuovo sha; attende il secondo sguardo del proprietario (strada B/D entro 2026-10-07, anteprima del link, barra a quattro voci; il profilo SoundCloud e' stato valorizzato nel codice, da confermare)
-last_updated: "2026-10-06T10:05:00.000Z"
-last_activity: 2026-10-06
+stopped_at: "52.3-20 task 3: il proprietario ha scelto la strada D («strada d.», 2026-10-13 20:4x UTC); main (52.4 e biglietteria esterna in produzione) mergiato in wip/52.3; restano 20 task 3, 14, 15 (atto «vai-accesa»)"
+last_updated: 2026-10-13T20:16:08.588Z
+last_activity: 2026-10-13
 progress:
-  total_phases: 15
-  completed_phases: 8
-  total_plans: 142
-  completed_plans: 144
-  percent: 53
+  total_phases: 16
+  completed_phases: 9
+  total_plans: 173
+  completed_plans: 171
+  percent: 99
 ---
 
 # State: Resonate
@@ -30,12 +30,12 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 52.3 — La pagina Music: i LiveCut delle nostre serate
+**Current Focus:** Phase 52.3 — la pagina Music (pianificata, 16 piani). Fase 52.4 chiusa e in produzione il 2026-10-13 sera; lo staff riscarica la lista sullo scanner prima della prossima serata
 
 ## Current Position
 
-Phase: 52.3 (La pagina Music: i LiveCut delle nostre serate) — EXECUTING
-Plan: 23 piani, 21-23 eseguiti il 2026-10-06 (onda 12); 20 al checkpoint del task 2 (secondo sguardo del proprietario); restano 14 e 15
+Phase: 52.3 (La pagina Music: i LiveCut delle nostre serate) — EXECUTING, 20/23. Fase 52.4 chiusa il 2026-10-13 (12/12, VERIFICATION passed, in produzione)
+Plan: 20 al task 3 (strada D scelta il 2026-10-13); restano 14 e 15
 Next: `/gsd-execute-phase 52.3` (prima `/clear`). Onda 1 = 01 (ramo `wip/52.3`, lab sveglio, interruttore solo sul preview `lab`); onda 2 = 02 (migration sul lab, BLOCKING) + 03 (contratti) + 16 (spike del player e oEmbed); onda 3 include 06 = COPIA in sola lettura delle serate e degli artisti di produzione nel lab (notti segrete su sede segnaposto). **Risposte del proprietario del 2026-10-03:** i LiveCut vengono da re:sonate E da RamaDub; la 001 e' gia' su SoundCloud (input in `.env.lab.local`), la 002 esce il 2026-10-04 (una tantum prima dell'ancora del martedi' 6/10, che per Instagram non cambia); **il titolo e' quello pubblicato** (`<artista> @ <format> - 17 Sept 26`, D-52.3-03 emendata); **consenso dei dj: regola stabile, non si chiede piu'**; **il professionista ha risposto: i set si possono pubblicare, siamo coperti** → MUS-10 chiuso salvo il paragrafo dell'informativa (piano 04). Strada D (pagina accesa in produzione con i due LiveCut) e' disponibile: l'ultimo cancello e' il «vai» del piano 15. Checkpoint del proprietario al piano 13 (O-1, O-4..O-8, Mixcloud, colore MotionLab, B o D). Servono ancora: link e durata della 002 (dal 4/10), eventuale cover 2000x2000, la scelta B/D. Scadenza: onde 1-6 entro il 6/10, checkpoint entro mercoledi' 7/10, deploy entro gio 8/10; ven 9 runbook e porta, sab 10 la 003. Prima: decidere D22-3 (porta) e leggere D22-4 in produzione.
 
 **52.2 chiusa e osservata (2026-10-01 08:28Z).** `close-pending-orders` 08:01Z: 1 considerato, `never_attempted`, checkout disattivato; `reconcile-refunds` 08:13Z: silenzio = nulla da riconciliare (non logga un riepilogo quando non fa nulla: nota per la 52.1); 0 pending residui, 0 refunds, 0 mail. CART-03 e RFD-02 osservati.
@@ -402,7 +402,7 @@ Note:
         organizer/approved, organizer/pending seminato a mano, staff, member —
         ne chiude la maggior parte. La fase 36 costruisce superfici pubbliche
         sopra quel modello: il debito non e' suo, ma le sta sotto.
-Last activity: 2026-10-05
+Last activity: 2026-10-13
 
 **Phase 31: EXECUTED, NOT VERIFIED.** 13 of 13 plans, 61 commits on
 `gsd/phase-31-live-defects-at-the-door-and-the-bar`. One of its four blocking
@@ -410,7 +410,7 @@ checkpoints is now closed (the migration is applied); three remain, plus the RLS
 half of the fourth. `31-VALIDATION.md` keeps `nyquist_compliant: false`
 deliberately.
 
-Progress: [██████████] 100%
+Progress: [█████████░] 93%
           phase 32 — 11 plans, 0 executed
 
 ## Decisions
@@ -547,6 +547,13 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase 52.3]: 52.3-19 — D-52.3-19-1: TASK fuori da ogni barra; riga spenta in coda al pannello Management solo se il pannello esiste gia' (Management/Account deciso prima, D-52-04). Lo staff non vede piu' TASK: la fase 53 ricolloca TASK-01/TASK-04
 - [Phase 52.3]: 52.3-19 — D-52.3-19-2: regola di densita' ENTRY_PHONE_DENSE (voci-link px-3 solo con bar.length >= 4, mai per viewport): organizer/master 303.6 e porta 300.6 su 328 a 360 — scelta da portare al proprietario in 52.3-20 (alternativa: Music fuori dalla barra di chi lavora)
 - [Phase 52.3]: 52.3-19 — D-52.3-19-3: il ripiego del player si apre solo su refused e si richiude su play/progress; frase «Tap “Listen in browser” in the player.»; PT in barra solo con showsPartNumber
+- [Phase 52.4]: 52.4-04: giudizio sull'ora limite dopo already_recorded; eccezione con la sola door.operate, nessun controllo di supervisione
+- [Phase 52.4]: 52.4-05: entryUntil e override* sul telefono sono opzionali, DB_VERSION resta 6; overrideBy = deviceId, la persona la registra il server come operator_id
+- [Phase 52.4]: 52.4-06: entry_until si accetta solo come HH:MM o HH:MM:SS intero e si salva HH:MM; regola ripetuta nel client (tier-entry-until.ts) perche' in produzione Next omette il messaggio del throw
+- [Phase 52.4]: 52.4-11: prova offline della porta su emulatore Android per scelta del proprietario, approvata
+- [Phase 52.4]: 52.4-11: sei fix della revisione (CR-01, WR-01..05) applicati prima della VERIFICATION; IN-01..06 aperte
+- [Phase 52.4]: 52.4-11: «Admit anyway» sotto la barra di navigazione a 412 px, decisione del proprietario in attesa
+- [Phase 52.4]: 52.4-12: produzione su «vai» del proprietario 2026-10-13 20:56 Torino — due migration 20:59, main 450b3098, deploy Ready 21:47
 
 ## Accumulated Context
 
@@ -668,8 +675,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-10-05T19:31:08.377Z
-**Stopped at:** 52.3-20 al checkpoint (task 2 di 3): laboratorio su ca48893f, corsa L3 P-523-A/B/C/D/E/J in ESITI (88fabb01), frase del ripiego iOS corretta (ca48893f); attende il secondo sguardo del proprietario (strada B/D entro 2026-10-07, profilo SoundCloud, anteprima del link, barra a quattro voci)
+**Last session:** 2026-10-13T19:51:11.839Z
+**Stopped at:** 52.3-20 task 3: il proprietario ha scelto la strada D («strada d.», 2026-10-13 20:4x UTC); main (52.4 e biglietteria esterna in produzione) mergiato in wip/52.3; restano 20 task 3, 14, 15 (atto «vai-accesa»); staff: riscaricare la lista sullo scanner prima della prossima serata
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
@@ -779,3 +786,4 @@ does not exist on this machine, though GSD's own generated text uses it.
 - Phase 52.1 inserted after Phase 52: Chiusura del debito della fase 52: la tabella del debito di 52-VERIFICATION.md piu' gli 8 WR e le 8 IN di 52-REVIEW.md, DBT-01..10 (decisione del proprietario: «chiudiamo tutto il debito») (URGENT)
 - Phase 52.2 inserted after Phase 52: Il carrello che non si chiude, e il rimborsato alla porta (URGENT)
 - Phase 52.3 inserted after Phase 52.2: La pagina Music: i LiveCut delle nostre serate (URGENT)
+- Phase 52.4 inserted after Phase 52.3: Tier misti (gratis + pagamento) nella stessa serata e ora limite d'ingresso alla porta (URGENT)

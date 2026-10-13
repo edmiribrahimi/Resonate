@@ -82,11 +82,14 @@ export default function PendingIntentHandler({ eventSlug }: PendingIntentHandler
         if (intent.type === "purchase") {
           const result = await purchaseTicket(intent.partyId, intent.tierId);
           localStorage.removeItem("resonate_intent");
-          if (result.success && result.checkoutId) {
-            setCheckoutId(result.checkoutId);
-            setProcessing(false);
+          if (!result.ok) {
+            // Rifiuto atteso, restituito con la sua frase (2026-10-05).
+            setError(result.message);
             return;
           }
+          setCheckoutId(result.checkoutId);
+          setProcessing(false);
+          return;
         } else if (intent.type === "rsvp") {
           // ── UN'INTENZIONE CHE NESSUNO SCRIVE PIU', 2026-09-21 ──────────────
           //
@@ -102,16 +105,23 @@ export default function PendingIntentHandler({ eventSlug }: PendingIntentHandler
           // action…» — che e' cio' che accadrebbe se il ramo sparisse e basta,
           // perche' nessuno toglierebbe piu' la riga dal browser.
           //
-          // Quindi: si butta l'intenzione, e **lo si dice**. Il modulo per
-          // prenotare e' visibile sulla stessa schermata, a pochi centimetri da
-          // questa frase.
+          // Quindi: si butta l'intenzione, e **lo si dice**.
+          //
+          // 2026-10-13 (fase 52.4, D-52.4-01): non esiste piu' nemmeno un
+          // «modulo per prenotare» separato — le serate RSVP sono uscite e il
+          // gratuito e' un tier a 0 € dentro `TierSelection`, prenotato con
+          // «Reserve». La frase rimanda li', sulla stessa schermata. Il ramo
+          // resta come scarico dichiarato dello stato vecchio del browser.
           localStorage.removeItem("resonate_intent");
           setError(
-            "That booking was started on the old sign-up road, which no longer exists — nothing was booked. Use the booking form on this page: it takes a moment and your tickets arrive by email."
+            "That booking was started on a road that no longer exists — nothing was booked. Pick a ticket on this page: free tickets are reserved with «Reserve» and arrive by email."
           );
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Something went wrong");
+        console.error(
+          `[ticket.purchase_unreachable] road=intent ${err instanceof Error ? err.message : String(err)}`
+        );
+        setError("Something went wrong. Try again.");
         localStorage.removeItem("resonate_intent");
       } finally {
         setProcessing(false);

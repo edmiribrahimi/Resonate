@@ -21,6 +21,17 @@ import { redactDbError } from "@/lib/errors/redact";
 // `1.00` qui tiene i due percorsi d'acquisto — con sessione e ospite —
 // allineati per costruzione: se un giorno cambia, cambia in un posto solo.
 import { SUMUP_MINIMUM_EUR } from "@/lib/tickets/order-quote";
+import {
+  isCodeUsable,
+  isTierClosedByDefault,
+  type SalesWindowParty,
+} from "@/lib/tickets/sales-window";
+import {
+  logTicketPurchaseFailure,
+  POSTGREST_NO_ROWS,
+  refuseTicketPurchase,
+  type TicketPurchaseRefusal,
+} from "@/lib/tickets/purchase-refusals";
 // Service-role client for operations where RLS blocks legitimate access
 // (e.g., master updating events they don't own)
 function getServiceClient() {
@@ -96,6 +107,10 @@ interface PartyInput {
    * l'opposto di `capacity`, dove il vuoto e' uno stato reale.
    */
   max_tickets_per_order?: number;
+  /** Biglietti venduti da un terzo (2026-10-13). Seller valorizzato = serata venduta altrove. */
+  external_tickets_seller?: string | null;
+  external_tickets_url?: string | null;
+  external_tickets_label?: string | null;
   sort_order: number;
   /** FMT-01. `NOT NULL` in the database — a night cannot be saved without one. */
   format_id: string;
@@ -111,7 +126,7 @@ interface PartyInput {
   number?: number | null;
 }
 
-const VALID_ACCESS_TYPES: AccessType[] = ["free_public", "free_rsvp", "paid"];
+const VALID_ACCESS_TYPES: AccessType[] = ["free_public", "paid"];
 
 /** The same shape as `[id]/assignments/actions.ts:85`. */
 const UUID_PATTERN =
@@ -287,31 +302,6 @@ export type NightRefusal =
       sortOrder: number | null;
       nightTitle: string | null;
     }
-  /**
-   * REG-06 — la serata e' stata scritta, ma il suo livello di prenotazione no.
-   *
-   * ── Perche' una categoria propria e non `write_failed` ───────────────────
-   *
-   * Le altre di questo elenco dicono *quella serata non e' stata scritta*.
-   * Questa dice l'opposto: **la serata c'e'**, ed e' il livello a prezzo zero —
-   * quello che porta la capienza dentro la transazione che emette — a non
-   * esserci. Chi legge deve sapere quale delle due cose e' successa, perche' il
-   * gesto e' diverso: qui non si ricontrolla il numero di serie, si risalva.
-   *
-   * ── E perche' non e' un avviso ──────────────────────────────────────────
-   *
-   * Senza quel livello **una serata gratuita non prende prenotazioni**, e
-   * l'azione pubblica rifiuta con `free_tier_missing`: cioe' il difetto si
-   * scoprirebbe da un ospite, non da chi ha salvato. Questo progetto non ha
-   * error tracking, quindi l'unico effetto osservabile disponibile e' la frase
-   * che l'organizer legge adesso (`meta-gates.md`).
-   */
-  | {
-      kind: "rsvp_tier_failed";
-      sortOrder: number | null;
-      nightTitle: string | null;
-      code: string | null;
-    }
   /** Any other database failure. That night was not written. */
   | { kind: "write_failed"; sortOrder: number | null; nightTitle: string | null; code: string | null };
 
@@ -405,12 +395,6 @@ function nightRefusalSentence(refusal: NightRefusal): string {
         `keep naming the old one. If the venue is genuinely wrong, a master ` +
         `takes the night back to secret from the reveal panel first; that act ` +
         `is recorded, and the address can then be set and revealed again.`
-      );
-    case "rsvp_tier_failed":
-      return (
-        `${where}the night was saved, but its free booking could not be opened ` +
-        `(${refusal.code ?? "no code"}). Until it is, nobody can book a place ` +
-        `on it. Save the event again — nothing is duplicated by doing so.`
       );
     case "write_failed":
       return `${where}saving this night failed (${refusal.code ?? "no code"}). Nothing was written for it.`;
@@ -617,6 +601,32 @@ function validateEventData(formData: FormData) {
     if (party.venue_reveal_on_purchase !== undefined) {
       party.venue_reveal_on_purchase = !!party.venue_reveal_on_purchase;
     }
+    // Biglietti venduti da un terzo (2026-10-13). Stessa regola del CHECK in
+    // migration e di `externalTicketsProblem` nel form: seller 1..60, url
+    // https senza spazi ≤ 500, label ≤ 40, url e label solo con seller.
+    // Solo una serata `paid` puo' essere venduta altrove: su `free_*` i tre
+    // campi si azzerano, o un venditore sopravvissuto a un cambio di tipo
+    // farebbe rifiutare ogni prenotazione gratuita con «sold elsewhere»
+    // (revisione del ramo, 2026-10-13).
+    const isPaid = party.access_type === "paid";
+    const extSeller = isPaid ? party.external_tickets_seller?.trim() || null : null;
+    const extUrl = isPaid ? party.external_tickets_url?.trim() || null : null;
+    const extLabel = isPaid ? party.external_tickets_label?.trim() || null : null;
+    if (!extSeller && (extUrl || extLabel)) {
+      throw new Error("Name who sells the tickets before adding a link or a button text.");
+    }
+    if (extSeller && extSeller.length > 60) {
+      throw new Error("The seller's name can be 60 characters at most.");
+    }
+    if (extUrl && (!/^https:\/\/\S+$/.test(extUrl) || extUrl.length > 500)) {
+      throw new Error("The ticket link must start with https://, contain no spaces and be 500 characters at most.");
+    }
+    if (extLabel && extLabel.length > 40) {
+      throw new Error("The button text can be 40 characters at most.");
+    }
+    party.external_tickets_seller = extSeller;
+    party.external_tickets_url = extUrl;
+    party.external_tickets_label = extLabel;
   }
 
   // Two nights in ONE submission carrying the same (format, series, number).
@@ -668,201 +678,9 @@ type EventWriteClient =
   | Awaited<ReturnType<typeof createClient>>
   | ReturnType<typeof getServiceClient>;
 
-/**
- * Il nome del livello che una serata gratuita porta con se', identico a quello
- * che la migration `20260921120100_free_order.sql` ha dato alle serate che
- * esistevano gia'. Due nomi per lo stesso oggetto sarebbero due oggetti per chi
- * legge una lista.
- */
-const FREE_RSVP_TIER_NAME = "RSVP";
-
-/**
- * REG-06 — una serata `free_rsvp` nasce **gia' capace** di prendere
- * prenotazioni.
- *
- * ── Perche' qui, alla scrittura della serata ─────────────────────────────────
- *
- * `ticket_orders.tier_id` e' `NOT NULL`, quindi un ordine a totale zero ha
- * bisogno di un livello a prezzo zero — ed e' anche il livello che porta la
- * **capienza** dentro la transazione di `reserve_ticket_order`, l'unico posto
- * dove regge sotto concorrenza. Deve esistere prima che qualcuno prenoti.
- *
- * L'alternativa era crearlo alla prima prenotazione, cioe' **da un percorso
- * pubblico e concorrente**: sarebbe una seconda strada verso l'emissione, e
- * pretenderebbe una guardia di unicita' che lo schema dichiara di non volere
- * (`20260921120100:245-258`). Qui la strada e' una sola, e sta dove
- * `access_type` viene deciso.
- *
- * ── Cosa fa, e cosa NON fa ───────────────────────────────────────────────────
- *
- *   - se la serata non e' `free_rsvp`, **non tocca niente e non cancella
- *     niente**: quel livello puo' gia' avere biglietti emessi, e
- *     `ticket_orders.tier_id` e' `ON DELETE RESTRICT` — il database rifiuterebbe
- *     la cancellazione, ma l'intenzione sarebbe comunque sbagliata, perche'
- *     quei biglietti devono continuare a passare dalla porta;
- *   - se il livello manca, lo crea con la **stessa forma** del riempimento
- *     della migration: nome `RSVP`, prezzo `0`, `quantity` dalla capienza;
- *   - se c'e' e la capienza e' cambiata, **allinea `quantity`**. Senza,
- *     l'organizer cambierebbe la capienza sulla serata e quella vera resterebbe
- *     la vecchia, dentro la RPC, dove nessuno la vede: un numero ha una casa
- *     sola, ed e' `event_parties.capacity`;
- *   - `quantity` nullo quando la capienza e' nulla, perche' `NULL` significa
- *     *illimitato* su un livello e *non dichiarata* su una serata — la stessa
- *     cosa detta due volte. Un numero inventato dichiarerebbe un limite che la
- *     serata non ha dichiarato.
- *
- * Non solleva: chi chiama e' a meta' di una scrittura e deve poter rispondere
- * con la propria categoria invece di trovarsi un'eccezione addosso.
- */
-async function ensureFreeRsvpTier(
-  client: EventWriteClient,
-  night: {
-    id: string;
-    eventId: string;
-    accessType: AccessType;
-    capacity: number | null;
-  }
-): Promise<{ ok: true } | { ok: false; error: WriteError }> {
-  // ── CR-01: una serata che smette di essere gratuita chiude il suo livello ──
-  //
-  // Qui c'era `return { ok: true }`, e quel silenzio ERA il difetto. Il livello
-  // `RSVP` a prezzo zero restava agganciato alla serata; la pagina pubblica lo
-  // elencava — ordinato per prezzo crescente, quindi per PRIMO — e il percorso
-  // ordinario d'acquisto non ha mai avuto motivo di sospettare un prezzo nullo.
-  // Una serata appena salvata come `paid` mostrava percio' un'opzione gratuita
-  // acquistabile: l'esatto contrario dell'invariante che questa fase dichiara.
-  //
-  // **Non si cancella.** La ragione del docblock qui sopra resta intatta:
-  // `tickets.tier_id` e `ticket_orders.tier_id` sono `ON DELETE RESTRICT`, e i
-  // biglietti gia' emessi devono continuare a passare dalla porta.
-  //
-  // **E non si scrive `quantity = 0`**, che era la correzione suggerita dalla
-  // revisione: il vincolo inline `CHECK (quantity > 0)` di
-  // `20260225110000_phase6_ticketing.sql:14` e' ancora in vigore — la migration
-  // `20260227100000` ha tolto il `NOT NULL` e il `DEFAULT`, non il `CHECK` —
-  // quindi quella scrittura verrebbe rifiutata dal database, e il rifiuto
-  // arriverebbe come `rsvp_tier_failed` su un salvataggio legittimo.
-  //
-  // Lo strumento e' `expires_at`, che il modello del livello gia' porta e che
-  // **entrambe** le catene di disponibilita' gia' onorano: `order-quote.ts:461`
-  // sul percorso ospite/gratuito, `purchaseTicket` (`:1674`) e
-  // `TierSelection.tsx:198` su quello con sessione. Un livello scaduto e'
-  // `expired`, cioe' non acquistabile e non selezionabile, senza toccare lo
-  // schema e senza perdere una sola riga.
-  if (night.accessType !== "free_rsvp") {
-    return closeZeroPriceTiers(client, night.id);
-  }
-
-  const { data: existing, error: readError } = await client
-    .from("ticket_tiers")
-    .select("id, quantity, expires_at")
-    .eq("party_id", night.id)
-    .eq("price", 0)
-    .order("created_at", { ascending: true })
-    .limit(1);
-
-  if (readError) return { ok: false, error: readError };
-
-  const tier = (existing ?? [])[0] as
-    | { id: string; quantity: number | null; expires_at: string | null }
-    | undefined;
-
-  if (!tier) {
-    const { error: insertError } = await client.from("ticket_tiers").insert({
-      event_id: night.eventId,
-      party_id: night.id,
-      name: FREE_RSVP_TIER_NAME,
-      price: 0,
-      quantity: night.capacity,
-    });
-    if (insertError) return { ok: false, error: insertError };
-    return { ok: true };
-  }
-
-  // Due allineamenti in una scrittura sola.
-  //
-  //   - `quantity` dalla capienza, come prima;
-  //   - `expires_at` a `null` — **CR-01 nel verso opposto**. Una serata puo'
-  //     tornare `free_rsvp` dopo essere passata da `paid`, e il livello che il
-  //     ramo qui sopra ha chiuso deve riaprirsi: senza, la serata gratuita si
-  //     ritroverebbe con l'unico livello capace di emettere i suoi biglietti
-  //     scaduto, e la prenotazione si rifiuterebbe da sola con
-  //     `quote_tier_not_on_sale` — un no che nessuno ha deciso.
-  const patch: { quantity?: number | null; expires_at?: null; updated_at: string } = {
-    updated_at: new Date().toISOString(),
-  };
-  if ((tier.quantity ?? null) !== (night.capacity ?? null)) {
-    patch.quantity = night.capacity;
-  }
-  if (tier.expires_at !== null) {
-    patch.expires_at = null;
-  }
-
-  if ("quantity" in patch || "expires_at" in patch) {
-    const { error: updateError } = await client
-      .from("ticket_tiers")
-      .update(patch)
-      .eq("id", tier.id);
-    if (updateError) return { ok: false, error: updateError };
-  }
-
-  return { ok: true };
-}
-
-/**
- * CR-01 — rende NON acquistabili i livelli a prezzo zero di una serata che non
- * e' `free_rsvp`, senza cancellarne nessuno.
- *
- * Filtra per `price = 0` e non per nome: il nome di un livello e' modificabile
- * dall'organizer, il prezzo e' la proprieta' pericolosa. Un livello gia'
- * scaduto non viene riscritto — cosi' un salvataggio ripetuto non sposta in
- * avanti una scadenza gia' passata, e la scrittura avviene solo quando c'e'
- * davvero qualcosa da chiudere.
- *
- * Non solleva, come tutto il resto di questa catena: restituisce l'errore a chi
- * sta a meta' di una scrittura e ha la propria categoria di rifiuto da dire.
- */
-async function closeZeroPriceTiers(
-  client: EventWriteClient,
-  partyId: string
-): Promise<{ ok: true } | { ok: false; error: WriteError }> {
-  const nowIso = new Date().toISOString();
-  const nowMs = Date.now();
-
-  const { data: rows, error: readError } = await client
-    .from("ticket_tiers")
-    .select("id, expires_at")
-    .eq("party_id", partyId)
-    .eq("price", 0);
-
-  if (readError) return { ok: false, error: readError };
-
-  const open = ((rows ?? []) as { id: string; expires_at: string | null }[]).filter(
-    (t) => t.expires_at === null || new Date(t.expires_at).getTime() > nowMs
-  );
-  if (open.length === 0) return { ok: true };
-
-  const { error: updateError } = await client
-    .from("ticket_tiers")
-    .update({ expires_at: nowIso, updated_at: nowIso })
-    .in(
-      "id",
-      open.map((t) => t.id)
-    );
-
-  if (updateError) return { ok: false, error: updateError };
-
-  // Effetto osservabile con la sua categoria. Chiudere un livello cambia cosa
-  // la pagina pubblica mostra: un cambiamento del genere non deve essere
-  // deducibile solo guardando il risultato (`meta-gates.md`, zero fallimenti
-  // silenziosi). Nessun prezzo, nessun nome, nessuna riga: solo la serata e il
-  // conteggio.
-  console.info(
-    `[event_parties.rsvp_tier_closed] party=${partyId} tiers=${open.length}`
-  );
-
-  return { ok: true };
-}
+// Fase 52.4 (D-52.4-01): una serata con biglietti puo' avere tier a 0 €, che si
+// prenotano dalla strada a totale zero (`reserveFreeTickets`, per tier). Nessun
+// tier si crea o si chiude da solo al cambio di tipo: i tier li decide l'organizer.
 
 /**
  * T-36-10-04 — an archived night must not be silently reassigned, and a NEW
@@ -1041,6 +859,9 @@ export async function createEvent(formData: FormData): Promise<EventWriteResult>
     venue_reveal_on_purchase: p.venue_reveal_on_purchase ?? true,
     access_type: p.access_type,
     capacity: p.capacity ?? null,
+    external_tickets_seller: p.external_tickets_seller ?? null,
+    external_tickets_url: p.external_tickets_url ?? null,
+    external_tickets_label: p.external_tickets_label ?? null,
     // La chiave entra SOLO se il modulo ha espresso un valore. Assente, parla il
     // `DEFAULT 6` della colonna — che e' l'unica casa del numero. Scriverlo qui
     // con un `?? 6` gliene darebbe una seconda, e due case per un numero sono
@@ -1055,15 +876,9 @@ export async function createEvent(formData: FormData): Promise<EventWriteResult>
     number: p.number ?? null,
   }));
 
-  // `.select(...)` sul bulk insert, e le colonne che tornano servono davvero:
-  // senza gli id appena coniati non si puo' agganciare il livello di
-  // prenotazione alla serata giusta (REG-06). `access_type` e `capacity`
-  // arrivano dalla stessa risposta invece che da una seconda lettura, che
-  // potrebbe gia' vedere un'altra verita'.
-  const { data: insertedParties, error: partyError } = await supabase
+  const { error: partyError } = await supabase
     .from("event_parties")
-    .insert(partyRows)
-    .select("id, access_type, capacity, sort_order, title");
+    .insert(partyRows);
 
   if (partyError) {
     // ONE bulk insert, so the database names no row. The refusal therefore
@@ -1086,49 +901,6 @@ export async function createEvent(formData: FormData): Promise<EventWriteResult>
       console.error(
         `[events.orphan_draft] event=${inserted.id} could not be removed after its ` +
           `nights were refused. code=${cleanupError.code ?? "none"} message=${cleanupError.message}`
-      );
-    }
-
-    return { success: false, error: nightRefusalSentence(refusal), refusal };
-  }
-
-  // ── REG-06: una serata gratuita nasce gia' capace di prendere prenotazioni ──
-  //
-  // Il rifiuto **cancella la bozza**, come fa il ramo qui sopra e per la stessa
-  // ragione: questa funzione crea anche la riga dell'evento, e restituire un no
-  // lasciandola dietro significa che chi riprova si ritrova due bozze. Il
-  // taglio in cascata dell'evento porta via anche le serate appena scritte.
-  for (const row of (insertedParties ?? []) as {
-    id: string;
-    access_type: AccessType;
-    capacity: number | null;
-    sort_order: number;
-    title: string;
-  }[]) {
-    const tier = await ensureFreeRsvpTier(supabase, {
-      id: row.id,
-      eventId: inserted.id,
-      accessType: row.access_type,
-      capacity: row.capacity,
-    });
-    if (tier.ok) continue;
-
-    const refusal: NightRefusal = {
-      kind: "rsvp_tier_failed",
-      sortOrder: row.sort_order ?? null,
-      nightTitle: row.title?.trim() || null,
-      code: tier.error.code ?? null,
-    };
-    logNightRefusal(refusal, tier.error);
-
-    const { error: cleanupError } = await supabase
-      .from("events")
-      .delete()
-      .eq("id", inserted.id);
-    if (cleanupError) {
-      console.error(
-        `[events.orphan_draft] event=${inserted.id} could not be removed after its ` +
-          `free booking could not be opened. code=${cleanupError.code ?? "none"} message=${cleanupError.message}`
       );
     }
 
@@ -1354,6 +1126,9 @@ export async function updateEvent(
       venue_reveal_on_purchase: party.venue_reveal_on_purchase ?? true,
       access_type: party.access_type,
       capacity: party.capacity ?? null,
+      external_tickets_seller: party.external_tickets_seller ?? null,
+      external_tickets_url: party.external_tickets_url ?? null,
+      external_tickets_label: party.external_tickets_label ?? null,
       // Come in creazione: assente significa **«lascia com'e'»**, e su un
       // aggiornamento e' la differenza fra non toccare un tetto e azzerarlo.
       // Ogni altro campo qui e' scritto sempre perche' il modulo li porta
@@ -1412,10 +1187,6 @@ export async function updateEvent(
     }
 
     let nightError: WriteError | null = null;
-    // L'id della serata dopo la scrittura: quello che c'era, o quello appena
-    // coniato. Serve al livello di prenotazione (REG-06), che si aggancia a una
-    // serata e non a un evento.
-    let writtenNightId: string | null = null;
 
     if (party.id && existingIds.has(party.id)) {
       const { error: updateError } = await client
@@ -1423,18 +1194,11 @@ export async function updateEvent(
         .update({ ...nightFields, updated_at: new Date().toISOString() })
         .eq("id", party.id);
       nightError = updateError;
-      writtenNightId = party.id;
     } else {
-      // `.select("id").single()`: l'id di una serata nuova non e' deducibile da
-      // nient'altro in questa funzione, e senza di lui il livello di
-      // prenotazione non avrebbe a cosa attaccarsi.
-      const { data: insertedNight, error: insertError } = await client
+      const { error: insertError } = await client
         .from("event_parties")
-        .insert({ event_id: eventId, ...nightFields })
-        .select("id")
-        .single();
+        .insert({ event_id: eventId, ...nightFields });
       nightError = insertError;
-      writtenNightId = insertedNight?.id ?? null;
     }
 
     if (nightError) {
@@ -1446,31 +1210,6 @@ export async function updateEvent(
       });
       logNightRefusal(refusal, nightError);
       return { success: false, error: nightRefusalSentence(refusal), refusal };
-    }
-
-    // ── REG-06: il livello di prenotazione segue la serata ───────────────────
-    //
-    // Dopo la scrittura e non prima, perche' prima la serata potrebbe non
-    // esistere o portare ancora la vecchia capienza. Si ferma alla prima
-    // serata rifiutata, come tutto il resto di questo ciclo: la serata E'
-    // scritta, e la frase lo dice invece di lasciarlo dedurre.
-    if (writtenNightId) {
-      const tier = await ensureFreeRsvpTier(client, {
-        id: writtenNightId,
-        eventId,
-        accessType: party.access_type,
-        capacity: party.capacity ?? null,
-      });
-      if (!tier.ok) {
-        const refusal: NightRefusal = {
-          kind: "rsvp_tier_failed",
-          sortOrder: party.sort_order,
-          nightTitle: party.title?.trim() || null,
-          code: tier.error.code ?? null,
-        };
-        logNightRefusal(refusal, tier.error);
-        return { success: false, error: nightRefusalSentence(refusal), refusal };
-      }
     }
   }
 
@@ -1640,7 +1379,11 @@ function logPurchasePrecheckUnreadable(
  *
  * partyId can be null for event-level (master) tickets.
  */
-export async function purchaseTicket(partyId: string | null, tierId: string, discountCodeId?: string | null) {
+export async function purchaseTicket(partyId: string | null, tierId: string, discountCodeId?: string | null): Promise<
+  { ok: true; success: true; checkoutId: string; purchaseId: string } | TicketPurchaseRefusal
+> {
+  // 2026-10-05 — i rifiuti attesi tornano come valore (`purchase-refusals.ts`):
+  // in produzione il messaggio di un errore sollevato non arriva a chi compra.
   const supabase = await createClient();
   const {
     data: { user },
@@ -1648,7 +1391,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    throw new Error("Not authenticated");
+    return refuseTicketPurchase("not_authenticated");
   }
 
   // Verify user has a profile. The read stays — it is an EXISTENCE check, and
@@ -1664,18 +1407,63 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
     .single();
 
   if (profileError || !profile) {
+    // Una sessione senza profilo non e' un rifiuto da spiegare: e' un guasto.
+    logTicketPurchaseFailure("profile_read", null);
     throw new Error("Profile not found");
   }
 
   // Fetch tier details to get event_id
   const { data: tier, error: tierError } = await supabase
     .from("ticket_tiers")
-    .select("id, name, price, event_id, party_id, quantity, starts_at, expires_at")
+    .select("id, name, price, event_id, party_id, quantity, starts_at, expires_at, sold_out")
     .eq("id", tierId)
     .single();
 
-  if (tierError || !tier) {
-    throw new Error("Ticket tier not found");
+  if (tierError && tierError.code !== POSTGREST_NO_ROWS) {
+    logTicketPurchaseFailure("tier_read", tierError.code);
+    throw new Error("Ticket tier unreadable");
+  }
+  if (!tier) {
+    return refuseTicketPurchase("tier_not_found");
+  }
+
+  // ── LO 0 € NON VA A SUMUP (fase 52.4, D-52.4-01, MIX-03) ───────────────────
+  // Un tier a 0 € e' un biglietto gratuito vero e si prenota dalla strada a
+  // totale zero (`reserveFreeTickets`). Questa action apre un checkout, quindi
+  // lo rifiuta SEMPRE, senza guardare il tipo di serata: con `partyId` nullo
+  // (Event Pass) un controllo dentro il ramo della serata non scatterebbe. Il
+  // gemello del percorso ospite e' `QUOTE_FREE_TIER_USE_RESERVE`
+  // (`order-quote.ts`), con la stessa frase.
+  if (Number(tier.price) === 0) {
+    console.error(`[tickets.tier_free_on_paid_night] tier=${tierId} party=${partyId ?? "event_pass"}`);
+    return refuseTicketPurchase("tier_free_on_paid_night");
+  }
+
+  // ── SERATA VENDUTA DA UN TERZO (2026-10-13) ────────────────────────────────
+  // Questa action non passa da `buildOrderQuote`: il confine va chiuso anche
+  // qui, e sulla serata DEL TIER (`tier.party_id`), non su quella passata
+  // dal chiamante — un `partyId` nullo salterebbe il controllo. E' una server
+  // action esportata, quindi un endpoint pubblico: la pagina non la monta su
+  // una serata esterna, ma la UI e' UX. Trovato dalla revisione del ramo.
+  if (tier.party_id) {
+    const { data: tierNight, error: tierNightError } = await supabase
+      .from("event_parties")
+      .select("id, external_tickets_seller")
+      .eq("id", tier.party_id)
+      .maybeSingle();
+    if (tierNightError) {
+      logTicketPurchaseFailure("tier_night_read", tierNightError.code);
+      throw new Error("Sub-event unreadable");
+    }
+    if (tierNight && tierNight.external_tickets_seller !== null) {
+      console.error(
+        `[tickets.night_sold_elsewhere] party=${tier.party_id} tier=${tierId}`
+      );
+      return refuseTicketPurchase(
+        "night_sold_elsewhere",
+        `They are sold by ${tierNight.external_tickets_seller}.`
+      );
+    }
   }
 
   const eventId = tier.event_id;
@@ -1715,7 +1503,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
   // not a message. Until then, money can be taken and nobody knows.
   const tierQuery = supabase
     .from("ticket_tiers")
-    .select("id, price, quantity, starts_at, expires_at")
+    .select("id, price, quantity, starts_at, expires_at, sold_out")
     .eq("event_id", eventId)
     // 2026-10-01 — DBT-18, D-52.1-23 D4 — un solo ordinamento in tutti i lettori:
     // la posizione decisa in admin, poi il prezzo, poi l'anzianita'.
@@ -1780,10 +1568,18 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
       const sold = soldMap.get(t.id) ?? 0;
       const available = t.quantity !== null ? t.quantity - sold : null;
 
+      // Esaurito A MANO (`ticket_tiers.sold_out`, 2026-10-13): come in
+      // `tierStatus` e in `buildOrderQuote`, vince su date e conteggi.
+      if (t.sold_out) {
+        statusMap.set(t.id, "sold_out");
+        continue;
+      }
       if (t.starts_at && now < new Date(t.starts_at)) {
         statusMap.set(t.id, "coming_soon");
         continue;
       }
+      // «Sold out» prima di «Expired»: decisione del proprietario del
+      // 2026-10-05, scritta in `sales-window.ts`.
       if (available !== null && available <= 0) {
         statusMap.set(t.id, "sold_out");
         continue;
@@ -1797,48 +1593,45 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
 
     const requestedStatus = statusMap.get(tierId);
     if (requestedStatus !== "available") {
-      throw new Error(
-        `This ticket tier is not available (${requestedStatus ?? "unknown"})`
+      return refuseTicketPurchase(
+        "tier_not_available",
+        `(${requestedStatus ?? "unknown"})`
       );
     }
   }
+
+  // 2026-10-05 — la serata letta qui sotto serve anche alla validazione del
+  // codice piu' avanti (chiusura di default a fine − 2 h, `sales-window.ts`).
+  let salesParty: SalesWindowParty | null = null;
 
   if (partyId) {
     // Verify party exists and belongs to same event
     const { data: party, error: partyError } = await supabase
       .from("event_parties")
-      .select("id, event_id, access_type")
+      .select("id, event_id, access_type, date, time, end_time")
       .eq("id", partyId)
       .single();
 
-    if (partyError || !party) {
-      throw new Error("Sub-event not found");
+    if (partyError && partyError.code !== POSTGREST_NO_ROWS) {
+      logTicketPurchaseFailure("party_read", partyError.code);
+      throw new Error("Sub-event unreadable");
+    }
+    if (!party) {
+      return refuseTicketPurchase("night_not_found");
     }
 
     if (party.event_id !== eventId) {
-      throw new Error("Tier does not belong to this sub-event's event");
+      return refuseTicketPurchase("tier_other_night");
     }
 
-    // ── CR-01: un livello a prezzo zero non si vende su una serata a pagamento ──
-    //
-    // La guardia gemella di `ensureFreeRsvpTier`, e serve anche quando quella ha
-    // gia' fatto il suo lavoro: la chiusura del livello avviene al SALVATAGGIO
-    // della serata, mentre questa riga regge una chiamata costruita a mano su un
-    // livello rimasto aperto da prima del fix, o su una serata scritta da un
-    // percorso che non passa da quel salvataggio. Il gemello del percorso ospite
-    // e' `quote_tier_free_on_paid_night` (`order-quote.ts`).
-    //
-    // `free_rsvp` resta intatto: li' il prezzo zero e' la forma giusta, e la
-    // prenotazione non passa comunque da questa funzione
-    // (`free-order-actions.ts`, con `goesToPaymentProvider: false`).
-    if (tier.price === 0 && party.access_type !== "free_rsvp") {
-      console.error(
-        `[tickets.tier_free_on_paid_night] party=${partyId} tier=${tierId} ` +
-          `access_type=${party.access_type}`
-      );
-      throw new Error(
-        "This ticket type is not on sale for this night (tier_free_on_paid_night). Nothing was charged."
-      );
+    salesParty = party;
+    // 2026-10-05 — un tier senza `expires_at` chiude a fine serata − 2 h. Lo
+    // stesso controllo, con la stessa causa, di `order-quote.ts`
+    // (`tier_sales_closed`): i due percorsi di prezzo devono dare la stessa
+    // risposta.
+    if (isTierClosedByDefault(tier, party)) {
+      console.error(`[tickets.tier_sales_closed] party=${partyId} tier=${tierId}`);
+      return refuseTicketPurchase("tier_sales_closed");
     }
 
     // Check user doesn't already have a ticket for this party
@@ -1850,7 +1643,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
       .maybeSingle();
 
     if (existingTicket) {
-      throw new Error("You already have a ticket for this sub-event");
+      return refuseTicketPurchase("already_has_night_ticket");
     }
   } else {
     // Event-level master ticket: check duplicate
@@ -1863,7 +1656,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
       .maybeSingle();
 
     if (existingTicket) {
-      throw new Error("You already have an Event Pass for this event");
+      return refuseTicketPurchase("already_has_event_pass");
     }
   }
 
@@ -1874,8 +1667,12 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
     .eq("id", eventId)
     .single();
 
-  if (eventError || !event) {
-    throw new Error("Event not found");
+  if (eventError && eventError.code !== POSTGREST_NO_ROWS) {
+    logTicketPurchaseFailure("event_read", eventError.code);
+    throw new Error("Event unreadable");
+  }
+  if (!event) {
+    return refuseTicketPurchase("event_not_found");
   }
 
   // Discount validation (only for party-specific tiers with a discount code)
@@ -1890,9 +1687,13 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
       .eq("id", discountCodeId)
       .single();
 
-    if (codeError || !code) throw new Error("Invalid discount code");
-    if (!code.is_active) throw new Error("Discount code is no longer active");
-    if (code.party_id !== partyId) throw new Error("Code not valid for this event");
+    if (codeError && codeError.code !== POSTGREST_NO_ROWS) {
+      logTicketPurchaseFailure("discount_read", codeError.code);
+      throw new Error("Discount code unreadable");
+    }
+    if (!code) return refuseTicketPurchase("discount_unknown");
+    if (!code.is_active) return refuseTicketPurchase("discount_inactive");
+    if (code.party_id !== partyId) return refuseTicketPurchase("discount_other_night");
 
     // Check tier applicability
     const { data: tierRestrictions } = await supabase
@@ -1903,7 +1704,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
     if (tierRestrictions && tierRestrictions.length > 0) {
       const applicableTierIds = tierRestrictions.map(t => t.tier_id);
       if (!applicableTierIds.includes(tierId)) {
-        throw new Error("Code not valid for this tier");
+        return refuseTicketPurchase("discount_other_tier");
       }
     }
 
@@ -1927,8 +1728,12 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
         // database's and it fails closed.
         logPurchasePrecheckUnreadable(PRECHECK_DISCOUNT_USAGE_UNREADABLE, usageError);
       }
-      if ((count ?? 0) >= code.max_uses) throw new Error("Code usage limit reached");
+      if ((count ?? 0) >= code.max_uses) return refuseTicketPurchase("discount_exhausted");
     }
+
+    // 2026-10-05 — un codice vale fino a fine serata − 2 h (`sales-window.ts`).
+    // Dopo gli usi: esaurito e chiuso dice «Sold out».
+    if (salesParty && !isCodeUsable(salesParty)) return refuseTicketPurchase("discount_sales_closed");
 
     // Compute discounted price
     if (code.discount_type === "percentage") {
@@ -1939,7 +1744,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
 
     // SumUp minimum EUR 1.00
     if (finalPrice < 1.00) {
-      throw new Error("Discount would bring price below minimum (€1.00)");
+      return refuseTicketPurchase("discount_below_minimum");
     }
 
     validatedDiscountCodeId = code.id;
@@ -1964,9 +1769,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
       `[tickets.quote_below_minimum] tier=${tierId} party=${partyId ?? "none"} ` +
         `amount=${finalPrice.toFixed(2)}`
     );
-    throw new Error(
-      "This order is below the minimum a card payment can take (\u20AC1.00). Nothing was charged."
-    );
+    return refuseTicketPurchase("below_minimum");
   }
 
   // Use one UUID as both the pending_purchases.id AND the SumUp checkout_reference,
@@ -1983,14 +1786,22 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
   redirectUrl.searchParams.set("ctx", "ticket");
 
   // Create SumUp checkout
-  const response = await createCheckout({
-    amount: finalPrice,
-    currency: "EUR",
-    description: `${event.title} - ${tier.name}`,
-    checkoutReference: purchaseId,
-    returnUrl,
-    redirectUrl: redirectUrl.toString(),
-  });
+  // La chiamata e' la stessa di prima; il try esiste solo per dare al guasto
+  // la sua categoria prima di sollevarlo.
+  let response: Awaited<ReturnType<typeof createCheckout>>;
+  try {
+    response = await createCheckout({
+      amount: finalPrice,
+      currency: "EUR",
+      description: `${event.title} - ${tier.name}`,
+      checkoutReference: purchaseId,
+      returnUrl,
+      redirectUrl: redirectUrl.toString(),
+    });
+  } catch (error) {
+    logTicketPurchaseFailure("checkout_create", null);
+    throw error;
+  }
 
   // Create pending purchase record using service-role client (bypass RLS)
   const serviceClient = getServiceClient();
@@ -2009,10 +1820,11 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
 
   if (insertError) {
     console.error(`[tickets.pending_purchase_insert_failed] ${redactDbError(insertError)}`);
+    logTicketPurchaseFailure("pending_insert", insertError.code);
     throw new Error("Failed to initiate purchase");
   }
 
-  return { success: true, checkoutId: response.id, purchaseId };
+  return { ok: true, success: true, checkoutId: response.id, purchaseId };
 }
 
 // =============================================================

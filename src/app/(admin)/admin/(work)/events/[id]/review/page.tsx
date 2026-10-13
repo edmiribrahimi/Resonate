@@ -340,7 +340,7 @@ export default async function DoorReviewPage({
     }
   }
 
-  const { listed, counters, unclassified, total } = classifyNight(rows);
+  const { listed, ordinary, counters, unclassified, total } = classifyNight(rows);
 
   // Labels for the prose view only, kept as its own prop so the technical view
   // can render the classified rows without it and cannot accidentally include
@@ -353,7 +353,9 @@ export default async function DoorReviewPage({
   // FIX-13's whole prohibition; naming the member of staff who performed a
   // recorded action is the opposite — `community-membership.md` gate *chi decide
   // e' tracciato* asks for exactly that.
-  const operatorIds = [...new Set(listed.map((entry) => entry.operatorId))];
+  const operatorIds = [
+    ...new Set([...listed, ...ordinary].map((entry) => entry.operatorId)),
+  ];
   const operatorLabels: Record<string, string> = {};
   if (operatorIds.length > 0) {
     const { data: profiles, error: profilesError } = await supabase
@@ -376,6 +378,75 @@ export default async function DoorReviewPage({
     }
   }
 
+  // ── Chi e' entrato, per le entrate ordinarie (2026-10-13) ───────────────────
+  // Il nome va all'account, mai sul biglietto: si risale da `tickets.user_id`
+  // al profilo, poi all'ordine (`buyer_name`), e per le voci di guest list ai
+  // loro nome e cognome. Ogni lettura fallita lascia il breve id, non blocca la
+  // pagina, e si registra con la sua categoria.
+  const subjectLabels: Record<string, string> = {};
+  const ordinaryTicketIds = ordinary
+    .filter((e) => e.subjectType === "ticket")
+    .map((e) => e.subjectId)
+    .filter((id): id is string => id !== null);
+  const ordinaryGuestIds = ordinary
+    .filter((e) => e.subjectType === "guest_list_entry")
+    .map((e) => e.subjectId)
+    .filter((id): id is string => id !== null);
+  if (ordinaryTicketIds.length > 0) {
+    const { data: ticketRows, error: ticketsError } = await supabase
+      .from("tickets")
+      .select("id, user_id, order_id")
+      .in("id", ordinaryTicketIds);
+    if (ticketsError) {
+      console.error("review:subject_tickets_read", { eventId, code: ticketsError.code, message: ticketsError.message });
+    }
+    const tickets = (ticketRows ?? []) as { id: string; user_id: string | null; order_id: string | null }[];
+    const userIds = [...new Set(tickets.map((t) => t.user_id).filter((v): v is string => !!v))];
+    const orderIds = [...new Set(tickets.map((t) => t.order_id).filter((v): v is string => !!v))];
+    const nameByUser: Record<string, string> = {};
+    const nameByOrder: Record<string, string> = {};
+    if (userIds.length > 0) {
+      const { data: holders, error: holdersError } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", userIds);
+      if (holdersError) {
+        console.error("review:subject_profiles_read", { eventId, code: holdersError.code, message: holdersError.message });
+      }
+      for (const h of (holders ?? []) as { id: string; full_name: string | null }[]) {
+        if (h.full_name) nameByUser[h.id] = h.full_name;
+      }
+    }
+    if (orderIds.length > 0) {
+      const { data: orders, error: ordersError } = await supabase
+        .from("ticket_orders")
+        .select("id, buyer_name")
+        .in("id", orderIds);
+      if (ordersError) {
+        console.error("review:subject_orders_read", { eventId, code: ordersError.code, message: ordersError.message });
+      }
+      for (const o of (orders ?? []) as { id: string; buyer_name: string | null }[]) {
+        if (o.buyer_name) nameByOrder[o.id] = o.buyer_name;
+      }
+    }
+    for (const t of tickets) {
+      const name = (t.user_id && nameByUser[t.user_id]) || (t.order_id && nameByOrder[t.order_id]) || "";
+      if (name) subjectLabels[t.id] = name;
+    }
+  }
+  if (ordinaryGuestIds.length > 0) {
+    const { data: guests, error: guestsError } = await supabase
+      .from("guest_list_entries")
+      .select("id, first_name, last_name")
+      .in("id", ordinaryGuestIds);
+    if (guestsError) {
+      console.error("review:subject_guests_read", { eventId, code: guestsError.code, message: guestsError.message });
+    }
+    for (const g of (guests ?? []) as { id: string; first_name: string; last_name: string }[]) {
+      subjectLabels[g.id] = `${g.first_name} ${g.last_name}`.trim();
+    }
+  }
+
   return (
     <PageShell width="wide">
       <header className="pb-6">
@@ -390,6 +461,8 @@ export default async function DoorReviewPage({
       </header>
 
       <ReviewListClient
+        ordinary={ordinary}
+        subjectLabels={subjectLabels}
         eventId={eventId}
         parties={partyList.map((p) => ({ id: p.id, title: p.title }))}
         selectedPartyId={selectedParty?.id ?? null}

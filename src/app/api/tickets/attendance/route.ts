@@ -12,6 +12,7 @@ import {
 } from "@/lib/door/outcome";
 import { readNightArm } from "@/lib/door/night-arm";
 import { refundRefusedAtDoor } from "@/lib/door/refund-refusal";
+import { entryUntilAt } from "@/lib/door/entry-until";
 import { partyStartInstant } from "@/utils/datetime";
 import { judgeAtScanTime } from "@/lib/door/judge-at-scan-time";
 import {
@@ -292,6 +293,24 @@ interface AttendeeItem {
   hasEmail: boolean;
   ticketType: string;
   tierName: string | null;
+  /**
+   * The perk of the discount code the ticket was bought with («1 chupito»),
+   * shown under the ticket kind at the door, online and offline (quick task
+   * 2026-10-05). `null` for guest-list and refunded entries, and when the code
+   * carries none or could not be read.
+   */
+  benefit: string | null;
+  /**
+   * 52.4 (D-52.4-02/05). Present on every item, `null` where there is no
+   * limit — same rule as `refundedBeforeNight`: the device never distinguishes
+   * "absent" from "no limit". The instant, as ISO, at which this ticket's tier
+   * stops admitting, computed HERE with `entryUntilAt(party.date, …)` and
+   * never on the phone, which only compares two instants. `null` for
+   * guest-list and refunded entries (the latter stay governed by
+   * `refundedBeforeNight`). A phone holding a manifest downloaded before this
+   * field existed has no `entryUntil` and admits — the door's default.
+   */
+  entryUntil: string | null;
 }
 
 /** The operator column is NULL: the moment had nowhere to be written before 2026-08-05. */
@@ -642,8 +661,11 @@ export async function GET(request: Request) {
   // has nothing the scanner can read, and on this list it showed up as a
   // 0/0 row that a staff member could open and find empty, unable to tell
   // "nothing to scan" from "the scanner is broken" (`checkin-offline.md`,
-  // gate identita' del party). `paid` and `free_rsvp` stay; the exclusion is
-  // in the query so the `partyId` path below cannot reach one either.
+  // gate identita' del party). Since 2026-10-13 (52.4) there are two night
+  // types: `free_public` stays excluded, and a `paid` night may carry free
+  // tickets alongside paid ones — it issues tickets either way, so it stays.
+  // The exclusion is in the query so the `partyId` path below cannot reach
+  // one either.
   let partiesQuery = serviceClient
     .from("event_parties")
     .select("id, title, date, time, event_id, events(title)")
@@ -714,7 +736,7 @@ export async function GET(request: Request) {
         serviceClient
           .from("tickets")
           .select(
-            "id, party_id, tier_id, checked_in, checked_in_at, checked_in_by, user_id, ticket_type, holder_label",
+            "id, party_id, tier_id, checked_in, checked_in_at, checked_in_by, user_id, ticket_type, holder_label, discount_code_id",
           )
           .eq("event_id", party.event_id)
           .or(`party_id.eq.${party.id},party_id.is.null`)
@@ -879,6 +901,61 @@ export async function GET(request: Request) {
         }
       }
 
+      // Entry-until hours of the tiers (52.4) — a SEPARATE read on purpose, and
+      // the name read above is not widened: that select does not check its
+      // error, so adding a column a deploy may not have yet would lose every
+      // tier name too. A failure here costs the limits and nothing else: an
+      // empty map is "no limit", and the door admits.
+      const entryUntilMap = new Map<string, string>();
+      if (tierIds.length > 0) {
+        const { data: limits, error: limitsError } = await serviceClient
+          .from("ticket_tiers")
+          .select("id, entry_until")
+          .in("id", tierIds);
+        if (limitsError) {
+          console.error("[attendance] entry_until read failed", {
+            partyId: party.id,
+            message: limitsError.message,
+          });
+        } else {
+          for (const t of (limits ?? []) as {
+            id: string;
+            entry_until: string | null;
+          }[]) {
+            const until = entryUntilAt(party.date, t.entry_until);
+            if (until) entryUntilMap.set(t.id, until.toISOString());
+          }
+        }
+      }
+
+      // Benefits of the codes the tickets were bought with — a separate read
+      // that never fails the manifest: a missing perk line is a lost chupito,
+      // a missing manifest is a door that cannot admit anyone offline.
+      const codeIds = [
+        ...new Set(
+          tickets
+            .map((t) => (t as { discount_code_id?: string | null }).discount_code_id)
+            .filter(Boolean),
+        ),
+      ] as string[];
+      const benefitMap = new Map<string, string>();
+      if (codeIds.length > 0) {
+        const { data: codes, error: codesError } = await serviceClient
+          .from("discount_codes")
+          .select("id, benefit")
+          .in("id", codeIds);
+        if (codesError) {
+          console.error("[attendance] benefit read failed", {
+            partyId: party.id,
+            message: codesError.message,
+          });
+        }
+        for (const c of (codes ?? []) as { id: string; benefit: string | null }[]) {
+          const value = c.benefit?.trim();
+          if (value) benefitMap.set(c.id, value);
+        }
+      }
+
       const ticketAttendees: AttendeeItem[] = tickets.map((t) => {
         // Resolved once and used twice — as the row's tier and, when nothing
         // else names the row, as part of its label. Two reads of one fact are
@@ -899,6 +976,11 @@ export async function GET(request: Request) {
           hasEmail: true,
           ticketType: t.ticket_type || "purchased",
           tierName,
+          benefit:
+            benefitMap.get(
+              (t as { discount_code_id?: string | null }).discount_code_id ?? "",
+            ) ?? null,
+          entryUntil: (t.tier_id && entryUntilMap.get(t.tier_id)) || null,
         };
       });
 
@@ -922,6 +1004,8 @@ export async function GET(request: Request) {
           hasEmail: !!g.email,
           ticketType: "guest_list",
           tierName: null,
+          benefit: null,
+          entryUntil: null,
         };
       });
 
@@ -957,6 +1041,8 @@ export async function GET(request: Request) {
           hasEmail: false,
           ticketType: "purchased",
           tierName: null,
+          benefit: null,
+          entryUntil: null,
         }));
 
       const allAttendees = [

@@ -84,6 +84,7 @@ per assecondare una decisione presa dopo che e' stata citata.
 - [ ] **52.1** — Chiusura del debito della fase 52 (`DBT`) — **inserita il 2026-09-23**: il debito di `52-VERIFICATION.md` e gli avvisi di `52-REVIEW.md`, DBT-04..07, 09, 10, 13, 14 (DBT-01/02/03/08/11/12 ritirati alle 20:30Z: via la gallery)
 - [ ] **52.2** — Il carrello che non si chiude, e il rimborsato alla porta (`CART`, `RFD`) — **inserita il 2026-09-30**: sospesi chiusi con la verita' di SumUp, ripresa dello stesso ordine, una sola mail a +1h (Garante), rimborsato avvisato e poi rifiutato alla porta; indipendente dalla 52.1
 - [ ] **52.3** — La pagina Music: i LiveCut delle nostre serate (`MUS`) — **inserita il 2026-09-30**: ricerca con screenshot prima della forma, pagina pubblica per serata e slot, un player caricato al play, niente genere e niente venue segreto, prima sul laboratorio; i diritti al legale prima del primo LiveCut reale
+- [x] **52.4** — Tier misti (gratis + pagamento) nella stessa serata e ora limite d'ingresso alla porta (`MIX`) — **inserita e chiusa il 2026-10-13**: 12 piani, VERIFICATION passed, revisione con 1 critico + 5 avvisi corretti, in produzione dalle 21:47 Torino su «vai» insieme alla biglietteria esterna; debito dichiarato in `52.4-VERIFICATION.md`
 - [ ] **53** — TASK (`TASK`)
 - [ ] **54** — Location, alla pari con il tracker (`LOC`)
 - [ ] **55** — Visual, una pagina per format (`VIS`)
@@ -907,6 +908,72 @@ Plans:
 - [x] 52.3-23-PLAN.md — onda 12: indietro/avanti sulla lista visibile, tastiera, spike `skip()` sul profilo per iOS
 - [ ] 52.3-14-PLAN.md — onda 10: persona 1.32.0 (anche `src/app/(public)/artists/**`), sei mutazioni rimaste del check H, `52.3-VERIFICATION.md`, pulizia del laboratorio
 - [ ] 52.3-15-PLAN.md — onda 11: atto datato su «vai» — migration in produzione, deploy di `main` con la pagina spenta (B) o, con D-LEG-4 registrato, accesa coi due LiveCut RamaDub inseriti da un organizer dal form (D), `lab` riallineato
+
+### Phase 52.4: Tier misti (gratis + pagamento) nella stessa serata e ora limite d'ingresso alla porta (INSERTED)
+
+**Inserita il 2026-10-13, decisione del proprietario**, nata mentre si
+preparava la serata venduta da un terzo (quick `2026-10-13-biglietteria-esterna`):
+*«anche vendessimo noi i tickets, c'e' la possibilita' che ci siano dei tier
+gratuiti e tier a pagamento per lo stesso evento. esempio: free tier: entry
+before 00:00 // oppure tier regular: 5 euro»*; e sul modello: *«quando creo un
+evento potro' scegliere se crearlo gratuito (come RamaDub in cui non serve qr
+code per entrare), oppure a pagamento (dove potra' esserci anche un solo tier
+gratuito)»*. Le risposte a scelta multipla del 2026-10-13 sono le decisioni
+D-52.4 qui sotto. Va nello **stesso rilascio** della biglietteria esterna
+(ramo `feat/biglietteria-esterna`), prima del «vai» in produzione.
+
+**Goal:** una serata «con biglietti» puo' avere tier da 0 € in su; il tier
+gratuito produce biglietti veri; un tier puo' portare un'ora limite d'ingresso
+che la porta applica — rifiuto con la ragione, eccezione tracciata — online e
+offline. «Free (RSVP required)» esce dal prodotto, sostituito dal tier a 0 €.
+
+> **Cio' che governa la fase.** `ticketing-payments.md`: la cassa a 0 € e' la
+> strada a totale zero gia' esistente (REG-06), e nessuna strada verso SumUp
+> puo' accettare un tier a 0 €. `checkin-offline.md`: il default della porta
+> resta **ammettere** su dato mancante — il rifiuto per ora limite scatta solo
+> con l'istante presente e superato, e un manifesto vecchio senza il campo non
+> rifiuta nessuno; rifiutare un ospite valido e' peggio che ammetterne uno
+> doppio, quindi l'eccezione esiste e si registra. `access-gating.md`:
+> l'eccezione e' un atto alla porta, in `door_scan_events`, con chi e quando.
+
+| ID | Requisito |
+|---|---|
+| **MIX-01** | **Due tipi di serata.** «Free (open, no ticket)» (`free_public`, nessun QR) e «With tickets» (`paid`, tier da 0 € in su). `free_rsvp` sparisce dal vincolo di schema; la riga storica migra a `paid` tenendo il suo tier a 0 €; nessun tier nasce o muore da solo con un cambio di tipo. |
+| **MIX-02** | **Il biglietto gratuito e' un biglietto vero.** Un tier a 0 € su una serata con biglietti si prenota dalla pagina con la strada a totale zero, per tier: ordine a zero, biglietti con QR, mail, conteggio nei posti della serata (la cassa si ferma solo sul massimo opzionale del tier o su `sold_out`, D-52.4-06), fino al tetto per ordine; sul venue segreto si comporta come il pagante (D-52.4-07). La stessa persona puo' prendere un gratuito e poi un pagante. Chiusura −2 h salvo `expires_at`. |
+| **MIX-03** | **Nessuna strada verso SumUp accetta uno 0 €.** `purchaseTicketsGuest` e `purchaseTicket` rifiutano un tier a 0 € con una frase che rimanda alla prenotazione, non a «below minimum». Le serate vendute da un terzo restano con la cassa spenta su entrambe le strade. |
+| **MIX-04** | **Ora limite d'ingresso sul tier** (`entry_until`, ora di Torino; «prima mezzanotte dopo l'inizio», regola di `partyEndInstant`), impostata dall'admin, mostrata sul tier in pagina («Entry until 00:00») e nella card admin. |
+| **MIX-05** | **La porta online rifiuta dopo l'ora limite** con ragione propria e ora sullo schermo; con `override` esplicito e `door.operate` ammette e registra in `door_scan_events` una cause propria con operatore e istante. Prima dell'ora: ammesso senza flag. Lettura del tier separata e non bloccante, come il benefit. |
+| **MIX-06** | **La porta offline fa lo stesso**: il manifesto porta l'istante limite per biglietto (`null` dove non c'e'); lo scanner rifiuta sul telefono e offre «Admit anyway»; l'eccezione viaggia nella stessa entrata della coda e il server la registra alla sincronizzazione senza rigiudicare lo scan come rifiuto. |
+| **MIX-07** | **La lista di revisione e i contatori** distinguono «refused: entry time» e «admitted after entry time». |
+| **MIX-08** | **Gate verdi senza allentarli**: `verify:scan-legibility` (nessun quarto stato del flash: l'eccezione e' un pannello sotto il flash), `verify:dialogs`, `verify:touch-targets` (pulsante ≥ 44 px dichiarato), `verify:capabilities`, `verify:external-tickets`, `verify:venue-surfaces`; build verde. |
+| **MIX-09** | **Prima sul laboratorio, poi la prova dal telefono.** Migration sul lab, serata di prova con tier Free `entry_until` + Regular, prenotazione gratuita e acquisto dalla stessa persona, check-in prima/dopo/eccezione via rotta, manifesto; poi la prova offline dal telefono con il proprietario; produzione **solo su «vai»**, migration prima del deploy. VERIFICATION.md con evidenza `file:riga` per ogni MIX. |
+
+**Decisioni gia' prese (D-52.4):**
+
+- **D-52.4-01** — Due tipi di serata, `free_rsvp` sparisce (scelta multipla, 2026-10-13).
+- **D-52.4-02** — Dopo l'ora limite lo scanner **rifiuta**, e lo staff puo' ammettere con un tocco **tracciato** (chi, quando), come l'annullamento alla porta. L'eccezione la da' chi ha la porta (`door.operate`), non solo chi supervisiona: alle due di notte in fila non c'e' tempo di cercare un responsabile.
+- **D-52.4-03** — Capienza unica: gratuiti e paganti contano insieme; massimo opzionale per tier.
+- **D-52.4-04** — Nello stesso rilascio della biglietteria esterna, prima del «vai».
+- **D-52.4-05** — L'ora limite sta sul tier come ora di Torino; un'ora < 12 cade il giorno dopo la data della serata (stessa regola di `partyEndInstant`).
+- **D-52.4-06** — Capienza: solo il conteggio (2026-10-13, dopo il controllo dei piani). La cassa non si ferma su `event_parties.capacity`, solo sul massimo del tier o su `sold_out` messo a mano; i gratuiti contano nel numero «spots left» della pagina. Precisa D-52.4-03.
+- **D-52.4-07** — Il gratuito e il venue segreto: stesse modalita' del pagante (2026-10-13). Pagina del biglietto solo dopo la finestra o una rivelazione manuale (`mayShowVenueToTicketHolder`), prima la mail; predicato invariato. La divergenza preesistente della RPC `venue_for_parties` (ramo 3, `venue_reveal_on_purchase`), gia' scritta in `venue-secrecy.md`, vale anche per il gratuito: dichiarata in VERIFICATION, nessuna correzione qui.
+
+**Depends on:** Phase 52.2 (vocabolario della porta e predicato unico `refund-refusal.ts`, modello per il predicato dell'ora limite); quick `2026-10-13-biglietteria-esterna` (stesso ramo, `sold_out` e `external_tickets_*`).
+**Plans:** 12/12 plans complete
+
+Plans:
+- [x] 52.4-01-PLAN.md — migration (free_rsvp → paid, entry_until, cause della porta) [BLOCKING sul lab] e vocabolario TS della porta
+- [x] 52.4-02-PLAN.md — entryUntilInstant e predicato unico entry-until.ts
+- [x] 52.4-03-PLAN.md — cassa: lo 0 € mai verso SumUp, reserveFreeTickets per tier, nessun blocco per capienza di serata (D-52.4-06), gate verify:external-tickets gruppo D
+- [x] 52.4-04-PLAN.md — porta online (rifiuto ed eccezione tracciata) e manifesto con entryUntil
+- [x] 52.4-05-PLAN.md — store offline e drain: entryUntil in cache, override nella stessa entrata
+- [x] 52.4-06-PLAN.md — admin dei tier (Entry until, badge Free) e seme del lab
+- [x] 52.4-07-PLAN.md — pagina della serata: tier gratuiti con «Reserve», addio FreeOrderForm
+- [x] 52.4-08-PLAN.md — scanner: rifiuto online/offline e pannello «Admit anyway»
+- [x] 52.4-09-PLAN.md — lista, card, anteprima, intenzione residua, dialog del venue segreto senza RSVP; AccessType a due valori e etichette del form
+- [x] 52.4-10-PLAN.md — build, verify, prova sul lab in due parti (cassa con gratuito poi pagante e venue segreto; porta), revisione, SUMMARY della quick
+- [x] 52.4-11-PLAN.md — deploy sul lab, prova offline dal telefono col proprietario, runbook della porta e checkin-offline.md, VERIFICATION.md
+- [x] 52.4-12-PLAN.md — produzione solo su «vai» (checkpoint che non si risolve da solo, guardia sul vai datato): due migration in ordine, poi deploy
 
 ### Phase 53: TASK
 

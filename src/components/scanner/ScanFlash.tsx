@@ -45,6 +45,13 @@ interface ScanFlashProps {
   type: ScanFlashType;
   title: string;
   subtitle?: string;
+  /**
+   * The perk of the discount code the ticket was bought with («1 chupito»),
+   * printed as «+ 1 chupito» on its own line under the subtitle (quick task
+   * 2026-10-05). Larger and bolder than the subtitle, same ink: it is the one
+   * thing the staff member must act on besides letting the person in.
+   */
+  benefit?: string | null;
   onDismiss: () => void;
 }
 
@@ -179,6 +186,7 @@ export default function ScanFlash({
   type,
   title,
   subtitle,
+  benefit,
   onDismiss,
 }: ScanFlashProps) {
   useEffect(() => {
@@ -207,6 +215,13 @@ export default function ScanFlash({
       {subtitle && (
         <p className="text-sm text-ground text-center mt-2 px-8">
           {subtitle}
+        </p>
+      )}
+
+      {/* Perk of the code — a line of its own, never merged into the subtitle */}
+      {benefit && (
+        <p className="text-xl font-bold text-ground text-center mt-3 px-8">
+          + {benefit}
         </p>
       )}
 

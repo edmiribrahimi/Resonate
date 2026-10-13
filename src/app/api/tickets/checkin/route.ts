@@ -19,6 +19,7 @@ import {
 } from "@/lib/door/outcome";
 import { readNightArm } from "@/lib/door/night-arm";
 import { refundRefusedAtDoor } from "@/lib/door/refund-refusal";
+import { entryUntilRefused } from "@/lib/door/entry-until";
 import {
   judgeAtScanTime,
   type ScanTimeJudgement,
@@ -61,7 +62,8 @@ import { redactDbError } from "@/lib/errors/redact";
  *    entry and when — and never a verdict about the person standing there.
  *    Classification happens afterwards, over `door_scan_events`. The two refund
  *    causes are the exception because they are a server fact derived from a
- *    stored timestamp, not a judgement.
+ *    stored timestamp, not a judgement — and so are the two entry-time causes
+ *    of point 7, derived from the tier's stored hour.
  *
  * 5. **A report from the drain is judged at `scannedAt`, never at the moment it
  *    arrives.** ASSIGN-03, plan 35-12, and it is the correction of a live defect
@@ -102,6 +104,26 @@ import { redactDbError } from "@/lib/errors/redact";
  *    Nothing on the online path changed for anyone the first arm admits — a live
  *    scan by an operator with the role gets the same 401, 403 and 503 it always
  *    did, from the same single guard call.
+ *
+ * 7. **Entry time (52.4).** A tier may carry an entry-until hour
+ *    (`ticket_tiers.entry_until`). The refusal — `not_valid` /
+ *    `after_entry_until`, cause `after_entry_until`, the ticket untouched —
+ *    happens only when that instant is present AND passed, through the one
+ *    predicate in `@/lib/door/entry-until`; a tier that cannot be read admits,
+ *    logged under its own category. Someone already inside stays
+ *    `already_recorded` past the hour. With `override: "entry_until"` in the
+ *    body the same scan is admitted, flag and cause `entry_until_overridden`,
+ *    with `operator_id` and `scanned_at` on the row: the exception is an act at
+ *    the door, never silent. Two limits, stated rather than discovered:
+ *
+ *      - the ticket is updated BEFORE the row is inserted (the order of the
+ *        admission, explained where it happens). If that insert fails, the
+ *        answer is 503 — never green — and the retry lands on «Already
+ *        recorded»: in that one case the exception stays without its cause;
+ *      - a drain WITHOUT the override, after the hour (a phone with an older
+ *        manifest that admitted), comes back `after_entry_until`, leaves for
+ *        `failedCheckins` and reaches the night's review under its own name —
+ *        the same path as a refund learnt after the download.
  */
 
 /** The scanned string: a ticket uuid, a dot, and 64 hex of HMAC-SHA256. */
@@ -124,6 +146,11 @@ interface CheckinRequestBody {
   scannedAt?: unknown;
   deviceId?: unknown;
   source?: unknown;
+  /**
+   * «Admit anyway» on an entry-time refusal (52.4). Only the exact string
+   * `"entry_until"` means something; any other value is ignored, never an error.
+   */
+  override?: unknown;
 }
 
 /**
@@ -158,6 +185,22 @@ interface LegacyFields {
   ticket_event_id?: string | null;
   /** Only on `not_valid` / `refunded` (52.2-12): the screen prints the date. */
   refunded_at?: string | null;
+  /**
+   * The perk carried by the discount code the ticket was bought with
+   * («1 chupito»), shown under the ticket kind (quick task 2026-10-05). Only on
+   * the two admitting branches; null when there is none or it could not be read.
+   */
+  benefit?: string | null;
+  /**
+   * Only on `not_valid` / `after_entry_until` (52.4): the instant, as ISO, at
+   * which this ticket's tier stopped admitting. The screen prints the hour.
+   */
+  entry_until?: string | null;
+  /**
+   * Only on the entry-time refusal: the door may admit anyway, and that
+   * admission is recorded as `entry_until_overridden` with who and when.
+   */
+  overridable?: boolean;
 }
 
 type ScanEventInsert = Omit<DoorScanEvent, "id">;
@@ -288,6 +331,12 @@ export async function POST(request: Request) {
 
     const source: DoorScanSource =
       body.source === "offline_sync" ? "offline_sync" : "online";
+
+    // Same shape as `source`: a claim in the body, accepted only as the exact
+    // string. It does not authorise anything on its own — it is read only after
+    // the guard above has said this account may work the door (point 7).
+    const override: "entry_until" | null =
+      body.override === "entry_until" ? "entry_until" : null;
 
     /**
      * A report of something that already happened, as opposed to a scan taking
@@ -782,7 +831,7 @@ export async function POST(request: Request) {
       // sua assenza **non ferma l'ingresso**: `checkin-offline.md` fissa
       // l'asimmetria — rifiutare un ospite valido e' l'errore caro.
       .select(
-        "id, checked_in, checked_in_at, checked_in_by, event_id, party_id, user_id, ticket_type, ticket_tiers(name)",
+        "id, checked_in, checked_in_at, checked_in_by, event_id, party_id, user_id, ticket_type, discount_code_id, tier_id, ticket_tiers(name)",
       )
       .eq("id", ticketId)
       .single();
@@ -1001,6 +1050,34 @@ export async function POST(request: Request) {
       );
     }
 
+    // --- The perk of the code (quick task 2026-10-05) ---------------------------
+    // A SEPARATE read, not an embed in the ticket lookup above, on purpose: an
+    // embed that fails (a deploy that lands before the migration, a schema cache
+    // not yet reloaded) would fail the whole lookup and refuse every guest at
+    // the door. Here a failure costs one line on the screen and nothing else —
+    // refusing a valid guest is the expensive error (`checkin-offline.md`).
+    let benefit: string | null = null;
+    const ticketDiscountCodeId =
+      (ticket as { discount_code_id?: string | null }).discount_code_id ?? null;
+    if (ticketDiscountCodeId) {
+      const { data: codeRow, error: benefitError } = await serviceClient
+        .from("discount_codes")
+        .select("benefit")
+        .eq("id", ticketDiscountCodeId)
+        .maybeSingle();
+      if (benefitError) {
+        console.error("checkin:benefit_unreadable", {
+          ticketId,
+          partyId,
+          code: benefitError.code,
+          message: benefitError.message,
+        });
+      } else {
+        const value = (codeRow as { benefit?: string | null } | null)?.benefit;
+        benefit = typeof value === "string" && value.trim() ? value.trim() : null;
+      }
+    }
+
     // --- Already recorded ------------------------------------------------------
     if (ticket.checked_in) {
       const checkedInBy = ticket.checked_in_by as string | null;
@@ -1048,9 +1125,90 @@ export async function POST(request: Request) {
           party_id: ticket.party_id,
           event_id: ticket.event_id,
           checked_in_at: ticket.checked_in_at,
+          benefit,
         },
       );
     }
+
+    // --- The entry-until hour of the tier (52.4) --------------------------------
+    // Asked here, AFTER the already-recorded branch above and on purpose: whoever
+    // is already inside stays «Already recorded» even past the hour — the hour
+    // closes the door to new entries, it does not rewrite who came in.
+    //
+    // A SEPARATE read, for the same reason as the perk above: an embed of
+    // `entry_until` in the ticket lookup that failed (a deploy landing before
+    // the migration, a schema cache not yet reloaded) would fail the whole
+    // lookup and refuse every guest. Here a failure costs the limit and nothing
+    // else: no readable hour means no limit, and the guest is admitted.
+    let tierEntryUntil: string | null = null;
+    const ticketTierId =
+      (ticket as { tier_id?: string | null }).tier_id ?? null;
+    if (ticketTierId) {
+      const { data: tierRow, error: entryUntilError } = await serviceClient
+        .from("ticket_tiers")
+        .select("entry_until")
+        .eq("id", ticketTierId)
+        .maybeSingle();
+      if (entryUntilError) {
+        console.error("checkin:entry_until_unreadable", {
+          ticketId,
+          partyId,
+          code: entryUntilError.code,
+          message: entryUntilError.message,
+        });
+      } else {
+        const value = (tierRow as { entry_until?: string | null } | null)
+          ?.entry_until;
+        tierEntryUntil = typeof value === "string" ? value : null;
+      }
+    }
+
+    // The moment the hour is judged at. Online it is NOW, on the server's clock:
+    // a backdated `scannedAt` in a live request must not dodge the refusal or
+    // its recorded cause. A report from the drain is judged at `scannedAt`,
+    // the moment the phone read the code — point 5 of the file comment.
+    const judgeAt =
+      source === "offline_sync" && deviceScannedAt !== null
+        ? new Date(deviceScannedAt)
+        : new Date();
+    const verdict = entryUntilRefused({
+      entryUntil: tierEntryUntil,
+      nightDate: party.date,
+      scannedAt: judgeAt,
+    });
+
+    if (verdict.refused && override === null) {
+      // Refused, recorded with its cause, and the ticket is NOT touched: the
+      // person is not inside. `overridable` tells the screen that «Admit
+      // anyway» is offered — the door decides, the server only states the hour.
+      return respond(
+        { outcome: "not_valid", reason: "after_entry_until" },
+        {
+          ticket_id: ticket.id,
+          subject_user_id: ticket.user_id ?? null,
+          cause: "after_entry_until",
+        },
+        {
+          member_name: memberName,
+          event_title: eventTitle,
+          party_title: party.title || "",
+          ticket_type: ticket.ticket_type || "purchased",
+          tier_name: tier?.name || null,
+          entry_until: verdict.until.toISOString(),
+          overridable: true,
+        },
+      );
+    }
+
+    // «Admit anyway»: the same admission as below, carrying the exception.
+    // The authorisation is the one this route already obtained — `door.operate`
+    // through `requireDoorOperator()`, or, for a drain, the scan-time judgement
+    // that found an assignment covering that moment. No supervision capability
+    // is asked (D-52.4-02): whoever holds the door gives the exception.
+    // Who = `operator_id` of the session sending the request (for a drain, the
+    // phone that gave the exception); when = `scanned_at`. An `override` sent
+    // where nothing was refused is ignored: no flag, no cause.
+    const entryUntilOverridden = verdict.refused && override === "entry_until";
 
     // --- Record the admission --------------------------------------------------
     // The ticket is updated first and the event row written second, on purpose.
@@ -1091,11 +1249,14 @@ export async function POST(request: Request) {
         outcome: "recorded",
         subject: { type: "ticket", id: ticket.id, label: memberName },
         at: checkedInAt,
+        ...(entryUntilOverridden
+          ? { flags: ["entry_until_overridden"] as DoorFlag[] }
+          : {}),
       },
       {
         ticket_id: ticket.id,
         subject_user_id: ticket.user_id ?? null,
-        cause: null,
+        cause: entryUntilOverridden ? "entry_until_overridden" : null,
       },
       {
         member_name: memberName,
@@ -1106,6 +1267,7 @@ export async function POST(request: Request) {
         party_id: ticket.party_id,
         event_id: ticket.event_id,
         checked_in_at: checkedInAt,
+        benefit,
       },
     );
   } catch (error) {

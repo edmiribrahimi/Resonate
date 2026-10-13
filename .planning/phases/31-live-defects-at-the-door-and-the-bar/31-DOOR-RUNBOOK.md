@@ -79,6 +79,39 @@ it is not a verdict about the person in front of you. It does not say who is at
 fault and it does not tell you to stop anyone. Let them through, and let the entry
 be reviewed after the night, when nobody is standing in a doorway waiting.
 
+**Entry time.** A ticket type can carry an entry time — «entry before 23:30» on
+a free ticket, for instance. From that instant on, the scanner refuses that
+ticket type with a red **«Entry closed for this ticket type»** and the subtitle
+**«Entry closed at HH:MM»** (with **«· Offline»** when the radio is off). At
+the exact minute the door is already closed for it. This is the one refusal in
+this document that the person holding the phone can overrule alone:
+
+- Above the camera a panel appears with **«Admit anyway»**. One tap lets the
+  guest in — no supervisor, no second account. The screen then shows
+  **«Admitted after entry time»**.
+- **The refused code can stay in front of the camera.** The panel does not
+  close because the same QR is read again; it stays until you tap «Admit
+  anyway» or scan a different code. Scanning a different code closes it, and
+  the exception is lost for the first guest: if you still want them in, scan
+  their code again.
+- Every exception is written down. After the night, the night's review shows it
+  as **«admitted after entry time»**, with the operator and the time of the
+  scan, and a counter **«Admitted after entry time»**. Nothing about this is
+  silent.
+- **Offline the rule is the same, as long as the list was downloaded after the
+  entry time was set.** The time travels inside the downloaded list; a list
+  downloaded before the ticket type had an entry time does not carry it and
+  admits everyone of that type — the default of this door. So: **set the entry
+  time, then re-download the list on every phone, the same evening, before
+  opening.**
+- **Keep the phone's clock automatic.** An entry scanned offline is judged, when
+  it syncs, at the time the phone says it was scanned. A phone whose clock runs
+  ahead can turn a guest who walked in on time into a «refused: entry time» in
+  the review — for a person who is already inside. Check date and time are set
+  automatically on every door phone, together with the list re-download.
+- A missing or unreadable entry time admits. Between the two door mistakes the
+  app picks the one that does not happen in front of a queue.
+
 ---
 
 ## 3. The build rule
@@ -132,6 +165,20 @@ screens, the same three, in the same order, with the same wording. The repeat mu
 show a time and an operator **both** times — an amber that degrades to "already
 scanned" with no detail when offline is a failure of this step, not a lesser
 version of it.
+
+**If a ticket type on the night has an entry time**, add two scans after the
+six, with the radio still off and with a code of that type whose entry time has
+already passed:
+
+| # | Network | Code scanned | What must be seen |
+|---|---------|--------------|-------------------|
+| 7 | off | a valid code of a ticket type past its entry time | red, «Entry closed for this ticket type», «Entry closed at HH:MM · Offline»; then the «Admit anyway» panel above the camera, which stays while the same code is held in front of it |
+| 8 | off | tap «Admit anyway» | «Admitted after entry time · Offline», the queue counter goes up by one |
+
+After the radio comes back and the queue is empty, the night's review must
+show the entry as «admitted after entry time», with operator and time. A refusal
+with no panel under it, or a panel that disappears while the same code is still
+in front of the camera, is a failure of this step.
 
 Feedback fires locally, before any network round trip. If a screen waits on the
 network before showing a colour, that is a defect to record even if the eventual

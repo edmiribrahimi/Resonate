@@ -121,12 +121,15 @@ interface EventCard {
   /**
    * What opening the card gets you, decided here from the nights' access
    * types (owner, 2026-09-24: the card said «Tickets» on a free night whose
-   * page said «Free Entry»). `tickets` if any night sells; else `rsvp` if any
-   * night takes RSVPs; else `free` — free entry, nothing to hold. An event
-   * with no nights stored is `tickets`: it has nothing to say yet, and the
-   * ticket wording is the safe default.
+   * page said «Free Entry»). `tickets` if any night has tickets; else `free`
+   * — free entry, nothing to hold. Since 2026-10-13 (phase 52.4, D-52.4-01)
+   * a night is one of two types, `free_public` or `paid`: the RSVP road is
+   * gone, and a free ticket is a 0 € tier on a night with tickets. The card
+   * says «Tickets» even when every tier is free — it is still a ticket you
+   * hold at the door. An event with no nights stored is `tickets`: it has
+   * nothing to say yet, and the ticket wording is the safe default.
    */
-  entry: "tickets" | "rsvp" | "free";
+  entry: "tickets" | "free";
 }
 
 /**
@@ -628,9 +631,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
         entry:
           parties.length === 0 || parties.some((p) => p.access_type === "paid")
             ? "tickets"
-            : parties.some((p) => p.access_type === "free_rsvp")
-              ? "rsvp"
-              : "free",
+            : "free",
       };
     }
 

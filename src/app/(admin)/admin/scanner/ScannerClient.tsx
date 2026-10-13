@@ -49,6 +49,7 @@ import {
 // singleton, so every call returns the same client (D-38-16).
 import { createClient } from "@/lib/supabase/client";
 import { turinWallClock } from "@/utils/datetime";
+import { entryUntilPassed } from "@/lib/door/entry-until";
 import {
   REALTIME_SUBSCRIBE_STATES,
   type RealtimeChannel,
@@ -100,6 +101,9 @@ const NOT_VALID_MESSAGE: Record<DoorNotValidReason, string> = {
   // UNRECOGNISED_REASON_MESSAGE — red, a correct refusal with a generic
   // sentence, never an admission (T-52.2-30).
   refunded: "Refunded — not valid",
+  // The seventh (plan 52.4-01, MIX-05): the tier's entry time has passed. The
+  // hour goes in the subtitle, not here — this Record is static.
+  after_entry_until: "Entry closed for this ticket type",
 };
 
 /** A reason from a bundle this one does not know. Its own sentence, not one of the four. */
@@ -112,6 +116,7 @@ const UNRECOGNISED_REASON_MESSAGE = "This code could not be validated";
 const FLAG_MESSAGE: Record<DoorFlag, string> = {
   refunded_before_night: "Refunded before tonight — admitted, flagged for review",
   not_in_cache: "Not in the list on this device — admitted, flagged for review",
+  entry_until_overridden: "Admitted after entry time",
 };
 
 /**
@@ -266,6 +271,9 @@ const FAILURE_REASON_MESSAGE: Record<string, string> = {
   // Not total, so written by hand (plan 52.2-11): the scan was admitted offline
   // and the server, at sync, knew of a notified refund before the night.
   refunded: "the ticket had been refunded before the night",
+  // Not total either, written by hand (plan 52.4-01): scanned after the entry
+  // time of its ticket type.
+  after_entry_until: "it was scanned after the entry time of its ticket type",
   unexpected_response: "the server never accepted it",
 };
 
@@ -624,6 +632,8 @@ interface Attendee {
   hasEmail: boolean;
   ticketType: string;
   tierName: string | null;
+  /** The code's perk from the manifest (quick task 2026-10-05); absent on an older API. */
+  benefit?: string | null;
 }
 
 /** Per-party diagnostics from `/api/tickets/attendance` (plan 31-06). Optional: an older API does not send them. */
@@ -664,6 +674,8 @@ interface ScanRecord {
   canUndo: boolean;
   /** For a local reversal while the radio is off: `partyId:subjectType:subjectId`. */
   localKey?: string;
+  /** The code's perk, carried so the undo overlay can show it too. */
+  benefit?: string | null;
 }
 
 /**
@@ -709,9 +721,45 @@ export default function ScannerClient() {
     type: ScanFlashType;
     title: string;
     subtitle?: string;
+    /** The code's perk, «+ 1 chupito» on its own line (quick task 2026-10-05). */
+    benefit?: string | null;
   } | null>(null);
   const scannerInstanceRef = useRef<unknown>(null);
   const isProcessingRef = useRef(false);
+
+  /**
+   * The ticket the door just refused for its entry-until hour, kept so that
+   * «Admit anyway» can send the SAME code again with the override (D-52.4-02).
+   * `offline` says which memory refused it: a refusal made from this device's
+   * cache is overridden into the queue, never through a fetch the radio cannot
+   * carry. Cleared by a scan of ANOTHER code, by the tap itself and by a change
+   * of night — and NOT by the same code decoded again (52.4 review, WR-02,
+   * approved by the owner on 2026-10-13): after the red flash the camera
+   * resumes, and a guest who keeps the phone in frame would otherwise refuse
+   * themselves again at 15 fps and close the panel before anyone can reach it.
+   */
+  const [pendingOverride, setPendingOverride] = useState<{
+    token: string;
+    partyId: string;
+    ticketId: string;
+    until: string | null;
+    offline: boolean;
+  } | null>(null);
+  const [admittingAnyway, setAdmittingAnyway] = useState(false);
+
+  /**
+   * The same pending override, readable from the camera's decode callback.
+   *
+   * That callback is created once, when the camera starts, so it sees the state
+   * of THAT render for ever; a ref is the only way for it to know that a
+   * refusal is waiting for its tap. Kept in sync by the effect below — the scan
+   * lock is held while the refusal flash is up, so by the time decoding resumes
+   * the effect has run.
+   */
+  const pendingOverrideRef = useRef<{ token: string } | null>(null);
+  useEffect(() => {
+    pendingOverrideRef.current = pendingOverride;
+  }, [pendingOverride]);
 
   // Scan history state
   const [scanHistory, setScanHistory] = useState<ScanRecord[]>([]);
@@ -1725,6 +1773,12 @@ export default function ScannerClient() {
         { fps: 15, qrbox: { width: 280, height: 280 } },
         (decodedText: string) => {
           if (isProcessingRef.current) return;
+          // WR-02: the code the panel is waiting on, still in frame. Ignored —
+          // no new round, no second refusal on screen, no second refusal row
+          // on the server — until the operator taps «Admit anyway» or scans
+          // another code, which goes through below and closes the panel.
+          const held = pendingOverrideRef.current;
+          if (held && held.token === decodedText) return;
           isProcessingRef.current = true;
           // Pause decoding (keep camera stream alive)
           qrcode?.pause(true);
@@ -1789,7 +1843,12 @@ export default function ScannerClient() {
    * all on iOS, which is why colour and icon carry the same distinction.
    */
   const showFlash = useCallback(
-    (type: ScanFlashType, title: string, subtitle?: string) => {
+    (
+      type: ScanFlashType,
+      title: string,
+      subtitle?: string,
+      benefit?: string | null
+    ) => {
       if (type === "success") {
         vibrateSuccess();
       } else if (type === "already_recorded") {
@@ -1798,7 +1857,7 @@ export default function ScannerClient() {
         vibrateError();
       }
       setStatus(type);
-      setFlash({ type, title, subtitle });
+      setFlash({ type, title, subtitle, benefit: benefit ?? null });
     },
     []
   );
@@ -1985,7 +2044,8 @@ export default function ScannerClient() {
             "Undone on this device",
             result.reversalHeld
               ? `${ticketKindLabel(record.type, record.ticketType)} — held here, not yet reported`
-              : `${ticketKindLabel(record.type, record.ticketType)} — the server already has the entry, undo it again with signal`
+              : `${ticketKindLabel(record.type, record.ticketType)} — the server already has the entry, undo it again with signal`,
+            record.benefit
           );
         } catch (error) {
           console.error("scanner:local_undo_failed", { key: record.localKey, error });
@@ -2036,7 +2096,8 @@ export default function ScannerClient() {
           showFlash(
             "error",
             "Check-in undone",
-            ticketKindLabel(record.type, record.ticketType)
+            ticketKindLabel(record.type, record.ticketType),
+            record.benefit
           );
           fetchAttendance(searchQuery || undefined);
           return;
@@ -2215,7 +2276,10 @@ export default function ScannerClient() {
    */
   async function ticketOnline(
     code: string,
-    partyId: string
+    partyId: string,
+    // «Admit anyway» (D-52.4-02) sends the same code again through this same
+    // function, so its answer is read by the same three branches below.
+    opts: { override?: "entry_until" } = {}
   ): Promise<"handled" | "network_failed"> {
     const ticketId = ticketIdFromToken(code);
 
@@ -2231,6 +2295,7 @@ export default function ScannerClient() {
           // never be classified `two_devices` (checkin/route.ts:251-256).
           deviceId: deviceIdRef.current ?? undefined,
           source: "online",
+          ...(opts.override ? { override: opts.override } : {}),
         }),
       });
     } catch {
@@ -2265,6 +2330,8 @@ export default function ScannerClient() {
         const flagged = flags.length > 0;
         const tier = readString(parsed, "tier_name");
         const isGuestList = readString(parsed, "ticket_type") === "guest_list";
+        // The code's perk (quick task 2026-10-05): its own line, under the kind.
+        const benefit = readString(parsed, "benefit");
         const kind = ticketKindLabel(isGuestList ? "guest" : "ticket", tier);
         const subtitle =
           [kind, flagged ? flagSentence(flags) : null].filter(Boolean).join(" · ") ||
@@ -2284,12 +2351,13 @@ export default function ScannerClient() {
         //
         // Amber for a flagged admission: the person is admitted either way, and
         // the colour says *look at this afterwards*, never *stop*.
-        showFlash(flagged ? "already_recorded" : "success", "Admitted", subtitle);
+        showFlash(flagged ? "already_recorded" : "success", "Admitted", subtitle, benefit);
         addScanRecord({
           id: ticketId,
           type: isGuestList ? "guest" : "ticket",
           name: readSubjectLabel(parsed) ?? "Admitted",
           ticketType: tier ?? undefined,
+          benefit,
           status: flagged ? "already_recorded" : "success",
           reason: flagged ? flagSentence(flags) : undefined,
           timestamp: Date.now(),
@@ -2323,11 +2391,13 @@ export default function ScannerClient() {
         // after the other. The name went; the fact stayed.
         const label = readSubjectLabel(parsed) ?? "Ticket holder";
         const fact = recordedFact(readString(parsed, "at"), readOperatorLabel(parsed));
-        showFlash("already_recorded", "Already recorded", fact);
+        const benefit = readString(parsed, "benefit");
+        showFlash("already_recorded", "Already recorded", fact, benefit);
         addScanRecord({
           id: ticketId,
           type: "ticket",
           name: label,
+          benefit,
           status: "already_recorded",
           reason: fact,
           timestamp: Date.now(),
@@ -2348,6 +2418,11 @@ export default function ScannerClient() {
         // A refusal for a refund (plan 52.2-11) carries its date when the answer
         // has one: the person in front of the door was told by email, and the
         // date is what lets staff say "you were refunded on…" instead of arguing.
+        // After the tier's entry-until hour (plan 52.4-08, MIX-05) the
+        // subtitle is that hour in Turin time, read off the server's instant.
+        // No hour on the answer → no subtitle, never a printed `undefined`.
+        const entryUntil = readString(parsed, "entry_until");
+        const entryClock = entryUntil ? turinWallClock(entryUntil)?.time : undefined;
         showFlash(
           "error",
           sentence,
@@ -2355,8 +2430,24 @@ export default function ScannerClient() {
             ? `That code belongs to ${night}`
             : notValidReason === "refunded"
               ? refundedOnLabel(readString(parsed, "refunded_at")) ?? undefined
-              : undefined
+              : notValidReason === "after_entry_until" && entryClock
+                ? `Entry closed at ${entryClock}`
+                : undefined
         );
+        // The refusal is the rule, the exception is one tracked tap: the route
+        // says which refusals may be overridden, the scanner does not decide it.
+        if (
+          notValidReason === "after_entry_until" &&
+          (parsed as unknown as Record<string, unknown>).overridable === true
+        ) {
+          setPendingOverride({
+            token: code,
+            partyId,
+            ticketId,
+            until: entryUntil,
+            offline: false,
+          });
+        }
         addScanRecord({
           id: ticketId,
           type: "ticket",
@@ -2393,11 +2484,17 @@ export default function ScannerClient() {
           // `Offline` so the operator knows which memory answered. The cached
           // name stays in the history row below and out of the verdict
           // (D-51-05).
-          showFlash("already_recorded", "Already recorded", `${fact} · Offline`);
+          showFlash(
+            "already_recorded",
+            "Already recorded",
+            `${fact} · Offline`,
+            cached.benefit
+          );
           addScanRecord({
             id: ticketId,
             type: cached.ticketType === "guest_list" ? "guest" : "ticket",
             name: cached.name,
+            benefit: cached.benefit ?? null,
             status: "already_recorded",
             reason: fact,
             timestamp: Date.now(),
@@ -2440,6 +2537,44 @@ export default function ScannerClient() {
           return;
         }
 
+        // Plan 52.4-08 (MIX-06): the entry-until hour, judged on this phone with
+        // the same predicate the route uses (`entryUntilPassed`).
+        //
+        // The phone compares two instants: `cached.entryUntil` was computed by
+        // the server when the manifest was built (`entryUntilAt`), so no Turin
+        // hour is converted here and a phone set to another zone judges the
+        // same moment (`time-and-scheduling.md`). After «Already recorded»,
+        // which wins past the hour too, and after the refund refusal.
+        //
+        // Absent (a list cached before this field existed) or `null` (a tier
+        // with no limit) never refuses: the admission below runs as before.
+        //
+        // Declared limits, not hidden ones:
+        // - `refuse()` offline writes no `door_scan_events` row, as for
+        //   `wrong_night` and the refund: the refusal is on this screen and in
+        //   its history; the exception, instead, travels in the queue;
+        // - the clock is this device's: the existing drift warning is the only
+        //   signal, and a wrong refusal always has «Admit anyway» under it;
+        // - an hour changed after this device last downloaded the list is not
+        //   known here until the next download.
+        if (entryUntilPassed(cached.entryUntil, new Date())) {
+          const entryClock = cached.entryUntil
+            ? turinWallClock(cached.entryUntil)?.time
+            : undefined;
+          const kind = cached.ticketType === "guest_list" ? "guest" : "ticket";
+          refuse("after_entry_until", ticketId, kind,
+            entryClock ? `Entry closed at ${entryClock} · Offline` : "Offline"
+          );
+          setPendingOverride({
+            token: code,
+            partyId,
+            ticketId,
+            until: cached.entryUntil ?? null,
+            offline: true,
+          });
+          return;
+        }
+
         await checkInLocally(partyId, "ticket", ticketId, {
           // FIX-10: the full signed string, exactly as scanned. The id above was
           // derived for the lookup; nothing here discards the signature.
@@ -2466,12 +2601,18 @@ export default function ScannerClient() {
         // `deferred-items.md` §7 names as `:2186` — the offline admission, the
         // one read most often at 02:00 — and it is the one place the name was
         // read straight off this device's own cache rather than off a response.
-        showFlash(flagged ? "already_recorded" : "success", "Admitted", subtitle);
+        showFlash(
+          flagged ? "already_recorded" : "success",
+          "Admitted",
+          subtitle,
+          cached.benefit
+        );
         addScanRecord({
           id: ticketId,
           type: cached.ticketType === "guest_list" ? "guest" : "ticket",
           name: cached.name,
           ticketType: cached.tierName || undefined,
+          benefit: cached.benefit ?? null,
           status: flagged ? "already_recorded" : "success",
           reason: flagged ? FLAG_MESSAGE.refunded_before_night : undefined,
           timestamp: Date.now(),
@@ -2523,7 +2664,106 @@ export default function ScannerClient() {
     }
   }
 
+  /**
+   * «Admit anyway» (D-52.4-02, MIX-05/MIX-06): the one tap that lets in a
+   * ticket refused for its entry-until hour.
+   *
+   * Online it sends the same code again with `override: "entry_until"`, and the
+   * answer goes through `ticketOnline`'s own branches — `recorded` with the
+   * `entry_until_overridden` flag, or `already_recorded` if somebody was
+   * quicker. If that request never reaches a server, or the refusal came from
+   * this device's cache, the exception is written into the offline queue WITH
+   * the override — also for a ticket not in the cache: without it the drain
+   * would be refused again for the hour and the exception would be lost.
+   */
+  async function handleAdmitAnyway() {
+    const pending = pendingOverride;
+    if (!pending || admittingAnyway || isProcessingRef.current) return;
+    setAdmittingAnyway(true);
+    isProcessingRef.current = true;
+    try {
+      if (!pending.offline && navigator.onLine) {
+        const result = await ticketOnline(pending.token, pending.partyId, {
+          override: "entry_until",
+        });
+        if (result === "handled") return;
+        console.warn("[scanner.admit_anyway_network_failed]", {
+          ticketId: pending.ticketId,
+        });
+      }
+      await admitAnywayOffline(pending);
+    } catch (error) {
+      // WR-03 (52.4 review, approved by the owner on 2026-10-13). The lock taken
+      // above is released only by `dismissFlash`, so a throw outside the two
+      // inner `try`s — a malformed answer reaching `reportServerFault`,
+      // `showFlash` or `turinWallClock` — used to leave no flash, hence no
+      // dismissal, hence a camera ignoring every scan until the operator
+      // changed night. Same last resort as `handleVerify`'s, with its own
+      // category: this flash is what releases the lock.
+      console.error("scanner:admit_anyway_unexpected", {
+        ticketId: pending.ticketId,
+        error,
+      });
+      showFlash(
+        "error",
+        "Admit anyway hit an unexpected failure",
+        "Scan again — nothing was recorded"
+      );
+    } finally {
+      setPendingOverride(null);
+      setAdmittingAnyway(false);
+    }
+  }
+
+  async function admitAnywayOffline(pending: {
+    token: string;
+    partyId: string;
+    ticketId: string;
+  }) {
+    const { token, partyId, ticketId } = pending;
+    try {
+      const cached = await findAttendee(partyId, "ticket", ticketId);
+      await checkInLocally(partyId, "ticket", ticketId, {
+        token,
+        name: cached?.name,
+        override: "entry_until",
+      });
+      const type: ScanRecord["type"] =
+        cached?.ticketType === "guest_list" ? "guest" : "ticket";
+      const subtitle = [
+        cached ? ticketKindLabel(type, cached.tierName) : null,
+        FLAG_MESSAGE.entry_until_overridden,
+        "Offline",
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      // Amber, as every flagged admission: admitted, look at it afterwards.
+      showFlash("already_recorded", "Admitted", subtitle, cached?.benefit);
+      addScanRecord({
+        id: ticketId,
+        type,
+        name: cached?.name ?? "Not in tonight's list",
+        ticketType: cached?.tierName || undefined,
+        benefit: cached?.benefit ?? null,
+        status: "already_recorded",
+        reason: FLAG_MESSAGE.entry_until_overridden,
+        timestamp: Date.now(),
+        canUndo: true,
+        localKey: attendeeKey(partyId, "ticket" satisfies DoorSubjectType, ticketId),
+      });
+      await refreshQueueCounts();
+    } catch (error) {
+      reportStoreFault(ticketId, "ticket", error);
+    }
+  }
+
   const handleVerify = async (code: string) => {
+    // A scan of ANOTHER code closes the «Admit anyway» panel: the exception
+    // belongs to the code that was refused, never to whoever is scanned next.
+    // The same code does not close it (WR-02) — the decode callback already
+    // ignores it while the panel waits, and this keeps any other road into
+    // here from undoing the panel for the person still standing in front.
+    setPendingOverride((p) => (p && p.token === code ? p : null));
     try {
       // A scan without a party has no meaning: the record key is party-scoped and
       // a presence filed against the wrong night corrupts two nights' data
@@ -2817,6 +3057,7 @@ export default function ScannerClient() {
 
   const handleChangeParty = () => {
     setSelectedPartyId(null);
+    setPendingOverride(null);
     setAttendance(null);
     // The age is a claim about **this** list, so it does not survive the list.
     // Without this, the first paint of the next night would carry the previous
@@ -3697,6 +3938,46 @@ export default function ScannerClient() {
           </div>
         )}
 
+        {/*
+          «Admit anyway» (D-52.4-02, MIX-05/MIX-06). It lives HERE, in the flow
+          of the page ABOVE the camera, and not inside `ScanFlash`: the flash
+          closes on its own and on any tap, so a control inside it would be one
+          the operator cannot reliably reach — and `ScanFlash` stays exempt from
+          the dialog gate precisely because it holds no controls (S6). Above and
+          not below the camera (owner's decision, 2026-10-13): under it, on a
+          412 px phone the button sat beneath the bottom navigation and the only
+          gesture that admits a valid guest needed a scroll first. Shown
+          once the red flash has gone, until a scan of ANOTHER code: the same
+          QR held in front of the camera is ignored while this waits (WR-02).
+
+          Who may use it: whoever holds the door (`door.operate`) — no
+          supervisor, by decision. What it records: a `door_scan_events` row
+          with cause `entry_until_overridden`, operator and instant; offline the
+          queued entry carries the override and the row is written at sync.
+        */}
+        {pendingOverride && !flash && (
+          <div className="mb-4 rounded-xl border border-sem-warn/30 bg-sem-warn/10 p-3">
+            <p className="mb-2 text-xs leading-snug text-sem-warn">
+              {(() => {
+                const clock = pendingOverride.until
+                  ? turinWallClock(pendingOverride.until)?.time
+                  : undefined;
+                return clock
+                  ? `Entry closed at ${clock} for this ticket.`
+                  : "Entry closed for this ticket type.";
+              })()}
+            </p>
+            <button
+              type="button"
+              onClick={handleAdmitAnyway}
+              disabled={admittingAnyway}
+              className={`min-h-11 w-full rounded-full bg-sem-warn/20 px-4 text-sm font-semibold text-sem-warn transition-transform active:scale-95 disabled:opacity-60 ${FOCUS_RING}`}
+            >
+              {admittingAnyway ? "Admitting…" : "Admit anyway"}
+            </button>
+          </div>
+        )}
+
         {/* QR Scanner - collapsible, continuous camera */}
         {showScanner && (
           <div className="mb-4 rounded-xl border border-line bg-surface p-4">
@@ -3728,6 +4009,7 @@ export default function ScannerClient() {
             type={flash.type}
             title={flash.title}
             subtitle={flash.subtitle}
+            benefit={flash.benefit}
             onDismiss={dismissFlash}
           />
         )}
@@ -4015,6 +4297,11 @@ export default function ScannerClient() {
                         {a.tierName && !a.isGuestList && (
                           <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent">
                             {a.tierName}
+                          </span>
+                        )}
+                        {a.benefit && !a.isGuestList && (
+                          <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent">
+                            + {a.benefit}
                           </span>
                         )}
                       </div>

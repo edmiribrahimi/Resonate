@@ -92,6 +92,11 @@ const NOT_VALID_REASONS: Record<DoorNotValidReason, true> = {
   // the night's review shows *"refused: refunded before the night"* instead of
   // a generic failure.
   refunded: true,
+  // The seventh (plan 52.4-01, MIX-05). A scan admitted offline and synced
+  // after the tier's entry time comes back here, and goes to `failedCheckins`
+  // under its own name: the review reads *"refused: entry time"*, not a
+  // generic failure.
+  after_entry_until: true,
 };
 
 /**
@@ -379,6 +384,18 @@ function targetFor(entry: PendingCheckin): Target {
           scannedAt: entry.scannedAt,
           deviceId: entry.deviceId,
           source: "offline_sync",
+          // «Admit anyway» given offline after the entry limit (plan 52.4-05,
+          // D-52.4-02). With `override === "entry_until"` the route records
+          // the admission as `entry_until_overridden` instead of re-judging it
+          // at `scannedAt` as a refusal. Without it, a scan past the limit (an
+          // older manifest, a phone that admitted because it did not know)
+          // comes back `not_valid` / `after_entry_until` and lands in
+          // `failedCheckins` with its name — the same as a refund learned after
+          // the download. `overrideBy` and `overrideAt` do NOT travel: no
+          // column receives them, and the server records `operator_id`,
+          // `device_id` and `scanned_at` itself. Entries queued by an older
+          // bundle lack the field and drain unchanged.
+          ...(entry.override ? { override: entry.override } : {}),
         },
         legacySuccess: null,
       };

@@ -2,6 +2,12 @@ import "server-only";
 
 import { logMoneyPathFailure, type SafeError } from "@/lib/failure/money-path";
 import type { getServiceClient } from "@/lib/supabase/service";
+import {
+  CODE_SALES_CLOSED_MESSAGE,
+  CODE_SOLD_OUT_MESSAGE,
+  isCodeUsable,
+  isTierClosedByDefault,
+} from "@/lib/tickets/sales-window";
 
 /**
  * order-quote.ts — quanto costa un ordine di biglietti, calcolato dove non si
@@ -131,6 +137,7 @@ const UUID_SHAPE =
 const QUOTE_UNREADABLE = "quote_unreadable";
 const QUOTE_NIGHT_NOT_FOUND = "quote_night_not_found";
 const QUOTE_NIGHT_NOT_ON_SALE = "quote_night_not_on_sale";
+const QUOTE_NIGHT_SOLD_ELSEWHERE = "quote_night_sold_elsewhere";
 const QUOTE_TIER_NOT_FOUND = "quote_tier_not_found";
 const QUOTE_TIER_OTHER_NIGHT = "quote_tier_other_night";
 const QUOTE_QUANTITY_INVALID = "quote_quantity_invalid";
@@ -143,24 +150,32 @@ const QUOTE_DISCOUNT_INACTIVE = "quote_discount_inactive";
 const QUOTE_DISCOUNT_OTHER_NIGHT = "quote_discount_other_night";
 const QUOTE_DISCOUNT_OTHER_TIER = "quote_discount_other_tier";
 const QUOTE_DISCOUNT_EXHAUSTED = "quote_discount_exhausted";
+/**
+ * 2026-10-05 — la chiusura di DEFAULT (fine serata − 2 h, `sales-window.ts`).
+ * Cause proprie e non `not_on_sale`/`inactive`: a chi compra dicono che la
+ * vendita di questa serata e' finita, non che il tier o il codice hanno un
+ * problema loro; a chi legge un log dicono quale regola ha chiuso.
+ */
+const QUOTE_TIER_SALES_CLOSED = "tier_sales_closed";
+const QUOTE_DISCOUNT_SALES_CLOSED = "quote_discount_sales_closed";
 const QUOTE_BELOW_MINIMUM = "quote_below_minimum";
 /**
- * CR-01 — un livello a prezzo zero su una serata che non e' `free_rsvp`.
+ * Un tier a 0 € chiesto su una strada che va a SumUp (fase 52.4, D-52.4-01).
  *
- * Causa PROPRIA e non un caso di {@link QUOTE_BELOW_MINIMUM}, anche se le due
- * rifiuterebbero lo stesso ordine: sotto il minimo dice *questo importo non e'
- * incassabile*, e il rimedio di chi legge e' comprare di piu'. Questa dice
- * *questo livello non doveva essere in vendita*, e il rimedio non e' di chi
- * compra — e' dell'organizer, che ha reso la serata a pagamento lasciandosi
- * dietro il livello della prenotazione gratuita. Collassarle manderebbe una
- * persona a cercare la soluzione dalla parte sbagliata.
+ * Lo 0 € e' legittimo su ogni serata `paid`: e' un biglietto gratuito vero, e
+ * si prenota dalla strada a totale zero (`reserveFreeTickets`,
+ * `goesToPaymentProvider: false`). Su ogni altra strada si ferma QUI, prima del
+ * minimo SumUp: altrimenti chi lo chiede leggerebbe «below the minimum» e
+ * cercherebbe il rimedio comprando di piu', quando il rimedio e' prenotarlo.
+ * Uno 0 € non deve mai raggiungere SumUp (minimo 1,00 €).
  */
-const QUOTE_TIER_FREE_ON_PAID_NIGHT = "quote_tier_free_on_paid_night";
+const QUOTE_FREE_TIER_USE_RESERVE = "quote_free_tier_use_reserve";
 
 export type OrderQuoteRefusal =
   | typeof QUOTE_UNREADABLE
   | typeof QUOTE_NIGHT_NOT_FOUND
   | typeof QUOTE_NIGHT_NOT_ON_SALE
+  | typeof QUOTE_NIGHT_SOLD_ELSEWHERE
   | typeof QUOTE_TIER_NOT_FOUND
   | typeof QUOTE_TIER_OTHER_NIGHT
   | typeof QUOTE_QUANTITY_INVALID
@@ -173,8 +188,10 @@ export type OrderQuoteRefusal =
   | typeof QUOTE_DISCOUNT_OTHER_NIGHT
   | typeof QUOTE_DISCOUNT_OTHER_TIER
   | typeof QUOTE_DISCOUNT_EXHAUSTED
+  | typeof QUOTE_TIER_SALES_CLOSED
+  | typeof QUOTE_DISCOUNT_SALES_CLOSED
   | typeof QUOTE_BELOW_MINIMUM
-  | typeof QUOTE_TIER_FREE_ON_PAID_NIGHT;
+  | typeof QUOTE_FREE_TIER_USE_RESERVE;
 
 /**
  * Una frase per causa, e nessuna frase nomina una riga, una persona o un id.
@@ -191,6 +208,8 @@ const ORDER_QUOTE_ERROR: Record<OrderQuoteRefusal, string> = {
   [QUOTE_NIGHT_NOT_FOUND]: "This night could not be found. Nothing was charged.",
   [QUOTE_NIGHT_NOT_ON_SALE]:
     "Tickets for this night are not on sale. Nothing was charged.",
+  [QUOTE_NIGHT_SOLD_ELSEWHERE]:
+    "Tickets for this night are sold elsewhere, not here. Nothing was charged.",
   [QUOTE_TIER_NOT_FOUND]:
     "This ticket type could not be found. Nothing was charged.",
   [QUOTE_TIER_OTHER_NIGHT]:
@@ -209,11 +228,15 @@ const ORDER_QUOTE_ERROR: Record<OrderQuoteRefusal, string> = {
   [QUOTE_DISCOUNT_OTHER_NIGHT]: "That discount code is not valid for this night.",
   [QUOTE_DISCOUNT_OTHER_TIER]:
     "That discount code is not valid for this ticket type.",
-  [QUOTE_DISCOUNT_EXHAUSTED]: "That discount code has been used up.",
+  // «Sold out», parola del proprietario (2026-10-05, `CODE_SOLD_OUT_MESSAGE`).
+  [QUOTE_DISCOUNT_EXHAUSTED]: CODE_SOLD_OUT_MESSAGE,
+  [QUOTE_TIER_SALES_CLOSED]:
+    "Sales for this ticket type have closed for this night. Nothing was charged.",
+  [QUOTE_DISCOUNT_SALES_CLOSED]: CODE_SALES_CLOSED_MESSAGE,
   [QUOTE_BELOW_MINIMUM]:
     "This order is below the minimum a card payment can take (€1.00). Nothing was charged.",
-  [QUOTE_TIER_FREE_ON_PAID_NIGHT]:
-    "This ticket type is not on sale for this night. Nothing was charged.",
+  [QUOTE_FREE_TIER_USE_RESERVE]:
+    "This ticket is free: reserve it, there is nothing to pay.",
 };
 
 /** Cio' che il preventivo dice, e nient'altro di cio' che ha letto per dirlo. */
@@ -280,7 +303,8 @@ export interface OrderQuoteInput {
    * {@link SUMUP_MINIMUM_EUR} esiste perche' sotto quella cifra una carta non
    * si puo' passare, e ogni ordine a pagamento ci passa.
    *
-   * `false` lo dice **solo** l'ordine a totale zero di REG-06, che non apre
+   * `false` lo dice **solo** l'ordine a totale zero (`reserveFreeTickets`, un
+   * tier a 0 € su una serata `paid`, fase 52.4), che non apre
    * nessun checkout e non muove denaro. Senza questa distinzione il preventivo
    * rifiuterebbe **sempre** un ordine gratuito — totale `0`, minimo `1,00` —
    * cioe' rifiuterebbe una prenotazione per non aver raggiunto il minimo di un
@@ -344,7 +368,7 @@ export async function buildOrderQuote(
   //    commento: la lista delle colonne e' qui sotto per intero.
   const { data: party, error: partyError } = await client
     .from("event_parties")
-    .select("id, event_id, title, max_tickets_per_order, access_type")
+    .select("id, event_id, title, max_tickets_per_order, access_type, date, time, end_time, external_tickets_seller")
     .eq("id", partyId)
     .maybeSingle();
 
@@ -353,6 +377,17 @@ export async function buildOrderQuote(
     return refuse(QUOTE_UNREADABLE);
   }
   if (!party) return refuse(QUOTE_NIGHT_NOT_FOUND);
+  // Serata venduta da un terzo (`external_tickets_seller`, 2026-10-13): la
+  // cassa nostra non esiste per lei. Il controllo sta PRIMA della pubblicazione
+  // e del tetto, perche' nessuna delle due cose ha senso su una serata che non
+  // vendiamo. La pagina non monta il controllo d'acquisto, ma questa riga e' il
+  // confine: la UI e' UX, il rifiuto e' qui.
+  if (party.external_tickets_seller !== null) {
+    return refuse(
+      QUOTE_NIGHT_SOLD_ELSEWHERE,
+      `They are sold by ${party.external_tickets_seller}.`
+    );
+  }
 
   // 3. L'evento: la sua pubblicazione e' il cancello di vendita, e il suo slug
   //    e' cio' che serve al ritorno dal pagamento.
@@ -394,7 +429,7 @@ export async function buildOrderQuote(
   // 5. Il tier, e il suo prezzo riletto dal database.
   const { data: tier, error: tierError } = await client
     .from("ticket_tiers")
-    .select("id, name, price, event_id, party_id, quantity, starts_at, expires_at")
+    .select("id, name, price, event_id, party_id, quantity, starts_at, expires_at, sold_out")
     .eq("id", tierId)
     .maybeSingle();
 
@@ -407,26 +442,20 @@ export async function buildOrderQuote(
     return refuse(QUOTE_TIER_OTHER_NIGHT);
   }
 
-  // ── CR-01: prezzo zero e serata a pagamento non stanno insieme ─────────────
+  // ── Lo 0 € non va a SumUp (fase 52.4, D-52.4-01, MIX-03) ───────────────────
   //
-  // REG-06 fa nascere ogni serata `free_rsvp` con un livello `RSVP` a prezzo
-  // zero. Quando l'organizer salva quella stessa serata come `paid`,
-  // `ensureFreeRsvpTier` ora lo chiude (`admin/events/actions.ts`) — ma la
-  // chiusura avviene al salvataggio, e questa funzione e' raggiungibile da una
-  // **server action pubblica**: regge quindi un livello rimasto aperto da prima
-  // del fix, o una chiamata costruita a mano su un id di livello indovinato.
-  //
-  // Il percorso gratuito non arriva mai qui con questa combinazione:
-  // `reserveFreeTickets` rifiuta gia' una serata non `free_rsvp` con
-  // `free_not_free_rsvp`, prima di chiedere il preventivo. Le due guardie non si
-  // deducono l'una dall'altra, ed e' voluto — e' la stessa indipendenza che la
-  // revisione ha riconosciuto ai tre controlli del percorso gratuito.
-  if (tier.price === 0 && party.access_type !== "free_rsvp") {
-    logMoneyPathFailure("buildOrderQuote.tier_free_on_paid_night", {
-      code: party.access_type,
+  // Un tier a 0 € e' un biglietto gratuito vero su qualunque serata `paid`, e
+  // passa SOLO dalla strada a totale zero (`goesToPaymentProvider: false`,
+  // `reserveFreeTickets`). Questa funzione e' raggiungibile da una server
+  // action pubblica con un id di tier scritto a mano: qui la richiesta si
+  // ferma con una frase che rimanda alla prenotazione, prima del minimo SumUp
+  // (che direbbe «below the minimum», cioe' il rimedio sbagliato).
+  if (tier.price === 0 && input.goesToPaymentProvider !== false) {
+    logMoneyPathFailure("buildOrderQuote.free_tier_use_reserve", {
+      code: tier.id,
       message: null,
     });
-    return refuse(QUOTE_TIER_FREE_ON_PAID_NIGHT);
+    return refuse(QUOTE_FREE_TIER_USE_RESERVE);
   }
 
   // 6. Lo stato dei tier (inizio, quantita', fine) e la capienza.
@@ -452,7 +481,7 @@ export async function buildOrderQuote(
   //    percorsi incoerenti proprio sul caso raro.
   const tierChainQuery = client
     .from("ticket_tiers")
-    .select("id, price, quantity, starts_at, expires_at")
+    .select("id, price, quantity, starts_at, expires_at, sold_out")
     .eq("event_id", party.event_id)
     .eq("party_id", party.id)
     // 2026-10-01 — DBT-18, D-52.1-23 D4 — un solo ordinamento in tutti i lettori:
@@ -505,10 +534,18 @@ export async function buildOrderQuote(
       const sold = soldMap.get(t.id) ?? 0;
       const left = t.quantity !== null ? t.quantity - sold : null;
 
+      // Esaurito A MANO (`ticket_tiers.sold_out`, 2026-10-13): la parola di chi
+      // organizza vince su date e conteggi, qui come in `tierStatus`.
+      if (t.sold_out) {
+        statusMap.set(t.id, "sold_out");
+        continue;
+      }
       if (t.starts_at && now < new Date(t.starts_at)) {
         statusMap.set(t.id, "coming_soon");
         continue;
       }
+      // «Sold out» prima di «Expired»: decisione del proprietario del
+      // 2026-10-05, scritta in `sales-window.ts`.
       if (left !== null && left <= 0) {
         statusMap.set(t.id, "sold_out");
         continue;
@@ -528,6 +565,9 @@ export async function buildOrderQuote(
 
     // La capienza per la quantita' CHIESTA, che lo stato non guarda: quella
     // dice se ne resta almeno uno, questa se ne restano abbastanza.
+    // La capienza della SERATA e' solo un conteggio mostrato in pagina («spots
+    // left»): i gratuiti contano li' perche' sono righe `tickets`, ma la cassa
+    // si ferma solo sul massimo del tier e su `sold_out` a mano (D-52.4-06).
     const chainTier = allTiers.find((t) => t.id === tierId);
     const capacity = chainTier ? chainTier.quantity : tier.quantity;
     if (capacity !== null) {
@@ -541,6 +581,14 @@ export async function buildOrderQuote(
       }
     }
   }
+
+  // 2026-10-05 — chiusura di DEFAULT a fine serata − 2 h per il tier senza
+  // `expires_at` (`sales-window.ts`). Sta FUORI dal blocco di stato qui sopra,
+  // perche' quel blocco si salta quando l'elenco dei tier non si legge (si
+  // apre, D-46-05): una regola d'orario non dipende da un conteggio, e non deve
+  // aprirsi con lui. E sta DOPO, perche' un tier esaurito e chiuso dice
+  // «Sold out» (decisione del proprietario, 2026-10-05).
+  if (isTierClosedByDefault(tier, party)) return refuse(QUOTE_TIER_SALES_CLOSED);
 
   // 7. Lo sconto, validato con gli stessi quattro controlli del percorso con
   //    sessione (`admin/events/actions.ts:1486-1546`) e applicato **all'unita'**
@@ -609,6 +657,10 @@ export async function buildOrderQuote(
         return refuse(QUOTE_DISCOUNT_EXHAUSTED);
       }
     }
+
+    // 2026-10-05 — un codice non ha scadenza propria: vale fino a fine − 2 h.
+    // Dopo il controllo degli usi: esaurito e chiuso dice «Sold out».
+    if (!isCodeUsable(party)) return refuse(QUOTE_DISCOUNT_SALES_CLOSED);
 
     unitPrice =
       code.discount_type === "percentage"
