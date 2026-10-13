@@ -386,6 +386,12 @@ export interface EventParty {
    * richieste in volo passano un controllo di UI e non passano quello della RPC.
    */
   max_tickets_per_order: number;
+  /** Chi vende i biglietti quando non siamo noi; valorizzato = serata venduta altrove. Migration 20261013120000. */
+  external_tickets_seller: string | null;
+  /** Link unico dell'evento dal venditore, https; NULL = «Tickets soon». */
+  external_tickets_url: string | null;
+  /** Testo del bottone in uscita; NULL = «Get tickets». */
+  external_tickets_label: string | null;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -452,6 +458,8 @@ export interface TicketTier {
    */
   sort_order: number;
   show_remaining: boolean;
+  /** Esaurito a mano: vince su quantita', date e conteggi. Migration 20261013120000. */
+  sold_out: boolean;
   starts_at: string | null;
   expires_at: string | null;
   created_at: string;

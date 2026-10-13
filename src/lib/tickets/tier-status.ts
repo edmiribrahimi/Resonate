@@ -36,6 +36,8 @@ export interface PublicTier {
    * promessa di prezzo, la chiusura della vendita no.
    */
   closes_by_default?: boolean;
+  /** Esaurito a mano da chi organizza (`ticket_tiers.sold_out`): vince su tutto. */
+  sold_out?: boolean;
 }
 
 export type TierStatus = "coming_soon" | "available" | "sold_out" | "expired";
