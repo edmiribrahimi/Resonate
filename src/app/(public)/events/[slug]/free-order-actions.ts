@@ -15,6 +15,13 @@ import {
 } from "@/lib/tickets/buyer-input";
 import { resolveGuestIdentity } from "@/lib/tickets/guest-identity";
 import { sendOrderConfirmation } from "@/lib/tickets/order-confirmation";
+import { revealPartyVenueForOrder } from "@/lib/venue-reveal/reveal-party-venue";
+import { SENZA_INDIRIZZO } from "@/lib/venue-reveal/order-reveal-outcome";
+import {
+  hasRevealFired,
+  isNightSecret,
+} from "@/lib/venue-reveal/venue-disclosure";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * free-order-actions.ts — la prenotazione di un tier a 0 € su una serata con
@@ -130,7 +137,16 @@ import { sendOrderConfirmation } from "@/lib/tickets/order-confirmation";
  *     transazione, e l'etichetta del portatore resta un progressivo — il nome
  *     raccolto qui **non arriva alla porta** (`D-49-03`, `D-50-18b`);
  *   - **non scrive su `public.rsvps`**: lo storico resta in sola lettura
- *     (`D-50-22`).
+ *     (`D-50-22`);
+ *   - **non decide da solo se rivelare il luogo.** Dal 2026-10-13 (revisione
+ *     52.4, WR-01; D-52.4-07, decisione del proprietario: «stessa funzione e
+ *     stesso scope anche nel ramo gratuito») chi prenota DOPO che la
+ *     rivelazione della serata e' scattata riceve l'indirizzo per mail come
+ *     chi paga: la stessa `revealPartyVenueForOrder`, ristretta agli id di
+ *     QUESTO ordine, con la stessa tabella `SENZA_INDIRIZZO` del webhook. La
+ *     decisione resta in `venue-disclosure.ts`, la spedizione in
+ *     `reveal-party-venue.ts`; qui non c'e' nessun confronto sul luogo, e la
+ *     guardia per serata non compare in nessun ramo.
  */
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -255,6 +271,41 @@ type FreeOrderResult =
       emailSent: boolean;
     }
   | { success: false; refusal: FreeOrderRefusal; error: string };
+
+/**
+ * L'ordine e' emesso ma chi ha prenotato e' rimasto senza l'indirizzo che gli
+ * era dovuto: lo si scrive sulla riga, **senza toccare `status`**, che resta
+ * quello chiuso dalla RPC — i biglietti esistono e aprono la porta.
+ *
+ * E' la stessa forma di `segnaAssenza` nel webhook del pagato (stesso
+ * `error_message`, stesso strappo semantico dichiarato li': la superficie dei
+ * venduti disegna questi ordini in un insieme separato dai falliti), con una
+ * **categoria di log propria** (`tickets.free_order_reveal_*`), perche' chi
+ * legge i log deve poter dire da quale strada viene il buco.
+ */
+async function segnaAssenzaGratuita(
+  supabase: SupabaseClient,
+  orderId: string,
+  cause: string,
+  detail: string
+): Promise<void> {
+  console.error(`[tickets.free_order_${cause}] order=${orderId} ${detail}`);
+
+  const { error } = await supabase
+    .from("ticket_orders")
+    .update({
+      error_message: `${cause}: ${detail}`.slice(0, 500),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", orderId);
+
+  if (error) {
+    // Il fallimento del fallimento: nessuna superficie lo mostra, e va detto.
+    console.error(
+      `[tickets.free_order_reveal_gap_unrecordable] order=${orderId} ${redactDbError(error)}`
+    );
+  }
+}
 
 /** La forma di un uuid, controllata prima di mandarlo a PostgREST. */
 const UUID_SHAPE =
@@ -620,6 +671,129 @@ export async function reserveFreeTickets(input: {
   } catch (mailError) {
     console.error(
       `[tickets.free_order_email_threw] ordine ${orderId}: ${mailError instanceof Error ? mailError.message : "causa non leggibile"}`
+    );
+  }
+
+  // ── 10. L'INDIRIZZO, SOLO SE LA RIVELAZIONE E' GIA' SCATTATA ──────────────
+  //
+  // Revisione 52.4, WR-01 — D-52.4-07: un biglietto gratuito rivela il luogo
+  // **esattamente** come uno pagato. Questo blocco e' la copia del passo 6 del
+  // webhook (`src/app/api/webhooks/sumup/route.ts`, «L'INDIRIZZO, SOLO SE LA
+  // RIVELAZIONE E' GIA' SCATTATA»), con le stesse condizioni e la stessa
+  // restrizione. Le ragioni stanno li' e valgono qui parola per parola:
+  //
+  //   - il caso ORDINARIO e' non fare niente: si prenota prima della finestra,
+  //     e la rivelazione arrivera' dal cron per tutti insieme;
+  //   - chi prenota DOPO la rivelazione non ha nessun'altra strada per
+  //     l'indirizzo se non ha mai scelto una password (`D-49-04`);
+  //   - **la guardia per serata non compare in nessun ramo**: e' del cron;
+  //   - la spedizione e' ristretta agli id dei biglietti di QUESTO ordine, un
+  //     campo obbligatorio di un argomento obbligatorio: nessun altro titolare
+  //     della serata puo' essere raggiunto da qui.
+  //
+  // E come nel webhook **non annulla niente**: i biglietti sono gia' emessi, e
+  // un fallimento lascia una traccia sulla riga (`segnaAssenzaGratuita`)
+  // invece di trasformare una prenotazione riuscita in un errore.
+  try {
+    const ticketIdsOrdine = Array.isArray(mintedIds)
+      ? (mintedIds as unknown[]).filter(
+          (v): v is string => typeof v === "string"
+        )
+      : [];
+
+    if (ticketIdsOrdine.length === 0) {
+      // Senza la lista non si spedisce niente: una chiamata senza restrizione
+      // raggiungerebbe tutta la serata.
+      await segnaAssenzaGratuita(
+        serviceClient,
+        orderId,
+        "reveal_ids_missing",
+        "la riserva non ha restituito gli id dei biglietti"
+      );
+    } else {
+      // La serata, con gli stessi campi che legge il webhook (e il cron). La
+      // `select` del passo 2 resta senza colonne del luogo: questa e' una
+      // lettura separata, che serve solo a comporre la mail del titolare.
+      const { data: serata, error: serataError } = await serviceClient
+        .from("event_parties")
+        .select(
+          "id, title, date, time, venue_secret, venue_reveal_hours, venue_revealed_at, venue_text, event_id, events(title, slug), venues(name, address)"
+        )
+        .eq("id", partyId)
+        .single();
+
+      if (serataError || !serata) {
+        // Default chiuso: uno stato non determinabile non spedisce.
+        await segnaAssenzaGratuita(
+          serviceClient,
+          orderId,
+          "reveal_night_unreadable",
+          serataError ? redactDbError(serataError) : "nessuna riga"
+        );
+      } else {
+        const night = {
+          venueSecret: serata.venue_secret,
+          partyDate: serata.date,
+          partyTime: serata.time,
+          venueRevealHours: serata.venue_reveal_hours,
+          venueRevealedAt: serata.venue_revealed_at,
+        };
+
+        // La decisione, importata e mai riscritta (`venue-disclosure.ts`).
+        if (!isNightSecret(night.venueSecret)) {
+          // Non dovuto: il luogo sta gia' sulla pagina pubblica.
+        } else if (!hasRevealFired(night)) {
+          // Non dovuto, e non e' un fallimento: arrivera' dal cron.
+        } else {
+          const evento = serata.events as unknown as {
+            title: string;
+            slug: string;
+          };
+          const luogo = serata.venues as unknown as {
+            name: string;
+            address: string | null;
+          } | null;
+
+          const esito = await revealPartyVenueForOrder(
+            serviceClient,
+            {
+              id: serata.id,
+              event_id: serata.event_id,
+              title: serata.title,
+              date: serata.date,
+              time: serata.time,
+              venue_text: serata.venue_text,
+              event: evento,
+              venue: luogo,
+            },
+            { night, onlyTicketIds: ticketIdsOrdine }
+          );
+
+          if (SENZA_INDIRIZZO[esito.failureKind]) {
+            await segnaAssenzaGratuita(
+              serviceClient,
+              orderId,
+              `reveal_${esito.failureKind}`,
+              `serata ${serata.id}, destinatari ${esito.recipientsTotal}, ` +
+                `spediti ${esito.recipientsSent}, ritentabile ${esito.retryOutlook}`
+            );
+          } else {
+            // L'esito si dice anche quando va bene: e' l'unica traccia che una
+            // mail d'indirizzo e' partita da questa strada.
+            console.info(
+              `[tickets.free_order_reveal_${esito.failureKind}] order=${orderId} ` +
+                `serata ${serata.id}, spediti ${esito.recipientsSent}/${esito.recipientsTotal}`
+            );
+          }
+        }
+      }
+    }
+  } catch (revealError) {
+    await segnaAssenzaGratuita(
+      serviceClient,
+      orderId,
+      "reveal_threw",
+      revealError instanceof Error ? revealError.message : String(revealError)
     );
   }
 

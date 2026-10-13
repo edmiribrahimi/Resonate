@@ -18,10 +18,8 @@ import {
   cancelOrderResumeEmail,
   cancelSiblingResumeEmails,
 } from "@/lib/tickets/order-resume";
-import {
-  revealPartyVenueForOrder,
-  type VenueRevealFailureKind,
-} from "@/lib/venue-reveal/reveal-party-venue";
+import { revealPartyVenueForOrder } from "@/lib/venue-reveal/reveal-party-venue";
+import { SENZA_INDIRIZZO } from "@/lib/venue-reveal/order-reveal-outcome";
 import { hasRevealFired, isNightSecret } from "@/lib/venue-reveal/venue-disclosure";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -53,39 +51,11 @@ const RESUME_CANCELLABLE: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Quali esiti della rivelazione tardiva lasciano **chi ha pagato senza
- * l'indirizzo**.
- *
- * Un `Record` **totale** e non una lista di tre nomi, per la stessa ragione per
- * cui `REPORTABLE_FAILURE` nel cron lo e': una lista risponde alla domanda di
- * oggi e tace su un esito futuro, che sarebbe semplicemente assente — e assente
- * qui significa **nessuna traccia**, cioe' una persona che ha pagato, non ha
- * ricevuto l'indirizzo, e di cui nessuno sa niente. Totale, un esito nuovo e' un
- * errore di compilazione finche' qualcuno non dichiara da che parte sta.
- *
- * Due esiti valgono `false` e i due `false` non hanno la stessa ragione:
- *
- *   `none`           — almeno una mail e' partita. Su questa strada il
- *                      destinatario e' uno, quindi «almeno una» e' «la sua».
- *   `reveal_not_due` — non era dovuto niente. Il cron ci arrivera'.
- *
- * `no_recipients` vale **`true` qui e `false` nel cron**, e la divergenza e'
- * deliberata. Nel cron significa *«questa serata e' gia' stata servita»*, che e'
- * lo stato di regime. Qui non puo' significare quello: i biglietti sono nati in
- * questa stessa consegna con `venue_reveal_sent = false`, e il ramo si
- * raggiunge una volta sola per ordine (la seconda consegna esce su
- * `status = 'completed'`). Zero destinatari vuol dire quindi che **chi ha appena
- * pagato non e' stato visto da chi spedisce** — un'assenza da dire, non uno
- * stato di regime.
+ * `SENZA_INDIRIZZO` — quali esiti della rivelazione tardiva lasciano chi ha
+ * pagato senza l'indirizzo — vive in `@/lib/venue-reveal/order-reveal-outcome`
+ * dal 2026-10-13 (revisione 52.4, WR-01): la strada gratuita la legge identica,
+ * e due copie della stessa tabella divergerebbero al primo esito nuovo.
  */
-const SENZA_INDIRIZZO: Record<VenueRevealFailureKind, boolean> = {
-  none: false,
-  reveal_not_due: false,
-  no_recipients: true,
-  send_failed: true,
-  recipients_unavailable: true,
-  party_not_found: true,
-};
 
 /**
  * La faccia del fallimento della rivelazione tardiva, su una superficie che
