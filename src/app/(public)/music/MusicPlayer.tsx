@@ -554,6 +554,18 @@ export function MusicPlayerProvider({
             // once the listener has tapped inside the widget (spike, 13:24).
             dispatch({ type: "tap", liveCut, resume: true, dropIframe: false });
             erroredRef.current = false;
+            const sameIndex = soundIndexRef.current.get(liveCut.soundcloudTrackId);
+            if (
+              s.status === "finished" &&
+              widgetModeRef.current === "profile" &&
+              sameIndex !== undefined
+            ) {
+              // After FINISH the PROFILE widget has already moved its cursor to
+              // the next sound (paused there by the FINISH handler): a bare
+              // `play()` would start THAT track under this title. Re-seat on
+              // this LiveCut first (52.3-REVIEW WR-01, measured 2026-10-14).
+              widget.skip(sameIndex);
+            }
             widget.play();
             startRefusedTimer(liveCut.id);
             return;
@@ -878,10 +890,18 @@ export function MusicPlayerProvider({
     });
 
     // The end of a LiveCut is the end: no `load()`, no `play()` — no autoplay.
+    // The PROFILE widget is a multi-sound player and DOES advance on its own:
+    // measured 2026-10-14 on Chrome (52.3-ESITI, Corsa L5), without `pause()`
+    // a PLAY arrives 6 ms after FINISH and the next sound of the profile plays
+    // from the hidden iframe while the bar says it ended — a track that may
+    // not be published here (52.3-REVIEW WR-01). `pause()` stops it: 0
+    // PLAY_PROGRESS after FINISH. The cursor still moves to the next sound,
+    // which is why a replay of the same LiveCut re-seats with `skip()`.
     widget.bind(E.FINISH, () => {
       finishedRef.current = true;
       progressingRef.current = false;
       clearTimers();
+      widget.pause();
       dispatch({ type: "finish" });
     });
 
