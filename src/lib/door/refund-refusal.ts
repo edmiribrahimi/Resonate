@@ -14,7 +14,9 @@ import "server-only";
  * Two decisions live here (52.2-12):
  *
  * 1. **The switch `DOOR_REFUSE_REFUNDED_ENABLED`, server side.** Absent (or any
- *    value other than `"true"`) means OFF, and OFF is exactly the behaviour the
+ *    value other than `"true"`, compared after `trim()` so that a trailing
+ *    newline pasted from a shell does not silently mean OFF — 52.3-REVIEW
+ *    WR-06) means OFF, and OFF is exactly the behaviour the
  *    door had before this phase: admitted with the `refunded_before_night`
  *    flag, online and offline. The order RFD-01 (the refund email) → RFD-03
  *    (the refusal) is therefore a configuration fact written under a dated
@@ -32,7 +34,7 @@ import "server-only";
  * refused here: those keep today's branches.
  */
 export function doorRefusesRefunds(): boolean {
-  return process.env.DOOR_REFUSE_REFUNDED_ENABLED === "true";
+  return process.env.DOOR_REFUSE_REFUNDED_ENABLED?.trim() === "true";
 }
 
 export function refundRefusedAtDoor(args: {

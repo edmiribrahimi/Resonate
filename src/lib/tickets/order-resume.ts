@@ -206,7 +206,9 @@ export async function scheduleOrderResumeEmail({
     //
     // CART-05 non parte finche' l'informativa (CART-06) non e' in produzione:
     // l'interruttore separa il deploy del codice dalla pubblicazione del testo.
-    if (process.env.ORDER_RESUME_EMAIL_ENABLED !== "true") {
+    // Confronto sul valore ripulito: un "true\n" incollato da shell e' "true"
+    // (52.3-REVIEW WR-06, stessa classe dell'incidente cover del 2026-10-13).
+    if (process.env.ORDER_RESUME_EMAIL_ENABLED?.trim() !== "true") {
       return skip("disabled", "ORDER_RESUME_EMAIL_ENABLED non e' \"true\"");
     }
 
