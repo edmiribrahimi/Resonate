@@ -86,7 +86,7 @@ ticket type with a red **«Entry closed for this ticket type»** and the subtitl
 the exact minute the door is already closed for it. This is the one refusal in
 this document that the person holding the phone can overrule alone:
 
-- Under the camera a panel appears with **«Admit anyway»**. One tap lets the
+- Above the camera a panel appears with **«Admit anyway»**. One tap lets the
   guest in — no supervisor, no second account. The screen then shows
   **«Admitted after entry time»**.
 - **The refused code can stay in front of the camera.** The panel does not
@@ -172,7 +172,7 @@ already passed:
 
 | # | Network | Code scanned | What must be seen |
 |---|---------|--------------|-------------------|
-| 7 | off | a valid code of a ticket type past its entry time | red, «Entry closed for this ticket type», «Entry closed at HH:MM · Offline»; then the «Admit anyway» panel under the camera, which stays while the same code is held in front of it |
+| 7 | off | a valid code of a ticket type past its entry time | red, «Entry closed for this ticket type», «Entry closed at HH:MM · Offline»; then the «Admit anyway» panel above the camera, which stays while the same code is held in front of it |
 | 8 | off | tap «Admit anyway» | «Admitted after entry time · Offline», the queue counter goes up by one |
 
 After the radio comes back and the queue is empty, the night's review must
