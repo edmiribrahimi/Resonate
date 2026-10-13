@@ -87,6 +87,11 @@ export default async function TermsPage() {
           If we cancel an event, or move it to another date, you get a full refund. The details are
           in the <Link href="/refunds" className="inline-flex min-h-11 items-center text-accent">refund policy</Link>.
         </p>
+        <p>
+          Some nights are ticketed by the venue or by a third-party platform. The event page says so
+          next to the tickets, and every link there leads to the seller: for those nights the
+          seller&apos;s own terms and refund policy apply, not ours.
+        </p>
       </LegalSection>
 
       <LegalSection heading="The venue">

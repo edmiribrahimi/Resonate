@@ -44,10 +44,6 @@ function statusLabel(status: TierStatus): string {
   }
 }
 
-const ROW_BASE = "block min-h-11 w-full rounded-2xl border p-4 text-left transition-all";
-const ROW_LIVE = `${ROW_BASE} border-line bg-surface hover:border-accent/50 active:scale-95 active:opacity-80 ${FOCUS_RING}`;
-const ROW_OFF = `${ROW_BASE} border-line bg-surface/50 opacity-50`;
-
 export default function ExternalTickets({ seller, url, label, tiers }: ExternalTicketsProps) {
   const statuses = computeTierStatuses(tiers);
   const buttonText = label?.trim() || "Get tickets";
@@ -74,11 +70,21 @@ export default function ExternalTickets({ seller, url, label, tiers }: ExternalT
               </div>
             );
             return clickable ? (
-              <a key={tier.id} href={url} target="_blank" rel="noopener noreferrer" className={ROW_LIVE}>
+              <a
+                key={tier.id}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`block min-h-11 w-full rounded-2xl border border-line bg-surface p-4 text-left transition-all hover:border-accent/50 active:scale-95 active:opacity-80 ${FOCUS_RING}`}
+              >
                 {body}
               </a>
             ) : (
-              <div key={tier.id} aria-disabled="true" className={ROW_OFF}>
+              <div
+                key={tier.id}
+                aria-disabled="true"
+                className="block min-h-11 w-full rounded-2xl border border-line bg-surface/50 p-4 text-left opacity-50"
+              >
                 {body}
               </div>
             );
