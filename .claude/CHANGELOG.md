@@ -3,6 +3,35 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.32.0] - 2026-10-13
+
+### Changed — la porta ha un'ora limite per tier: `checkin-offline.md`; i chiamanti della rivelazione riletti: `venue-secrecy.md`
+
+**Cosa e' cambiato.**
+
+- **`checkin-offline.md`** — gate nuovo *l'ora limite rifiuta solo con l'istante
+  presente e superato*: un predicato solo, `src/lib/door/entry-until.ts`, per
+  rotta, manifesto e scanner offline; un dato mancante ammette; «Admit anyway» con
+  `door.operate`, causa `entry_until_overridden`; il pannello resta sullo stesso
+  QR e si chiude col tocco o con un altro codice; offline l'eccezione viaggia
+  nella stessa entrata della coda e il drain giudica all'orologio del telefono; il
+  rifiuto offline non scrive `door_scan_events` (debito). Un imperativo: lista
+  riscaricata dopo aver messo l'ora, orologio automatico, eccezione con un tocco
+  e registrata.
+- **`venue-secrecy.md`** — la riga dei percorsi aperti diceva che
+  `reveal-party-venue.ts` aveva «due chiamanti»: riletti nel codice, sono
+  l'atto manuale e il cron per la serata, e per un solo ordine il webhook del
+  pagato e `reserveFreeTickets` (fix WR-01 della revisione 52.4, solo a
+  rivelazione gia' scattata). Detto anche che `venue_reveal_on_purchase` non lo
+  legge nessuna cassa.
+
+**Perche'.** Fase 52.4, MIX-05/06 (D-52.4-02, D-52.4-05): la porta rifiuta un
+tier dopo la sua ora, e l'eccezione e' un tocco che resta scritto. Provato sul
+laboratorio il 2026-10-13 e approvato dal proprietario. La riga di
+`venue-secrecy.md` descriveva un prodotto che dopo i fix della revisione non
+c'era piu': una riga che descrive male il prodotto e' peggio di una riga assente
+(`ai-engineering.md`).
+
 ## [1.31.0] - 2026-10-03
 
 ### Changed — la persona rilegge il prodotto spedito dalla fase 52.1: `media-and-storage.md`, `checkin-offline.md`, `access-gating.md`, `venue-secrecy.md`, `meta-gates.md`, `CLAUDE.md`
