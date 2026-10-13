@@ -86,10 +86,11 @@ toccati.
 
 Misurato e corretto durante la prova: (a) l'anteprima diceva «free entry» per
 un tier a 0 € — `event-metadata` ora li ignora sulle serate esterne; (b) un
-tier a 0 € su una serata `paid` viene chiuso da `closeZeroPriceTiers` al
-salvataggio dall'admin, quindi la pagina **non** mostra tier a 0 € nemmeno
-sulle serate esterne (il filtro `price > 0` vale per tutte): una «lista» del
-venditore non e' un tier nostro.
+tier a 0 € su una serata `paid` veniva chiuso da `closeZeroPriceTiers` al
+salvataggio dall'admin — **dal pomeriggio del 2026-10-13 non piu' sulle serate
+esterne** (`ensureFreeRsvpTier` salta la chiusura quando c'e' un venditore), e
+la pagina li mostra: il proprietario ha chiesto biglietti gratuiti e a
+pagamento sulla stessa serata, entrambi emessi dal venditore.
 
 La serata di prova e' stata cancellata dal laboratorio a fine prova.
 
@@ -113,7 +114,7 @@ ordini `pending` aperti prima di un sold out a mano completano comunque
 - **Sold out a mano.** Non vediamo le vendite del terzo: la casella la spunta chi organizza quando il venditore avvisa.
 - **Nessun conteggio.** Dashboard vendite e capienza restano a zero su quella serata: non vendiamo noi.
 - **Chi compra altrove non entra nella community**: nessun `attendee`, nessuna mail, nessun recupero carrello. Decisione del proprietario.
-- **Nessun tier a 0 €** sulle serate esterne (vedi sopra).
+- **Tier a 0 € ammessi sulle serate esterne** (ripreso il 2026-10-13 pomeriggio su richiesta del proprietario: la serata ha biglietti gratuiti e a pagamento, entrambi del venditore). Il salvataggio dall'admin non li chiude piu' su queste serate; la pagina li mostra; l'anteprima social ignora lo 0 € nel «from». Sulle serate nostre resta tutto com'era.
 - **La chiusura di default a −2 h non si applica** alle serate esterne: scadenze solo esplicite.
 
 ## Passi di produzione (su autorizzazione del proprietario, come il 2026-10-05)

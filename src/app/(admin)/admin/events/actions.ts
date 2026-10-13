@@ -762,6 +762,8 @@ async function ensureFreeRsvpTier(
     eventId: string;
     accessType: AccessType;
     capacity: number | null;
+    /** `external_tickets_seller` della serata: valorizzato = venduta da un terzo. */
+    externalSeller: string | null;
   }
 ): Promise<{ ok: true } | { ok: false; error: WriteError }> {
   // ── CR-01: una serata che smette di essere gratuita chiude il suo livello ──
@@ -791,6 +793,11 @@ async function ensureFreeRsvpTier(
   // `expired`, cioe' non acquistabile e non selezionabile, senza toccare lo
   // schema e senza perdere una sola riga.
   if (night.accessType !== "free_rsvp") {
+    // Serata venduta da un terzo (2026-10-13, decisione del proprietario): un
+    // tier a 0 € e' un biglietto gratuito che EMETTE IL VENDITORE, non un
+    // ordine gratuito nostro — la cassa nostra e' comunque spenta su quella
+    // serata, su entrambe le strade. Non si chiude.
+    if (night.externalSeller !== null) return { ok: true };
     return closeZeroPriceTiers(client, night.id);
   }
 
@@ -1107,7 +1114,7 @@ export async function createEvent(formData: FormData): Promise<EventWriteResult>
   const { data: insertedParties, error: partyError } = await supabase
     .from("event_parties")
     .insert(partyRows)
-    .select("id, access_type, capacity, sort_order, title");
+    .select("id, access_type, capacity, sort_order, title, external_tickets_seller");
 
   if (partyError) {
     // ONE bulk insert, so the database names no row. The refusal therefore
@@ -1148,12 +1155,14 @@ export async function createEvent(formData: FormData): Promise<EventWriteResult>
     capacity: number | null;
     sort_order: number;
     title: string;
+    external_tickets_seller: string | null;
   }[]) {
     const tier = await ensureFreeRsvpTier(supabase, {
       id: row.id,
       eventId: inserted.id,
       accessType: row.access_type,
       capacity: row.capacity,
+      externalSeller: row.external_tickets_seller ?? null,
     });
     if (tier.ok) continue;
 
@@ -1507,6 +1516,7 @@ export async function updateEvent(
         eventId,
         accessType: party.access_type,
         capacity: party.capacity ?? null,
+        externalSeller: party.external_tickets_seller ?? null,
       });
       if (!tier.ok) {
         const refusal: NightRefusal = {
