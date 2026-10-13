@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect, useCallback, useId } from "react";
 import { purchaseTicket } from "@/app/(admin)/admin/events/actions";
 import { validateDiscountCode } from "@/app/(admin)/admin/events/[id]/tickets/actions";
 import { purchaseTicketsGuest } from "./guest-purchase-actions";
+import { reserveFreeTickets } from "./free-order-actions";
 import { Button, FOCUS_RING } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Chip";
 import Link from "next/link";
@@ -28,10 +29,12 @@ import { captureEntrySource, readEntrySource } from "../entry-source-capture";
  * dove serve.
  *
  * **`D-50-18b`, decisione del proprietario del 2026-09-21: entrambi i moduli
- * d'ordine chiedono `Full name` e mail** — questo e quello della prenotazione
- * gratuita (`FreeOrderForm.tsx`). Due moduli che fanno la stessa cosa con un
- * prezzo diverso devono chiedere la stessa cosa, o il campo compare e sparisce
- * a seconda di quanto costa la serata.
+ * d'ordine chiedono `Full name` e mail** — l'acquisto e la prenotazione
+ * gratuita. Dal 2026-10-13 (52.4) i due moduli sono **uno solo**: il modulo
+ * separato della prenotazione e' uscito, e un tier a 0 € si prenota da questo
+ * controllo con «Reserve». Due moduli che fanno la stessa cosa con un prezzo
+ * diverso divergono, e il campo compariva e spariva a seconda di quanto costava
+ * la serata.
  *
  * ── DOVE IL NOME VA, E DOVE NON ARRIVA MAI ──────────────────────────────────
  *
@@ -159,7 +162,24 @@ interface TierSelectionProps {
    * Assente sul pass di evento, che non ha una serata: allora vale 1.
    */
   maxTicketsPerOrder?: number;
+  /**
+   * 2026-10-13 (52.4) — mail e nome della sessione, quando c'e'. Precompilano
+   * i due campi della prenotazione gratuita, **non decidono**: restano
+   * modificabili, e `reserveFreeTickets` li chiede in ogni caso — un solo
+   * percorso con o senza sessione (D-50-20). Sulla strada pagante non entrano:
+   * li' l'azione prende l'identita' dalla sessione lato server.
+   */
+  sessionEmail?: string | null;
+  sessionName?: string | null;
 }
+
+/** L'esito di una prenotazione gratuita: resta sullo schermo, non si chiude da solo. */
+type FreeOutcome = {
+  orderId: string;
+  ticketCount: number;
+  emailSent: boolean;
+  email: string;
+};
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("de-DE", {
@@ -324,7 +344,7 @@ function readOpenOrderToken(partyId: string): string | null {
   }
 }
 
-export default function TierSelection({ partyId, tiers, label, isAuthenticated = true, eventSlug, maxTicketsPerOrder = 1 }: TierSelectionProps) {
+export default function TierSelection({ partyId, tiers, label, isAuthenticated = true, eventSlug, maxTicketsPerOrder = 1, sessionEmail = null, sessionName = null }: TierSelectionProps) {
   const [selectedTierId, setSelectedTierId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -373,6 +393,13 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
     : 1;
   const [quantity, setQuantity] = useState(1);
   const selectedTier = tiers.find((t) => t.id === selectedTierId) ?? null;
+  // ── UN TIER A 0 € SI PRENOTA, NON SI COMPRA (52.4, D-52.4-01) ─────────────
+  //
+  // Nessun codice sconto, nessun SumUp: `reserveFreeTickets` emette un ordine a
+  // totale zero e biglietti veri. La UI sceglie il ramo, il server decide —
+  // il preventivo rifiuta uno 0 € diretto a SumUp (`QUOTE_FREE_TIER_USE_RESERVE`)
+  // e la prenotazione rifiuta un tier che non e' a 0 € (`free_tier_not_free`).
+  const selectedIsFree = selectedTier ? Number(selectedTier.price) === 0 : false;
   const quantityMax =
     selectedTier && selectedTier.available !== null && selectedTier.available > 0
       ? Math.min(cap, selectedTier.available)
@@ -380,8 +407,12 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
   useEffect(() => {
     if (quantity > quantityMax) setQuantity(quantityMax);
   }, [quantity, quantityMax]);
-  const [email, setEmail] = useState("");
-  const [fullName, setFullName] = useState("");
+  // Precompilati dalla sessione quando c'e': servono alla prenotazione
+  // gratuita, che li chiede sempre. Sulla strada pagante con sessione non
+  // partono (vedi `handlePurchase`), come prima.
+  const [email, setEmail] = useState(sessionEmail ?? "");
+  const [fullName, setFullName] = useState(sessionName ?? "");
+  const [freeOutcome, setFreeOutcome] = useState<FreeOutcome | null>(null);
   const [guestOrderId, setGuestOrderId] = useState<string | null>(null);
   const [openOrderToken, setOpenOrderToken] = useState<string | null>(null);
   // L'order token dell'ordine il cui modulo di pagamento e' aperto ADESSO: lo
@@ -466,6 +497,48 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
     setError(null);
     setGuestOrderId(null);
 
+    // ── IL RAMO GRATUITO (52.4) ────────────────────────────────────────────
+    //
+    // Prima di ogni altra strada: uno 0 € non va mai verso un checkout.
+    if (selectedIsFree) {
+      if (!partyId) {
+        // Pass di evento a 0 €: nessuna prenotazione senza una serata, e il
+        // server lo rifiuterebbe comunque (`purchaseTicket` rifiuta lo 0 €).
+        setError("A free pass for the whole event is not available here. Pick a single night instead.");
+        return;
+      }
+      const tierId = selectedTierId;
+      startTransition(async () => {
+        let result: Awaited<ReturnType<typeof reserveFreeTickets>>;
+        try {
+          result = await reserveFreeTickets({ partyId, tierId: selectedTierId, quantity, email, fullName });
+        } catch (err) {
+          // Il guasto vero (rete, azione irraggiungibile), con la sua categoria:
+          // i rifiuti tornano come valore e si mostrano sotto, come arrivano.
+          console.error(
+            `[ticket.reserve_unreachable] tier=${tierId} ${err instanceof Error ? err.message : String(err)}`
+          );
+          setError(PURCHASE_UNREACHABLE_MESSAGE);
+          return;
+        }
+
+        if (result.success) {
+          setFreeOutcome({
+            orderId: result.orderId,
+            ticketCount: result.ticketCount,
+            emailSent: result.emailSent,
+            email: email.trim(),
+          });
+          return;
+        }
+
+        // La frase arriva dal server e si mostra com'e': tredici cause
+        // distinte, nessuna fusa in un messaggio generico.
+        setError(result.error);
+      });
+      return;
+    }
+
     // ── CHI NON HA UNA SESSIONE NON VIENE PIU' MANDATO A REGISTRARSI ──────────
     //
     // Fin qui il ramo salvava un'intenzione in `localStorage` e rimbalzava alla
@@ -504,8 +577,10 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
             partyId,
             tierId: selectedTierId,
             quantity,
-            email,
-            fullName,
+            // Con una sessione partono vuoti come prima: i campi precompilati
+            // servono solo alla prenotazione gratuita (52.4).
+            email: identityFields ? email : "",
+            fullName: identityFields ? fullName : "",
             discountCodeId: discount?.id ?? null,
             // Il grezzo del link; il server lo riduce a cinque parole.
             entrySource: readEntrySource(),
@@ -551,6 +626,55 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
         setError(PURCHASE_UNREACHABLE_MESSAGE);
       }
     });
+  }
+
+  // L'indirizzo dei biglietti dopo una prenotazione: la pagina di ritorno
+  // firmata dell'ordine (piano 49-06), la stessa dell'acquisto da ospite.
+  // Nessuna superficie nuova nasce qui, e nessuna che possa mostrare un luogo.
+  if (freeOutcome) {
+    const ticketsHref = `/payment/callback?${new URLSearchParams({
+      order: freeOutcome.orderId,
+      ctx: "ticket_order",
+      ...(eventSlug ? { slug: eventSlug } : {}),
+    }).toString()}`;
+    return (
+      <div>
+        <SectionHeading>{label ?? "Get Your Ticket"}</SectionHeading>
+        <div
+          role="status"
+          className="rounded-2xl border border-sem-done/30 bg-sem-done/10 p-4"
+        >
+          <p className="text-sm font-medium text-sem-done">
+            {freeOutcome.ticketCount === 1
+              ? "You have a ticket for this night."
+              : `You have ${freeOutcome.ticketCount} tickets for this night.`}
+          </p>
+          {/*
+            L'esito della mail si dichiara in entrambi i versi. Il ramo negativo
+            non annulla niente — i biglietti esistono gia' — ma chi ha prenotato
+            deve sapere che non deve aspettare un messaggio che non arrivera'.
+          */}
+          {freeOutcome.emailSent ? (
+            <p className="mt-2 text-xs text-ink-2">
+              They are also on their way to {freeOutcome.email}. You never need to open
+              that email — showing the QR code from the ticket is enough.
+            </p>
+          ) : (
+            <p className="mt-2 text-xs text-sem-warn">
+              Your tickets exist, but the email to {freeOutcome.email} did not go out.
+              Open them from the link below and keep it: it is the only copy you
+              have right now.
+            </p>
+          )}
+          <a
+            href={ticketsHref}
+            className={`mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-full bg-accent px-6 text-sm font-semibold text-ground transition-colors hover:bg-accent-hover active:scale-95 active:opacity-80 ${FOCUS_RING}`}
+          >
+            Open my tickets
+          </a>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -601,7 +725,14 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
               aria-pressed={isSelected}
               disabled={isDisabled || isPending}
               aria-disabled={isDisabled || undefined}
-              onClick={() => setSelectedTierId(tier.id)}
+              onClick={() => {
+                setSelectedTierId(tier.id);
+                // Un tier a 0 € non ha codice sconto: lo si azzera (52.4).
+                if (Number(tier.price) === 0) {
+                  handleClearDiscount();
+                  setShowDiscountInput(false);
+                }
+              }}
               className={`min-h-11 w-full rounded-2xl border p-4 text-left transition-all active:scale-95 active:opacity-80 ${FOCUS_RING} ${
                 isDisabled
                   ? "border-line bg-surface/50 opacity-50 cursor-not-allowed"
@@ -621,6 +752,16 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
                     prices. Skipped entirely when absent: a blank line between
                     name and pill would read as a missing value.
                   */}
+                  {/*
+                    2026-10-13 (52.4, MIX-04) — l'ora limite del tier, «HH:MM» di
+                    Torino calcolata sul server. Solo testo: la porta decide da
+                    `entry-until.ts`.
+                  */}
+                  {tier.entry_until_label ? (
+                    <p className="mt-1 text-xs text-ink-2">
+                      Entry until {tier.entry_until_label}
+                    </p>
+                  ) : null}
                   {tier.description ? (
                     <p className="mt-1 whitespace-pre-line text-xs text-ink-2">
                       {tier.description}
@@ -643,7 +784,10 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
                     on this surface takes, and D-41.1-25's refusal of a tone per
                     outcome is kept.
                   */}
-                  {discount && (discount.applicable_tier_ids === null || discount.applicable_tier_ids.includes(tier.id)) && computeDiscountedPrice(tier.price, discount) >= 1.00 && computeDiscountedPrice(tier.price, discount) < tier.price ? (
+                  {Number(tier.price) === 0 ? (
+                    // Un tier a 0 € dice «Free», mai «0,00 €» (52.4).
+                    <p className="shrink-0 text-sm font-bold text-accent">Free</p>
+                  ) : discount && (discount.applicable_tier_ids === null || discount.applicable_tier_ids.includes(tier.id)) && computeDiscountedPrice(tier.price, discount) >= 1.00 && computeDiscountedPrice(tier.price, discount) < tier.price ? (
                     <>
                       <p className="text-xs text-muted line-through">{formatPrice(tier.price)}</p>
                       <p className="text-sm font-bold text-accent">{formatPrice(computeDiscountedPrice(tier.price, discount))}</p>
@@ -658,7 +802,7 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
         })}
       </div>
 
-      {partyId && (
+      {partyId && !selectedIsFree && (
         <div className="mb-4">
           {!discount ? (
             <>
@@ -771,7 +915,7 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
             invece si mostra a tutti, perche' da quel giorno arriva al database
             su entrambe le strade.
           */}
-          {identityFields && (
+          {(identityFields || selectedIsFree) && (
             <Input
               id={nameFieldId}
               label="Full name"
@@ -812,7 +956,7 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
             forma la controlla il server, e la frase che ne torna e' l'unica —
             una seconda copia sarebbe una seconda verita' che nessuno confronta.
           */}
-          {identityFields && (
+          {(identityFields || selectedIsFree) && (
             <Input
               id={emailFieldId}
               label="Where should the tickets go?"
@@ -839,7 +983,17 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
         disabled={!selectedTierId || isPending}
         onClick={handlePurchase}
       >
-        {isPending ? "Processing..." : label ? `Buy ${label}` : "Buy Ticket"}
+        {selectedIsFree
+          ? isPending
+            ? "Reserving..."
+            : quantity === 1
+              ? "Reserve"
+              : `Reserve ${quantity}`
+          : isPending
+            ? "Processing..."
+            : label
+              ? `Buy ${label}`
+              : "Buy Ticket"}
       </Button>
 
       {/*
@@ -856,10 +1010,14 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
         whole: at 12px it measures under the narrowest content width.
       */}
       <p className="mt-3 flex flex-nowrap items-center justify-center gap-1 whitespace-nowrap text-xs text-muted">
-        <span>By buying you accept the</span>
+        <span>{selectedIsFree ? "By reserving you accept the" : "By buying you accept the"}</span>
         <Link href="/terms" className="inline-flex min-h-11 items-center text-accent">Terms</Link>
-        <span>and the</span>
-        <Link href="/refunds" className="inline-flex min-h-11 items-center text-accent">Refund policy</Link>
+        {!selectedIsFree && (
+          <>
+            <span>and the</span>
+            <Link href="/refunds" className="inline-flex min-h-11 items-center text-accent">Refund policy</Link>
+          </>
+        )}
       </p>
 
       {/*
