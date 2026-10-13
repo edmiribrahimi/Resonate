@@ -210,7 +210,7 @@ const UUID_SHAPE =
 
 /**
  * Prenota uno o piu' biglietti di un tier a 0 € su una serata `paid` — fase
- * 52.4, MIX-02 (prima `REG-06`, sulle serate `free_rsvp` che non esistono piu').
+ * 52.4, MIX-02 (prima `REG-06`, sulle serate su RSVP, che non esistono piu').
  *
  * La sequenza e' quella del webhook del percorso pagato, **in sincrono**:
  * preventivo → riga d'ordine → identita' → portatore → conio → mail. L'ordine
@@ -479,7 +479,7 @@ export async function reserveFreeTickets(input: {
   // ── 8. I biglietti: N righe in UNA transazione ────────────────────────────
   //
   // `p_issued_via` vale `free_tier`: e' l'attribuzione, e sta sul **biglietto**
-  // (fase 52.4; lo storico `free_rsvp` resta sui biglietti gia' emessi). La
+  // (fase 52.4; il valore storico di `issued_via` delle serate su RSVP resta sui biglietti gia' emessi). La
   // colonna e' testo nudo con default, senza `CHECK` da allargare, e la sua
   // migration dichiara che `NULL` significa «scritto prima che la colonna
   // esistesse», mai «acquisto ordinario»: un valore proprio e' il modo corretto

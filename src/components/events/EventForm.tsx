@@ -280,9 +280,8 @@ function externalTicketsProblem(seller: string, url: string, label: string): str
 }
 
 const ACCESS_TYPE_LABELS: Record<AccessType, string> = {
-  free_public: "Free (Open to all)",
-  free_rsvp: "Free (RSVP required)",
-  paid: "Paid (Tickets)",
+  free_public: "Free (open, no ticket)",
+  paid: "With tickets (tiers from 0 €)",
 };
 
 function subEventFromInitial(p: PartyInitialData): SubEventFormState {

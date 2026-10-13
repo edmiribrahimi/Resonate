@@ -125,7 +125,16 @@ export type UserRole = "master" | "organizer" | "staff" | "attendee";
 // l'onda precedente, e toglierlo prima avrebbe reso rosso ogni build intermedio
 // — in un repository dove il compilatore e' l'unico controllo automatico che
 // esiste.
-export type AccessType = "free_public" | "free_rsvp" | "paid";
+//
+// ── Due tipi di serata, dal 2026-10-13 (fase 52.4, D-52.4-01) ───────────────
+//
+// Specchio del CHECK `event_parties_access_type_check` della migration
+// `20261013150000_mixed_tiers_entry_until.sql`, che accetta solo
+// `'free_public', 'paid'`. Il terzo valore — la serata su RSVP — e' uscito quel
+// giorno: il gratuito e' ora un tier a 0 € su una serata con biglietti, e le
+// righe storiche di quel tipo sono state migrate a `paid` dalla stessa
+// migration. Il letterale non sta piu' in `src/` nemmeno in un commento.
+export type AccessType = "free_public" | "paid";
 
 export interface Profile {
   id: string;
@@ -597,7 +606,8 @@ export interface TicketOrder {
   quantity: number;
   /**
    * **`NULL` significa ordine a totale zero** — l'RSVP di una serata
-   * `free_rsvp`, che nessuno paga (REG-06, D-50-19). Mai «checkout perso»:
+   * su RSVP (tipo uscito il 2026-10-13, fase 52.4), o la prenotazione di un tier
+   * a 0 €, che nessuno paga (REG-06, D-50-19). Mai «checkout perso»:
    * l'ordine pagato scrive questo campo prima di ogni altra cosa, all'apertura
    * del checkout.
    *
