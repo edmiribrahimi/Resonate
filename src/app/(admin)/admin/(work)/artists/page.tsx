@@ -7,6 +7,7 @@ import { CAP } from "@/lib/capabilities/keys";
 import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle } from "@/components/ui/Typography";
 import { FOCUS_RING } from "@/components/ui/Button";
+import NewArtistButton from "@/components/artists/NewArtistButton";
 
 /**
  * The artists catalogue listing — one file where there were two (D-34-05).
@@ -92,24 +93,24 @@ export default async function AdminArtistsPage() {
       and from 768px up the navigation leaves the bottom edge entirely.
     */
     <PageShell width="default">
-      <header className="mb-6">
+      <header className="mb-6 flex items-center justify-between gap-4">
         <PageTitle>Artists</PageTitle>
+        <NewArtistButton />
       </header>
 
       {!artists || artists.length === 0 ? (
         /*
           §8.11's empty-state contract — a class string, not a component, and a
-          heading plus one sentence naming the next step. The next step is not
-          on this page: `CreateArtistModal` has exactly one importer in the tree
-          (`src/components/events/EventForm.tsx:8`), so an artist is created
-          while a night's line-up is filled in. Saying so is the difference
-          between an empty state and a dead end.
+          heading plus one sentence naming the next step. The next step is now
+          on this page: `CreateArtistModal` has two importers, the event form
+          (an artist created while a night's line-up is filled in) and
+          `NewArtistButton` in the header above.
         */
         <div className="px-6 py-12 text-center">
           <p className="text-base font-semibold text-ink">No artists yet</p>
           <p className="mt-1 text-sm text-muted">
-            An artist is created from a night&rsquo;s line-up on the event form,
-            and appears here once it exists.
+            Create one with &ldquo;New artist&rdquo; above, or from a
+            night&rsquo;s line-up on the event form.
           </p>
         </div>
       ) : (
