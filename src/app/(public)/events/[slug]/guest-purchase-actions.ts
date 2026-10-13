@@ -155,6 +155,13 @@ const GUEST_EMAIL_MISSING = "guest_email_missing";
 const GUEST_EMAIL_MALFORMED = "guest_email_malformed";
 const GUEST_CHECKOUT_FAILED = "guest_checkout_failed";
 const GUEST_ORDER_NOT_SAVED = "guest_order_not_saved";
+/**
+ * Fase 52.4 — un preventivo a totale zero arrivato fin qui. Non dovrebbe
+ * succedere: la guardia che risponde e' quella del preventivo
+ * (`QUOTE_FREE_TIER_USE_RESERVE`, prima del minimo). Questa e' la seconda,
+ * davanti a `createCheckout`, perche' uno 0 € non deve mai raggiungere SumUp.
+ */
+const GUEST_TOTAL_ZERO = "guest_total_zero";
 
 /**
  * Le due cause del nome, e sono **due** perche' chiedono due gesti diversi.
@@ -186,6 +193,7 @@ type GuestPurchaseRefusal =
   | typeof GUEST_NAME_TOO_LONG
   | typeof GUEST_CHECKOUT_FAILED
   | typeof GUEST_ORDER_NOT_SAVED
+  | typeof GUEST_TOTAL_ZERO
   | OrderQuoteRefusal;
 
 /**
@@ -201,7 +209,8 @@ const GUEST_PURCHASE_ERROR: Record<
   | typeof GUEST_NAME_MISSING
   | typeof GUEST_NAME_TOO_LONG
   | typeof GUEST_CHECKOUT_FAILED
-  | typeof GUEST_ORDER_NOT_SAVED,
+  | typeof GUEST_ORDER_NOT_SAVED
+  | typeof GUEST_TOTAL_ZERO,
   string
 > = {
   [GUEST_EMAIL_MISSING]:
@@ -216,6 +225,8 @@ const GUEST_PURCHASE_ERROR: Record<
     "The payment page could not be opened, so nothing was charged and no order was placed. Please try again in a moment.",
   [GUEST_ORDER_NOT_SAVED]:
     "Your order could not be saved, so we stopped before taking any payment. Nothing was charged. Please try again — and if it happens twice, tell us.",
+  // La stessa frase del preventivo (`QUOTE_FREE_TIER_USE_RESERVE`).
+  [GUEST_TOTAL_ZERO]: "This ticket is free: reserve it, there is nothing to pay.",
 };
 
 type GuestPurchaseResult =
@@ -372,6 +383,20 @@ export async function purchaseTicketsGuest(input: {
   }
 
   const quote = quoted.quote;
+
+  // Seconda guardia dello 0 € (fase 52.4, MIX-03). Quella che risponde e' nel
+  // preventivo, prima del minimo; questa resta davanti a `createCheckout`
+  // perche' un totale zero non deve raggiungere SumUp per nessuna strada.
+  if (quote.totalAmount === 0) {
+    console.error(
+      `[tickets.${GUEST_TOTAL_ZERO}] party=${input.partyId} tier=${input.tierId}`
+    );
+    return {
+      success: false,
+      refusal: GUEST_TOTAL_ZERO,
+      error: GUEST_PURCHASE_ERROR[GUEST_TOTAL_ZERO],
+    };
+  }
 
   // 4. Un solo uuid come `ticket_orders.id` E come `checkout_reference`: cosi' il
   //    ritorno dal 3DS trova l'ordine con una lettura del database invece di un

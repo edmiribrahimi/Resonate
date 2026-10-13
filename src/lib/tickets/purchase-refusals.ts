@@ -29,8 +29,11 @@ export const TICKET_PURCHASE_MESSAGE = {
   tier_other_night: "Tier does not belong to this sub-event's event",
   tier_sales_closed:
     "Sales for this ticket type have closed for this night (tier_sales_closed). Nothing was charged.",
+  // Fase 52.4 — un tier a 0 € non si compra: si prenota. Stessa frase del
+  // preventivo (`order-quote.ts`, QUOTE_FREE_TIER_USE_RESERVE), come
+  // `night_sold_elsewhere`. La chiave resta per i log e i chiamanti esistenti.
   tier_free_on_paid_night:
-    "This ticket type is not on sale for this night (tier_free_on_paid_night). Nothing was charged.",
+    "This ticket is free: reserve it, there is nothing to pay.",
   // 2026-10-13 — serata venduta da un terzo: la stessa frase del preventivo
   // (`order-quote.ts`, QUOTE_NIGHT_SOLD_ELSEWHERE), su una strada diversa.
   night_sold_elsewhere:

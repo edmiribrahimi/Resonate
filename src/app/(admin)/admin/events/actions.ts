@@ -1745,6 +1745,18 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
     return refuseTicketPurchase("tier_not_found");
   }
 
+  // ── LO 0 € NON VA A SUMUP (fase 52.4, D-52.4-01, MIX-03) ───────────────────
+  // Un tier a 0 € e' un biglietto gratuito vero e si prenota dalla strada a
+  // totale zero (`reserveFreeTickets`). Questa action apre un checkout, quindi
+  // lo rifiuta SEMPRE, senza guardare il tipo di serata: con `partyId` nullo
+  // (Event Pass) un controllo dentro il ramo della serata non scatterebbe. Il
+  // gemello del percorso ospite e' `QUOTE_FREE_TIER_USE_RESERVE`
+  // (`order-quote.ts`), con la stessa frase.
+  if (Number(tier.price) === 0) {
+    console.error(`[tickets.tier_free_on_paid_night] tier=${tierId} party=${partyId ?? "event_pass"}`);
+    return refuseTicketPurchase("tier_free_on_paid_night");
+  }
+
   // ── SERATA VENDUTA DA UN TERZO (2026-10-13) ────────────────────────────────
   // Questa action non passa da `buildOrderQuote`: il confine va chiuso anche
   // qui, e sulla serata DEL TIER (`tier.party_id`), non su quella passata
@@ -1938,26 +1950,6 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
     if (isTierClosedByDefault(tier, party)) {
       console.error(`[tickets.tier_sales_closed] party=${partyId} tier=${tierId}`);
       return refuseTicketPurchase("tier_sales_closed");
-    }
-
-    // ── CR-01: un livello a prezzo zero non si vende su una serata a pagamento ──
-    //
-    // La guardia gemella di `ensureFreeRsvpTier`, e serve anche quando quella ha
-    // gia' fatto il suo lavoro: la chiusura del livello avviene al SALVATAGGIO
-    // della serata, mentre questa riga regge una chiamata costruita a mano su un
-    // livello rimasto aperto da prima del fix, o su una serata scritta da un
-    // percorso che non passa da quel salvataggio. Il gemello del percorso ospite
-    // e' `quote_tier_free_on_paid_night` (`order-quote.ts`).
-    //
-    // `free_rsvp` resta intatto: li' il prezzo zero e' la forma giusta, e la
-    // prenotazione non passa comunque da questa funzione
-    // (`free-order-actions.ts`, con `goesToPaymentProvider: false`).
-    if (tier.price === 0 && party.access_type !== "free_rsvp") {
-      console.error(
-        `[tickets.tier_free_on_paid_night] party=${partyId} tier=${tierId} ` +
-          `access_type=${party.access_type}`
-      );
-      return refuseTicketPurchase("tier_free_on_paid_night");
     }
 
     // Check user doesn't already have a ticket for this party

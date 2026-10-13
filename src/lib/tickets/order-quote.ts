@@ -160,17 +160,16 @@ const QUOTE_TIER_SALES_CLOSED = "tier_sales_closed";
 const QUOTE_DISCOUNT_SALES_CLOSED = "quote_discount_sales_closed";
 const QUOTE_BELOW_MINIMUM = "quote_below_minimum";
 /**
- * CR-01 — un livello a prezzo zero su una serata che non e' `free_rsvp`.
+ * Un tier a 0 € chiesto su una strada che va a SumUp (fase 52.4, D-52.4-01).
  *
- * Causa PROPRIA e non un caso di {@link QUOTE_BELOW_MINIMUM}, anche se le due
- * rifiuterebbero lo stesso ordine: sotto il minimo dice *questo importo non e'
- * incassabile*, e il rimedio di chi legge e' comprare di piu'. Questa dice
- * *questo livello non doveva essere in vendita*, e il rimedio non e' di chi
- * compra — e' dell'organizer, che ha reso la serata a pagamento lasciandosi
- * dietro il livello della prenotazione gratuita. Collassarle manderebbe una
- * persona a cercare la soluzione dalla parte sbagliata.
+ * Lo 0 € e' legittimo su ogni serata `paid`: e' un biglietto gratuito vero, e
+ * si prenota dalla strada a totale zero (`reserveFreeTickets`,
+ * `goesToPaymentProvider: false`). Su ogni altra strada si ferma QUI, prima del
+ * minimo SumUp: altrimenti chi lo chiede leggerebbe «below the minimum» e
+ * cercherebbe il rimedio comprando di piu', quando il rimedio e' prenotarlo.
+ * Uno 0 € non deve mai raggiungere SumUp (minimo 1,00 €).
  */
-const QUOTE_TIER_FREE_ON_PAID_NIGHT = "quote_tier_free_on_paid_night";
+const QUOTE_FREE_TIER_USE_RESERVE = "quote_free_tier_use_reserve";
 
 export type OrderQuoteRefusal =
   | typeof QUOTE_UNREADABLE
@@ -192,7 +191,7 @@ export type OrderQuoteRefusal =
   | typeof QUOTE_TIER_SALES_CLOSED
   | typeof QUOTE_DISCOUNT_SALES_CLOSED
   | typeof QUOTE_BELOW_MINIMUM
-  | typeof QUOTE_TIER_FREE_ON_PAID_NIGHT;
+  | typeof QUOTE_FREE_TIER_USE_RESERVE;
 
 /**
  * Una frase per causa, e nessuna frase nomina una riga, una persona o un id.
@@ -236,8 +235,8 @@ const ORDER_QUOTE_ERROR: Record<OrderQuoteRefusal, string> = {
   [QUOTE_DISCOUNT_SALES_CLOSED]: CODE_SALES_CLOSED_MESSAGE,
   [QUOTE_BELOW_MINIMUM]:
     "This order is below the minimum a card payment can take (€1.00). Nothing was charged.",
-  [QUOTE_TIER_FREE_ON_PAID_NIGHT]:
-    "This ticket type is not on sale for this night. Nothing was charged.",
+  [QUOTE_FREE_TIER_USE_RESERVE]:
+    "This ticket is free: reserve it, there is nothing to pay.",
 };
 
 /** Cio' che il preventivo dice, e nient'altro di cio' che ha letto per dirlo. */
@@ -304,7 +303,8 @@ export interface OrderQuoteInput {
    * {@link SUMUP_MINIMUM_EUR} esiste perche' sotto quella cifra una carta non
    * si puo' passare, e ogni ordine a pagamento ci passa.
    *
-   * `false` lo dice **solo** l'ordine a totale zero di REG-06, che non apre
+   * `false` lo dice **solo** l'ordine a totale zero (`reserveFreeTickets`, un
+   * tier a 0 € su una serata `paid`, fase 52.4), che non apre
    * nessun checkout e non muove denaro. Senza questa distinzione il preventivo
    * rifiuterebbe **sempre** un ordine gratuito — totale `0`, minimo `1,00` —
    * cioe' rifiuterebbe una prenotazione per non aver raggiunto il minimo di un
@@ -442,26 +442,20 @@ export async function buildOrderQuote(
     return refuse(QUOTE_TIER_OTHER_NIGHT);
   }
 
-  // ── CR-01: prezzo zero e serata a pagamento non stanno insieme ─────────────
+  // ── Lo 0 € non va a SumUp (fase 52.4, D-52.4-01, MIX-03) ───────────────────
   //
-  // REG-06 fa nascere ogni serata `free_rsvp` con un livello `RSVP` a prezzo
-  // zero. Quando l'organizer salva quella stessa serata come `paid`,
-  // `ensureFreeRsvpTier` ora lo chiude (`admin/events/actions.ts`) — ma la
-  // chiusura avviene al salvataggio, e questa funzione e' raggiungibile da una
-  // **server action pubblica**: regge quindi un livello rimasto aperto da prima
-  // del fix, o una chiamata costruita a mano su un id di livello indovinato.
-  //
-  // Il percorso gratuito non arriva mai qui con questa combinazione:
-  // `reserveFreeTickets` rifiuta gia' una serata non `free_rsvp` con
-  // `free_not_free_rsvp`, prima di chiedere il preventivo. Le due guardie non si
-  // deducono l'una dall'altra, ed e' voluto — e' la stessa indipendenza che la
-  // revisione ha riconosciuto ai tre controlli del percorso gratuito.
-  if (tier.price === 0 && party.access_type !== "free_rsvp") {
-    logMoneyPathFailure("buildOrderQuote.tier_free_on_paid_night", {
-      code: party.access_type,
+  // Un tier a 0 € e' un biglietto gratuito vero su qualunque serata `paid`, e
+  // passa SOLO dalla strada a totale zero (`goesToPaymentProvider: false`,
+  // `reserveFreeTickets`). Questa funzione e' raggiungibile da una server
+  // action pubblica con un id di tier scritto a mano: qui la richiesta si
+  // ferma con una frase che rimanda alla prenotazione, prima del minimo SumUp
+  // (che direbbe «below the minimum», cioe' il rimedio sbagliato).
+  if (tier.price === 0 && input.goesToPaymentProvider !== false) {
+    logMoneyPathFailure("buildOrderQuote.free_tier_use_reserve", {
+      code: tier.id,
       message: null,
     });
-    return refuse(QUOTE_TIER_FREE_ON_PAID_NIGHT);
+    return refuse(QUOTE_FREE_TIER_USE_RESERVE);
   }
 
   // 6. Lo stato dei tier (inizio, quantita', fine) e la capienza.
@@ -571,6 +565,9 @@ export async function buildOrderQuote(
 
     // La capienza per la quantita' CHIESTA, che lo stato non guarda: quella
     // dice se ne resta almeno uno, questa se ne restano abbastanza.
+    // La capienza della SERATA e' solo un conteggio mostrato in pagina («spots
+    // left»): i gratuiti contano li' perche' sono righe `tickets`, ma la cassa
+    // si ferma solo sul massimo del tier e su `sold_out` a mano (D-52.4-06).
     const chainTier = allTiers.find((t) => t.id === tierId);
     const capacity = chainTier ? chainTier.quantity : tier.quantity;
     if (capacity !== null) {

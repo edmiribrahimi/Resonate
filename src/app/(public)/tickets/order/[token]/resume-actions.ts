@@ -118,7 +118,9 @@ const QUOTE_TO_RESUME: Record<OrderQuoteRefusal, ResumeRefusal> = {
   quote_discount_other_tier: "price_changed",
   quote_discount_exhausted: "price_changed",
   quote_below_minimum: "price_changed",
-  quote_tier_free_on_paid_night: "no_longer_on_sale",
+  // Fase 52.4 — un tier a 0 € non passa mai da SumUp: un ordine a pagamento
+  // ripreso su un tier diventato gratuito non e' piu' in vendita su questa strada.
+  quote_free_tier_use_reserve: "no_longer_on_sale",
   // 2026-10-05 — chiusura di default a fine serata − 2 h (`sales-window.ts`):
   // un ordine aperto prima non si riprende dopo. Il tier chiuso non e' piu' in
   // vendita; il codice chiuso cambia il prezzo, come gli altri rifiuti di codice.
