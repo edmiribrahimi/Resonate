@@ -1130,6 +1130,10 @@ function PlayerBar({
         </div>
         {peaks && (
           <Waveform
+            // A new LiveCut is a new waveform: the key drops the old instance
+            // (cache, drag preview) on ⏮/⏭ — belt and braces with the
+            // peaks-identity check inside Waveform (52.3-REVIEW WR-02).
+            key={liveCut.id}
             peaks={peaks}
             durationSeconds={durationS}
             positionSeconds={state.positionMs / 1000}

@@ -92,6 +92,14 @@ export default function Waveform({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const barsRef = useRef<Float32Array>(new Float32Array(0));
+  /**
+   * The peaks `barsRef` was resampled from. The player bar keeps ONE instance
+   * across ⏮/⏭ and card taps, and two LiveCuts usually draw the same number of
+   * bars: a cache keyed on the bar count alone kept drawing the previous
+   * track's shape under the new track's position (52.3-REVIEW WR-02). The
+   * cache is now valid only for the same peaks array AND the same bar count.
+   */
+  const barsSourceRef = useRef<readonly number[] | null>(null);
   const [dragSeconds, setDragSeconds] = useState<number | null>(null);
 
   const duration = Math.max(1, durationSeconds);
@@ -117,7 +125,10 @@ export default function Waveform({
     ctx.clearRect(0, 0, width, height);
 
     const bars = Math.floor((width + GAP_PX) / (BAR_PX + GAP_PX));
-    if (barsRef.current.length !== bars) barsRef.current = resample(peaks, bars);
+    if (barsRef.current.length !== bars || barsSourceRef.current !== peaks) {
+      barsRef.current = resample(peaks, bars);
+      barsSourceRef.current = peaks;
+    }
     const values = barsRef.current;
 
     const styles = getComputedStyle(host);
