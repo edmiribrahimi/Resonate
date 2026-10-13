@@ -1329,10 +1329,15 @@ if (/auth\.getUser|redirect\("\/login"\)/.test(orderPageLive)) {
  *   M14 `className="break-words dark:text-white"` in the form   → green
  *   M15 `>A dark room<` in the page                             → red H5
  *   M12 `queries.ts` moved away                                 → REFUSED, exit 2
- * H4 is WRITTEN BUT NOT YET PROVED BY MUTATION: M4, M5 (H4) and M6, M8, M11,
- * M13 (variants of H1, H2, H5) are scheduled in plan 52.3-14, task 2, before
- * the production act of 52.3-15. Until then a green on H4 is a green nobody has
- * seen turn red.
+ *
+ * 2026-10-13 (52.3-14, task 2), same discipline, the six moved from 52.3-11:
+ *   M4  `export const dynamic = "force-dynamic"` removed from page  -> red H4 only
+ *   M5  `import Script from "next/script"` in `MusicPlayer.tsx`     -> red H4 only
+ *   M6  a second `.select("id")` in `LiveCutCard.tsx`               -> red H2 only
+ *   M8  JSX text `Warm nights` in page                             -> red H5 only
+ *   M11 `secretGap`, a live identifier, in `MusicPlayer.tsx`        -> red H1 only
+ *   M13 `techno` in a string of `LiveCutForm.tsx`                   -> red H5 only
+ * H4 is now proved by mutation on both surfaces.
  *
  * 2026-10-05 (52.3-17), same discipline, H2 narrowed and H6 added:
  *   MP1 `party_series!event_parties_series_id_fkey(name), ` back in the literal → red H2 + H6
