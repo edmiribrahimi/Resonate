@@ -110,6 +110,11 @@ export type CatalogArtist = { id: string; name: string };
  */
 const REFUSAL_MESSAGES: Record<LiveCutRefusal, string> = {
   disabled: "The Music page is switched off, so LiveCuts cannot be changed right now.",
+  forbidden:
+    "Your account can no longer manage this event's LiveCuts, so nothing was changed. Ask an admin if this is unexpected.",
+  event_not_found: "This event no longer exists, so nothing was changed. Go back to the events list.",
+  permission_unresolved:
+    "We could not check your permissions just now, so nothing was changed. Try again in a minute.",
   invalid_input:
     "Part of the form did not have the expected shape, so nothing was saved. Reload the page and try again.",
   party_not_in_event:
@@ -146,6 +151,33 @@ const REFUSAL_MESSAGES: Record<LiveCutRefusal, string> = {
 
 const TRANSPORT_MESSAGE =
   "We could not reach the server, so we don't know whether the change went through. Reload the page before trying again.";
+
+const UNEXPECTED_MESSAGE =
+  "The server answered in a way we did not expect, so we don't know whether the change went through. Reload the page before trying again.";
+
+/**
+ * A thrown call is one of two things, and they are told apart (52.3-REVIEW
+ * WR-04, `meta-gates.md`: no catch collapses different causes):
+ *
+ * - `unreachable` — the request never got an answer: the browser is offline,
+ *   or `fetch` itself failed (a `TypeError` whose message is the browser's
+ *   network sentence: Chrome "Failed to fetch", Safari "Load failed",
+ *   Firefox "NetworkError…").
+ * - `unexpected` — an answer came, but not a result: the action threw on the
+ *   server (Next redacts its message in production; the server log has the
+ *   category), or something broke here.
+ *
+ * Refusals the action knows about never get here: they come back as values.
+ * Every case is logged with its category and the error itself.
+ */
+function thrownFailure(where: string, err: unknown): string {
+  const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+  const network =
+    err instanceof TypeError && /fetch|network|load failed/i.test(err.message);
+  const kind = offline || network ? "unreachable" : "unexpected";
+  console.error(`[livecut.form.${where}.${kind}]`, err);
+  return kind === "unreachable" ? TRANSPORT_MESSAGE : UNEXPECTED_MESSAGE;
+}
 
 function refusalText(reason: LiveCutRefusal, code?: string, part?: string): string {
   return REFUSAL_MESSAGES[reason]
@@ -289,8 +321,9 @@ async function uploadLiveCutCover(
         COVER_REASON_TEXT[reason] ??
         `The cover was refused with an unrecognised reason (${reason}), so it was not published. Nothing was saved.`,
     };
-  } catch {
-    console.error("[livecut_cover.finalize_unreachable] code=network message=no answer");
+  } catch (err) {
+    // Only `fetch` can throw here (the body read has its own catch): no answer.
+    console.error("[livecut_cover.finalize_unreachable] code=network message=no answer", err);
     return {
       ok: false,
       message:
@@ -350,9 +383,10 @@ export default function LiveCutForm({
       } else {
         setLink({ kind: "refused", url, text: refusalText(result.reason) });
       }
-    } catch {
+    } catch (err) {
+      const text = thrownFailure("check_link", err);
       if (latestLink.current !== url) return;
-      setLink({ kind: "refused", url, text: TRANSPORT_MESSAGE });
+      setLink({ kind: "refused", url, text });
     }
   }
 
@@ -452,8 +486,8 @@ export default function LiveCutForm({
       });
       closeForm();
       startTransition(() => router.refresh());
-    } catch {
-      setFeedback({ partyId: current.partyId, tone: "crit", text: TRANSPORT_MESSAGE });
+    } catch (err) {
+      setFeedback({ partyId: current.partyId, tone: "crit", text: thrownFailure("save", err) });
     } finally {
       setBusy(false);
     }
@@ -478,8 +512,8 @@ export default function LiveCutForm({
           text: refusalText(result.reason, result.code, String(cut.partNumber)),
         });
       }
-    } catch {
-      setFeedback({ partyId: cut.partyId, tone: "crit", text: TRANSPORT_MESSAGE });
+    } catch (err) {
+      setFeedback({ partyId: cut.partyId, tone: "crit", text: thrownFailure("row_action", err) });
     } finally {
       setBusy(false);
     }
@@ -515,8 +549,8 @@ export default function LiveCutForm({
           message: refusalText(result.reason, result.code, String(cut.partNumber)),
         });
       }
-    } catch {
-      setDeleteStatus({ tone: "crit", message: TRANSPORT_MESSAGE });
+    } catch (err) {
+      setDeleteStatus({ tone: "crit", message: thrownFailure("delete", err) });
     } finally {
       setBusy(false);
     }

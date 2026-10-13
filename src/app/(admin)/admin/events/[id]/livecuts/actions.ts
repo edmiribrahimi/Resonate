@@ -111,6 +111,21 @@ const MIN_PLACE_TOKEN = 4;
 export type LiveCutRefusal =
   /** `NEXT_PUBLIC_MUSIC_PAGE_ENABLED` is not `"true"`. Nothing was asked. */
   | "disabled"
+  /**
+   * The guard answered NO: no `staff.manage`, or not a manager of this event
+   * (`forbidden.staff_manage_required`, `forbidden.not_event_manager`).
+   * Returned as a value, not thrown: Next redacts a thrown message on the way
+   * to the client, and the form would show a network error (52.3-REVIEW WR-04).
+   */
+  | "forbidden"
+  /** The guard found no such event (`forbidden.event_not_found`): deleted meanwhile. */
+  | "event_not_found"
+  /**
+   * The guard could NOT answer: the capability resolver or the event read
+   * failed (`capabilities.resolve_failed: …`, `event.lookup_failed: …`).
+   * Not a no — a "don't know", kept apart from `forbidden`.
+   */
+  | "permission_unresolved"
   /** An id is not a uuid, or the input has the wrong shape. Nothing was written. */
   | "invalid_input"
   /** The night does not exist or belongs to another event — same answer, no oracle. */
@@ -241,8 +256,39 @@ async function gate(
     console.error(`[livecut.invalid_input] event id is not a uuid`);
     return { ok: false, reason: "invalid_input" };
   }
-  const userId = await verifyOrganizerAccess(eventId);
-  return { ok: true, userId };
+  try {
+    const userId = await verifyOrganizerAccess(eventId);
+    return { ok: true, userId };
+  } catch (cause) {
+    const reason = guardRefusal(cause);
+    // Anything the guard does not declare is not ours to name: rethrow it,
+    // and the form reports an unexpected answer instead of a refusal.
+    if (!reason) throw cause;
+    const message = cause instanceof Error ? cause.message : String(cause);
+    return refuse(reason, eventId, `guard: ${message}`);
+  }
+}
+
+/**
+ * The category a guard's throw carries, read from WHICH guard line threw —
+ * the exact strings `src/lib/capabilities/guards.ts` declares, matched on the
+ * SERVER, where the message is not redacted (same reader as
+ * `src/app/api/media/finalize-cover/route.ts`, `guardRefusal`). `null` for
+ * anything else, which the caller rethrows.
+ */
+function guardRefusal(cause: unknown): LiveCutRefusal | null {
+  if (!(cause instanceof Error)) return null;
+  const m = cause.message;
+  if (m === "forbidden.staff_manage_required") return "forbidden";
+  if (m === "forbidden.not_event_manager") return "forbidden";
+  if (m === "forbidden.event_not_found") return "event_not_found";
+  if (
+    m.startsWith("capabilities.resolve_failed") ||
+    m.startsWith("event.lookup_failed")
+  ) {
+    return "permission_unresolved";
+  }
+  return null;
 }
 
 function isUuid(value: unknown): value is string {
