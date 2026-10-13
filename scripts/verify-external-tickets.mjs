@@ -49,7 +49,12 @@ lines.forEach((line, i) => {
   const isPartyLevel = /partyId=\{party\.id\}/.test(lines.slice(i, i + 4).join("\n"));
   if (!isPartyLevel) return;
   partyLevelMounts += 1;
-  const window = lines.slice(Math.max(0, i - 60), i).join("\n");
+  // La finestra e' il blocco JSX che inizia all'ultimo `{isUpcoming` sopra il
+  // mount: la condizione e il mount sono separati da commenti lunghi, e una
+  // finestra a righe fisse leggerebbe o troppo o troppo poco.
+  let start = i;
+  while (start > 0 && !/\{isUpcoming/.test(lines[start])) start -= 1;
+  const window = lines.slice(start, i).join("\n");
   if (!/party\.externalTickets === null &&/.test(window)) {
     fail("C1", `page.tsx:${i + 1} monta TierSelection della serata senza la guardia party.externalTickets === null`);
   }

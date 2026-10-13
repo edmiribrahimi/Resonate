@@ -15,6 +15,7 @@ import { CAP } from "@/lib/capabilities/keys";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import FormatMarker from "@/components/formats/FormatMarker";
 import TierSelection from "./TierSelection";
+import ExternalTickets from "./ExternalTickets";
 import { SiteFooter } from "@/components/legal/SiteFooter";
 import FreeOrderForm from "./FreeOrderForm";
 
@@ -110,6 +111,12 @@ interface PartyWithTiers {
   access_type: AccessType;
   capacity: number | null;
   sort_order: number;
+  /**
+   * Serata venduta da un TERZO (`external_tickets_seller`, 2026-10-13): null =
+   * vendiamo noi. Quando e' valorizzato la pagina monta `ExternalTickets` al
+   * posto di `TierSelection`, e `buildOrderQuote` rifiuta comunque.
+   */
+  externalTickets: { seller: string; url: string | null; label: string | null } | null;
   tiers: {
     id: string;
     name: string;
@@ -571,7 +578,7 @@ export default async function EventDetailPage({
     // `max_tickets_per_order` e' l'unica colonna aggiunta a questa select, ed e'
     // un intero: **nessuna colonna di luogo entra qui**, che e' la sola forma
     // controllabile con un `grep` del gate *default chiuso*.
-    .select("id, title, description, date, time, end_time, venue_text, lineup, venue_secret, venue_secret_hint, venue_reveal_hours, venue_reveal_on_purchase, venue_revealed_at, access_type, capacity, sort_order, max_tickets_per_order, formats(name, slug, color), party_series!event_parties_series_id_fkey(name)")
+    .select("id, title, description, date, time, end_time, venue_text, lineup, venue_secret, venue_secret_hint, venue_reveal_hours, venue_reveal_on_purchase, venue_revealed_at, access_type, capacity, sort_order, max_tickets_per_order, external_tickets_seller, external_tickets_url, external_tickets_label, formats(name, slug, color), party_series!event_parties_series_id_fkey(name)")
     .eq("event_id", event.id)
     .order("sort_order", { ascending: true });
 
@@ -627,7 +634,7 @@ export default async function EventDetailPage({
 
   const parties: PartyWithTiers[] = await Promise.all(
     (rawParties ?? []).map(async (rawParty: Record<string, unknown>) => {
-      const party = rawParty as { id: string; title: string; description: string | null; date: string; time: string; end_time: string | null; venue_text: string | null; lineup: string[] | null; venue_secret: boolean; venue_secret_hint: string | null; venue_reveal_hours: number | null; venue_reveal_on_purchase: boolean | null; venue_revealed_at: string | null; formats: PartyFormat | PartyFormat[] | null; party_series: { name: string } | { name: string }[] | null; access_type: string; capacity: number | null; sort_order: number; max_tickets_per_order: number | null };
+      const party = rawParty as { id: string; title: string; description: string | null; date: string; time: string; end_time: string | null; venue_text: string | null; lineup: string[] | null; venue_secret: boolean; venue_secret_hint: string | null; venue_reveal_hours: number | null; venue_reveal_on_purchase: boolean | null; venue_revealed_at: string | null; formats: PartyFormat | PartyFormat[] | null; party_series: { name: string } | { name: string }[] | null; access_type: string; capacity: number | null; sort_order: number; max_tickets_per_order: number | null; external_tickets_seller: string | null; external_tickets_url: string | null; external_tickets_label: string | null };
       // An embed arrives as an object or as a one-element array depending on
       // how PostgREST resolves the relationship; both shapes are unwrapped the
       // same way.
@@ -666,12 +673,24 @@ export default async function EventDetailPage({
         // `TierSelection`. E' la terza delle tre guardie di CR-01, e nessuna
         // delle tre si deduce dalle altre: questa toglie l'opzione dalla vista,
         // le altre due rifiutano l'acquisto se qualcuno la raggiunge lo stesso.
+        // Serata venduta da un terzo (2026-10-13): un tier a 0 € e' un tier
+        // (es. «Guest list»), non un ordine gratuito nostro — il filtro vale
+        // solo per la cassa nostra.
+        const isExternal = party.external_tickets_seller !== null;
         const sellableTiers = (rawTiers ?? []).filter(
-          (tier: { price: number }) => tier.price > 0
+          (tier: { price: number }) => isExternal || tier.price > 0
         );
 
         tiers = await Promise.all(
-          sellableTiers.map(async (tier: { id: string; name: string; description?: string | null; price: number; quantity: number | null; show_remaining?: boolean; starts_at?: string | null; expires_at?: string | null }) => {
+          sellableTiers.map(async (tier: { id: string; name: string; description?: string | null; price: number; quantity: number | null; show_remaining?: boolean; starts_at?: string | null; expires_at?: string | null; sold_out?: boolean }) => {
+            if (isExternal) {
+              // Nessun conteggio: non vendiamo noi. Nessuna chiusura di
+              // default a −2 h: il venditore vende fino a quando decide lui, e
+              // un tier scade solo con `expires_at` esplicito. `soldKnown:
+              // true` perche' nulla e' fallito — la frase «places unknown» e'
+              // per una lettura che non ha risposto, non per una che non serve.
+              return { ...tier, expires_at: tier.expires_at ?? null, closes_by_default: false, sold: 0, available: null, soldKnown: true };
+            }
             // THE ERROR IS READ, and a count that did not come back is no
             // longer written down as zero.
             //
@@ -900,6 +919,14 @@ export default async function EventDetailPage({
         access_type: party.access_type as AccessType,
         capacity: party.capacity,
         sort_order: party.sort_order,
+        externalTickets:
+          party.external_tickets_seller !== null
+            ? {
+                seller: party.external_tickets_seller,
+                url: party.external_tickets_url ?? null,
+                label: party.external_tickets_label ?? null,
+              }
+            : null,
         tiers,
         userTickets,
         userRsvp,
@@ -1740,7 +1767,22 @@ export default async function EventDetailPage({
                 l'elenco e' vuoto per costruzione e la strada d'ospite non ha
                 mai avuto un rifiuto di duplicato.
               */}
+              {/*
+                ── SERATA VENDUTA DA UN TERZO (2026-10-13) ──────────────────────
+                I tier come link in uscita, al posto del controllo d'acquisto.
+                La guardia `party.externalTickets === null &&` sul blocco sotto
+                e' letta da `scripts/verify-external-tickets.mjs` (controllo C).
+              */}
+              {isUpcoming && party.externalTickets !== null && party.access_type === "paid" && (
+                <ExternalTickets
+                  seller={party.externalTickets.seller}
+                  url={party.externalTickets.url}
+                  label={party.externalTickets.label}
+                  tiers={party.tiers}
+                />
+              )}
               {isUpcoming &&
+                party.externalTickets === null &&
                 !hasMasterTicket &&
                 party.access_type === "paid" &&
                 party.tiers.length > 0 &&
