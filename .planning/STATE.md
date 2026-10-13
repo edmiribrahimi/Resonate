@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "52.3-20 CHIUSO (7cfa3863): strada D scelta dal proprietario («strada d.», 2026-10-13, fra 20:18 e 20:35 UTC), nessuna riga di codice cambiata, lab su 01daaa8c con /music 200; main (52.4 + biglietteria esterna in produzione) dentro wip/52.3; 14 CHIUSO (2cb7cdff: persona 1.33.0, check H provato per mutazione, 52.3-VERIFICATION human_needed su MUS-09 in attesa dell'atto, seme del lab tenuto); 15 in esecuzione fino al checkpoint «vai-accesa» + conferma del profilo SoundCloud"
+stopped_at: "52.3-15 CHIUSO (dc3c00fd): atto ESAURITO 21:48Z — pagina Music in produzione con i due LiveCut RamaDub 001/002 (main a6250aa9 → dc3c00fd), fix trim della cover, registro migration 52.4 sanato; fase 52.3 23/23, VERIFICATION passed; in corso la revisione del codice, poi phase.complete"
 last_updated: 2026-10-13T20:16:08.588Z
 last_activity: 2026-10-13
 progress:
   total_phases: 16
   completed_phases: 9
   total_plans: 173
-  completed_plans: 173
+  completed_plans: 174
   percent: 99
 ---
 
@@ -34,8 +34,8 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 ## Current Position
 
-Phase: 52.3 (La pagina Music: i LiveCut delle nostre serate) — EXECUTING, 22/23. Fase 52.4 chiusa il 2026-10-13 (12/12, VERIFICATION passed, in produzione)
-Plan: 15 in esecuzione (task 1, poi checkpoint del proprietario)
+Phase: 52.3 (La pagina Music: i LiveCut delle nostre serate) — 23/23 eseguiti, in chiusura (code review in corso). Fase 52.4 chiusa il 2026-10-13 (12/12, VERIFICATION passed, in produzione)
+Plan: tutti eseguiti; atto del 15 ESAURITO il 2026-10-13 21:48Z
 Next: `/gsd-execute-phase 52.3` (prima `/clear`). Onda 1 = 01 (ramo `wip/52.3`, lab sveglio, interruttore solo sul preview `lab`); onda 2 = 02 (migration sul lab, BLOCKING) + 03 (contratti) + 16 (spike del player e oEmbed); onda 3 include 06 = COPIA in sola lettura delle serate e degli artisti di produzione nel lab (notti segrete su sede segnaposto). **Risposte del proprietario del 2026-10-03:** i LiveCut vengono da re:sonate E da RamaDub; la 001 e' gia' su SoundCloud (input in `.env.lab.local`), la 002 esce il 2026-10-04 (una tantum prima dell'ancora del martedi' 6/10, che per Instagram non cambia); **il titolo e' quello pubblicato** (`<artista> @ <format> - 17 Sept 26`, D-52.3-03 emendata); **consenso dei dj: regola stabile, non si chiede piu'**; **il professionista ha risposto: i set si possono pubblicare, siamo coperti** → MUS-10 chiuso salvo il paragrafo dell'informativa (piano 04). Strada D (pagina accesa in produzione con i due LiveCut) e' disponibile: l'ultimo cancello e' il «vai» del piano 15. Checkpoint del proprietario al piano 13 (O-1, O-4..O-8, Mixcloud, colore MotionLab, B o D). Servono ancora: link e durata della 002 (dal 4/10), eventuale cover 2000x2000, la scelta B/D. Scadenza: onde 1-6 entro il 6/10, checkpoint entro mercoledi' 7/10, deploy entro gio 8/10; ven 9 runbook e porta, sab 10 la 003. Prima: decidere D22-3 (porta) e leggere D22-4 in produzione.
 
 **52.2 chiusa e osservata (2026-10-01 08:28Z).** `close-pending-orders` 08:01Z: 1 considerato, `never_attempted`, checkout disattivato; `reconcile-refunds` 08:13Z: silenzio = nulla da riconciliare (non logga un riepilogo quando non fa nulla: nota per la 52.1); 0 pending residui, 0 refunds, 0 mail. CART-03 e RFD-02 osservati.
