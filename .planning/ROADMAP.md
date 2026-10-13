@@ -85,11 +85,8 @@ per assecondare una decisione presa dopo che e' stata citata.
 - [ ] **52.2** — Il carrello che non si chiude, e il rimborsato alla porta (`CART`, `RFD`) — **inserita il 2026-09-30**: sospesi chiusi con la verita' di SumUp, ripresa dello stesso ordine, una sola mail a +1h (Garante), rimborsato avvisato e poi rifiutato alla porta; indipendente dalla 52.1
 - [ ] **52.3** — La pagina Music: i LiveCut delle nostre serate (`MUS`) — **inserita il 2026-09-30**: ricerca con screenshot prima della forma, pagina pubblica per serata e slot, un player caricato al play, niente genere e niente venue segreto, prima sul laboratorio; i diritti al legale prima del primo LiveCut reale
 - [x] **52.4** — Tier misti (gratis + pagamento) nella stessa serata e ora limite d'ingresso alla porta (`MIX`) — **inserita e chiusa il 2026-10-13**: 12 piani, VERIFICATION passed, revisione con 1 critico + 5 avvisi corretti, in produzione dalle 21:47 Torino su «vai» insieme alla biglietteria esterna; debito dichiarato in `52.4-VERIFICATION.md`
-- [ ] **53** — TASK (`TASK`)
-- [ ] **54** — Location, alla pari con il tracker (`LOC`)
-- [ ] **55** — Visual, una pagina per format (`VIS`)
-- [ ] **56** — La navetta (`SHTL`)
-- [ ] **57** — I documenti che ancora difendono la community (`DOC`)
+- [ ] **53** — Meno strumenti, la porta dentro Management (`CUT`) — **inserita il 2026-10-14, decisione del proprietario**: via TASK, Location, Visual e Calendar con ogni riferimento; Check-in dentro Management e non in barra; in Venues si crea una sede come in Artists
+- ~~**53** TASK · **54** Location · **55** Visual · **56** La navetta · **57** I documenti che ancora difendono la community~~ — **CANCELLATE il 2026-10-14** dal proprietario (*«vorrei eliminare la 53, la 54 la 55 la 56 e la 57 […] sono strumenti inutili»*). Le sezioni sono tolte dai dettagli; le decisioni che le citavano restano nella tabella con il loro numero, per memoria. DOC-01..04 della 57 (PROJECT.md, CLAUDE.md, community-membership.md senza il gating come prodotto) **non hanno piu' una fase**: debito dichiarato, da riassegnare o da chiudere come quick.
 - [ ] **58** — Il calendario e' uno specchio (`ICS`) — *aperta e riscritta il 2026-08-20; toglie la riconciliazione al centro, e dopo la ricerca guadagna la sorgente per link e lo specchio automatico*
 
 ---
@@ -975,179 +972,38 @@ Plans:
 - [x] 52.4-11-PLAN.md — deploy sul lab, prova offline dal telefono col proprietario, runbook della porta e checkin-offline.md, VERIFICATION.md
 - [x] 52.4-12-PLAN.md — produzione solo su «vai» (checkpoint che non si risolve da solo, guardia sul vai datato): due migration in ordine, poi deploy
 
-### Phase 53: TASK
+### Phase 53: Meno strumenti, la porta dentro Management (INSERTED)
 
-La checklist a quattro fasi del tracker di produzione entra nell'app, e
-**il tracker smette di comandare**: resta come fotografia del giorno in cui e'
-stata scritta, e lo dichiara.
+**Inserita il 2026-10-14, decisione del proprietario**, alla lettera: *«creare
+una nuova fase per: eliminare la sezione task, eliminare la sezione location, la
+sezione visual e la sezione calendar dalla piattaforma e ogni suo riferimento,
+sono strumenti inutili. il checkin deve stare dentro a management, non nella
+barra di navigazione. nella sezione venues deve esserci (come nella sezione
+artist) il modo di creare una nuova venue (e non solo quando creo l'evento).»*
+Nello stesso messaggio ha **cancellato** le fasi 53–57 che stavano qui.
 
-| ID | Requisito |
-|---|---|
-| **TASK-01** | Ogni voce e' **rivolta a un ruolo** — organizer o staff — e questo decide a chi compare come *disponibile*. |
-| **TASK-02** | Ogni voce puo' essere **presa in carico da una persona**. Presa in carico e completamento sono **due atti distinti**: nessuna voce si dichiara fatta prima di essere stata presa. |
-| **TASK-03** | Chi prende e chi completa **restano scritti**, con quando. |
-| **TASK-04** | Il badge porta **due numeri**: quante voci sono disponibili per te, e quante ne hai in mano. |
-| **TASK-05** | Chi ha un runbook assegnato lo vede dentro TASK. |
-| **TASK-06** | Il contenuto iniziale si carica da un **file locale**, con uno script fuori dal prefisso `verify:`, sul modello di `seed:spaces`. |
-
-> **TASK-06 non e' una preferenza di implementazione: e' il Guardrail 5.**
-> La checklist del tracker nomina **spazi in trattativa, numeri di telefono e
-> indirizzi mail**. Quel contenuto vive nel database, che e' privato e sotto RLS.
-> **Non puo' entrare in un file del repository**, che e' pubblico e dove una
-> pubblicazione non si annulla: un file spinto resta nei fork, nelle cache dei
-> mirror e nella history anche dopo la rimozione.
-
-> **Il runbook non e' un concetto nuovo**: esiste gia' nel progetto come la
-> procedura che si segue alla porta (`31-DOOR-RUNBOOK.md`). Si aggancia alle
-> **assegnazioni per serata** costruite nella fase 35: il tuo runbook e' la
-> procedura del ruolo che hai quella sera.
-
-### Phase 54: Location, alla pari con il tracker
-
-I 184 spazi e i 1840 attributi sono **gia' in produzione** dalla fase 45, e i
-dieci attributi corrispondono uno a uno alle colonne-criterio del tracker.
-Manca la superficie.
+**Goal:** la superficie di lavoro ha solo gli strumenti che si usano. Quattro
+sezioni escono con tutto cio' che le tiene in piedi; la porta si trova dentro
+Management; una sede si crea da Venues.
 
 | ID | Requisito |
 |---|---|
-| **LOC-01** | **Quattro sotto-viste** — Resonate, RamaDub, MotionLab, Tutte — con il conteggio sulla linguetta e la riga appesa sotto la testata. (Erano cinque: SunSet esce con CAT-01.) |
-| **LOC-02** | Per ogni vista: intro, **quattro statistiche**, filtri per categoria con la meccanica isola-poi-accumula, conteggio risultati, ordinamento. |
-| **LOC-03** | Tabella a **intestazioni variabili per vista**; nella vista Tutte, i punteggi dei format affiancati con il bordo sulla cella verificata. |
-| **LOC-04** | Legenda, nota di metodo, nota per format. |
-| **LOC-05** | Le tre cautele: l'intro dichiara che **nessuno e' stato chiamato**; ogni nome porta **il suo stato**; ogni punteggio e' marcato **derivato**. |
-| **LOC-06** | L'**indirizzo resta fuori dalla lista**. Sta sulla scheda del singolo spazio, dove gia' e'. |
+| **CUT-01** | **TASK, Location, Visual e Calendar escono dalla piattaforma**, e con loro ogni riferimento: rotte in `capability-routes.ts`, pagine sotto `admin/(work)`, voci del pannello e la riga spenta TASK in `roles.ts`, server action, componenti, il cron `production-mirror` con la sua voce in `vercel.json` e le tre variabili `PRODUCTION_CALENDAR_FEED_*` su Vercel, tipi in `database.ts`, tabelle e colonne che servivano solo a loro (migration di sola rimozione, applicata prima al laboratorio, righe tolte per chiave con riconteggio), script `verify:*` che le misuravano, voci del manifesto di conversione. `grep` a zero su `src/`, `scripts/`, `vercel.json`, `supabase/migrations` nuove. |
+| **CUT-02** | **Check-in sta dentro Management**, non nella barra di navigazione, per `organizer` e `master`. La barra di chi lavora si rimisura a 360/375 (pillola, nessun traboccamento). **La porta dello staff e' D-53-01, aperta.** `/door` resta l'indirizzo sottile della porta (fase 39). |
+| **CUT-03** | **In Venues si crea una sede nuova dalla sezione**, come in Artists: stesso form del venue della serata, stesse guardie (`staff.manage`), stesso trattamento della sede segreta (`venue-secrecy.md`: nessuna superficie pubblica cambia). Il form della serata continua a poter creare una sede al volo. |
+| **CUT-04** | **La persona segue la cancellazione nello stesso commit** (`ai-engineering.md`): `paths:` morti tolti, tabella di priorita' di `meta-gates.md`, conteggio dei cron da otto a **sette** nel riquadro dei fallimenti silenziosi, `time-and-scheduling.md` senza il cron dello specchio, `production-calendar.md` che **resta** (il calendario e' materiale esterno, non la sezione) con le righe sul «calendario dentro il prodotto» rovesciate con la data; `npm run verify:persona` verde, budget rimisurato. |
+| **CUT-05** | **Verifica in un repo senza test:** `npm run build`, `npm run verify`, e procedura manuale scritta e percorsa sul laboratorio: barra per ruolo (anonimo, attendee, staff assegnato e no, organizer, master) fotografata a 360/375; Check-in raggiunto da Management e la porta che funziona offline come prima (`checkin-offline.md`, il piano non tocca `src/lib/offline/`); una sede creata da Venues e usata da una serata nuova. `52.4-VERIFICATION.md` fa da modello. |
 
-> **LOC-05 e' la condizione a cui il proprietario ha concesso la parita'**
-> (2026-08-19). `SpaceList.tsx` oggi rifiuta la classifica di proposito, citando
-> `venue-acquisition.md`: *una classifica non e' una disponibilita'*. La parita'
-> con il tracker **rovescia quella scelta**, e la rovescia consapevolmente: il
-> punteggio misura quanto uno spazio *sarebbe* adatto, mai se ci ospiterebbe, e
-> la superficie deve dirlo da sola.
+**Decisioni gia' prese (D-53):**
 
-> **Tre celle del tracker resteranno vuote, ed e' la conseguenza accettata di una
-> decisione, non un difetto da correggere dopo.** Il seed della fase 45 escluse
-> per dichiarazione quattro gruppi di campi, e il proprietario ha scelto di non
-> aggiungerli (2026-08-19): mancano quindi il **regime giuridico** — con lui il
-> sottotitolo della colonna *Fino a tardi* e la statistica sul tesseramento — le
-> **tre frasi di evidenza**, e il **segno del vino naturale**.
+- **D-53-01 — APERTA, la porta dello staff.** Lo staff non ha il pannello Management (D-52-24 e piano 52.3-19: *«lo staff non vede piu' TASK da nessuna parte»*). Se Check-in esce dalla barra anche per lo staff, chi sta alla porta non ha piu' un posto dove trovarla. Due strade: **(a)** per lo `staff` assegnato a una serata in corso Check-in resta in barra (e' il suo unico strumento), per `organizer` e `master` sta in Management; **(b)** esce per tutti e lo staff la raggiunge da un altro posto da decidere (Account, la pagina della serata, `/door` salvato in home). Decide il proprietario prima della pianificazione.
+- **D-53-02** — Il calendario di produzione **non entra piu' nel prodotto**: la fase 58 (lo specchio ICS) viene disfatta da questa fase. I feed restano dove sono, fuori dal repo, come dice `production-calendar.md`.
+- **D-53-03** — Cancellare e' per chiave e con riconteggio, mai `DROP` a cascata senza lettura prima (`supabase-data.md`); le migration passano dall'endpoint che annota il registro.
 
-### Phase 55: Visual, una pagina per format
+**Verifica, in un repo senza test:** vedi CUT-05.
 
-Oggi l'app ha il contenitore — capitolato, palette, archivio — e **nessuna**
-delle pagine per format del tracker.
-
-| ID | Requisito |
-|---|---|
-| **VIS-01** | Una pagina dedicata per **RamaDub** e una per **MotionLab**. (Erano tre: SunSet esce con CAT-01.) |
-| **VIS-02** | Ogni pagina porta la struttura del tracker: cappello con lo stato, *Le scelte fatte*, i mockup, *I pezzi di ogni data* con la loro ancora temporale, *Domande aperte*. |
-| **VIS-03** | **MotionLab resta neutro.** Non ha ancora una palette, e i suoi materiali non prendono in prestito quella di un altro format. |
-| **VIS-04** | Nessuna pagina allude al **genere musicale** di un format la cui identita' sonora non e' scritta. |
-
-> **VIS-03 e VIS-04 sono due gate del progetto, non prudenza.**
-> `brand-visual-system.md`: *un format senza palette resta neutro — prendere in
-> prestito il tramonto per riempire il vuoto e' il modo in cui un format perde
-> l'identita' prima di averla*. E `sound-manifesto.md`: dove l'identita' sonora
-> non e' scritta, **i materiali non possono alludervi**.
-
-### Phase 56: La navetta
-
-| ID | Requisito |
-|---|---|
-| **SHTL-01** | Sull'acquisto si sceglie **quante navette**, da 0 fino al numero di biglietti dell'ordine. **Un posto vale una persona**: quattro persone in navetta sono quattro navette comprate. |
-| **SHTL-01b** | Il posto **viaggia sul biglietto**, non sull'ordine: dei biglietti dell'ordine, N ne portano uno, e il biglietto lo dichiara. Al ritrovo risponde il biglietto. |
-| **SHTL-08** | **Navetta gratuita: nessun biglietto e nessun QR in piu'.** Esiste solo il biglietto d'ingresso alla festa. Ne discende che su un servizio gratuito un tetto limita **quante navette si vendono, non chi sale**. |
-| **SHTL-09** | **Navetta a pagamento: nessun secondo QR.** Il QR del biglietto e' uno solo e vale per entrambe le cose. Cosa quel biglietto abbia diritto di fare lo **risolve il server** — e, senza rete, la cache locale — **mai il contenuto del QR**, che resta codice piu' firma. |
-| **SHTL-10** | Lo stesso QR viene letto **due volte, da due atti diversi**: la **salita**, dallo staff autista, e l'**ingresso**, dallo staff porta. Sono **due segni distinti** sul biglietto: nessuno dei due consuma l'altro, e un biglietto salito non e' un biglietto entrato. |
-| **SHTL-13** | **L'ingresso non dipende dalla salita.** Chi ha comprato la navetta e poi decide di non prenderla entra alla festa **normalmente**: il suo QR non e' mai stato letto dall'autista, e alla porta questo non cambia nulla — nessun avviso, nessuno stato intermedio, nessuna esitazione. |
-| **SHTL-11** | Quale dei due atti compie uno scanner lo decide **l'assegnazione di quella serata**, non un interruttore che l'operatore puo' sbagliare. |
-| **SHTL-12** | Entrambi gli atti funzionano **senza rete**: coda, archivio locale e riconoscimento dei doppioni li distinguono. Verificato **su due dispositivi con la rete spenta**, e la procedura e' scritta passo per passo. |
-| **SHTL-02** | Il servizio puo' essere **gratuito o a pagamento**, per serata. |
-| **SHTL-02b** | Il **numero di posti ancora disponibili si mostra solo quando il servizio e' a pagamento**. Su un servizio gratuito con tetto, l'opzione smette semplicemente di essere selezionabile quando e' pieno, senza contatore pubblico. |
-| **SHTL-03** | Se e' **a pagamento il tetto e' obbligatorio**; se e' **gratuito il tetto e' facoltativo**, e senza tetto e' illimitato. **Il vincolo vive nel database**, non nel form. |
-| **SHTL-04** | Un tetto si puo' **alzare, mai portare sotto quanto e' gia' stato venduto**. |
-| **SHTL-05** | Chi ha preso la navetta riceve, **insieme ai biglietti**, il link del gruppo WhatsApp dove vivono i dettagli. |
-| **SHTL-06** | Il link arriva nella mail e sulla pagina del biglietto, **dietro la credenziale del biglietto**. Sulla pagina pubblica della serata non compare mai. |
-| **SHTL-07** | Se e' a pagamento, lo stato del pagamento si verifica **interrogando SumUp**, mai fidandosi di cio' che il webhook annuncia, e il percorso e' **idempotente in entrambi i rami**. |
-
-> **Il link e' un invito che non si ritira.** Un invito WhatsApp e' riusabile e
-> inoltrabile: chi ce l'ha entra, e chi lo gira fa entrare. Se nel gruppo si
-> condivide il punto di ritrovo — e si condividera' — **il gruppo diventa un
-> canale di rivelazione del venue**. E' la stessa forma di `venue_reveal_sent`:
-> l'app puo' cambiare quale link consegna d'ora in poi, **non puo' togliere dal
-> gruppo chi c'e' gia'**. La revoca vive su WhatsApp, e va saputo prima di usarlo.
->
-> **Un rimborso non toglie nessuno dal gruppo.** Nessuna riga di codice cambia
-> questo: la ripulitura e' un gesto umano che qualcuno deve fare.
-
-> **Il numero di navette e' un CONTROLLO, non una cifra di pianificazione**
-> — correzione del proprietario, 2026-08-19, che sostituisce una riga precedente
-> di questo stesso documento. Un posto vale una persona: **quattro persone in
-> navetta sono quattro navette comprate**, non una.
->
-> **Da cui SHTL-01b, che non e' un dettaglio di implementazione ma la condizione
-> perche' la regola sopra sia vera.** Un numero che vive sull'ordine non ferma
-> nessuno al ritrovo — chi ne ha comprata una si presenta in due e l'autista li
-> conta. Un numero che vive **sul biglietto** e' verificabile, perche' il
-> biglietto e' gia' la cosa che una persona porta con se'. Una regola d'acquisto
-> non applicabile al ritrovo non e' una regola: e' una speranza.
->
-> ⚠ **Il check-in di oggi e' UN SEGNO SOLO, e questo e' il difetto che 56 deve
-> risolvere prima di ogni altra cosa** — decisione del proprietario, 2026-08-19:
-> il QR si legge due volte, dall'autista e alla porta.
->
-> Il percorso attuale marca il biglietto come **entrato**. Se lo scansiona
-> l'autista al ritrovo, alla porta quel biglietto risulta **gia' entrato**: la
-> porta rifiuta un ospite valido, che e' l'errore peggiore che questo prodotto
-> possa fare, perche' avviene **davanti a una fila** e non si recupera con una
-> scusa. `checkin-offline.md`, e l'asimmetria vale identica al ritrovo: un rifiuto
-> in strada alle nove di sera e' lo stesso errore, in un posto dove non c'e'
-> nemmeno un supervisore.
->
-> **Da cui SHTL-10: due segni, non uno.** *Salito* ed *entrato* convivono sullo
-> stesso biglietto e nessuno dei due consuma l'altro.
->
-> **E da cui SHTL-13, che e' l'altra meta' della stessa proprieta' e va scritta
-> a parte perche' si sbaglia da sola.** SHTL-10 dice che la salita non consuma
-> l'ingresso; SHTL-13 dice che **l'ingresso non pretende la salita**. Chi compra
-> la navetta e poi ci ripensa e' un caso ordinario, non un'anomalia: il suo
-> biglietto alla porta deve leggersi **identico a qualunque altro**. Un implementatore
-> che aggiunge una spia *«navetta non usata»* per completezza sta mettendo alla
-> porta una ragione per fermarsi a guardare — e alla porta ogni esitazione e' una
-> fila. La porta pone **una** domanda: questo biglietto puo' entrare. E da cui **SHTL-11**: se
-> l'atto dipendesse da un interruttore sullo schermo, il primo autista che parte
-> con lo scanner in modalita' porta brucerebbe l'ingresso di un pullman intero.
->
-> **E da cui SHTL-12, che e' la parte che costa.** Il ritrovo ha meno rete della
-> porta, non piu'. I due atti devono attraversare interi la coda offline e il
-> service worker, e il riconoscimento dei doppioni deve sapere **di quale atto**
-> parla — o una salita accodata e un ingresso accodato si annullano a vicenda al
-> primo momento di rete.
-
-> **Va ultima**, e non insieme all'impianto — e ora per due ragioni invece di una.
-> E' il secondo percorso del denaro in un progetto che **non ha alcun
-> tracciamento degli errori**, ed e' anche, dal 2026-08-19, **una fase della
-> porta**: SHTL-10, SHTL-11 e SHTL-12 modificano lo scanner, la coda offline e il
-> service worker. Vale la regola che la v1.5 si e' data e non ha mai rotto — **il
-> lavoro sulla porta non sta in pacchetto con nient'altro, e si verifica su un
-> dispositivo con la rete spenta**, non alla scrivania con la fibra. Nessun fallimento
-> di produzione raggiunge un essere umano da solo, e un percorso critico nuovo
-> senza osservabilita' va costruito sapendolo.
-
-### Phase 57: I documenti che ancora difendono la community
-
-| ID | Requisito |
-|---|---|
-| **DOC-01** | `PROJECT.md` non dichiara piu' che *«the gating mechanism is what makes the community valuable»*. |
-| **DOC-02** | `CLAUDE.md` non apre piu' con *«il gating E' il prodotto»*. |
-| **DOC-03** | `community-membership.md` e `access-gating.md` descrivono il modello che esiste dopo il perno. |
-| **DOC-04** | `npm run verify:persona` e' verde: nessun path morto, indice e frontmatter concordi, context budget rimisurato. |
-
-> **Chiude in fondo, e non apre.** I moduli della persona hanno `paths:` che
-> puntano a file veri: cancellare una superficie prima di aggiornarli lascia un
-> gate acceso su un percorso morto, e riscrivere l'identita' prima che la cosa sia
-> sparita significa descrivere un futuro che non c'e' ancora. **Ogni fase che
-> cancella si porta dietro il proprio aggiornamento di modulo**; questa chiude
-> l'identita' quando la cosa e' davvero sparita.
+**Depends on:** Phase 52.3 chiusa (la barra con Music e' la base da cui si toglie). Nessun'altra.
+**Plans:** 0 plans — da pianificare dopo la risposta a D-53-01.
 
 ---
 

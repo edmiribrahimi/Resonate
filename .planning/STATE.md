@@ -554,6 +554,7 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase 52.4]: 52.4-11: sei fix della revisione (CR-01, WR-01..05) applicati prima della VERIFICATION; IN-01..06 aperte
 - [Phase 52.4]: 52.4-11: «Admit anyway» sotto la barra di navigazione a 412 px, decisione del proprietario in attesa
 - [Phase 52.4]: 52.4-12: produzione su «vai» del proprietario 2026-10-13 20:56 Torino — due migration 20:59, main 450b3098, deploy Ready 21:47
+- [Roadmap]: 2026-10-14: fasi 53-57 CANCELLATE dal proprietario («strumenti inutili»); nuova fase 53 «Meno strumenti, la porta dentro Management» (CUT-01..05): via TASK/Location/Visual/Calendar, Check-in in Management, Venues crea una sede; D-53-01 aperta (porta dello staff); DOC-01..04 della 57 senza fase
 
 ## Accumulated Context
 
