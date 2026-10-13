@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "52.3-20 task 3: il proprietario ha scelto la strada D («strada d.», 2026-10-13 20:4x UTC); main (52.4 e biglietteria esterna in produzione) mergiato in wip/52.3; restano 20 task 3, 14, 15 (atto «vai-accesa»)"
+stopped_at: "52.3-20 CHIUSO (7cfa3863): strada D scelta dal proprietario («strada d.», 2026-10-13, fra 20:18 e 20:35 UTC), nessuna riga di codice cambiata, lab su 01daaa8c con /music 200; main (52.4 + biglietteria esterna in produzione) dentro wip/52.3; 14 in esecuzione (persona 1.33.0), poi 15 (atto, chiede «vai-accesa» + conferma del profilo SoundCloud)"
 last_updated: 2026-10-13T20:16:08.588Z
 last_activity: 2026-10-13
 progress:
   total_phases: 16
   completed_phases: 9
   total_plans: 173
-  completed_plans: 171
+  completed_plans: 172
   percent: 99
 ---
 
@@ -34,8 +34,8 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 ## Current Position
 
-Phase: 52.3 (La pagina Music: i LiveCut delle nostre serate) — EXECUTING, 20/23. Fase 52.4 chiusa il 2026-10-13 (12/12, VERIFICATION passed, in produzione)
-Plan: 20 al task 3 (strada D scelta il 2026-10-13); restano 14 e 15
+Phase: 52.3 (La pagina Music: i LiveCut delle nostre serate) — EXECUTING, 21/23. Fase 52.4 chiusa il 2026-10-13 (12/12, VERIFICATION passed, in produzione)
+Plan: 14 in esecuzione; resta 15 (atto di produzione, strada D)
 Next: `/gsd-execute-phase 52.3` (prima `/clear`). Onda 1 = 01 (ramo `wip/52.3`, lab sveglio, interruttore solo sul preview `lab`); onda 2 = 02 (migration sul lab, BLOCKING) + 03 (contratti) + 16 (spike del player e oEmbed); onda 3 include 06 = COPIA in sola lettura delle serate e degli artisti di produzione nel lab (notti segrete su sede segnaposto). **Risposte del proprietario del 2026-10-03:** i LiveCut vengono da re:sonate E da RamaDub; la 001 e' gia' su SoundCloud (input in `.env.lab.local`), la 002 esce il 2026-10-04 (una tantum prima dell'ancora del martedi' 6/10, che per Instagram non cambia); **il titolo e' quello pubblicato** (`<artista> @ <format> - 17 Sept 26`, D-52.3-03 emendata); **consenso dei dj: regola stabile, non si chiede piu'**; **il professionista ha risposto: i set si possono pubblicare, siamo coperti** → MUS-10 chiuso salvo il paragrafo dell'informativa (piano 04). Strada D (pagina accesa in produzione con i due LiveCut) e' disponibile: l'ultimo cancello e' il «vai» del piano 15. Checkpoint del proprietario al piano 13 (O-1, O-4..O-8, Mixcloud, colore MotionLab, B o D). Servono ancora: link e durata della 002 (dal 4/10), eventuale cover 2000x2000, la scelta B/D. Scadenza: onde 1-6 entro il 6/10, checkpoint entro mercoledi' 7/10, deploy entro gio 8/10; ven 9 runbook e porta, sab 10 la 003. Prima: decidere D22-3 (porta) e leggere D22-4 in produzione.
 
 **52.2 chiusa e osservata (2026-10-01 08:28Z).** `close-pending-orders` 08:01Z: 1 considerato, `never_attempted`, checkout disattivato; `reconcile-refunds` 08:13Z: silenzio = nulla da riconciliare (non logga un riepilogo quando non fa nulla: nota per la 52.1); 0 pending residui, 0 refunds, 0 mail. CART-03 e RFD-02 osservati.
@@ -676,7 +676,7 @@ Fixed by the project owner before planning — not re-opened at plan time:
 ## Session Continuity
 
 **Last session:** 2026-10-13T19:51:11.839Z
-**Stopped at:** 52.3-20 task 3: il proprietario ha scelto la strada D («strada d.», 2026-10-13 20:4x UTC); main (52.4 e biglietteria esterna in produzione) mergiato in wip/52.3; restano 20 task 3, 14, 15 (atto «vai-accesa»); staff: riscaricare la lista sullo scanner prima della prossima serata
+**Stopped at:** 52.3-20 CHIUSO (7cfa3863): strada D scelta dal proprietario («strada d.», 2026-10-13, fra 20:18 e 20:35 UTC), nessuna riga di codice cambiata, lab su 01daaa8c con /music 200; main (52.4 + biglietteria esterna in produzione) dentro wip/52.3; 14 in esecuzione (persona 1.33.0), poi 15 (atto, chiede «vai-accesa» + conferma del profilo SoundCloud); staff: riscaricare la lista sullo scanner prima della prossima serata
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
