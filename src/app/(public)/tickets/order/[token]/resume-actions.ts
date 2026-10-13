@@ -102,6 +102,9 @@ const QUOTE_TO_RESUME: Record<OrderQuoteRefusal, ResumeRefusal> = {
   quote_unreadable: "unreadable",
   quote_night_not_found: "not_resumable",
   quote_night_not_on_sale: "no_longer_on_sale",
+  // 2026-10-13 — serata venduta da un terzo: nessun ordine nostro esiste su di
+  // lei, quindi uno ripreso non e' ripetibile; e' «non piu' in vendita» da noi.
+  quote_night_sold_elsewhere: "no_longer_on_sale",
   quote_tier_not_found: "no_longer_on_sale",
   quote_tier_other_night: "not_resumable",
   quote_quantity_invalid: "not_resumable",

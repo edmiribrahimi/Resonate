@@ -137,6 +137,7 @@ const UUID_SHAPE =
 const QUOTE_UNREADABLE = "quote_unreadable";
 const QUOTE_NIGHT_NOT_FOUND = "quote_night_not_found";
 const QUOTE_NIGHT_NOT_ON_SALE = "quote_night_not_on_sale";
+const QUOTE_NIGHT_SOLD_ELSEWHERE = "quote_night_sold_elsewhere";
 const QUOTE_TIER_NOT_FOUND = "quote_tier_not_found";
 const QUOTE_TIER_OTHER_NIGHT = "quote_tier_other_night";
 const QUOTE_QUANTITY_INVALID = "quote_quantity_invalid";
@@ -175,6 +176,7 @@ export type OrderQuoteRefusal =
   | typeof QUOTE_UNREADABLE
   | typeof QUOTE_NIGHT_NOT_FOUND
   | typeof QUOTE_NIGHT_NOT_ON_SALE
+  | typeof QUOTE_NIGHT_SOLD_ELSEWHERE
   | typeof QUOTE_TIER_NOT_FOUND
   | typeof QUOTE_TIER_OTHER_NIGHT
   | typeof QUOTE_QUANTITY_INVALID
@@ -207,6 +209,8 @@ const ORDER_QUOTE_ERROR: Record<OrderQuoteRefusal, string> = {
   [QUOTE_NIGHT_NOT_FOUND]: "This night could not be found. Nothing was charged.",
   [QUOTE_NIGHT_NOT_ON_SALE]:
     "Tickets for this night are not on sale. Nothing was charged.",
+  [QUOTE_NIGHT_SOLD_ELSEWHERE]:
+    "Tickets for this night are sold elsewhere, not here. Nothing was charged.",
   [QUOTE_TIER_NOT_FOUND]:
     "This ticket type could not be found. Nothing was charged.",
   [QUOTE_TIER_OTHER_NIGHT]:
@@ -364,7 +368,7 @@ export async function buildOrderQuote(
   //    commento: la lista delle colonne e' qui sotto per intero.
   const { data: party, error: partyError } = await client
     .from("event_parties")
-    .select("id, event_id, title, max_tickets_per_order, access_type, date, time, end_time")
+    .select("id, event_id, title, max_tickets_per_order, access_type, date, time, end_time, external_tickets_seller")
     .eq("id", partyId)
     .maybeSingle();
 
@@ -373,6 +377,17 @@ export async function buildOrderQuote(
     return refuse(QUOTE_UNREADABLE);
   }
   if (!party) return refuse(QUOTE_NIGHT_NOT_FOUND);
+  // Serata venduta da un terzo (`external_tickets_seller`, 2026-10-13): la
+  // cassa nostra non esiste per lei. Il controllo sta PRIMA della pubblicazione
+  // e del tetto, perche' nessuna delle due cose ha senso su una serata che non
+  // vendiamo. La pagina non monta il controllo d'acquisto, ma questa riga e' il
+  // confine: la UI e' UX, il rifiuto e' qui.
+  if (party.external_tickets_seller !== null) {
+    return refuse(
+      QUOTE_NIGHT_SOLD_ELSEWHERE,
+      `They are sold by ${party.external_tickets_seller}.`
+    );
+  }
 
   // 3. L'evento: la sua pubblicazione e' il cancello di vendita, e il suo slug
   //    e' cio' che serve al ritorno dal pagamento.
@@ -414,7 +429,7 @@ export async function buildOrderQuote(
   // 5. Il tier, e il suo prezzo riletto dal database.
   const { data: tier, error: tierError } = await client
     .from("ticket_tiers")
-    .select("id, name, price, event_id, party_id, quantity, starts_at, expires_at")
+    .select("id, name, price, event_id, party_id, quantity, starts_at, expires_at, sold_out")
     .eq("id", tierId)
     .maybeSingle();
 
@@ -472,7 +487,7 @@ export async function buildOrderQuote(
   //    percorsi incoerenti proprio sul caso raro.
   const tierChainQuery = client
     .from("ticket_tiers")
-    .select("id, price, quantity, starts_at, expires_at")
+    .select("id, price, quantity, starts_at, expires_at, sold_out")
     .eq("event_id", party.event_id)
     .eq("party_id", party.id)
     // 2026-10-01 — DBT-18, D-52.1-23 D4 — un solo ordinamento in tutti i lettori:
@@ -525,6 +540,12 @@ export async function buildOrderQuote(
       const sold = soldMap.get(t.id) ?? 0;
       const left = t.quantity !== null ? t.quantity - sold : null;
 
+      // Esaurito A MANO (`ticket_tiers.sold_out`, 2026-10-13): la parola di chi
+      // organizza vince su date e conteggi, qui come in `tierStatus`.
+      if (t.sold_out) {
+        statusMap.set(t.id, "sold_out");
+        continue;
+      }
       if (t.starts_at && now < new Date(t.starts_at)) {
         statusMap.set(t.id, "coming_soon");
         continue;

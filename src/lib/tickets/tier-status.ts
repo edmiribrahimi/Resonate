@@ -82,9 +82,13 @@ export function computeTierStatuses(tiers: PublicTier[], now: Date = new Date())
  * tier che il preventivo rifiuta.
  */
 export function tierStatus(
-  tier: Pick<PublicTier, "available" | "starts_at" | "expires_at">,
+  tier: Pick<PublicTier, "available" | "starts_at" | "expires_at" | "sold_out">,
   now: Date = new Date()
 ): TierStatus {
+  // A mano vince su tutto: e' la parola di chi organizza, non un conteggio
+  // (`ticket_tiers.sold_out`, 2026-10-13). Sulle serate vendute da un terzo e'
+  // l'unico modo di saperlo; sulle nostre vale comunque.
+  if (tier.sold_out) return "sold_out";
   if (tier.starts_at && now < new Date(tier.starts_at)) return "coming_soon";
   if (tier.available !== null && tier.available <= 0) return "sold_out";
   if (tier.expires_at && now >= new Date(tier.expires_at)) return "expired";

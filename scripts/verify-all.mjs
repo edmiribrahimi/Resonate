@@ -337,6 +337,7 @@ const OFFLINE = [
   ["verify:tables", false, "Phase 41 — G3"],
   ["verify:breakpoints", false, "Phase 41 — G6"],
   ["verify:no-viewport-read", false, "Phase 41 — G7"],
+  ["verify:external-tickets", false, "quick 2026-10-13 — serata venduta da un terzo"],
   [
     "verify:comment-stripper", false,
     "Phase 41.1 — wave 0. It measures the MODULE the other ten gates import, not " +

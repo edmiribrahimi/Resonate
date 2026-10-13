@@ -35,6 +35,7 @@
     "verify:refusal": "node scripts/verify-refusal.mjs",
     "verify:mirror-guards": "node scripts/verify-mirror-guards.mjs",
     "verify:venue-surfaces": "node scripts/verify-venue-surfaces.mjs",
+    "verify:external-tickets": "node scripts/verify-external-tickets.mjs",
     "verify": "node scripts/verify-all.mjs",
     "import:calendar": "node scripts/import-production-calendar.mjs",
     "restore:mirror-snapshot": "node scripts/restore-mirror-snapshot.mjs",
