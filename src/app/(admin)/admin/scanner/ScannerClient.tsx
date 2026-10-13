@@ -732,7 +732,11 @@ export default function ScannerClient() {
    * «Admit anyway» can send the SAME code again with the override (D-52.4-02).
    * `offline` says which memory refused it: a refusal made from this device's
    * cache is overridden into the queue, never through a fetch the radio cannot
-   * carry. Cleared by the next scan and by a change of night.
+   * carry. Cleared by a scan of ANOTHER code, by the tap itself and by a change
+   * of night — and NOT by the same code decoded again (52.4 review, WR-02,
+   * approved by the owner on 2026-10-13): after the red flash the camera
+   * resumes, and a guest who keeps the phone in frame would otherwise refuse
+   * themselves again at 15 fps and close the panel before anyone can reach it.
    */
   const [pendingOverride, setPendingOverride] = useState<{
     token: string;
@@ -742,6 +746,20 @@ export default function ScannerClient() {
     offline: boolean;
   } | null>(null);
   const [admittingAnyway, setAdmittingAnyway] = useState(false);
+
+  /**
+   * The same pending override, readable from the camera's decode callback.
+   *
+   * That callback is created once, when the camera starts, so it sees the state
+   * of THAT render for ever; a ref is the only way for it to know that a
+   * refusal is waiting for its tap. Kept in sync by the effect below — the scan
+   * lock is held while the refusal flash is up, so by the time decoding resumes
+   * the effect has run.
+   */
+  const pendingOverrideRef = useRef<{ token: string } | null>(null);
+  useEffect(() => {
+    pendingOverrideRef.current = pendingOverride;
+  }, [pendingOverride]);
 
   // Scan history state
   const [scanHistory, setScanHistory] = useState<ScanRecord[]>([]);
@@ -1755,6 +1773,12 @@ export default function ScannerClient() {
         { fps: 15, qrbox: { width: 280, height: 280 } },
         (decodedText: string) => {
           if (isProcessingRef.current) return;
+          // WR-02: the code the panel is waiting on, still in frame. Ignored —
+          // no new round, no second refusal on screen, no second refusal row
+          // on the server — until the operator taps «Admit anyway» or scans
+          // another code, which goes through below and closes the panel.
+          const held = pendingOverrideRef.current;
+          if (held && held.token === decodedText) return;
           isProcessingRef.current = true;
           // Pause decoding (keep camera stream alive)
           qrcode?.pause(true);
@@ -2717,9 +2741,12 @@ export default function ScannerClient() {
   }
 
   const handleVerify = async (code: string) => {
-    // Every new scan closes the «Admit anyway» panel: the exception belongs to
-    // the code that was refused, never to whoever is scanned next.
-    setPendingOverride(null);
+    // A scan of ANOTHER code closes the «Admit anyway» panel: the exception
+    // belongs to the code that was refused, never to whoever is scanned next.
+    // The same code does not close it (WR-02) — the decode callback already
+    // ignores it while the panel waits, and this keeps any other road into
+    // here from undoing the panel for the person still standing in front.
+    setPendingOverride((p) => (p && p.token === code ? p : null));
     try {
       // A scan without a party has no meaning: the record key is party-scoped and
       // a presence filed against the wrong night corrupts two nights' data
@@ -3925,7 +3952,8 @@ export default function ScannerClient() {
           closes on its own and on any tap, so a control inside it would be one
           the operator cannot reliably reach — and `ScanFlash` stays exempt from
           the dialog gate precisely because it holds no controls (S6). Shown
-          once the red flash has gone, until the next scan.
+          once the red flash has gone, until a scan of ANOTHER code: the same
+          QR held in front of the camera is ignored while this waits (WR-02).
 
           Who may use it: whoever holds the door (`door.operate`) — no
           supervisor, by decision. What it records: a `door_scan_events` row
