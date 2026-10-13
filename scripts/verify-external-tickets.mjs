@@ -8,7 +8,13 @@
  *   B  ExternalTickets.tsx non importa azioni di acquisto ne' SumUp e resta un
  *      componente server (nessun "use client");
  *   C  nella pagina della serata il controllo d'acquisto per serata e' montato
- *      solo dietro `party.externalTickets === null &&`.
+ *      solo dietro `party.externalTickets === null &&`;
+ *   D  lo 0 € non va mai a SumUp e la prenotazione gratuita non va sulle
+ *      serate vendute altrove (fase 52.4, MIX-03): il preventivo rifiuta un
+ *      tier a 0 € su ogni strada verso SumUp con QUOTE_FREE_TIER_USE_RESERVE
+ *      prima del minimo, `purchaseTicket` lo rifiuta senza guardare il tipo di
+ *      serata (vale anche per l'Event Pass), e `reserveFreeTickets` legge
+ *      `external_tickets_seller` e rifiuta con free_night_sold_elsewhere.
  * Exit 0 = tutti passati; 1 = almeno uno fallito; 2 = un file illeggibile.
  */
 import { readFileSync } from "node:fs";
@@ -48,6 +54,32 @@ else {
   if (!/t\.sold_out/.test(body)) fail("A9", "purchaseTicket non onora sold_out nella mappa degli stati");
 }
 
+// D — lo 0 € non va mai a SumUp (fase 52.4, MIX-03)
+if (!/const QUOTE_FREE_TIER_USE_RESERVE = "quote_free_tier_use_reserve"/.test(quote)) fail("D1", "order-quote.ts non dichiara QUOTE_FREE_TIER_USE_RESERVE");
+if (!/tier\.price === 0 && input\.goesToPaymentProvider !== false[^\n]*\n(?:[^\n]*\n){0,6}[^\n]*refuse\(\s*QUOTE_FREE_TIER_USE_RESERVE/.test(quote)) {
+  fail("D2", "order-quote.ts non rifiuta un tier a 0 € diretto a SumUp con refuse(QUOTE_FREE_TIER_USE_RESERVE)");
+}
+if (quote.includes("QUOTE_TIER_FREE_ON_PAID_NIGHT")) fail("D3", "order-quote.ts lega ancora lo 0 € al tipo di serata (QUOTE_TIER_FREE_ON_PAID_NIGHT)");
+if (purchaseStart >= 0) {
+  const body = adminActions.slice(purchaseStart, purchaseStart + 12000);
+  const bodyLines = body.split("\n");
+  const at = bodyLines.findIndex((l) => /refuseTicketPurchase\(\s*"tier_free_on_paid_night"/.test(l));
+  let why = null;
+  if (at < 0) why = "purchaseTicket non rifiuta un tier a 0 € con tier_free_on_paid_night";
+  else {
+    let j = at;
+    while (j >= 0 && !/\bif\s*\(/.test(bodyLines[j])) j -= 1;
+    const cond = j >= 0 ? bodyLines[j] : "";
+    if (!/price\)?\s*===\s*0/.test(cond)) why = `purchaseTicket: l'if prima di tier_free_on_paid_night non controlla price === 0 (${cond.trim()})`;
+    else if (/access_type/.test(cond)) why = `purchaseTicket: il rifiuto dello 0 € dipende dal tipo di serata (${cond.trim()}) — l'Event Pass passerebbe`;
+  }
+  if (why) fail("D4", why);
+}
+const freeOrder = read("src/app/(public)/events/[slug]/free-order-actions.ts");
+if (!/\.select\("[^"]*external_tickets_seller[^"]*"\)/.test(freeOrder) || !/free_night_sold_elsewhere/.test(freeOrder)) {
+  fail("D5", "free-order-actions.ts non legge external_tickets_seller o non rifiuta con free_night_sold_elsewhere");
+}
+
 // B — il componente senza cassa
 const ext = read("src/app/(public)/events/[slug]/ExternalTickets.tsx");
 if (/^\s*["']use client["']/m.test(ext)) fail("B1", "ExternalTickets.tsx e' un client component");
@@ -80,4 +112,4 @@ if (failures.length) {
   console.error("verify-external-tickets: FAIL\n  " + failures.join("\n  "));
   process.exit(1);
 }
-console.log("verify-external-tickets: ok (A rifiuto server su entrambe le strade, B componente senza cassa, C guardia in pagina)");
+console.log("verify-external-tickets: ok (A rifiuto server su entrambe le strade, B componente senza cassa, C guardia in pagina, D lo 0 € non va a SumUp ne' la prenotazione sulle serate esterne)");
