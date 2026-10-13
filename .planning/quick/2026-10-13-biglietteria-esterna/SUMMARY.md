@@ -114,12 +114,45 @@ ordini `pending` aperti prima di un sold out a mano completano comunque
 - **Sold out a mano.** Non vediamo le vendite del terzo: la casella la spunta chi organizza quando il venditore avvisa.
 - **Nessun conteggio.** Dashboard vendite e capienza restano a zero su quella serata: non vendiamo noi.
 - **Chi compra altrove non entra nella community**: nessun `attendee`, nessuna mail, nessun recupero carrello. Decisione del proprietario.
-- **Tier a 0 € ammessi sulle serate esterne** (ripreso il 2026-10-13 pomeriggio su richiesta del proprietario: la serata ha biglietti gratuiti e a pagamento, entrambi del venditore). Il salvataggio dall'admin non li chiude piu' su queste serate; la pagina li mostra; l'anteprima social ignora lo 0 € nel «from». Sulle serate nostre resta tutto com'era.
+- **Tier a 0 € ammessi sulle serate esterne** (ripreso il 2026-10-13 pomeriggio su richiesta del proprietario: la serata ha biglietti gratuiti e a pagamento, entrambi del venditore). Il salvataggio dall'admin non li chiude piu' su queste serate; la pagina li mostra; l'anteprima social ignora lo 0 € nel «from». ~~Sulle serate nostre resta tutto com'era.~~ **Corretto il 2026-10-13 (fase 52.4, stesso rilascio): non e' piu' vero.** I tier a 0 € ora valgono su ogni serata con biglietti, nostre comprese, e l'anteprima non ignora piu' lo 0 € nemmeno sulle serate esterne — vedi «Dopo la fase 52.4» qui sotto.
 - **La chiusura di default a −2 h non si applica** alle serate esterne: scadenze solo esplicite.
+
+## Dopo la fase 52.4 (stesso rilascio)
+
+La fase 52.4 (tier misti gratis + pagamento nella stessa serata, ora limite alla
+porta) e' stata costruita **sullo stesso ramo** e parte **nello stesso
+rilascio**. Cambia cinque cose che questo documento descriveva al 2026-10-13
+mattina:
+
+- **I tier a 0 € sono ammessi su OGNI serata con biglietti**, non solo su quelle
+  vendute da un terzo. Sulle serate nostre un tier a 0 € e' un biglietto gratuito
+  vero, prenotato con «Reserve» (`reserveFreeTickets`, `issued_via = free_tier`),
+  con un'ora limite facoltativa alla porta. `ensureFreeRsvpTier` e
+  `closeZeroPriceTiers` **non esistono piu'**: il salvataggio dall'admin non
+  crea ne' chiude tier, e il tipo di serata `free_rsvp` e' uscito dallo schema.
+- **L'anteprima social dice «free tier · from N €» anche sulle serate vendute da
+  un terzo**, invece di ignorare lo 0 € come faceva dopo il passo 10 della prova
+  qui sopra. E' una **scelta tenuta** (CONTEXT della fase, discrezione su
+  `event-metadata`): un tier a 0 € e' un biglietto gratuito vero anche quando lo
+  emette il venditore, e l'anteprima lo dice. Non e' un effetto collaterale.
+- **Il gate `verify:external-tickets` ha il gruppo D**: lo 0 € non va mai a
+  SumUp su nessuna strada (`QUOTE_FREE_TIER_USE_RESERVE` nel preventivo prima
+  del minimo, `purchaseTicket` senza condizione sul tipo di serata) e la
+  prenotazione gratuita legge `external_tickets_seller`.
+- **`reserveFreeTickets` rifiuta le serate esterne** con
+  `free_night_sold_elsewhere` («Tickets for this night are sold elsewhere, not
+  here. Nothing was booked.»): sulle serate vendute da un terzo non c'e' cassa
+  nostra, nemmeno a totale zero. Provato sul laboratorio nel piano 52.4-10
+  (passo 6).
+- **I passi di produzione ora comprendono DUE migration, in quest'ordine, prima
+  del deploy:** `20261013120000_external_tickets.sql`, poi
+  `20261013150000_mixed_tiers_entry_until.sql` (porta le serate `free_rsvp` a
+  `paid`, restringe `access_type`, aggiunge `ticket_tiers.entry_until` e le due
+  cause della porta). Il deploy seleziona le colonne di entrambe.
 
 ## Passi di produzione (su autorizzazione del proprietario, come il 2026-10-05)
 
-1. `set -a; source .env.local; set +a` e applicare `20261013120000_external_tickets.sql` in produzione con la stessa POST alla Management API (il ref di produzione, a mano, non dallo script lab); rileggere il catalogo `read_only` per le quattro colonne.
+1. `set -a; source .env.local; set +a` e applicare `20261013120000_external_tickets.sql` **e poi `20261013150000_mixed_tiers_entry_until.sql`** (fase 52.4, stesso rilascio) in produzione con la stessa POST alla Management API (il ref di produzione, a mano, non dallo script lab); rileggere il catalogo `read_only` per le quattro colonne.
 2. Merge fast-forward di `feat/biglietteria-esterna` su `main`, push, deploy Vercel.
 3. Dall'admin: creare la serata vera con sede pubblica, venditore e link quando esiste; i tier con i prezzi copiati dalla piattaforma; «Sold out» a mano quando il venditore avvisa.
 4. Rispettare l'ordine: migration **prima** del deploy (la pagina seleziona le colonne nuove).
