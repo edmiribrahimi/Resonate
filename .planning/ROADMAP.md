@@ -1000,6 +1000,9 @@ Management; una sede si crea da Venues.
 - **D-53-01 — CHIUSA il 2026-10-14, la porta dello staff.** Risposta del proprietario, alla lettera: *«per lo staff assegnato a una serata in corso Check-in resta in barra, perché è il suo unico strumento; per organizer e master sta in Management.»* Quindi: `staff` assegnato → `Events · Check-in · Music · Account` come oggi; `organizer`/`master` → Check-in e' una voce del pannello Management, con la stessa guardia `assignmentOpenable`/`door.operate` di oggi, e la barra perde una voce. Lo staff non ha il pannello e non lo riceve.
 - **D-53-02** — Il calendario di produzione **non entra piu' nel prodotto**: confermato dal proprietario il 2026-10-14 (*«Cancellare Calendar»*); la fase 58 (lo specchio ICS) viene disfatta da questa fase. I feed restano dove sono, fuori dal repo, come dice `production-calendar.md`.
 - **D-53-03** — Cancellare e' per chiave e con riconteggio, mai `DROP` a cascata senza lettura prima (`supabase-data.md`); le migration passano dall'endpoint che annota il registro.
+- **D-53-04 — CHIUSA il 2026-10-14, Manifesto resta.** La sezione Manifesto (`/admin/manifesto`, chiave `production.manifesto.manage`) non e' fra le quattro nominate e non si cancella: Visual ne importa sei moduli e le due condividono `production_section`. Si cancella solo Visual; la policy `production_open_question_select_brandwide` si riscrive su una chiave sola **prima** di togliere le altre.
+- **D-53-05 — CHIUSA il 2026-10-14, nessuna copia prima di buttare.** Foto del bucket `visual-archive` e spunte delle checklist di TASK **non si esportano**: cadono con la cancellazione per chiave. Decisione irreversibile del proprietario, posta in chiaro.
+- **D-53-06 — CHIUSA il 2026-10-14, Check-in dello staff solo in barra.** La striscia in alto dello staff (`StaffNav`) non riceve Check-in: nessuna superficie nuova alla porta.
 
 **Verifica, in un repo senza test:** vedi CUT-05.
 
