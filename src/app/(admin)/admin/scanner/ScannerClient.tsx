@@ -3938,37 +3938,15 @@ export default function ScannerClient() {
           </div>
         )}
 
-        {/* QR Scanner - collapsible, continuous camera */}
-        {showScanner && (
-          <div className="mb-4 rounded-xl border border-line bg-surface p-4">
-            <div ref={scannerRef} className="mx-auto w-full max-w-sm">
-              <div id="qr-reader" className="overflow-hidden rounded-2xl" />
-            </div>
-            {/* Torch toggle — only shown when camera supports it */}
-            {torchAvailable && (
-              <button
-                onClick={toggleTorch}
-                className={`mt-3 w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-medium transition-colors ${
-                  torchOn
-                    ? "bg-sem-warn/20 text-sem-warn"
-                    : "bg-line/30 text-muted hover:text-ink"
-                }`}
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
-                </svg>
-                {torchOn ? "Torch On" : "Torch Off"}
-              </button>
-            )}
-          </div>
-        )}
-
         {/*
           «Admit anyway» (D-52.4-02, MIX-05/MIX-06). It lives HERE, in the flow
-          of the page under the camera, and not inside `ScanFlash`: the flash
+          of the page ABOVE the camera, and not inside `ScanFlash`: the flash
           closes on its own and on any tap, so a control inside it would be one
           the operator cannot reliably reach — and `ScanFlash` stays exempt from
-          the dialog gate precisely because it holds no controls (S6). Shown
+          the dialog gate precisely because it holds no controls (S6). Above and
+          not below the camera (owner's decision, 2026-10-13): under it, on a
+          412 px phone the button sat beneath the bottom navigation and the only
+          gesture that admits a valid guest needed a scroll first. Shown
           once the red flash has gone, until a scan of ANOTHER code: the same
           QR held in front of the camera is ignored while this waits (WR-02).
 
@@ -3997,6 +3975,31 @@ export default function ScannerClient() {
             >
               {admittingAnyway ? "Admitting…" : "Admit anyway"}
             </button>
+          </div>
+        )}
+
+        {/* QR Scanner - collapsible, continuous camera */}
+        {showScanner && (
+          <div className="mb-4 rounded-xl border border-line bg-surface p-4">
+            <div ref={scannerRef} className="mx-auto w-full max-w-sm">
+              <div id="qr-reader" className="overflow-hidden rounded-2xl" />
+            </div>
+            {/* Torch toggle — only shown when camera supports it */}
+            {torchAvailable && (
+              <button
+                onClick={toggleTorch}
+                className={`mt-3 w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-medium transition-colors ${
+                  torchOn
+                    ? "bg-sem-warn/20 text-sem-warn"
+                    : "bg-line/30 text-muted hover:text-ink"
+                }`}
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+                </svg>
+                {torchOn ? "Torch On" : "Torch Off"}
+              </button>
+            )}
           </div>
         )}
 
