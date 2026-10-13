@@ -109,7 +109,7 @@ export async function buildEventMetadata(slug: string): Promise<Metadata> {
     .from("event_parties")
     // No column of place — `venue_text`, `venue_id` and the hint stay out, by
     // construction and not by predicate.
-    .select("id, date, time, end_time, venue_secret, access_type, sort_order")
+    .select("id, date, time, end_time, venue_secret, access_type, sort_order, external_tickets_seller")
     .eq("event_id", event.id)
     .order("sort_order", { ascending: true });
 
@@ -127,22 +127,28 @@ export async function buildEventMetadata(slug: string): Promise<Metadata> {
     venue_secret: boolean | null;
     access_type: string;
     sort_order: number;
+    external_tickets_seller: string | null;
   }>;
   const first = nights[0] ?? null;
 
   let minPrice: number | null = null;
-  const paidIds = nights.filter((n) => n.access_type === "paid").map((n) => n.id);
+  const paidNights = nights.filter((n) => n.access_type === "paid");
+  const paidIds = paidNights.map((n) => n.id);
+  // Serata venduta da un terzo (2026-10-13): un tier a 0 € e' una lista del
+  // venditore, non «free entry» — sulla preview conta solo il prezzo pagante.
+  const externalIds = new Set(paidNights.filter((n) => n.external_tickets_seller !== null).map((n) => n.id));
   if (paidIds.length > 0) {
     const { data: tiers, error: tiersError } = await supabase
       .from("ticket_tiers")
-      .select("price")
+      .select("price, party_id")
       .in("party_id", paidIds);
     if (tiersError) {
       console.error(
         `[event_metadata.tiers_query_refused] ${tiersError.code || "transport"}: ${tiersError.message}`
       );
     } else {
-      for (const t of (tiers ?? []) as Array<{ price: number | null }>) {
+      for (const t of (tiers ?? []) as Array<{ price: number | null; party_id: string | null }>) {
+        if (t.party_id !== null && externalIds.has(t.party_id) && t.price === 0) continue;
         if (typeof t.price === "number" && (minPrice === null || t.price < minPrice)) {
           minPrice = t.price;
         }

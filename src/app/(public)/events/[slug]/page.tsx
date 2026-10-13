@@ -673,12 +673,14 @@ export default async function EventDetailPage({
         // `TierSelection`. E' la terza delle tre guardie di CR-01, e nessuna
         // delle tre si deduce dalle altre: questa toglie l'opzione dalla vista,
         // le altre due rifiutano l'acquisto se qualcuno la raggiunge lo stesso.
-        // Serata venduta da un terzo (2026-10-13): un tier a 0 € e' un tier
-        // (es. «Guest list»), non un ordine gratuito nostro — il filtro vale
-        // solo per la cassa nostra.
+        // Serata venduta da un terzo (2026-10-13): il filtro `price > 0` vale
+        // anche per lei. Un tier a 0 € su una serata `paid` lo CHIUDE comunque
+        // il salvataggio dall'admin (`closeZeroPriceTiers`, actions.ts), quindi
+        // mostrarlo qui sarebbe una promessa che il form ritira al salvataggio
+        // seguente — misurato sul laboratorio il 2026-10-13.
         const isExternal = party.external_tickets_seller !== null;
         const sellableTiers = (rawTiers ?? []).filter(
-          (tier: { price: number }) => isExternal || tier.price > 0
+          (tier: { price: number }) => tier.price > 0
         );
 
         tiers = await Promise.all(
