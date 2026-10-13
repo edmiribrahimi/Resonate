@@ -49,6 +49,7 @@ import {
 // singleton, so every call returns the same client (D-38-16).
 import { createClient } from "@/lib/supabase/client";
 import { turinWallClock } from "@/utils/datetime";
+import { entryUntilPassed } from "@/lib/door/entry-until";
 import {
   REALTIME_SUBSCRIBE_STATES,
   type RealtimeChannel,
@@ -2509,6 +2510,44 @@ export default function ScannerClient() {
             cached.ticketType === "guest_list" ? "guest" : "ticket",
             refundedOn ? `${refundedOn} · Offline` : "Offline"
           );
+          return;
+        }
+
+        // Plan 52.4-08 (MIX-06): the entry-until hour, judged on this phone with
+        // the same predicate the route uses (`entryUntilPassed`).
+        //
+        // The phone compares two instants: `cached.entryUntil` was computed by
+        // the server when the manifest was built (`entryUntilAt`), so no Turin
+        // hour is converted here and a phone set to another zone judges the
+        // same moment (`time-and-scheduling.md`). After «Already recorded»,
+        // which wins past the hour too, and after the refund refusal.
+        //
+        // Absent (a list cached before this field existed) or `null` (a tier
+        // with no limit) never refuses: the admission below runs as before.
+        //
+        // Declared limits, not hidden ones:
+        // - `refuse()` offline writes no `door_scan_events` row, as for
+        //   `wrong_night` and the refund: the refusal is on this screen and in
+        //   its history; the exception, instead, travels in the queue;
+        // - the clock is this device's: the existing drift warning is the only
+        //   signal, and a wrong refusal always has «Admit anyway» under it;
+        // - an hour changed after this device last downloaded the list is not
+        //   known here until the next download.
+        if (entryUntilPassed(cached.entryUntil, new Date())) {
+          const entryClock = cached.entryUntil
+            ? turinWallClock(cached.entryUntil)?.time
+            : undefined;
+          const kind = cached.ticketType === "guest_list" ? "guest" : "ticket";
+          refuse("after_entry_until", ticketId, kind,
+            entryClock ? `Entry closed at ${entryClock} · Offline` : "Offline"
+          );
+          setPendingOverride({
+            token: code,
+            partyId,
+            ticketId,
+            until: cached.entryUntil ?? null,
+            offline: true,
+          });
           return;
         }
 
