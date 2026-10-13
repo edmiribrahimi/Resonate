@@ -11,6 +11,7 @@ import { TIER_DESCRIPTION_HINT } from "@/components/tickets/tier-description";
 import {
   ENTRY_UNTIL_HINT,
   entryUntilShapeError,
+  entryUntilBeforeStartError,
 } from "@/components/tickets/tier-entry-until";
 
 /**
@@ -43,9 +44,15 @@ import {
 interface AddTierFormProps {
   eventId: string;
   partyId: string | null;
+  /**
+   * Date and opening time of the night, when the page knows them (WR-05):
+   * the entry-until hour must fall after the opening, and production omits
+   * the message the server throws. Absent → only the server checks.
+   */
+  night?: { date: string; time: string | null } | null;
 }
 
-export default function AddTierForm({ eventId, partyId }: AddTierFormProps) {
+export default function AddTierForm({ eventId, partyId, night }: AddTierFormProps) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -63,7 +70,8 @@ export default function AddTierForm({ eventId, partyId }: AddTierFormProps) {
 
     // Same rule as the action, repeated because production omits the message
     // of an error thrown by a server action.
-    const entryUntilError = entryUntilShapeError(formData);
+    const entryUntilError =
+      entryUntilShapeError(formData) ?? entryUntilBeforeStartError(formData, night);
     if (entryUntilError) {
       setError(entryUntilError);
       return;

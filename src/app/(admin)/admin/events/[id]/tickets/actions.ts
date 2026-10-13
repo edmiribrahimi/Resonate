@@ -11,6 +11,10 @@ import { CAP } from "@/lib/capabilities/keys";
 import { replayPaidOrderDelivery } from "@/lib/tickets/replay-order-delivery";
 import { redactDbError } from "@/lib/errors/redact";
 import { CODE_SALES_CLOSED_MESSAGE, CODE_SOLD_OUT_MESSAGE, isCodeUsable } from "@/lib/tickets/sales-window";
+import {
+  ENTRY_UNTIL_BEFORE_START_MESSAGE,
+  entryUntilFallsBeforeStart,
+} from "@/components/tickets/tier-entry-until";
 
 // Service-role client for operations where RLS blocks legitimate access
 // (e.g., master managing tiers for events they don't own)
@@ -110,6 +114,59 @@ function normaliseEntryUntil(entryUntilRaw: string | null): string | null {
 }
 
 /**
+ * L'ora limite non puo' cadere all'apertura della serata o prima — revisione
+ * 52.4, WR-05, fix approvato dal proprietario il 2026-10-13.
+ *
+ * Senza questo controllo «20:00» su una notte delle 22:00 si salva, e la porta
+ * rifiuta ogni biglietto di quel tier dal primo scan con «Entry closed at
+ * 20:00»: ogni ingresso passa da «Admit anyway», una riga
+ * `entry_until_overridden` per persona, e nessuno se ne accorge prima della
+ * fila. Il confronto e' quello di `entryUntilFallsBeforeStart`
+ * (`@/components/tickets/tier-entry-until`), che usa la stessa aritmetica della
+ * porta; la frase e' la stessa del client.
+ *
+ * Si controlla solo quando c'e' un limite e una serata: un tier di Event Pass
+ * (`party_id` nullo) non ha un'apertura sola contro cui misurare. **Una serata
+ * senza orario d'apertura non blocca**: nessun orario = nessun confronto
+ * possibile, e inventarne uno rifiuterebbe valori legittimi.
+ *
+ * Una lettura della serata fallita **ferma il salvataggio**, con la sua
+ * categoria: e' un form di lavoro, si riprova, e un limite salvato senza
+ * controllo e' esattamente il difetto che questa funzione esiste per evitare.
+ */
+async function assertEntryUntilAfterStart(
+  client: ReturnType<typeof getServiceClient>,
+  partyId: string | null,
+  entryUntil: string | null,
+  tierLabel: string
+): Promise<void> {
+  if (entryUntil === null || partyId === null) return;
+
+  const { data: party, error } = await client
+    .from("event_parties")
+    .select("id, date, time")
+    .eq("id", partyId)
+    .maybeSingle();
+
+  if (error || !party) {
+    console.error(
+      `[tickets.entry_until_night_unreadable] tier=${tierLabel} party=${partyId} ` +
+        (error ? redactDbError(error) : "nessuna riga")
+    );
+    throw new Error(
+      "Could not read the night's start time, so the entry-until hour was not saved. Please try again."
+    );
+  }
+
+  if (entryUntilFallsBeforeStart(party.date, party.time, entryUntil)) {
+    console.error(
+      `[tickets.entry_until_before_start] tier=${tierLabel} party=${party.id}`
+    );
+    throw new Error(ENTRY_UNTIL_BEFORE_START_MESSAGE);
+  }
+}
+
+/**
  * Create a new ticket tier for an event.
  */
 export async function createTier(eventId: string, partyId: string | null, formData: FormData) {
@@ -167,6 +224,10 @@ export async function createTier(eventId: string, partyId: string | null, formDa
   // righe. Il tier RSVP automatico (`admin/events/actions.ts`) resta a 0: e'
   // l'unico tier di una serata gratuita.
   const listPartyId = partyId || null;
+
+  // WR-05: l'ora limite dopo l'apertura, prima di scrivere qualunque cosa.
+  await assertEntryUntilAfterStart(client, listPartyId, entry_until, "new");
+
   const lastQuery = client
     .from("ticket_tiers")
     .select("sort_order")
@@ -365,6 +426,31 @@ export async function updateTier(
   const client = ctx.capabilities.has(CAP.MASTER_MANAGE)
     ? getServiceClient()
     : supabase;
+
+  // WR-05: la serata del tier, riletta per id, e l'ora limite dopo l'apertura.
+  // Solo se c'e' un limite: togliere il limite non ha niente da controllare.
+  if (entry_until !== null) {
+    const { data: tierRow, error: tierRowError } = await client
+      .from("ticket_tiers")
+      .select("party_id")
+      .eq("id", tierId)
+      .maybeSingle();
+    if (tierRowError || !tierRow) {
+      console.error(
+        `[tickets.entry_until_tier_unreadable] tier=${tierId} ` +
+          (tierRowError ? redactDbError(tierRowError) : "nessuna riga")
+      );
+      throw new Error(
+        "Could not read this tier's night, so the entry-until hour was not saved. Please try again."
+      );
+    }
+    await assertEntryUntilAfterStart(
+      client,
+      (tierRow.party_id as string | null) ?? null,
+      entry_until,
+      tierId
+    );
+  }
 
   const { error } = await client
     .from("ticket_tiers")

@@ -14,6 +14,7 @@ import { TIER_DESCRIPTION_HINT } from "@/components/tickets/tier-description";
 import {
   ENTRY_UNTIL_HINT,
   entryUntilShapeError,
+  entryUntilBeforeStartError,
 } from "@/components/tickets/tier-entry-until";
 
 /**
@@ -82,9 +83,14 @@ interface TierWithSold {
 interface TierCardProps {
   tier: TierWithSold;
   eventId: string;
+  /**
+   * Date and opening time of the tier's night, when known (WR-05): same
+   * client-side check as `AddTierForm`, the server stays the boundary.
+   */
+  night?: { date: string; time: string | null } | null;
 }
 
-export default function TierCard({ tier, eventId }: TierCardProps) {
+export default function TierCard({ tier, eventId, night }: TierCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -97,7 +103,8 @@ export default function TierCard({ tier, eventId }: TierCardProps) {
 
     // Same rule as the action, repeated because production omits the message
     // of an error thrown by a server action.
-    const entryUntilError = entryUntilShapeError(formData);
+    const entryUntilError =
+      entryUntilShapeError(formData) ?? entryUntilBeforeStartError(formData, night);
     if (entryUntilError) {
       setError(entryUntilError);
       return;
