@@ -726,6 +726,22 @@ export default function ScannerClient() {
   const scannerInstanceRef = useRef<unknown>(null);
   const isProcessingRef = useRef(false);
 
+  /**
+   * The ticket the door just refused for its entry-until hour, kept so that
+   * «Admit anyway» can send the SAME code again with the override (D-52.4-02).
+   * `offline` says which memory refused it: a refusal made from this device's
+   * cache is overridden into the queue, never through a fetch the radio cannot
+   * carry. Cleared by the next scan and by a change of night.
+   */
+  const [pendingOverride, setPendingOverride] = useState<{
+    token: string;
+    partyId: string;
+    ticketId: string;
+    until: string | null;
+    offline: boolean;
+  } | null>(null);
+  const [admittingAnyway, setAdmittingAnyway] = useState(false);
+
   // Scan history state
   const [scanHistory, setScanHistory] = useState<ScanRecord[]>([]);
 
@@ -2235,7 +2251,10 @@ export default function ScannerClient() {
    */
   async function ticketOnline(
     code: string,
-    partyId: string
+    partyId: string,
+    // «Admit anyway» (D-52.4-02) sends the same code again through this same
+    // function, so its answer is read by the same three branches below.
+    opts: { override?: "entry_until" } = {}
   ): Promise<"handled" | "network_failed"> {
     const ticketId = ticketIdFromToken(code);
 
@@ -2251,6 +2270,7 @@ export default function ScannerClient() {
           // never be classified `two_devices` (checkin/route.ts:251-256).
           deviceId: deviceIdRef.current ?? undefined,
           source: "online",
+          ...(opts.override ? { override: opts.override } : {}),
         }),
       });
     } catch {
@@ -2373,6 +2393,11 @@ export default function ScannerClient() {
         // A refusal for a refund (plan 52.2-11) carries its date when the answer
         // has one: the person in front of the door was told by email, and the
         // date is what lets staff say "you were refunded on…" instead of arguing.
+        // After the tier's entry-until hour (plan 52.4-08, MIX-05) the
+        // subtitle is that hour in Turin time, read off the server's instant.
+        // No hour on the answer → no subtitle, never a printed `undefined`.
+        const entryUntil = readString(parsed, "entry_until");
+        const entryClock = entryUntil ? turinWallClock(entryUntil)?.time : undefined;
         showFlash(
           "error",
           sentence,
@@ -2380,8 +2405,24 @@ export default function ScannerClient() {
             ? `That code belongs to ${night}`
             : notValidReason === "refunded"
               ? refundedOnLabel(readString(parsed, "refunded_at")) ?? undefined
-              : undefined
+              : notValidReason === "after_entry_until" && entryClock
+                ? `Entry closed at ${entryClock}`
+                : undefined
         );
+        // The refusal is the rule, the exception is one tracked tap: the route
+        // says which refusals may be overridden, the scanner does not decide it.
+        if (
+          notValidReason === "after_entry_until" &&
+          (parsed as unknown as Record<string, unknown>).overridable === true
+        ) {
+          setPendingOverride({
+            token: code,
+            partyId,
+            ticketId,
+            until: entryUntil,
+            offline: false,
+          });
+        }
         addScanRecord({
           id: ticketId,
           type: "ticket",
@@ -2560,7 +2601,86 @@ export default function ScannerClient() {
     }
   }
 
+  /**
+   * «Admit anyway» (D-52.4-02, MIX-05/MIX-06): the one tap that lets in a
+   * ticket refused for its entry-until hour.
+   *
+   * Online it sends the same code again with `override: "entry_until"`, and the
+   * answer goes through `ticketOnline`'s own branches — `recorded` with the
+   * `entry_until_overridden` flag, or `already_recorded` if somebody was
+   * quicker. If that request never reaches a server, or the refusal came from
+   * this device's cache, the exception is written into the offline queue WITH
+   * the override — also for a ticket not in the cache: without it the drain
+   * would be refused again for the hour and the exception would be lost.
+   */
+  async function handleAdmitAnyway() {
+    const pending = pendingOverride;
+    if (!pending || admittingAnyway || isProcessingRef.current) return;
+    setAdmittingAnyway(true);
+    isProcessingRef.current = true;
+    try {
+      if (!pending.offline && navigator.onLine) {
+        const result = await ticketOnline(pending.token, pending.partyId, {
+          override: "entry_until",
+        });
+        if (result === "handled") return;
+        console.warn("[scanner.admit_anyway_network_failed]", {
+          ticketId: pending.ticketId,
+        });
+      }
+      await admitAnywayOffline(pending);
+    } finally {
+      setPendingOverride(null);
+      setAdmittingAnyway(false);
+    }
+  }
+
+  async function admitAnywayOffline(pending: {
+    token: string;
+    partyId: string;
+    ticketId: string;
+  }) {
+    const { token, partyId, ticketId } = pending;
+    try {
+      const cached = await findAttendee(partyId, "ticket", ticketId);
+      await checkInLocally(partyId, "ticket", ticketId, {
+        token,
+        name: cached?.name,
+        override: "entry_until",
+      });
+      const type: ScanRecord["type"] =
+        cached?.ticketType === "guest_list" ? "guest" : "ticket";
+      const subtitle = [
+        cached ? ticketKindLabel(type, cached.tierName) : null,
+        FLAG_MESSAGE.entry_until_overridden,
+        "Offline",
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      // Amber, as every flagged admission: admitted, look at it afterwards.
+      showFlash("already_recorded", "Admitted", subtitle, cached?.benefit);
+      addScanRecord({
+        id: ticketId,
+        type,
+        name: cached?.name ?? "Not in tonight's list",
+        ticketType: cached?.tierName || undefined,
+        benefit: cached?.benefit ?? null,
+        status: "already_recorded",
+        reason: FLAG_MESSAGE.entry_until_overridden,
+        timestamp: Date.now(),
+        canUndo: true,
+        localKey: attendeeKey(partyId, "ticket" satisfies DoorSubjectType, ticketId),
+      });
+      await refreshQueueCounts();
+    } catch (error) {
+      reportStoreFault(ticketId, "ticket", error);
+    }
+  }
+
   const handleVerify = async (code: string) => {
+    // Every new scan closes the «Admit anyway» panel: the exception belongs to
+    // the code that was refused, never to whoever is scanned next.
+    setPendingOverride(null);
     try {
       // A scan without a party has no meaning: the record key is party-scoped and
       // a presence filed against the wrong night corrupts two nights' data
@@ -2854,6 +2974,7 @@ export default function ScannerClient() {
 
   const handleChangeParty = () => {
     setSelectedPartyId(null);
+    setPendingOverride(null);
     setAttendance(null);
     // The age is a claim about **this** list, so it does not survive the list.
     // Without this, the first paint of the next night would carry the previous
@@ -3756,6 +3877,42 @@ export default function ScannerClient() {
                 {torchOn ? "Torch On" : "Torch Off"}
               </button>
             )}
+          </div>
+        )}
+
+        {/*
+          «Admit anyway» (D-52.4-02, MIX-05/MIX-06). It lives HERE, in the flow
+          of the page under the camera, and not inside `ScanFlash`: the flash
+          closes on its own and on any tap, so a control inside it would be one
+          the operator cannot reliably reach — and `ScanFlash` stays exempt from
+          the dialog gate precisely because it holds no controls (S6). Shown
+          once the red flash has gone, until the next scan.
+
+          Who may use it: whoever holds the door (`door.operate`) — no
+          supervisor, by decision. What it records: a `door_scan_events` row
+          with cause `entry_until_overridden`, operator and instant; offline the
+          queued entry carries the override and the row is written at sync.
+        */}
+        {pendingOverride && !flash && (
+          <div className="mb-4 rounded-xl border border-sem-warn/30 bg-sem-warn/10 p-3">
+            <p className="mb-2 text-xs leading-snug text-sem-warn">
+              {(() => {
+                const clock = pendingOverride.until
+                  ? turinWallClock(pendingOverride.until)?.time
+                  : undefined;
+                return clock
+                  ? `Entry closed at ${clock} for this ticket.`
+                  : "Entry closed for this ticket type.";
+              })()}
+            </p>
+            <button
+              type="button"
+              onClick={handleAdmitAnyway}
+              disabled={admittingAnyway}
+              className={`min-h-11 w-full rounded-full bg-sem-warn/20 px-4 text-sm font-semibold text-sem-warn transition-transform active:scale-95 disabled:opacity-60 ${FOCUS_RING}`}
+            >
+              {admittingAnyway ? "Admitting…" : "Admit anyway"}
+            </button>
           </div>
         )}
 
