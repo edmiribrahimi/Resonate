@@ -909,7 +909,7 @@ offline. «Free (RSVP required)» esce dal prodotto, sostituito dal tier a 0 €
 - **D-52.4-07** — Il gratuito e il venue segreto: stesse modalita' del pagante (2026-10-13). Pagina del biglietto solo dopo la finestra o una rivelazione manuale (`mayShowVenueToTicketHolder`), prima la mail; predicato invariato. La divergenza preesistente della RPC `venue_for_parties` (ramo 3, `venue_reveal_on_purchase`), gia' scritta in `venue-secrecy.md`, vale anche per il gratuito: dichiarata in VERIFICATION, nessuna correzione qui.
 
 **Depends on:** Phase 52.2 (vocabolario della porta e predicato unico `refund-refusal.ts`, modello per il predicato dell'ora limite); quick `2026-10-13-biglietteria-esterna` (stesso ramo, `sold_out` e `external_tickets_*`).
-**Plans:** 10/12 plans executed
+**Plans:** 11/12 plans executed
 
 Plans:
 - [x] 52.4-01-PLAN.md — migration (free_rsvp → paid, entry_until, cause della porta) [BLOCKING sul lab] e vocabolario TS della porta
@@ -922,7 +922,7 @@ Plans:
 - [x] 52.4-08-PLAN.md — scanner: rifiuto online/offline e pannello «Admit anyway»
 - [x] 52.4-09-PLAN.md — lista, card, anteprima, intenzione residua, dialog del venue segreto senza RSVP; AccessType a due valori e etichette del form
 - [x] 52.4-10-PLAN.md — build, verify, prova sul lab in due parti (cassa con gratuito poi pagante e venue segreto; porta), revisione, SUMMARY della quick
-- [ ] 52.4-11-PLAN.md — deploy sul lab, prova offline dal telefono col proprietario, runbook della porta e checkin-offline.md, VERIFICATION.md
+- [x] 52.4-11-PLAN.md — deploy sul lab, prova offline dal telefono col proprietario, runbook della porta e checkin-offline.md, VERIFICATION.md
 - [ ] 52.4-12-PLAN.md — produzione solo su «vai» (checkpoint che non si risolve da solo, guardia sul vai datato): due migration in ordine, poi deploy
 
 ### Phase 53: TASK

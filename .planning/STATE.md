@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "Completato 52-17-PLAN.md — verifica approvata alle 19:13:29Z; fase 52 eseguita 19/19, resta verifica e chiusura"
-last_updated: "2026-10-13T15:21:16.481Z"
+stopped_at: "Completato 52.4-11-PLAN.md — porta offline approvata (emulatore), VERIFICATION passed; resta il piano 52.4-12, produzione solo su «vai»"
+last_updated: "2026-10-13T18:36:02.169Z"
 last_activity: 2026-10-13
 progress:
   total_phases: 16
   completed_phases: 8
   total_plans: 150
-  completed_plans: 137
+  completed_plans: 138
   percent: 50
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 52.4 (tier-misti-gratis-pagamento-nella-stessa-serata-e-ora-limite) — EXECUTING
-Plan: 11 of 12
+Plan: 12 of 12
 Next: `/gsd-execute-phase 52.3` (prima `/clear`). Onda 1 = 01 (ramo `wip/52.3`, lab sveglio, interruttore solo sul preview `lab`); onda 2 = 02 (migration sul lab, BLOCKING) + 03 (contratti) + 16 (spike del player e oEmbed); onda 3 include 06 = COPIA in sola lettura delle serate e degli artisti di produzione nel lab (notti segrete su sede segnaposto). **Risposte del proprietario del 2026-10-03:** i LiveCut vengono da re:sonate E da RamaDub; la 001 e' gia' su SoundCloud (input in `.env.lab.local`), la 002 esce il 2026-10-04 (una tantum prima dell'ancora del martedi' 6/10, che per Instagram non cambia); **il titolo e' quello pubblicato** (`<artista> @ <format> - 17 Sept 26`, D-52.3-03 emendata); **consenso dei dj: regola stabile, non si chiede piu'**; **il professionista ha risposto: i set si possono pubblicare, siamo coperti** → MUS-10 chiuso salvo il paragrafo dell'informativa (piano 04). Strada D (pagina accesa in produzione con i due LiveCut) e' disponibile: l'ultimo cancello e' il «vai» del piano 15. Checkpoint del proprietario al piano 13 (O-1, O-4..O-8, Mixcloud, colore MotionLab, B o D). Servono ancora: link e durata della 002 (dal 4/10), eventuale cover 2000x2000, la scelta B/D. Scadenza: onde 1-6 entro il 6/10, checkpoint entro mercoledi' 7/10, deploy entro gio 8/10; ven 9 runbook e porta, sab 10 la 003. Prima: decidere D22-3 (porta) e leggere D22-4 in produzione.
 
 **52.2 chiusa e osservata (2026-10-01 08:28Z).** `close-pending-orders` 08:01Z: 1 considerato, `never_attempted`, checkout disattivato; `reconcile-refunds` 08:13Z: silenzio = nulla da riconciliare (non logga un riepilogo quando non fa nulla: nota per la 52.1); 0 pending residui, 0 refunds, 0 mail. CART-03 e RFD-02 osservati.
@@ -410,7 +410,7 @@ checkpoints is now closed (the migration is applied); three remain, plus the RLS
 half of the fourth. `31-VALIDATION.md` keeps `nyquist_compliant: false`
 deliberately.
 
-Progress: [█████████░] 91%
+Progress: [█████████░] 92%
           phase 32 — 11 plans, 0 executed
 
 ## Decisions
@@ -516,6 +516,9 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase 52.4]: 52.4-04: giudizio sull'ora limite dopo already_recorded; eccezione con la sola door.operate, nessun controllo di supervisione
 - [Phase 52.4]: 52.4-05: entryUntil e override* sul telefono sono opzionali, DB_VERSION resta 6; overrideBy = deviceId, la persona la registra il server come operator_id
 - [Phase 52.4]: 52.4-06: entry_until si accetta solo come HH:MM o HH:MM:SS intero e si salva HH:MM; regola ripetuta nel client (tier-entry-until.ts) perche' in produzione Next omette il messaggio del throw
+- [Phase 52.4]: 52.4-11: prova offline della porta su emulatore Android per scelta del proprietario, approvata
+- [Phase 52.4]: 52.4-11: sei fix della revisione (CR-01, WR-01..05) applicati prima della VERIFICATION; IN-01..06 aperte
+- [Phase 52.4]: 52.4-11: «Admit anyway» sotto la barra di navigazione a 412 px, decisione del proprietario in attesa
 
 ## Accumulated Context
 
@@ -637,8 +640,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-10-13T15:21:16.477Z
-**Stopped at:** Completato 52-17-PLAN.md — verifica approvata alle 19:13:29Z; fase 52 eseguita 19/19, resta verifica e chiusura
+**Last session:** 2026-10-13T18:35:41.533Z
+**Stopped at:** Completato 52.4-11-PLAN.md — porta offline approvata (emulatore), VERIFICATION passed; resta il piano 52.4-12, produzione solo su «vai»
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
