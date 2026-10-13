@@ -24,7 +24,9 @@ import { sendOrderConfirmation } from "@/lib/tickets/order-confirmation";
  * prenotazione». Esiste la serata `paid`, che puo' avere tier a pagamento e
  * tier a 0 € insieme; questa e' la cassa a totale zero, **indirizzata per
  * tier**. La stessa persona puo' prenotare un gratuito e poi comprare un
- * pagante: nessun limite per persona, e' il perimetro dichiarato di BUY-02.
+ * pagante: e' il perimetro dichiarato di BUY-02, e il tetto per identita' qui
+ * sotto non lo tocca, perche' conta solo i biglietti **dello stesso tier
+ * gratuito** (`FREE_TIER_MAX_PER_IDENTITY`, revisione 52.4 CR-01).
  *
  * Parole del proprietario, `D-50-18`: *«dev'essere uguale a comprare un ticket
  * ma senza acquisto»*. Quindi **niente di nuovo** dove qualcosa esiste gia': lo
@@ -59,15 +61,29 @@ import { sendOrderConfirmation } from "@/lib/tickets/order-confirmation";
  * implementazione (`access-gating.md`, gate *nessun rate limiting, oggi*).
  * Detto qui perche' su questo percorso pesa piu' che sull'altro: sul percorso
  * pagato il freno e' la carta: chi vuole mille biglietti paga mille biglietti.
- * Qui quel freno non c'e', e **l'unica difesa e' il tetto per ordine** —
- * `event_parties.max_tickets_per_order`, 6 per default (`D-50-26`) — piu' la
- * capienza del livello, **entrambi applicati dentro la transazione della RPC**,
- * che e' l'unico posto dove reggono sotto concorrenza. Sei posti per chiamata,
- * niente che impedisca la chiamata successiva: e' un perimetro dichiarato,
- * registrato come T-50-17, e un perimetro dichiarato e' l'opposto di un buco
- * scoperto dopo.
+ * Qui quel freno non c'e', e le difese sono tre:
  *
- * ── LE TREDICI CAUSE, E PERCHE' NESSUNA COLLASSA NELL'ALTRA ────────────────
+ *   1. **il tetto per ordine** — `event_parties.max_tickets_per_order`, 6 per
+ *      default (`D-50-26`) — applicato dentro la transazione della RPC;
+ *   2. **la capienza del livello**, nella stessa transazione, che e' l'unico
+ *      posto dove regge sotto concorrenza;
+ *   3. **il tetto per identita' sul tier gratuito** — dal 2026-10-13 (revisione
+ *      52.4, CR-01, fix approvato dal proprietario): la stessa identita' non
+ *      tiene piu' di `FREE_TIER_MAX_PER_IDENTITY` biglietti dello stesso tier
+ *      gratuito su questa serata. Prima di questa data **la chiamata successiva
+ *      non aveva freno**: sei posti per chiamata, all'infinito, con la stessa
+ *      mail.
+ *
+ * **Cosa resta aperto, dichiarato e non risolto qui:** il tetto e' per
+ * *identita'*, cioe' per indirizzo. Indirizzi inventati restano ognuno una
+ * identita' nuova — un account `attendee` coniato e una mail spedita a
+ * chiamata — e nessun freno per IP o per mittente esiste in questo repository.
+ * Il rate limiting di questa action e' una **decisione separata del
+ * proprietario, non ancora presa**: e' una superficie dichiarata (T-50-17,
+ * revisione 52.4 CR-01), non un fatto risolto. Un perimetro dichiarato e'
+ * l'opposto di un buco scoperto dopo, ma resta un perimetro.
+ *
+ * ── LE QUINDICI CAUSE, E PERCHE' NESSUNA COLLASSA NELL'ALTRA ───────────────
  *
  * Questo progetto **non ha error tracking** (`meta-gates.md`, verificato): una
  * riga di log non raggiunge nessun essere umano da sola, quindi la sola
@@ -90,6 +106,12 @@ import { sendOrderConfirmation } from "@/lib/tickets/order-confirmation";
  *   - `free_identity_failed`  — l'account non si e' potuto trovare ne' coniare
  *   - `free_buyer_not_attached` — l'ordine non si e' potuto legare al conto
  *   - `free_mint_failed`      — la RPC ha rifiutato: tetto, capienza, o altro
+ *   - `free_already_reserved` — questa identita' tiene gia' il massimo dei
+ *                               biglietti di questo tier gratuito (CR-01)
+ *   - `free_holdings_unreadable` — il conteggio dei biglietti gia' tenuti non
+ *                               ha risposto: **non e' un no**, e non e' nemmeno
+ *                               `free_unreadable`, perche' arriva DOPO che la
+ *                               riga d'ordine esiste e la marca `failed`
  *
  * `free_unreadable` e' il terzo membro obbligatorio (`money-path.ts`, §4): *la
  * domanda non ha avuto risposta* non si fonde mai con *no*.
@@ -128,6 +150,31 @@ const FREE_ORDER_NOT_SAVED = "free_order_not_saved";
 const FREE_IDENTITY_FAILED = "free_identity_failed";
 const FREE_BUYER_NOT_ATTACHED = "free_buyer_not_attached";
 const FREE_MINT_FAILED = "free_mint_failed";
+const FREE_ALREADY_RESERVED = "free_already_reserved";
+const FREE_HOLDINGS_UNREADABLE = "free_holdings_unreadable";
+
+/**
+ * Quanti biglietti dello STESSO tier gratuito una stessa identita' puo' tenere
+ * su una serata — revisione 52.4, CR-01, fix approvato dal proprietario il
+ * 2026-10-13.
+ *
+ * **Sei, ed e' il tetto per ordine** (`event_parties.max_tickets_per_order`,
+ * default `D-50-26`): la persona che prima poteva fare UNA prenotazione da sei
+ * puo' ancora farla; quella che ne faceva cento da sei con la stessa mail no.
+ *
+ * **Perche' non cambia il perimetro di BUY-02.** BUY-02 dice che la stessa
+ * persona puo' prenotare un gratuito e poi comprare un pagante. Il conteggio e'
+ * filtrato per `tier_id`, e un pagante e' per costruzione un altro tier: i
+ * biglietti comprati non entrano mai nel conto, e questo tetto non ferma mai
+ * un acquisto. Non e' nemmeno `already_has_night_ticket` di `purchaseTicket`,
+ * che e' per serata: qui due prenotazioni dello stesso gratuito restano
+ * possibili finche' la somma sta sotto il tetto.
+ *
+ * **Cosa non copre**, scritto per non farlo credere: indirizzi diversi sono
+ * identita' diverse. Il freno per IP o per mittente e' una decisione separata,
+ * non presa — vedi il docblock in testa al file.
+ */
+const FREE_TIER_MAX_PER_IDENTITY = 6;
 
 type FreeOrderOwnRefusal =
   | typeof FREE_EMAIL_MISSING
@@ -142,7 +189,9 @@ type FreeOrderOwnRefusal =
   | typeof FREE_ORDER_NOT_SAVED
   | typeof FREE_IDENTITY_FAILED
   | typeof FREE_BUYER_NOT_ATTACHED
-  | typeof FREE_MINT_FAILED;
+  | typeof FREE_MINT_FAILED
+  | typeof FREE_ALREADY_RESERVED
+  | typeof FREE_HOLDINGS_UNREADABLE;
 
 /**
  * Le cause proprie di questa superficie, piu' quelle del preventivo, che
@@ -187,6 +236,9 @@ const FREE_ORDER_ERROR: Record<FreeOrderOwnRefusal, string> = {
     "Your booking could not be linked to your account, so no ticket was issued. Please try again in a moment.",
   [FREE_MINT_FAILED]:
     "Your tickets could not be issued, so nothing is booked. This night may have just filled up, or you asked for more than one booking may hold.",
+  [FREE_ALREADY_RESERVED]: `You already hold the free tickets for this night — up to ${FREE_TIER_MAX_PER_IDENTITY} per email. Nothing new was booked, and the tickets you have are still valid.`,
+  [FREE_HOLDINGS_UNREADABLE]:
+    "We could not check the tickets you already hold, so nothing was booked. This is not a refusal — please try again in a moment.",
 };
 
 type FreeOrderResult =
@@ -217,11 +269,19 @@ const UUID_SHAPE =
  * dei passi non e' estetico: ognuno dipende dal precedente, e il primo che
  * fallisce si ferma li' con la propria causa.
  *
- * **Chiamarla due volte con lo stesso indirizzo crea due prenotazioni**, ed e'
- * corretto: sono due ordini distinti, e il tetto per ordine li limita come
- * limita due acquisti. Cio' che non deve accadere e' che **lo stesso ordine**
- * emetta biglietti due volte — e quello lo impedisce il ramo idempotente della
- * RPC, che esce senza inserire su un ordine gia' chiuso.
+ * **Chiamarla due volte con lo stesso indirizzo crea due prenotazioni finche'
+ * la somma resta sotto `FREE_TIER_MAX_PER_IDENTITY`**: sono due ordini
+ * distinti, e oltre il tetto per identita' la seconda si ferma con
+ * `free_already_reserved` (revisione 52.4, CR-01, 2026-10-13). Cio' che non
+ * deve accadere e' che **lo stesso ordine** emetta biglietti due volte — e
+ * quello lo impedisce il ramo idempotente della RPC, che esce senza inserire su
+ * un ordine gia' chiuso.
+ *
+ * Il conteggio e' una lettura prima della RPC, non un vincolo dentro la sua
+ * transazione: due chiamate simultanee con la stessa mail possono passarlo
+ * entrambe. Il danno massimo di quella corsa e' un ordine in piu' per
+ * identita', e chiuderla richiederebbe una migration della RPC: non e' stato
+ * fatto, ed e' scritto qui per non farlo credere.
  *
  * @returns l'id dell'ordine e quanti biglietti sono nati, oppure un rifiuto con
  * la sua causa.
@@ -459,6 +519,36 @@ export async function reserveFreeTickets(input: {
     return failOrder(
       FREE_IDENTITY_FAILED,
       `${identity.reason} — ${identity.detail}`
+    );
+  }
+
+  // ── 6b. Il tetto per identita' sul tier gratuito (CR-01) ──────────────────
+  //
+  // Dopo l'identita', perche' e' l'identita' che si conta, e PRIMA di
+  // allacciare l'ordine e coniare: un rifiuto qui non lascia biglietti. Conta i
+  // biglietti di questa serata, di questa persona, di QUESTO tier — mai quelli
+  // di un tier pagante, quindi BUY-02 resta intatto. Client di servizio: la
+  // lettura non deve dipendere dalla RLS di chi chiama, che qui non ha sessione.
+  const { count: alreadyHeld, error: heldError } = await serviceClient
+    .from("tickets")
+    .select("id", { count: "exact", head: true })
+    .eq("party_id", partyId)
+    .eq("user_id", identity.userId)
+    .eq("tier_id", tier.id);
+
+  if (heldError) {
+    // Non e' un «no»: e' una domanda senza risposta, con la sua causa.
+    return failOrder(
+      FREE_HOLDINGS_UNREADABLE,
+      `conteggio dei biglietti gia' tenuti non riuscito: ${redactDbError(heldError)}`
+    );
+  }
+  const held = alreadyHeld ?? 0;
+  if (held + quote.quantity > FREE_TIER_MAX_PER_IDENTITY) {
+    return failOrder(
+      FREE_ALREADY_RESERVED,
+      `identita' ${identity.userId} tiene gia' ${held} biglietti del tier ${tier.id}, ` +
+        `ne chiede ${quote.quantity}, tetto ${FREE_TIER_MAX_PER_IDENTITY}`
     );
   }
 

@@ -532,8 +532,12 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
           return;
         }
 
-        // La frase arriva dal server e si mostra com'e': tredici cause
-        // distinte, nessuna fusa in un messaggio generico.
+        // La frase arriva dal server e si mostra com'e': quindici cause
+        // distinte, nessuna fusa in un messaggio generico. Fra queste
+        // `free_already_reserved` (revisione 52.4, CR-01): «You already hold the
+        // free tickets for this night» — la frase vive nel `Record` totale del
+        // server (`FREE_ORDER_ERROR`), perche' una copia qui sarebbe una seconda
+        // verita' che diverge alla prima correzione.
         setError(result.error);
       });
       return;
