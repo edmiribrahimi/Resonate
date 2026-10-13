@@ -81,9 +81,9 @@ per assecondare una decisione presa dopo che e' stata citata.
 - [x] **50** — Via le iscrizioni (`REG`) — chiusa il 2026-09-21: 12 piani, VERIFICATION passed, produzione aggiornata
 - [x] **51** — Via le superfici da socio, e la porta (`MEM`) — chiusa il 2026-09-23: VERIFICATION passed, spinta e dispiegata
 - [x] **52** — La barra di navigazione e i ritocchi (`NAV`) — chiusa il 2026-09-23: 19 piani, VERIFICATION passed (approvata dal proprietario), in produzione dal 18:28:33Z; debito dichiarato → fase 52.1
-- [ ] **52.1** — Chiusura del debito della fase 52 (`DBT`) — **inserita il 2026-09-23**: il debito di `52-VERIFICATION.md` e gli avvisi di `52-REVIEW.md`, DBT-04..07, 09, 10, 13, 14 (DBT-01/02/03/08/11/12 ritirati alle 20:30Z: via la gallery)
-- [ ] **52.2** — Il carrello che non si chiude, e il rimborsato alla porta (`CART`, `RFD`) — **inserita il 2026-09-30**: sospesi chiusi con la verita' di SumUp, ripresa dello stesso ordine, una sola mail a +1h (Garante), rimborsato avvisato e poi rifiutato alla porta; indipendente dalla 52.1
-- [ ] **52.3** — La pagina Music: i LiveCut delle nostre serate (`MUS`) — **inserita il 2026-09-30**: ricerca con screenshot prima della forma, pagina pubblica per serata e slot, un player caricato al play, niente genere e niente venue segreto, prima sul laboratorio; i diritti al legale prima del primo LiveCut reale
+- [x] **52.1** — Chiusura del debito della fase 52 (`DBT`) — **inserita il 2026-09-23**: il debito di `52-VERIFICATION.md` e gli avvisi di `52-REVIEW.md`, DBT-04..07, 09, 10, 13, 14 (DBT-01/02/03/08/11/12 ritirati alle 20:30Z: via la gallery) — **chiusa il 2026-10-03: 30 piani, VERIFICATION passed, in produzione (U5)**
+- [x] **52.2** — Il carrello che non si chiude, e il rimborsato alla porta (`CART`, `RFD`) — **inserita il 2026-09-30**: sospesi chiusi con la verita' di SumUp, ripresa dello stesso ordine, una sola mail a +1h (Garante), rimborsato avvisato e poi rifiutato alla porta; indipendente dalla 52.1 — **chiusa il 2026-10-01: 17 piani, VERIFICATION passed, in produzione e osservata il 2026-10-01**
+- [x] **52.3** — La pagina Music: i LiveCut delle nostre serate (`MUS`) — **inserita il 2026-09-30**: ricerca con screenshot prima della forma, pagina pubblica per serata e slot, un player caricato al play, niente genere e niente venue segreto, prima sul laboratorio; i diritti al legale prima del primo LiveCut reale — **chiusa il 2026-10-14**: 23 piani, VERIFICATION passed, revisione 0 critici + 7 avvisi corretti, pagina Music in produzione dal 2026-10-13 sera con i due LiveCut RamaDub (strada D), fix in produzione il 2026-10-14 00:44
 - [x] **52.4** — Tier misti (gratis + pagamento) nella stessa serata e ora limite d'ingresso alla porta (`MIX`) — **inserita e chiusa il 2026-10-13**: 12 piani, VERIFICATION passed, revisione con 1 critico + 5 avvisi corretti, in produzione dalle 21:47 Torino su «vai» insieme alla biglietteria esterna; debito dichiarato in `52.4-VERIFICATION.md`
 - [ ] **53** — Meno strumenti, la porta dentro Management (`CUT`) — **inserita il 2026-10-14, decisione del proprietario**: via TASK, Location, Visual e Calendar con ogni riferimento; Check-in dentro Management per organizer e master, in barra per lo staff assegnato; in Venues si crea una sede come in Artists; i documenti della 57 (DOC-01..04)
 - ~~**53** TASK · **54** Location · **55** Visual · **56** La navetta · **57** I documenti che ancora difendono la community~~ — **CANCELLATE il 2026-10-14** dal proprietario (*«vorrei eliminare la 53, la 54 la 55 la 56 e la 57 […] sono strumenti inutili»*). Le sezioni sono tolte dai dettagli; le decisioni che le citavano restano nella tabella con il loro numero, per memoria. DOC-01..04 della 57 (PROJECT.md, CLAUDE.md, community-membership.md senza il gating come prodotto) **entrano nella nuova 53** (decisione del proprietario, 2026-10-14: *«La fase 57 inseriscila nella nuova fase 53»*).
@@ -878,7 +878,7 @@ in nessuna superficie, la scheda che porta all'artista.
 
 **Depends on:** Phase 52.2 (ordine deciso dal proprietario: *«subito dopo la
 52.2»*), Phase 52 (la barra di navigazione). La 52.1 resta in coda dopo.
-**Plans:** 17/20 plans executed
+**Plans:** 23/23 plans complete
 
 Plans:
 
@@ -899,12 +899,12 @@ Plans:
 - [x] 52.3-17-PLAN.md — onda 7: `/music` senza serie, senza intestazioni e senza frase sotto il titolo; scheda con `data · fascia · durata`, senza titolo, PT solo se ≥2; select senza serie; check H2 aggiornato e H6
 - [x] 52.3-18-PLAN.md — onda 8: sezione LiveCuts sul profilo artista (stessa scheda, un player, dietro l'interruttore, `force-dynamic`, `NetworkOnly` per `/artists/`), check H esteso alla pagina artista
 - [x] 52.3-19-PLAN.md — onda 8: TASK fuori dalla barra e nel pannello, Music per chi lavora, pillola rimisurata con la porta (Critical); ripiego del player dentro la barra che si richiude al primo `PLAY_PROGRESS`
-- [ ] 52.3-20-PLAN.md — onda 9: laboratorio servito, P-523-A/B/C/D/E e P-523-J, secondo sguardo del proprietario (strada B/D, profilo SoundCloud, anteprima del link) e cambi a una riga
+- [x] 52.3-20-PLAN.md — onda 9: laboratorio servito, P-523-A/B/C/D/E e P-523-J, secondo sguardo del proprietario (strada B/D, profilo SoundCloud, anteprima del link) e cambi a una riga
 - [x] 52.3-21-PLAN.md — onda 12 (2026-10-06, secondo sguardo): righe invece di tessere su desktop (52.3-PLAYER-RESEARCH.md §3)
 - [x] 52.3-22-PLAN.md — onda 12: forma d'onda dai nostri WAV (`livecut-peaks.mjs`, colonna `waveform_peaks`, `<Waveform>` canvas + slider ARIA) nella barra e sulla riga attiva
 - [x] 52.3-23-PLAN.md — onda 12: indietro/avanti sulla lista visibile, tastiera, spike `skip()` sul profilo per iOS
-- [ ] 52.3-14-PLAN.md — onda 10: persona 1.32.0 (anche `src/app/(public)/artists/**`), sei mutazioni rimaste del check H, `52.3-VERIFICATION.md`, pulizia del laboratorio
-- [ ] 52.3-15-PLAN.md — onda 11: atto datato su «vai» — migration in produzione, deploy di `main` con la pagina spenta (B) o, con D-LEG-4 registrato, accesa coi due LiveCut RamaDub inseriti da un organizer dal form (D), `lab` riallineato
+- [x] 52.3-14-PLAN.md — onda 10: persona 1.32.0 (anche `src/app/(public)/artists/**`), sei mutazioni rimaste del check H, `52.3-VERIFICATION.md`, pulizia del laboratorio
+- [x] 52.3-15-PLAN.md — onda 11: atto datato su «vai» — migration in produzione, deploy di `main` con la pagina spenta (B) o, con D-LEG-4 registrato, accesa coi due LiveCut RamaDub inseriti da un organizer dal form (D), `lab` riallineato
 
 ### Phase 52.4: Tier misti (gratis + pagamento) nella stessa serata e ora limite d'ingresso alla porta (INSERTED)
 

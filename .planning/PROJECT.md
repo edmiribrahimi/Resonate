@@ -34,6 +34,8 @@ richiesta la fa chi spedisce.
 
 **2026-10-13 — fase 52.4 chiusa e in produzione.** Due soli tipi di serata (`free_public`, `paid`), tier a 0 € con biglietto vero accanto ai paganti nella stessa serata, ora limite d'ingresso sul tier con rifiuto alla porta e «Admit anyway» tracciato, anche offline. Migration e deploy la sera del 2026-10-13 su «vai» del proprietario, nello stesso rilascio della biglietteria esterna; verifica `passed`. Prima della prossima serata lo staff riscarica la lista sullo scanner.
 
+**2026-10-14 — fase 52.3 chiusa e in produzione.** La pagina Music con i LiveCut delle nostre serate, uno per slot, dietro un interruttore acceso in produzione la sera del 2026-10-13 con i due LiveCut RamaDub (strada D, legale chiuso il 2026-10-03); profilo artista con i suoi LiveCut; player di SoundCloud dentro la nostra barra, senza sede e senza serie su nessuna superficie (check H). Revisione: nessun critico, sette avvisi corretti e in produzione il 2026-10-14. **Le fasi 53–57 sono cancellate dal proprietario** lo stesso giorno; al loro posto la nuova 53 «Meno strumenti, la porta dentro Management» (TASK, Location, Visual e Calendar fuori; Check-in in Management per organizer e master; Venues crea una sede; i documenti della 57).
+
 **Next Milestone:** da definire — `/gsd:new-milestone`
 
 > **La direzione e' gia' decisa dal proprietario il 2026-08-14, e aspetta un
@@ -222,4 +224,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-13 — fase 52.4 chiusa e in produzione, v1.6 in corso*
+*Last updated: 2026-10-14 — fasi 52.3 e 52.4 chiuse e in produzione; 53–57 cancellate, nuova 53 da pianificare*
