@@ -1830,8 +1830,9 @@ notes.push(
     "photograph can frame the sign, and the form's cover hint, which asks the organizer " +
     "to keep any place off the image on a secret-venue event, is the only guard. And " +
     "the slug of a SoundCloud URL is watched only by the place-name tokens in the " +
-    "action (`livecut.url_names_venue`): a slug that names the place in words the " +
-    "night's venue text does not contain goes through."
+    "action (`livecut.url_names_venue`, whole words, and from five letters also inside " +
+    "the path with separators removed; re-run at save AND at publish): a slug that " +
+    "names the place in words the night's venue text does not contain goes through."
 );
 
 /* ──────────────────────────────────────────────────────────────────────────── */

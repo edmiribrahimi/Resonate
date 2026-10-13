@@ -103,6 +103,15 @@ const MAX_ARTISTS = 4;
 const MIN_PART = 1;
 const MAX_PART = 24;
 const MIN_PLACE_TOKEN = 4;
+/**
+ * From this length a place word is also looked for INSIDE the path with every
+ * separator removed (52.3-REVIEW WR-05): `x-at-boozehifi` names the place as
+ * much as `x-at-booze-hifi`, and whoever writes the slug on SoundCloud does
+ * not separate words for this guard's sake. Four-letter words stay whole-word
+ * only: as substrings they would refuse too much of SoundCloud. False
+ * positives are accepted — the refusal says to rename the track's address.
+ */
+const MIN_SUBSTRING_TOKEN = 5;
 
 /**
  * Every way a LiveCut write can be refused, one value each. The form
@@ -315,7 +324,12 @@ function placeTokens(name: string | null, text: string | null): string[] {
   return [...words];
 }
 
-/** True when a token appears as a whole word of the URL's path. */
+/**
+ * True when the URL's path names the place: a token appears as a whole word
+ * (split on every non-alphanumeric character), or — for tokens of at least
+ * `MIN_SUBSTRING_TOKEN` letters — anywhere in the path with the separators
+ * removed.
+ */
 function pathNamesPlace(url: string, tokens: readonly string[]): boolean {
   if (tokens.length === 0) return false;
   let path: string;
@@ -337,12 +351,16 @@ function pathNamesPlace(url: string, tokens: readonly string[]): boolean {
     // A malformed escape: keep the raw path, which is still split and compared.
     decoded = path;
   }
-  const words = decoded
+  const normalised = decoded
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .split(/[/_-]+/);
-  return words.some((word) => tokens.includes(word));
+    .toLowerCase();
+  const words = normalised.split(/[^a-z0-9]+/);
+  if (words.some((word) => tokens.includes(word))) return true;
+  const collapsed = normalised.replace(/[^a-z0-9]+/g, "");
+  return tokens.some(
+    (token) => token.length >= MIN_SUBSTRING_TOKEN && collapsed.includes(token)
+  );
 }
 
 /**
@@ -483,7 +501,8 @@ function mapSoundCloudRefusal(reason: SoundCloudLinkRefusal): LiveCutRefusal {
 
 /**
  * Shape, then the place guard — never SoundCloud first. Shared by
- * `verifyLiveCutLink` and `saveLiveCut` so the order cannot diverge.
+ * `verifyLiveCutLink`, `saveLiveCut` and `publishLiveCut` so the order cannot
+ * diverge.
  */
 function checkLinkBeforeOembed(
   eventId: string,
@@ -818,7 +837,7 @@ export async function publishLiveCut(
   const supabase = await createClient();
   const { data: row, error: readError } = await supabase
     .from("livecuts")
-    .select("id, cover_url, published_at")
+    .select("id, cover_url, published_at, soundcloud_url, mixcloud_url")
     .eq("id", id)
     .maybeSingle();
   if (readError) {
@@ -832,6 +851,20 @@ export async function publishLiveCut(
   if (!row) return refuse("not_found", eventId, `publish: livecut ${id} not visible`);
   if (row.published_at) {
     return { ok: true, id };
+  }
+
+  // The place guard AGAIN, on the saved links, with the night as it is NOW
+  // (52.3-REVIEW WR-05): the night may have become secret, or changed venue,
+  // after the draft was saved — and publishing is the moment the slug goes
+  // public. Same function and same order as `saveLiveCut`.
+  const early = checkLinkBeforeOembed(eventId, row.soundcloud_url, scoped.party);
+  if (early) return early;
+  if (
+    row.mixcloud_url &&
+    scoped.party.venueSecret &&
+    pathNamesPlace(row.mixcloud_url, scoped.party.placeTokens)
+  ) {
+    return refuse("url_names_venue", eventId, "publish: mixcloud path");
   }
   if (!row.cover_url) {
     return refuse("missing_cover", eventId, `publish: livecut ${id}`);
