@@ -154,6 +154,15 @@ export default function AddTierForm({ eventId, partyId }: AddTierFormProps) {
           />
           <input type="hidden" name="show_remaining" value="false" />
         </div>
+        <div>
+          <Checkbox
+            id={`tier-sold-out-${scope}`}
+            name="sold_out"
+            value="true"
+            label="Sold out (set by hand — wins over quantity and dates)"
+          />
+          <input type="hidden" name="sold_out" value="false" />
+        </div>
 
         <div className="grid gap-3 md:grid-cols-2">
           <Input

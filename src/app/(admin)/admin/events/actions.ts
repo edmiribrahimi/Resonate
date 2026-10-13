@@ -107,6 +107,10 @@ interface PartyInput {
    * l'opposto di `capacity`, dove il vuoto e' uno stato reale.
    */
   max_tickets_per_order?: number;
+  /** Biglietti venduti da un terzo (2026-10-13). Seller valorizzato = serata venduta altrove. */
+  external_tickets_seller?: string | null;
+  external_tickets_url?: string | null;
+  external_tickets_label?: string | null;
   sort_order: number;
   /** FMT-01. `NOT NULL` in the database — a night cannot be saved without one. */
   format_id: string;
@@ -628,6 +632,27 @@ function validateEventData(formData: FormData) {
     if (party.venue_reveal_on_purchase !== undefined) {
       party.venue_reveal_on_purchase = !!party.venue_reveal_on_purchase;
     }
+    // Biglietti venduti da un terzo (2026-10-13). Stessa regola del CHECK in
+    // migration e di `externalTicketsProblem` nel form: seller 1..60, url
+    // https senza spazi ≤ 500, label ≤ 40, url e label solo con seller.
+    const extSeller = party.external_tickets_seller?.trim() || null;
+    const extUrl = party.external_tickets_url?.trim() || null;
+    const extLabel = party.external_tickets_label?.trim() || null;
+    if (!extSeller && (extUrl || extLabel)) {
+      throw new Error("Name who sells the tickets before adding a link or a button text.");
+    }
+    if (extSeller && extSeller.length > 60) {
+      throw new Error("The seller's name can be 60 characters at most.");
+    }
+    if (extUrl && (!/^https:\/\/\S+$/.test(extUrl) || extUrl.length > 500)) {
+      throw new Error("The ticket link must start with https://, contain no spaces and be 500 characters at most.");
+    }
+    if (extLabel && extLabel.length > 40) {
+      throw new Error("The button text can be 40 characters at most.");
+    }
+    party.external_tickets_seller = extSeller;
+    party.external_tickets_url = extUrl;
+    party.external_tickets_label = extLabel;
   }
 
   // Two nights in ONE submission carrying the same (format, series, number).
@@ -1052,6 +1077,9 @@ export async function createEvent(formData: FormData): Promise<EventWriteResult>
     venue_reveal_on_purchase: p.venue_reveal_on_purchase ?? true,
     access_type: p.access_type,
     capacity: p.capacity ?? null,
+    external_tickets_seller: p.external_tickets_seller ?? null,
+    external_tickets_url: p.external_tickets_url ?? null,
+    external_tickets_label: p.external_tickets_label ?? null,
     // La chiave entra SOLO se il modulo ha espresso un valore. Assente, parla il
     // `DEFAULT 6` della colonna — che e' l'unica casa del numero. Scriverlo qui
     // con un `?? 6` gliene darebbe una seconda, e due case per un numero sono
@@ -1365,6 +1393,9 @@ export async function updateEvent(
       venue_reveal_on_purchase: party.venue_reveal_on_purchase ?? true,
       access_type: party.access_type,
       capacity: party.capacity ?? null,
+      external_tickets_seller: party.external_tickets_seller ?? null,
+      external_tickets_url: party.external_tickets_url ?? null,
+      external_tickets_label: party.external_tickets_label ?? null,
       // Come in creazione: assente significa **«lascia com'e'»**, e su un
       // aggiornamento e' la differenza fra non toccare un tetto e azzerarlo.
       // Ogni altro campo qui e' scritto sempre perche' il modulo li porta

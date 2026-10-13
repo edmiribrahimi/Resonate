@@ -64,6 +64,8 @@ interface TierWithSold {
   quantity: number | null;
   sold: number;
   show_remaining: boolean;
+  /** Esaurito a mano (2026-10-13): vince su quantita' e date, in UI e in cassa. */
+  sold_out: boolean;
   starts_at: string | null;
   expires_at: string | null;
 }
@@ -191,6 +193,16 @@ export default function TierCard({ tier, eventId }: TierCardProps) {
             />
             <input type="hidden" name="show_remaining" value="false" />
           </div>
+          <div>
+            <Checkbox
+              id={`tier-edit-sold-out-${tier.id}`}
+              name="sold_out"
+              defaultChecked={tier.sold_out}
+              value="true"
+              label="Sold out (set by hand — wins over quantity and dates)"
+            />
+            <input type="hidden" name="sold_out" value="false" />
+          </div>
 
           <div className="grid gap-3 md:grid-cols-2">
             <Input
@@ -242,6 +254,7 @@ export default function TierCard({ tier, eventId }: TierCardProps) {
                 {tier.expires_at && new Date(tier.expires_at) < new Date() && (
                   <Badge>Expired</Badge>
                 )}
+                {tier.sold_out && <Badge>Sold out</Badge>}
               </div>
               {tier.description ? (
                 <p className="mt-1 whitespace-pre-line text-sm text-ink-2">

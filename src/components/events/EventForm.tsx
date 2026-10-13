@@ -116,6 +116,10 @@ interface SubEventFormState {
    * e' l'assenza di una scelta.
    */
   max_tickets_per_order: string;
+  /** Biglietti venduti da un terzo (2026-10-13): venditore, link, testo del bottone. Vuoto = vendiamo noi. */
+  external_tickets_seller: string;
+  external_tickets_url: string;
+  external_tickets_label: string;
   sort_order: number;
   format_id: string;
   series_id: string;
@@ -142,6 +146,9 @@ function defaultSubEvent(sortOrder: number): SubEventFormState {
     access_type: "paid",
     capacity: "",
     max_tickets_per_order: "",
+    external_tickets_seller: "",
+    external_tickets_url: "",
+    external_tickets_label: "",
     sort_order: sortOrder,
     format_id: "",
     series_id: "",
@@ -177,6 +184,9 @@ export interface PartyInitialData {
    * un campo vuoto **senza che niente si accorga**.
    */
   max_tickets_per_order: number | null;
+  external_tickets_seller: string | null;
+  external_tickets_url: string | null;
+  external_tickets_label: string | null;
   sort_order: number;
   format_id: string | null;
   series_id: string | null;
@@ -249,6 +259,26 @@ const COVER_REASON_TEXT: Record<string, string> = {
   "media_strip.failed": "The image could not be read — it may be damaged. Export it again as JPEG or PNG and retry.",
 };
 
+const EXTERNAL_URL_RE = /^https:\/\/\S+$/;
+
+/**
+ * Biglietti venduti da un terzo (2026-10-13): la stessa regola di
+ * `actions.ts`, ripetuta qui perche' in produzione Next omette il messaggio di
+ * un'eccezione lanciata da una server action (precedente: quick 2026-10-05).
+ * Restituisce la frase del rifiuto, o `null` se i tre campi stanno insieme.
+ */
+function externalTicketsProblem(seller: string, url: string, label: string): string | null {
+  const s = seller.trim();
+  const u = url.trim();
+  const l = label.trim();
+  if (!s && (u || l)) return "Name who sells the tickets before adding a link or a button text.";
+  if (s.length > 60) return "The seller's name can be 60 characters at most.";
+  if (u && !EXTERNAL_URL_RE.test(u)) return "The ticket link must start with https:// and contain no spaces.";
+  if (u.length > 500) return "The ticket link is too long (500 characters at most).";
+  if (l.length > 40) return "The button text can be 40 characters at most.";
+  return null;
+}
+
 const ACCESS_TYPE_LABELS: Record<AccessType, string> = {
   free_public: "Free (Open to all)",
   free_rsvp: "Free (RSVP required)",
@@ -275,6 +305,9 @@ function subEventFromInitial(p: PartyInitialData): SubEventFormState {
     access_type: p.access_type,
     capacity: p.capacity?.toString() ?? "",
     max_tickets_per_order: p.max_tickets_per_order?.toString() ?? "",
+    external_tickets_seller: p.external_tickets_seller ?? "",
+    external_tickets_url: p.external_tickets_url ?? "",
+    external_tickets_label: p.external_tickets_label ?? "",
     sort_order: p.sort_order,
     format_id: p.format_id ?? "",
     series_id: p.series_id ?? "",
@@ -401,6 +434,15 @@ export default function EventForm({
   );
   const [mainCapacity, setMainCapacity] = useState(
     isMainEventParty && singleParty.capacity ? singleParty.capacity.toString() : ""
+  );
+  const [mainExternalSeller, setMainExternalSeller] = useState(
+    isMainEventParty ? (singleParty.external_tickets_seller ?? "") : ""
+  );
+  const [mainExternalUrl, setMainExternalUrl] = useState(
+    isMainEventParty ? (singleParty.external_tickets_url ?? "") : ""
+  );
+  const [mainExternalLabel, setMainExternalLabel] = useState(
+    isMainEventParty ? (singleParty.external_tickets_label ?? "") : ""
   );
   const [mainMaxTicketsPerOrder, setMainMaxTicketsPerOrder] = useState(
     isMainEventParty && singleParty.max_tickets_per_order
@@ -736,6 +778,19 @@ export default function EventForm({
         coverImageUrl = null;
       }
 
+      // Biglietti venduti da un terzo: il rifiuto nasce qui, con la sua
+      // frase, prima di qualunque scrittura (vedi `externalTicketsProblem`).
+      const externalProblem =
+        subEvents.length > 0
+          ? subEvents
+              .map((se) => externalTicketsProblem(se.external_tickets_seller, se.external_tickets_url, se.external_tickets_label))
+              .find((p) => p !== null) ?? null
+          : externalTicketsProblem(mainExternalSeller, mainExternalUrl, mainExternalLabel);
+      if (externalProblem) {
+        setError(externalProblem);
+        return;
+      }
+
       let partiesPayload: Record<string, unknown>[];
       let eventLineup: string[];
       let eventVenueSecret: boolean;
@@ -768,6 +823,9 @@ export default function EventForm({
           max_tickets_per_order: se.max_tickets_per_order
             ? parseInt(se.max_tickets_per_order, 10)
             : undefined,
+          external_tickets_seller: se.external_tickets_seller.trim() || null,
+          external_tickets_url: se.external_tickets_url.trim() || null,
+          external_tickets_label: se.external_tickets_label.trim() || null,
           sort_order: index,
           format_id: se.format_id,
           series_id: se.series_id,
@@ -808,6 +866,9 @@ export default function EventForm({
           max_tickets_per_order: mainMaxTicketsPerOrder
             ? parseInt(mainMaxTicketsPerOrder, 10)
             : undefined,
+          external_tickets_seller: mainExternalSeller.trim() || null,
+          external_tickets_url: mainExternalUrl.trim() || null,
+          external_tickets_label: mainExternalLabel.trim() || null,
           sort_order: 0,
           format_id: mainFormatId,
           series_id: mainSeriesId,
@@ -1480,6 +1541,47 @@ export default function EventForm({
           min={1}
           hint="Per ordine, non per persona: la stessa persona puo' fare piu' ordini."
         />
+        {/*
+          ── BIGLIETTI VENDUTI DA UN TERZO (2026-10-13) ───────────────────────
+          Il nome del venditore e' l'interruttore: scritto, la cassa nostra si
+          spegne per questa serata (`buildOrderQuote` rifiuta) e i tier sotto
+          diventano link verso il venditore. Prezzi e «Sold out» restano a mano:
+          non vediamo le vendite del terzo. La regola di validazione e' ripetuta
+          in `externalTicketsProblem` perche' in produzione Next omette il
+          messaggio di un'eccezione lanciata da una server action.
+        */}
+        {subEvent.access_type === "paid" && (
+          <div className="space-y-3 rounded-xl border border-line p-3">
+            <p className="text-xs text-muted">
+              Sold elsewhere? Name the seller and our checkout switches off for this night: the tiers become links to the seller, and prices and «Sold out» are yours to keep in step by hand.
+            </p>
+            <Input
+              id={`${idPrefix}-external-seller`}
+              label="Sold by (leave empty if we sell)"
+              value={subEvent.external_tickets_seller}
+              onChange={(e) => updateSubEvent(index, "external_tickets_seller", e.target.value)}
+              placeholder="e.g. the venue's name"
+              maxLength={60}
+            />
+            <Input
+              id={`${idPrefix}-external-url`}
+              label="Ticket link (https)"
+              type="url"
+              value={subEvent.external_tickets_url}
+              onChange={(e) => updateSubEvent(index, "external_tickets_url", e.target.value)}
+              placeholder="Empty until the seller's page exists — the page says «Tickets soon»"
+              maxLength={500}
+            />
+            <Input
+              id={`${idPrefix}-external-label`}
+              label="Button text"
+              value={subEvent.external_tickets_label}
+              onChange={(e) => updateSubEvent(index, "external_tickets_label", e.target.value)}
+              placeholder="Get tickets"
+              maxLength={40}
+            />
+          </div>
+        )}
       </Card>
     );
   }
@@ -1837,6 +1939,47 @@ export default function EventForm({
             min={1}
             hint="Per ordine, non per persona: la stessa persona puo' fare piu' ordini."
           />
+          {/*
+            ── BIGLIETTI VENDUTI DA UN TERZO (2026-10-13) ───────────────────────
+            Il nome del venditore e' l'interruttore: scritto, la cassa nostra si
+            spegne per questa serata (`buildOrderQuote` rifiuta) e i tier sotto
+            diventano link verso il venditore. Prezzi e «Sold out» restano a mano:
+            non vediamo le vendite del terzo. La regola di validazione e' ripetuta
+            in `externalTicketsProblem` perche' in produzione Next omette il
+            messaggio di un'eccezione lanciata da una server action.
+          */}
+          {mainAccessType === "paid" && (
+            <div className="space-y-3 rounded-xl border border-line p-3">
+              <p className="text-xs text-muted">
+                Sold elsewhere? Name the seller and our checkout switches off for this night: the tiers become links to the seller, and prices and «Sold out» are yours to keep in step by hand.
+              </p>
+              <Input
+                id={"main-external-seller"}
+                label="Sold by (leave empty if we sell)"
+                value={mainExternalSeller}
+                onChange={(e) => setMainExternalSeller(e.target.value)}
+                placeholder="e.g. the venue's name"
+                maxLength={60}
+              />
+              <Input
+                id={"main-external-url"}
+                label="Ticket link (https)"
+                type="url"
+                value={mainExternalUrl}
+                onChange={(e) => setMainExternalUrl(e.target.value)}
+                placeholder="Empty until the seller's page exists — the page says «Tickets soon»"
+                maxLength={500}
+              />
+              <Input
+                id={"main-external-label"}
+                label="Button text"
+                value={mainExternalLabel}
+                onChange={(e) => setMainExternalLabel(e.target.value)}
+                placeholder="Get tickets"
+                maxLength={40}
+              />
+            </div>
+          )}
         </Card>
       )}
 

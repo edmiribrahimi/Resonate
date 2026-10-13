@@ -111,6 +111,9 @@ export async function createTier(eventId: string, partyId: string | null, formDa
   }
 
   const showRemaining = formData.get("show_remaining") !== "false";
+  // Esaurito a mano (2026-10-13): il campo nascosto «false» sta DOPO la casella,
+  // quindi «true» arriva solo se la casella e' spuntata.
+  const soldOut = formData.get("sold_out") === "true";
 
   const startsAtRaw = (formData.get("starts_at") as string)?.trim() || null;
   const starts_at = startsAtRaw ? new Date(startsAtRaw).toISOString() : null;
@@ -163,6 +166,7 @@ export async function createTier(eventId: string, partyId: string | null, formDa
     price,
     quantity,
     show_remaining: showRemaining,
+    sold_out: soldOut,
     starts_at,
     expires_at,
     sort_order: sortOrder,
@@ -310,6 +314,9 @@ export async function updateTier(
   }
 
   const showRemaining = formData.get("show_remaining") !== "false";
+  // Esaurito a mano (2026-10-13): il campo nascosto «false» sta DOPO la casella,
+  // quindi «true» arriva solo se la casella e' spuntata.
+  const soldOut = formData.get("sold_out") === "true";
 
   const startsAtRaw = (formData.get("starts_at") as string)?.trim() || null;
   const starts_at = startsAtRaw ? new Date(startsAtRaw).toISOString() : null;
@@ -326,7 +333,7 @@ export async function updateTier(
 
   const { error } = await client
     .from("ticket_tiers")
-    .update({ name, description, price, quantity, show_remaining: showRemaining, starts_at, expires_at })
+    .update({ name, description, price, quantity, show_remaining: showRemaining, sold_out: soldOut, starts_at, expires_at })
     .eq("id", tierId);
 
   if (error) {
