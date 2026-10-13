@@ -1007,7 +1007,21 @@ Management; una sede si crea da Venues.
 **Verifica, in un repo senza test:** vedi CUT-05.
 
 **Depends on:** Phase 52.3 chiusa (la barra con Music e' la base da cui si toglie). Nessun'altra.
-**Plans:** 0 plans — pronta da pianificare (`/gsd-plan-phase 53`) dopo la chiusura della 52.3.
+**Plans:** 12 plans in 7 onde (pianificata il 2026-10-14)
+
+Plans:
+- [ ] 53-01-PLAN.md — Calendar, Location, Visual e lo specchio escono dal codice; sette cron (CUT-01, CUT-04)
+- [ ] 53-02-PLAN.md — «New venue» in Venues e `createVenue` con rifiuto tipizzato (CUT-03, D-53-09)
+- [ ] 53-03-PLAN.md — procedure P-53-A..G e `lab-apply-migration.mjs` su `/database/migrations` (CUT-05, D-53-07)
+- [ ] 53-04-PLAN.md — Check-in nel pannello per organizer/master, in barra per lo staff assegnato; via la riga spenta (CUT-02)
+- [ ] 53-05-PLAN.md — i gate seguono la cancellazione: nove script fuori, Manifesto ristretto, 11/20 (CUT-01)
+- [ ] 53-06-PLAN.md — la prosa dei file sopravvissuti smette di citare le sezioni tolte (CUT-01)
+- [ ] 53-07-PLAN.md — migration di sola rimozione, atto per chiave, seme del lab (CUT-01, D-53-03/04/05)
+- [ ] 53-08-PLAN.md — [BLOCKING] il laboratorio: deploy, dati per chiave, migration annotata, P-53-F
+- [ ] 53-09-PLAN.md — la persona segue la cancellazione, budget rimisurato (CUT-04, D-53-08)
+- [ ] 53-10-PLAN.md — procedure sul laboratorio e revisione del proprietario dal telefono (CUT-05)
+- [ ] 53-11-PLAN.md — produzione su «vai»: autorizzazione, deploy, dati, migration, variabili (CUT-01)
+- [ ] 53-12-PLAN.md — DOC-01..04 e 53-VERIFICATION.md, in fondo (CUT-06, CUT-05)
 
 ---
 
