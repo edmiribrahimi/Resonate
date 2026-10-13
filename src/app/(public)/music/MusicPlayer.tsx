@@ -363,16 +363,33 @@ export function useMusicPosition(): MusicPositionValue {
   return useContext(MusicPositionContext);
 }
 
-/** True when a global shortcut must NOT steal the key (a field, a select, an editable). */
-function isTypingTarget(target: EventTarget | null): boolean {
+/**
+ * True when a global shortcut must NOT take the key, because the focused
+ * element answers it on its own (52.3-REVIEW WR-03).
+ *
+ * The keydown target is the focused element. A field, a select or an editable
+ * types; a link, a button or a `<summary>` activates on Space/Enter; any
+ * element with a `role` (the waveform `slider`, a `tab`, a `button` built from
+ * a div) or a non-negative `tabIndex` declared itself keyboard-operable. On
+ * all of those, Space and the arrows belong to the element — and to the page
+ * scroll, or the `overflow-x-auto` filter rows — never to the player. The
+ * shortcuts are left only for keys with no focused control: `body`, `html`,
+ * or a plain element nobody made focusable.
+ */
+function ownsItsKeys(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
+  if (target === document.body || target === document.documentElement) return false;
   const tag = target.tagName;
   return (
     tag === "INPUT" ||
     tag === "TEXTAREA" ||
     tag === "SELECT" ||
+    tag === "A" ||
+    tag === "BUTTON" ||
+    tag === "SUMMARY" ||
     target.isContentEditable ||
-    target.getAttribute("role") === "slider"
+    target.hasAttribute("role") ||
+    target.tabIndex >= 0
   );
 }
 
@@ -681,16 +698,19 @@ export function MusicPlayerProvider({
   const previous = useCallback(() => step(-1), [step]);
   const next = useCallback(() => step(1), [step]);
 
-  // Keyboard, only while the bar exists (a LiveCut was chosen): Space
-  // play/pause, Shift+←/→ previous/next (SoundCloud's own grammar), ←/→ ±5 s.
-  // Never inside a field, and never on the waveform slider, which handles its
-  // own keys and stops them (plan 52.3-23, research §2).
+  // Keyboard, only while the bar is MOUNTED (`hasBar`: a LiveCut was chosen —
+  // the bar renders exactly when `state.current` is set): Space play/pause,
+  // Shift+←/→ previous/next (SoundCloud's own grammar), ←/→ ±5 s.
+  // Only when no control holds the focus (`ownsItsKeys`, 52.3-REVIEW WR-03):
+  // on a link, a button, a chip, a field or the waveform slider the key keeps
+  // its own meaning and is NOT prevented — Space activates the focused button
+  // or scrolls, the arrows scroll the filter rows (plan 52.3-23, research §2).
   const hasBar = state.current !== null;
   useEffect(() => {
     if (!hasBar) return;
     const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
-      if (isTypingTarget(e.target)) return;
+      if (ownsItsKeys(e.target)) return;
       const s = stateRef.current;
       switch (e.key) {
         case " ":
