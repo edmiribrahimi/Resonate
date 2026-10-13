@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
-status: executing
-stopped_at: "Completato 52.4-11-PLAN.md — porta offline approvata (emulatore), VERIFICATION passed; resta il piano 52.4-12, produzione solo su «vai»"
-last_updated: "2026-10-13T18:36:02.169Z"
+status: verifying
+stopped_at: "Completato 52.4-12-PLAN.md — fase 52.4 e quick biglietteria esterna in produzione su «vai» del 2026-10-13 (main 450b3098)"
+last_updated: "2026-10-13T19:51:22.310Z"
 last_activity: 2026-10-13
 progress:
   total_phases: 16
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 150
-  completed_plans: 138
-  percent: 50
+  completed_plans: 139
+  percent: 56
 ---
 
 # State: Resonate
@@ -410,7 +410,7 @@ checkpoints is now closed (the migration is applied); three remain, plus the RLS
 half of the fourth. `31-VALIDATION.md` keeps `nyquist_compliant: false`
 deliberately.
 
-Progress: [█████████░] 92%
+Progress: [█████████░] 93%
           phase 32 — 11 plans, 0 executed
 
 ## Decisions
@@ -519,6 +519,7 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase 52.4]: 52.4-11: prova offline della porta su emulatore Android per scelta del proprietario, approvata
 - [Phase 52.4]: 52.4-11: sei fix della revisione (CR-01, WR-01..05) applicati prima della VERIFICATION; IN-01..06 aperte
 - [Phase 52.4]: 52.4-11: «Admit anyway» sotto la barra di navigazione a 412 px, decisione del proprietario in attesa
+- [Phase 52.4]: 52.4-12: produzione su «vai» del proprietario 2026-10-13 20:56 Torino — due migration 20:59, main 450b3098, deploy Ready 21:47
 
 ## Accumulated Context
 
@@ -640,8 +641,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-10-13T18:35:41.533Z
-**Stopped at:** Completato 52.4-11-PLAN.md — porta offline approvata (emulatore), VERIFICATION passed; resta il piano 52.4-12, produzione solo su «vai»
+**Last session:** 2026-10-13T19:51:11.839Z
+**Stopped at:** Completato 52.4-12-PLAN.md — fase 52.4 e quick biglietteria esterna in produzione su «vai» del 2026-10-13 (main 450b3098); staff: riscaricare la lista sullo scanner
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
