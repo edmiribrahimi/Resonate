@@ -150,6 +150,9 @@ const PROSE: Record<DoorScanCause, (entry: ClassifiedEntry) => string> = {
   // are written out so the record stays total.
   double_read: () => "the same code was read twice within seconds",
   refunded_after_night: () => "refunded after the night began",
+  // Plan 52.4-01 (MIX-07): the tier's entry time, refused or overridden.
+  after_entry_until: () => "refused: entry time",
+  entry_until_overridden: () => "admitted after entry time",
 };
 
 /** What each cause asks of the person reading. Never a verdict on a guest. */
@@ -157,6 +160,7 @@ const NOTE: Partial<Record<DoorScanCause, string>> = {
   two_devices: "Worth a look: two people may have entered on one ticket.",
   second_ticket_same_holder: "No action beyond making the entry count add up.",
   invalid_signature: "The door was told at the time, when the network allowed.",
+  entry_until_overridden: "Admitted by staff after the ticket's entry time.",
 };
 
 const COUNTER_LABEL: Record<DoorScanCause, string> = {
@@ -168,6 +172,8 @@ const COUNTER_LABEL: Record<DoorScanCause, string> = {
   wrong_night: "tickets for another night",
   refunded_before_night: "refunded before the night (admitted with a flag, or refused)",
   refunded_after_night: "refunded after the night began (accounting)",
+  after_entry_until: "Refused: entry time",
+  entry_until_overridden: "Admitted after entry time",
 };
 
 /**

@@ -143,7 +143,22 @@ export type DoorNotValidReason =
    * the server's answer, offline it is the manifest's server-computed
    * `refundedBeforeNight` boolean, and a missing boolean admits.
    */
-  | "refunded";
+  | "refunded"
+  /**
+   * The seventh, added by plan 52.4-01 (MIX-05, D-52.4-02/05): the ticket's
+   * tier carries an entry time (`ticket_tiers.entry_until`) and the scan came
+   * after that instant.
+   *
+   * A fact of the server, derived from the tier's entry time and the scan's
+   * instant — never from the phone's clock against a guess. Like `refunded` it
+   * is TypeScript-only: the reason is not a column. The `door_scan_events` row
+   * it writes carries `cause = after_entry_until`, which the CHECK accepts from
+   * migration 20261013150000. The hour travels in the legacy `entry_until`
+   * field of the answer; the sentence lives in the client. Staff holding
+   * `door.operate` may admit anyway — that admission is the
+   * `entry_until_overridden` flag, never a silent one.
+   */
+  | "after_entry_until";
 
 /**
  * An admission that was recorded but is not ordinary.
@@ -159,7 +174,15 @@ export type DoorNotValidReason =
  * refund while `DOOR_REFUSE_REFUNDED_ENABLED` is off. The certain case is the
  * `"refunded"` reason of {@link DoorNotValidReason}.
  */
-export type DoorFlag = "refunded_before_night" | "not_in_cache";
+export type DoorFlag =
+  | "refunded_before_night"
+  | "not_in_cache"
+  /**
+   * Admitted by staff holding `door.operate` after the tier's entry time
+   * (plan 52.4-01, D-52.4-02). Recorded with `cause = entry_until_overridden`
+   * so that every exception to the entry time has an operator and a moment.
+   */
+  | "entry_until_overridden";
 
 /**
  * The three outcomes. There are three, and an undo is not a fourth — it is a
@@ -196,7 +219,9 @@ export type DoorScanOutcomeKind = DoorOutcome["outcome"];
  * The classification set, applied **after** the night, over the recorded
  * events — never at the scanner.
  *
- * Mirrored exactly by the `cause` CHECK in the migration; NULL there means
+ * Mirrored exactly by the `cause` CHECK — last widened by migration
+ * 20261013150000_mixed_tiers_entry_until.sql (the two entry-time causes), in
+ * the same commit as this union; NULL there means
  * unclassified. `refunded_after_night` is the one cause the review list
  * excludes: it is accounting, read by the finance surface, and never a door
  * conflict.
@@ -209,7 +234,9 @@ export type DoorScanCause =
   | "not_in_cache"
   | "wrong_night"
   | "refunded_before_night"
-  | "refunded_after_night";
+  | "refunded_after_night"
+  | "after_entry_until"
+  | "entry_until_overridden";
 
 /** Which path produced the record. Mirrored by the `source` CHECK. */
 export type DoorScanSource = "online" | "offline_sync";

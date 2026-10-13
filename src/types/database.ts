@@ -460,6 +460,14 @@ export interface TicketTier {
   show_remaining: boolean;
   /** Esaurito a mano: vince su quantita', date e conteggi. Migration 20261013120000. */
   sold_out: boolean;
+  /**
+   * Ora limite d'ingresso del tier, ora di Torino `HH:MM:SS` come la
+   * restituisce Postgres (`time`). Un'ora < 12 cade la mattina dopo la data
+   * della serata. NULL = nessun limite. L'istante si calcola SOLO con
+   * `entryUntilInstant` di `src/utils/datetime.ts`, mai a mano.
+   * Migration 20261013150000 (fase 52.4, D-52.4-05).
+   */
+  entry_until: string | null;
   starts_at: string | null;
   expires_at: string | null;
   created_at: string;

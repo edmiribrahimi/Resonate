@@ -100,6 +100,9 @@ const NOT_VALID_MESSAGE: Record<DoorNotValidReason, string> = {
   // UNRECOGNISED_REASON_MESSAGE — red, a correct refusal with a generic
   // sentence, never an admission (T-52.2-30).
   refunded: "Refunded — not valid",
+  // The seventh (plan 52.4-01, MIX-05): the tier's entry time has passed. The
+  // hour goes in the subtitle, not here — this Record is static.
+  after_entry_until: "Entry closed for this ticket type",
 };
 
 /** A reason from a bundle this one does not know. Its own sentence, not one of the four. */
@@ -112,6 +115,7 @@ const UNRECOGNISED_REASON_MESSAGE = "This code could not be validated";
 const FLAG_MESSAGE: Record<DoorFlag, string> = {
   refunded_before_night: "Refunded before tonight — admitted, flagged for review",
   not_in_cache: "Not in the list on this device — admitted, flagged for review",
+  entry_until_overridden: "Admitted after entry time",
 };
 
 /**
@@ -266,6 +270,9 @@ const FAILURE_REASON_MESSAGE: Record<string, string> = {
   // Not total, so written by hand (plan 52.2-11): the scan was admitted offline
   // and the server, at sync, knew of a notified refund before the night.
   refunded: "the ticket had been refunded before the night",
+  // Not total either, written by hand (plan 52.4-01): scanned after the entry
+  // time of its ticket type.
+  after_entry_until: "it was scanned after the entry time of its ticket type",
   unexpected_response: "the server never accepted it",
 };
 

@@ -153,6 +153,10 @@ function emptyCounters(): Record<DoorScanCause, number> {
     wrong_night: 0,
     refunded_before_night: 0,
     refunded_after_night: 0,
+    // Plan 52.4-01: the entry-time refusal and its staff override. Both are
+    // exceptions to look at afterwards, so `listed` does not hide them.
+    after_entry_until: 0,
+    entry_until_overridden: 0,
   };
 }
 

@@ -92,6 +92,11 @@ const NOT_VALID_REASONS: Record<DoorNotValidReason, true> = {
   // the night's review shows *"refused: refunded before the night"* instead of
   // a generic failure.
   refunded: true,
+  // The seventh (plan 52.4-01, MIX-05). A scan admitted offline and synced
+  // after the tier's entry time comes back here, and goes to `failedCheckins`
+  // under its own name: the review reads *"refused: entry time"*, not a
+  // generic failure.
+  after_entry_until: true,
 };
 
 /**
