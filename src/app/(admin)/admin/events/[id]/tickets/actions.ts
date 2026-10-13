@@ -84,6 +84,32 @@ function readTierDescription(formData: FormData): string | null {
 }
 
 /**
+ * L'ora limite d'ingresso di un tier (52.4, MIX-04, D-52.4-05): un orario da
+ * parete, ora di Torino, che la porta trasforma in un istante a partire dalla
+ * data della serata (`entryUntilInstant`, `src/lib/door/entry-until.ts`; un
+ * orario prima delle 12:00 e' la mattina dopo). Vale per OGNI tier, gratuito o
+ * a pagamento: nessuna regola «solo sui gratuiti».
+ *
+ * Vuoto → `null`, cioe' nessun limite — e in modifica un campo vuoto TOGLIE il
+ * limite. Un `<input type="time">` puo' inviare `HH:MM:SS`: i secondi si
+ * accettano e si scartano, qualunque altra coda e' un rifiuto (T-52.4-23: niente
+ * fuori forma arriva al database, dove il tipo `time` accetterebbe anche forme
+ * che la porta non si aspetta). La stessa regola e' ripetuta nel client
+ * (`@/components/tickets/tier-entry-until`), perche' in produzione Next omette
+ * il messaggio di questo throw.
+ */
+function normaliseEntryUntil(entryUntilRaw: string | null): string | null {
+  if (entryUntilRaw === null) return null;
+  if (!/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(entryUntilRaw)) {
+    console.error(
+      `[tickets.entry_until_malformed] valore rifiutato (${entryUntilRaw.length} caratteri)`
+    );
+    throw new Error("Entry until must be a time like 23:30.");
+  }
+  return entryUntilRaw.slice(0, 5);
+}
+
+/**
  * Create a new ticket tier for an event.
  */
 export async function createTier(eventId: string, partyId: string | null, formData: FormData) {
@@ -122,6 +148,10 @@ export async function createTier(eventId: string, partyId: string | null, formDa
   const expires_at = expiresAtRaw ? new Date(expiresAtRaw).toISOString() : null;
 
   const description = readTierDescription(formData);
+
+  // Vuoto = nessun limite; in modifica un campo vuoto toglie il limite.
+  const entryUntilRaw = (formData.get("entry_until") as string | null)?.trim() || null;
+  const entry_until = normaliseEntryUntil(entryUntilRaw);
 
   // Use service-role client for master (bypasses RLS ownership check)
   const client = ctx.capabilities.has(CAP.MASTER_MANAGE)
@@ -169,6 +199,7 @@ export async function createTier(eventId: string, partyId: string | null, formDa
     sold_out: soldOut,
     starts_at,
     expires_at,
+    entry_until,
     sort_order: sortOrder,
   });
 
@@ -326,6 +357,10 @@ export async function updateTier(
 
   const description = readTierDescription(formData);
 
+  // Vuoto = nessun limite; in modifica un campo vuoto toglie il limite.
+  const entryUntilRaw = (formData.get("entry_until") as string | null)?.trim() || null;
+  const entry_until = normaliseEntryUntil(entryUntilRaw);
+
   // Use service-role client for master (bypasses RLS ownership check)
   const client = ctx.capabilities.has(CAP.MASTER_MANAGE)
     ? getServiceClient()
@@ -333,7 +368,7 @@ export async function updateTier(
 
   const { error } = await client
     .from("ticket_tiers")
-    .update({ name, description, price, quantity, show_remaining: showRemaining, sold_out: soldOut, starts_at, expires_at })
+    .update({ name, description, price, quantity, show_remaining: showRemaining, sold_out: soldOut, starts_at, expires_at, entry_until })
     .eq("id", tierId);
 
   if (error) {

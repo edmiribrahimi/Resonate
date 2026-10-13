@@ -8,6 +8,10 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { Input, Textarea } from "@/components/ui/Input";
 import { SectionHeading } from "@/components/ui/Typography";
 import { TIER_DESCRIPTION_HINT } from "@/components/tickets/tier-description";
+import {
+  ENTRY_UNTIL_HINT,
+  entryUntilShapeError,
+} from "@/components/tickets/tier-entry-until";
 
 /**
  * The form that creates a ticket tier — converted onto the primitives in plan
@@ -56,6 +60,14 @@ export default function AddTierForm({ eventId, partyId }: AddTierFormProps) {
 
     const form = e.currentTarget;
     const formData = new FormData(form);
+
+    // Same rule as the action, repeated because production omits the message
+    // of an error thrown by a server action.
+    const entryUntilError = entryUntilShapeError(formData);
+    if (entryUntilError) {
+      setError(entryUntilError);
+      return;
+    }
 
     startTransition(async () => {
       try {
@@ -180,6 +192,19 @@ export default function AddTierForm({ eventId, partyId }: AddTierFormProps) {
             className="min-w-0"
           />
         </div>
+
+        {/*
+          The door limit (52.4, MIX-04): a Turin wall-clock time, empty = none.
+          It holds for any tier, free or paid.
+        */}
+        <Input
+          id={`tier-entry-until-${scope}`}
+          label="Entry until (optional, Turin time)"
+          name="entry_until"
+          type="time"
+          className="min-w-0"
+          hint={ENTRY_UNTIL_HINT}
+        />
 
         <Button type="submit" disabled={isPending} className="w-full">
           {isPending ? "Adding..." : "Add Tier"}
