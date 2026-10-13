@@ -909,7 +909,7 @@ offline. «Free (RSVP required)» esce dal prodotto, sostituito dal tier a 0 €
 - **D-52.4-07** — Il gratuito e il venue segreto: stesse modalita' del pagante (2026-10-13). Pagina del biglietto solo dopo la finestra o una rivelazione manuale (`mayShowVenueToTicketHolder`), prima la mail; predicato invariato. La divergenza preesistente della RPC `venue_for_parties` (ramo 3, `venue_reveal_on_purchase`), gia' scritta in `venue-secrecy.md`, vale anche per il gratuito: dichiarata in VERIFICATION, nessuna correzione qui.
 
 **Depends on:** Phase 52.2 (vocabolario della porta e predicato unico `refund-refusal.ts`, modello per il predicato dell'ora limite); quick `2026-10-13-biglietteria-esterna` (stesso ramo, `sold_out` e `external_tickets_*`).
-**Plans:** 5/12 plans executed
+**Plans:** 6/12 plans executed
 
 Plans:
 - [x] 52.4-01-PLAN.md — migration (free_rsvp → paid, entry_until, cause della porta) [BLOCKING sul lab] e vocabolario TS della porta
@@ -917,7 +917,7 @@ Plans:
 - [x] 52.4-03-PLAN.md — cassa: lo 0 € mai verso SumUp, reserveFreeTickets per tier, nessun blocco per capienza di serata (D-52.4-06), gate verify:external-tickets gruppo D
 - [x] 52.4-04-PLAN.md — porta online (rifiuto ed eccezione tracciata) e manifesto con entryUntil
 - [x] 52.4-05-PLAN.md — store offline e drain: entryUntil in cache, override nella stessa entrata
-- [ ] 52.4-06-PLAN.md — admin dei tier (Entry until, badge Free) e seme del lab
+- [x] 52.4-06-PLAN.md — admin dei tier (Entry until, badge Free) e seme del lab
 - [ ] 52.4-07-PLAN.md — pagina della serata: tier gratuiti con «Reserve», addio FreeOrderForm
 - [ ] 52.4-08-PLAN.md — scanner: rifiuto online/offline e pannello «Admit anyway»
 - [ ] 52.4-09-PLAN.md — lista, card, anteprima, intenzione residua, dialog del venue segreto senza RSVP; AccessType a due valori e etichette del form
