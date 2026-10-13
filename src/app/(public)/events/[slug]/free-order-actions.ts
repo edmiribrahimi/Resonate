@@ -14,6 +14,7 @@ import {
   normalizeBuyerName,
 } from "@/lib/tickets/buyer-input";
 import { resolveGuestIdentity } from "@/lib/tickets/guest-identity";
+import { reduceEntrySource } from "@/lib/tickets/entry-source";
 import { sendOrderConfirmation } from "@/lib/tickets/order-confirmation";
 import { revealPartyVenueForOrder } from "@/lib/venue-reveal/reveal-party-venue";
 import { SENZA_INDIRIZZO } from "@/lib/venue-reveal/order-reveal-outcome";
@@ -334,6 +335,24 @@ const UUID_SHAPE =
  * identita', e chiuderla richiederebbe una migration della RPC: non e' stato
  * fatto, ed e' scritto qui per non farlo credere.
  *
+ * ── `entry_source` e `checkout_form`, scritti anche qui (revisione 52.4, WR-04)
+ *
+ * Fino al 2026-10-13 la riga d'ordine gratuita nasceva con entrambe le
+ * colonne nulle, e per la loro migration (`20261001120300_order_entry_source.sql`)
+ * `NULL` vuol dire **«ordine nato prima di questa colonna»**, mai
+ * «sconosciuto»: un ordine scritto oggi mentiva al lettore dell'imbuto.
+ * Ora porta la sorgente ridotta da `reduceEntrySource` — lo stesso grezzo del
+ * link che il ramo pagante riceve — e `checkout_form = 'not_opened'`.
+ *
+ * **Perche' `not_opened` e' letteralmente vero su un totale zero, e non un
+ * valore di comodo:** la colonna dice se il modulo di pagamento e' stato
+ * mostrato. Su questa strada **nessun modulo di pagamento esiste**, quindi non
+ * e' mai stato aperto e non lo sara' mai: `opened` lo scrive solo
+ * `markCheckoutFormOpened`, firmato e condizionato a un checkout, che qui non
+ * c'e'. Il valore e' gia' ammesso dal `CHECK` della migration: nessuna
+ * migration nuova, e il `COMMENT` della colonna non e' stato toccato — la
+ * precisazione vive qui, nel codice che la scrive.
+ *
  * @returns l'id dell'ordine e quanti biglietti sono nati, oppure un rifiuto con
  * la sua causa.
  */
@@ -343,6 +362,12 @@ export async function reserveFreeTickets(input: {
   quantity: number;
   email: string;
   fullName: string;
+  /**
+   * Il `utm_source` grezzo del link d'ingresso, letto nel browser
+   * (`entry-source-capture.ts`), come sul ramo pagante. Facoltativo: assente
+   * → `direct`. Non si salva mai cosi' com'e' — vedi `reduceEntrySource`.
+   */
+  entrySource?: string | null;
 }): Promise<FreeOrderResult> {
   const refuse = (
     refusal: FreeOrderOwnRefusal,
@@ -490,6 +515,11 @@ export async function reserveFreeTickets(input: {
   // ── 5. La riga d'ordine ───────────────────────────────────────────────────
   const orderId = crypto.randomUUID();
 
+  // La sorgente d'ingresso (DBT-15, D-52.1-20; WR-04): il grezzo arriva dal
+  // browser, si riduce a cinque parole e si butta — non si salva e non si logga
+  // (gate PII di `comms-analytics.md`).
+  const entry_source = reduceEntrySource(input.entrySource);
+
   const { error: insertError } = await serviceClient
     .from("ticket_orders")
     .insert({
@@ -519,6 +549,10 @@ export async function reserveFreeTickets(input: {
       // fallimento silenzioso. La lettera di `D-50-19` e' sbagliata, la sua
       // intenzione no: lo stato lo chiude la RPC, emettendo.
       status: "pending",
+      entry_source,
+      // Nessun modulo di pagamento esiste su un totale zero: `not_opened` e'
+      // vero ora e per sempre (vedi il docblock della action, WR-04).
+      checkout_form: "not_opened",
     });
 
   if (insertError) {

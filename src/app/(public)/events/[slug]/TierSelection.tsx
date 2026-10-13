@@ -511,7 +511,16 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
       startTransition(async () => {
         let result: Awaited<ReturnType<typeof reserveFreeTickets>>;
         try {
-          result = await reserveFreeTickets({ partyId, tierId: selectedTierId, quantity, email, fullName });
+          result = await reserveFreeTickets({
+            partyId,
+            tierId: selectedTierId,
+            quantity,
+            email,
+            fullName,
+            // Il grezzo del link, come sul ramo pagante: il server lo riduce a
+            // cinque parole (revisione 52.4, WR-04).
+            entrySource: readEntrySource(),
+          });
         } catch (err) {
           // Il guasto vero (rete, azione irraggiungibile), con la sua categoria:
           // i rifiuti tornano come valore e si mostrano sotto, come arrivano.
