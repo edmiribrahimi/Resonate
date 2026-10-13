@@ -31,6 +31,10 @@ export const TICKET_PURCHASE_MESSAGE = {
     "Sales for this ticket type have closed for this night (tier_sales_closed). Nothing was charged.",
   tier_free_on_paid_night:
     "This ticket type is not on sale for this night (tier_free_on_paid_night). Nothing was charged.",
+  // 2026-10-13 — serata venduta da un terzo: la stessa frase del preventivo
+  // (`order-quote.ts`, QUOTE_NIGHT_SOLD_ELSEWHERE), su una strada diversa.
+  night_sold_elsewhere:
+    "Tickets for this night are sold elsewhere, not here. Nothing was charged.",
   already_has_night_ticket: "You already have a ticket for this sub-event",
   already_has_event_pass: "You already have an Event Pass for this event",
   event_not_found: "Event not found",

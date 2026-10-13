@@ -783,9 +783,12 @@ export default function EventForm({
       const externalProblem =
         subEvents.length > 0
           ? subEvents
+              .filter((se) => se.access_type === "paid")
               .map((se) => externalTicketsProblem(se.external_tickets_seller, se.external_tickets_url, se.external_tickets_label))
               .find((p) => p !== null) ?? null
-          : externalTicketsProblem(mainExternalSeller, mainExternalUrl, mainExternalLabel);
+          : mainAccessType === "paid"
+            ? externalTicketsProblem(mainExternalSeller, mainExternalUrl, mainExternalLabel)
+            : null;
       if (externalProblem) {
         setError(externalProblem);
         return;
@@ -823,9 +826,11 @@ export default function EventForm({
           max_tickets_per_order: se.max_tickets_per_order
             ? parseInt(se.max_tickets_per_order, 10)
             : undefined,
-          external_tickets_seller: se.external_tickets_seller.trim() || null,
-          external_tickets_url: se.external_tickets_url.trim() || null,
-          external_tickets_label: se.external_tickets_label.trim() || null,
+          // Solo su `paid`: i campi sono nascosti sugli altri tipi e non
+          // devono sopravvivere a un cambio di tipo (stessa regola del server).
+          external_tickets_seller: se.access_type === "paid" ? se.external_tickets_seller.trim() || null : null,
+          external_tickets_url: se.access_type === "paid" ? se.external_tickets_url.trim() || null : null,
+          external_tickets_label: se.access_type === "paid" ? se.external_tickets_label.trim() || null : null,
           sort_order: index,
           format_id: se.format_id,
           series_id: se.series_id,
@@ -866,9 +871,9 @@ export default function EventForm({
           max_tickets_per_order: mainMaxTicketsPerOrder
             ? parseInt(mainMaxTicketsPerOrder, 10)
             : undefined,
-          external_tickets_seller: mainExternalSeller.trim() || null,
-          external_tickets_url: mainExternalUrl.trim() || null,
-          external_tickets_label: mainExternalLabel.trim() || null,
+          external_tickets_seller: mainAccessType === "paid" ? mainExternalSeller.trim() || null : null,
+          external_tickets_url: mainAccessType === "paid" ? mainExternalUrl.trim() || null : null,
+          external_tickets_label: mainAccessType === "paid" ? mainExternalLabel.trim() || null : null,
           sort_order: 0,
           format_id: mainFormatId,
           series_id: mainSeriesId,

@@ -635,9 +635,14 @@ function validateEventData(formData: FormData) {
     // Biglietti venduti da un terzo (2026-10-13). Stessa regola del CHECK in
     // migration e di `externalTicketsProblem` nel form: seller 1..60, url
     // https senza spazi ≤ 500, label ≤ 40, url e label solo con seller.
-    const extSeller = party.external_tickets_seller?.trim() || null;
-    const extUrl = party.external_tickets_url?.trim() || null;
-    const extLabel = party.external_tickets_label?.trim() || null;
+    // Solo una serata `paid` puo' essere venduta altrove: su `free_*` i tre
+    // campi si azzerano, o un venditore sopravvissuto a un cambio di tipo
+    // farebbe rifiutare ogni prenotazione gratuita con «sold elsewhere»
+    // (revisione del ramo, 2026-10-13).
+    const isPaid = party.access_type === "paid";
+    const extSeller = isPaid ? party.external_tickets_seller?.trim() || null : null;
+    const extUrl = isPaid ? party.external_tickets_url?.trim() || null : null;
+    const extLabel = isPaid ? party.external_tickets_label?.trim() || null : null;
     if (!extSeller && (extUrl || extLabel)) {
       throw new Error("Name who sells the tickets before adding a link or a button text.");
     }
@@ -1718,7 +1723,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
   // Fetch tier details to get event_id
   const { data: tier, error: tierError } = await supabase
     .from("ticket_tiers")
-    .select("id, name, price, event_id, party_id, quantity, starts_at, expires_at")
+    .select("id, name, price, event_id, party_id, quantity, starts_at, expires_at, sold_out")
     .eq("id", tierId)
     .single();
 
@@ -1728,6 +1733,33 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
   }
   if (!tier) {
     return refuseTicketPurchase("tier_not_found");
+  }
+
+  // ── SERATA VENDUTA DA UN TERZO (2026-10-13) ────────────────────────────────
+  // Questa action non passa da `buildOrderQuote`: il confine va chiuso anche
+  // qui, e sulla serata DEL TIER (`tier.party_id`), non su quella passata
+  // dal chiamante — un `partyId` nullo salterebbe il controllo. E' una server
+  // action esportata, quindi un endpoint pubblico: la pagina non la monta su
+  // una serata esterna, ma la UI e' UX. Trovato dalla revisione del ramo.
+  if (tier.party_id) {
+    const { data: tierNight, error: tierNightError } = await supabase
+      .from("event_parties")
+      .select("id, external_tickets_seller")
+      .eq("id", tier.party_id)
+      .maybeSingle();
+    if (tierNightError) {
+      logTicketPurchaseFailure("tier_night_read", tierNightError.code);
+      throw new Error("Sub-event unreadable");
+    }
+    if (tierNight && tierNight.external_tickets_seller !== null) {
+      console.error(
+        `[tickets.night_sold_elsewhere] party=${tier.party_id} tier=${tierId}`
+      );
+      return refuseTicketPurchase(
+        "night_sold_elsewhere",
+        `They are sold by ${tierNight.external_tickets_seller}.`
+      );
+    }
   }
 
   const eventId = tier.event_id;
@@ -1767,7 +1799,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
   // not a message. Until then, money can be taken and nobody knows.
   const tierQuery = supabase
     .from("ticket_tiers")
-    .select("id, price, quantity, starts_at, expires_at")
+    .select("id, price, quantity, starts_at, expires_at, sold_out")
     .eq("event_id", eventId)
     // 2026-10-01 — DBT-18, D-52.1-23 D4 — un solo ordinamento in tutti i lettori:
     // la posizione decisa in admin, poi il prezzo, poi l'anzianita'.
@@ -1832,6 +1864,12 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
       const sold = soldMap.get(t.id) ?? 0;
       const available = t.quantity !== null ? t.quantity - sold : null;
 
+      // Esaurito A MANO (`ticket_tiers.sold_out`, 2026-10-13): come in
+      // `tierStatus` e in `buildOrderQuote`, vince su date e conteggi.
+      if (t.sold_out) {
+        statusMap.set(t.id, "sold_out");
+        continue;
+      }
       if (t.starts_at && now < new Date(t.starts_at)) {
         statusMap.set(t.id, "coming_soon");
         continue;

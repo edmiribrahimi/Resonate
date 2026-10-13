@@ -38,25 +38,30 @@ niente mail, niente rimborsi nostri. Prezzi e «Sold out» restano a mano.
 | `src/lib/tickets/tier-status.ts` | `PublicTier.sold_out?`; `tierStatus` lo mette **prima** di tutto: a mano vince su date e conteggi |
 | `src/lib/tickets/order-quote.ts` | select della serata con `external_tickets_seller`; **`quote_night_sold_elsewhere`** subito dopo «serata trovata», prima di pubblicazione e tetto («Tickets for this night are sold elsewhere, not here. Nothing was charged. They are sold by <seller>.»); `sold_out` letto sul tier e nella catena, onorato nella `statusMap` |
 | `src/app/(public)/tickets/order/[token]/resume-actions.ts` | `quote_night_sold_elsewhere → no_longer_on_sale` (il `Record` e' totale) |
+| `src/app/(admin)/admin/events/actions.ts` (`purchaseTicket`) e `src/lib/tickets/purchase-refusals.ts` | **la seconda strada verso SumUp** — sessione, Event Pass, intento ripreso da `localStorage` — non passa da `buildOrderQuote`. Trovata dalla revisione indipendente del ramo: senza questo, chi ha una sessione pagava noi per una serata venduta dal locale. Ora rilegge la serata **del tier** (`tier.party_id`, non il `partyId` passato, che puo' essere nullo) e rifiuta con `night_sold_elsewhere`; legge `sold_out` sui tier e lo onora nella mappa degli stati |
 | `src/app/(public)/events/[slug]/ExternalTickets.tsx` | **nuovo**, componente server: righe = link in uscita (`target=_blank`, `rel=noopener noreferrer`) quando `available` e con link, altrimenti `aria-disabled`; bottone con il testo scelto (default «Get tickets») o riquadro «Tickets soon» senza link; frase «Tickets are sold by <seller>…». Nessuna azione, nessun SumUp |
 | `src/app/(public)/events/[slug]/page.tsx` | select delle tre colonne; `PartyWithTiers.externalTickets`; sulle serate esterne nessun conteggio e **nessuna chiusura di default a −2 h** (un tier scade solo con `expires_at`); monta `ExternalTickets` al posto del controllo d'acquisto, che resta dietro `party.externalTickets === null &&` |
 | `src/app/(public)/events/[slug]/event-metadata.ts` | legge `external_tickets_seller`; sulle serate esterne ignora i tier a 0 € nel prezzo minimo (prima diceva «free entry») |
 | `src/components/events/EventForm.tsx` | tre campi sotto «Tickets per order», solo su serata `paid`, in entrambi i percorsi (serata singola e sotto-serate); `externalTicketsProblem` ripete la regola lato client, perche' in produzione Next omette il messaggio di un'eccezione lanciata da una server action |
-| `src/app/(admin)/admin/events/actions.ts` | `PartyInput` con i tre campi; validazione nel ciclo delle serate; scritti sempre in creazione e aggiornamento |
+| `src/app/(admin)/admin/events/actions.ts` | `PartyInput` con i tre campi; validazione nel ciclo delle serate; scritti sempre in creazione e aggiornamento; **su una serata non `paid` i tre campi si azzerano** (server e form), o un venditore sopravvissuto a un cambio di tipo farebbe rifiutare ogni prenotazione gratuita con «sold elsewhere» (rilievo della revisione) |
 | `src/app/(admin)/admin/(work)/events/[id]/edit/page.tsx` | select e `initialData` |
 | `src/components/tickets/AddTierForm.tsx`, `TierCard.tsx`, `src/app/(admin)/admin/events/[id]/tickets/actions.ts` | casella «Sold out (set by hand — wins over quantity and dates)» in creazione e modifica; badge nella vista; salvato in create e update |
 | `src/app/(public)/terms/page.tsx` | paragrafo: per le serate vendute da terzi valgono termini e rimborsi del venditore |
-| `scripts/verify-external-tickets.mjs`, `package.json`, `scripts/verify-all.mjs` | gate statico: A la cassa legge il seller e rifiuta; B il componente non e' client e non nomina azioni di acquisto ne' SumUp; C il controllo d'acquisto della serata sta dietro la guardia. Registrato in `verify` (26 gate) |
+| `scripts/verify-external-tickets.mjs`, `package.json`, `scripts/verify-all.mjs` | gate statico: A la cassa legge il seller e rifiuta **su entrambe le strade** (`buildOrderQuote` e `purchaseTicket`, che deve anche leggere e onorare `sold_out`); B il componente non e' client e non nomina azioni di acquisto ne' SumUp; C il controllo d'acquisto della serata sta dietro la guardia. Registrato in `verify` (26 gate). Visto rosso senza la correzione di `purchaseTicket` (A6-A9) e verde con |
 
-Il percorso del denaro cambia in **un punto solo**: il rifiuto in
-`buildOrderQuote`, che tutte e tre le azioni (`purchaseTicketsGuest`,
-`free-order-actions`, `resume-actions`) attraversano. Rivelazione del venue,
-scanner, lista `/events` (card «Tickets») e pass Wallet non sono toccati.
+Il percorso del denaro cambia in **due punti**, uno per strada: il rifiuto in
+`buildOrderQuote`, che `purchaseTicketsGuest`, `free-order-actions` e
+`resume-actions` attraversano, e lo stesso rifiuto in `purchaseTicket`, la
+strada con sessione che **non** passa dal preventivo. Il piano diceva «un
+punto solo»: era falso, e l'ha trovato la revisione indipendente, non la prova
+manuale, perche' la prova aveva chiamato solo la strada ospite. Rivelazione
+del venue, scanner, lista `/events` (card «Tickets») e pass Wallet non sono
+toccati.
 
 ## Verifica
 
 - `npm run build`: verde (typecheck compreso).
-- `npm run verify`: **25/25** al momento della corsa, poi 26 con il gate nuovo; nessun gate peggiorato. `verify:touch-targets` aveva fermato una prima versione delle righe (classi in una costante): corretto mettendo la stringa sull'elemento, non allargando il gate.
+- `npm run verify`: **25/25** gate eseguiti (il nuovo compreso); nessun gate peggiorato. Build e verify rilanciati dopo il passaggio di correzioni della revisione. `verify:touch-targets` aveva fermato una prima versione delle righe (classi in una costante): corretto mettendo la stringa sull'elemento, non allargando il gate.
 - `verify:venue-surfaces`: invariato (la pagina non e' fra le `GUEST_SURFACES`; il componente non nomina colonne di luogo).
 
 ### Prova sul laboratorio (2026-10-13, `npm run dev:lab -- -p 3100`, serata di prova «Lab External Night», venditore «Test Club», link `example.com`)
@@ -75,6 +80,9 @@ scanner, lista `/events` (card «Tickets») e pass Wallet non sono toccati.
 | 11 | `purchaseTicketsGuest` chiamata **direttamente** (header `Next-Action`, tecnica di `probe-forged-identity.sh`) sulla serata esterna | **ok** — `success:false`, «Tickets for this night are sold elsewhere, not here. Nothing was charged. They are sold by Test Club.»; ordini sulla serata: 0 prima, 0 dopo |
 | 12 | Attendee con biglietto su un'altra serata apre quella esterna | **non provato a mano** — `userTickets` e' per `party_id`, vuoto per costruzione; nessun ramo nuovo |
 | 13 | Serata **nostra** (seller tolto) con tier «Sold out» a mano e quantita' libera, stessa chiamata diretta | **ok** — «This ticket type is sold out. Nothing was charged.»; pagina: «Sold out». Nessuna chiamata di controllo dopo il revert: avrebbe aperto un checkout SumUp vero |
+| 14 | **Dopo la revisione** — `purchaseTicket` chiamata direttamente **con sessione** (cookie `sb-<ref>-auth-token` coniato con generateLink + verifyOtp) sulla serata esterna, `partyId` della serata | **ok** — `ok:false`, `reason:night_sold_elsewhere`; `pending_purchases` sul tier: 0 prima, 0 dopo; nessun checkout SumUp |
+| 15 | Idem con **`partyId = null`** (aggiramento del controllo sulla serata passata) | **ok** — stesso rifiuto: la serata si rilegge dal tier |
+| 16 | Serata nostra, tier «Sold out» a mano, stessa strada con sessione | **ok** — `reason:tier_not_available` (sold_out); 0 righe. Nessuna chiamata di controllo senza sold_out |
 
 Misurato e corretto durante la prova: (a) l'anteprima diceva «free entry» per
 un tier a 0 € — `event-metadata` ora li ignora sulle serate esterne; (b) un
@@ -84,6 +92,20 @@ sulle serate esterne (il filtro `price > 0` vale per tutte): una «lista» del
 venditore non e' un tier nostro.
 
 La serata di prova e' stata cancellata dal laboratorio a fine prova.
+
+## Revisione indipendente del ramo (2026-10-13)
+
+Un revisore su contesto fresco ha letto l'intero diff. **Un rilievo Critical**:
+`purchaseTicket` era una seconda strada verso SumUp ignara di
+`external_tickets_seller` e di `sold_out` — corretto (vedi tabella), gate A
+esteso, riprovato sul lab con sessione (passi 14-16). **Un rilievo Minor**
+corretto: il venditore sopravviveva al cambio da `paid` a `free_rsvp`. **Un
+rilievo Minor accettato come limite**: nessun tier a 0 € sulle serate esterne
+(sotto). Messi da parte dal revisore, e qui registrati: Event Pass su un evento
+con una serata esterna (caso non reale oggi); menu drink su serata esterna
+(nessun rifiuto server, ma senza voci di menu non c'e' nulla da comprare);
+ordini `pending` aperti prima di un sold out a mano completano comunque
+(D-46-07, gia' accettato).
 
 ## Limiti dichiarati
 

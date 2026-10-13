@@ -3,7 +3,8 @@
  * verify-external-tickets.mjs — una serata venduta da un terzo non puo' mai
  * arrivare alla cassa nostra (quick 2026-10-13). Tre controlli statici:
  *   A  buildOrderQuote legge `external_tickets_seller` e rifiuta con
- *      QUOTE_NIGHT_SOLD_ELSEWHERE (il confine server; la UI e' UX);
+ *      QUOTE_NIGHT_SOLD_ELSEWHERE (il confine server; la UI e' UX), e la
+ *      seconda strada, `purchaseTicket`, fa lo stesso e onora `sold_out`;
  *   B  ExternalTickets.tsx non importa azioni di acquisto ne' SumUp e resta un
  *      componente server (nessun "use client");
  *   C  nella pagina della serata il controllo d'acquisto per serata e' montato
@@ -32,6 +33,20 @@ if (!/\.select\("[^"]*external_tickets_seller[^"]*"\)/.test(quote)) fail("A1", "
 if (!/const QUOTE_NIGHT_SOLD_ELSEWHERE = "quote_night_sold_elsewhere"/.test(quote)) fail("A2", "order-quote.ts non dichiara QUOTE_NIGHT_SOLD_ELSEWHERE");
 if (!/refuse\(\s*QUOTE_NIGHT_SOLD_ELSEWHERE/.test(quote)) fail("A3", "order-quote.ts non rifiuta con QUOTE_NIGHT_SOLD_ELSEWHERE");
 if (!/external_tickets_seller !== null/.test(quote)) fail("A4", "order-quote.ts non controlla external_tickets_seller !== null");
+// A' — la SECONDA strada verso SumUp: `purchaseTicket` (sessione, Event Pass,
+// intento ripreso da localStorage) non passa da buildOrderQuote. Trovata
+// dalla revisione del ramo il 2026-10-13: senza questo controllo chi ha una
+// sessione paga noi per una serata venduta dal locale.
+const adminActions = read("src/app/(admin)/admin/events/actions.ts");
+const purchaseStart = adminActions.indexOf("export async function purchaseTicket(");
+if (purchaseStart < 0) fail("A5", "actions.ts non esporta purchaseTicket (il gate va aggiornato, non tolto)");
+else {
+  const body = adminActions.slice(purchaseStart, purchaseStart + 12000);
+  if (!/\.select\("[^"]*external_tickets_seller[^"]*"\)/.test(body)) fail("A6", "purchaseTicket non legge external_tickets_seller sulla serata del tier");
+  if (!/refuseTicketPurchase\(\s*"night_sold_elsewhere"/.test(body)) fail("A7", "purchaseTicket non rifiuta con night_sold_elsewhere");
+  if (!/\.select\("[^"]*sold_out[^"]*"\)/.test(body)) fail("A8", "purchaseTicket non legge sold_out sui tier");
+  if (!/t\.sold_out/.test(body)) fail("A9", "purchaseTicket non onora sold_out nella mappa degli stati");
+}
 
 // B — il componente senza cassa
 const ext = read("src/app/(public)/events/[slug]/ExternalTickets.tsx");
@@ -65,4 +80,4 @@ if (failures.length) {
   console.error("verify-external-tickets: FAIL\n  " + failures.join("\n  "));
   process.exit(1);
 }
-console.log("verify-external-tickets: ok (A rifiuto server, B componente senza cassa, C guardia in pagina)");
+console.log("verify-external-tickets: ok (A rifiuto server su entrambe le strade, B componente senza cassa, C guardia in pagina)");
