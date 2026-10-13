@@ -907,10 +907,21 @@ offline. «Free (RSVP required)» esce dal prodotto, sostituito dal tier a 0 €
 - **D-52.4-05** — L'ora limite sta sul tier come ora di Torino; un'ora < 12 cade il giorno dopo la data della serata (stessa regola di `partyEndInstant`).
 
 **Depends on:** Phase 52.2 (vocabolario della porta e predicato unico `refund-refusal.ts`, modello per il predicato dell'ora limite); quick `2026-10-13-biglietteria-esterna` (stesso ramo, `sold_out` e `external_tickets_*`).
-**Plans:** 0 plans
+**Plans:** 12 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 52.4 to break down)
+- [ ] 52.4-01-PLAN.md — migration (free_rsvp → paid, entry_until, cause della porta) [BLOCKING sul lab] e vocabolario TS della porta
+- [ ] 52.4-02-PLAN.md — entryUntilInstant e predicato unico entry-until.ts
+- [ ] 52.4-03-PLAN.md — cassa: lo 0 € mai verso SumUp, reserveFreeTickets per tier, capienza unica, gate verify:external-tickets gruppo D
+- [ ] 52.4-04-PLAN.md — porta online (rifiuto ed eccezione tracciata) e manifesto con entryUntil
+- [ ] 52.4-05-PLAN.md — store offline e drain: entryUntil in cache, override nella stessa entrata
+- [ ] 52.4-06-PLAN.md — admin dei tier (Entry until, badge Free) e seme del lab
+- [ ] 52.4-07-PLAN.md — pagina della serata: tier gratuiti con «Reserve», addio FreeOrderForm
+- [ ] 52.4-08-PLAN.md — scanner: rifiuto online/offline e pannello «Admit anyway»
+- [ ] 52.4-09-PLAN.md — lista, card, anteprima, intenzione residua; AccessType a due valori e etichette del form
+- [ ] 52.4-10-PLAN.md — build, verify, prova completa sul lab, revisione, SUMMARY della quick
+- [ ] 52.4-11-PLAN.md — deploy sul lab, prova offline dal telefono col proprietario, VERIFICATION.md
+- [ ] 52.4-12-PLAN.md — produzione solo su «vai»: due migration in ordine, poi deploy
 
 ### Phase 53: TASK
 
