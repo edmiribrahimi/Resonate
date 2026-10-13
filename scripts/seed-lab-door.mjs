@@ -40,8 +40,9 @@
  *
  * COSA SEMINA. Un locale, TRE serate future pubblicate con il loro format e la
  * loro serie — una a pagamento, una con il venue segreto e rivelazione non
- * avvenuta, una `free_rsvp` con il suo tier a prezzo 0 — un livello di biglietto
- * per ciascuna, quattro account e un biglietto con il suo codice firmato. Nomi e
+ * avvenuta, una gratuita — dal 2026-10-13 una serata con biglietti (`paid`) il
+ * cui tier `Free` costa 0 e porta un'ora limite alla porta; `free_rsvp` non
+ * esiste piu' e il CHECK la rifiuta — un livello di biglietto per ciascuna, quattro account e un biglietto con il suo codice firmato. Nomi e
  * indirizzi sono palesemente finti (`@lab.invalid`) e le date sono calcolate a
  * partire da oggi: questo file e' su un repository PUBBLICO e non deve portare
  * una sede, una data o una line-up vere.
@@ -332,10 +333,14 @@ async function seed() {
   ids.secretTier = stier[0].id;
   write();
 
-  // La serata GRATUITA — `access_type = 'free_rsvp'`, con il suo tier a prezzo 0.
-  // Senza di lei `P-50-7` non e' eseguibile: l'ordine a totale zero di REG-06
-  // nasce da una serata `free_rsvp` e da un livello di biglietto a zero, e
-  // nessuna delle due esiste oggi sul laboratorio.
+  // La serata GRATUITA. Dal 2026-10-13 (fase 52.4, MIX-01) non esiste piu'
+  // `access_type = 'free_rsvp'`: il CHECK accetta solo `free_public` e `paid`, e
+  // un biglietto gratuito e' un tier a 0 € su una serata CON biglietti, con
+  // un'ora limite opzionale alla porta (MIX-04). Qui: serata `paid`, tier `Free`
+  // a 0, `entry_until` 00:00 — ora di Torino; prima delle 12:00 vale la mattina
+  // dopo la data della serata, quindi la mezzanotte della notte stessa.
+  // Senza di lei l'ordine a totale zero (REG-06, `P-50-7`) e il rifiuto
+  // dell'ora limite alla porta non sono eseguibili sul laboratorio.
   //
   // `capacity` PORTA UN VALORE, e piccolo di proposito. `P-50-7` deve poter
   // vedere la capienza RIFIUTARE, e una capienza nulla e' una capienza infinita:
@@ -357,14 +362,14 @@ async function seed() {
       (event_id, title, time, end_time, date, access_type, capacity, sort_order, lineup,
        venue_id, venue_secret, format_id, series_id, number)
     values (${q(ids.freeEvent)}, 'Lab Free Night', '22:00', '06:00', (current_date + interval '21 days'),
-            'free_rsvp', ${FREE_CAPACITY}, 1, '{}', ${q(ids.venue)}, false, ${q(fmt[0].id)}, ${q(ser[0].id)}, null)
+            'paid', ${FREE_CAPACITY}, 1, '{}', ${q(ids.venue)}, false, ${q(fmt[0].id)}, ${q(ser[0].id)}, null)
     returning id`);
   ids.freeParty = fparty[0].id;
   write();
 
   const ftier = await sql(`
-    insert into public.ticket_tiers (event_id, party_id, name, price, quantity)
-    values (${q(ids.freeEvent)}, ${q(ids.freeParty)}, 'RSVP', 0, ${FREE_CAPACITY})
+    insert into public.ticket_tiers (event_id, party_id, name, price, quantity, entry_until)
+    values (${q(ids.freeEvent)}, ${q(ids.freeParty)}, 'Free', 0, ${FREE_CAPACITY}, '00:00')
     returning id`);
   ids.freeTier = ftier[0].id;
   write();
@@ -385,7 +390,7 @@ async function seed() {
   console.log(`Seminato su ${REF}. Chiavi in ${SEED_FILE}.`);
   console.log(`  serata   ${ids.party}`);
   console.log(`  segreta  ${ids.secretParty} (venue_secret, rivelazione non avvenuta, tier 1.00)`);
-  console.log(`  gratuita ${ids.freeParty} (free_rsvp, capienza ${FREE_CAPACITY}, tier 'RSVP' a 0)`);
+  console.log(`  gratuita ${ids.freeParty} (paid, tier 'Free' a 0, entry_until 00:00, capienza ${FREE_CAPACITY})`);
   console.log(`  biglietto ${ids.ticket}`);
   console.log(`  codice   ${ids.ticketToken.slice(0, 12)}… (per intero nel file)`);
   console.log(`  account  ${Object.values(ids.accounts).map((a) => `${a.email} (${a.role})`).join(", ")}`);
