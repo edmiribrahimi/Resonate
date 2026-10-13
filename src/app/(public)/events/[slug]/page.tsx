@@ -17,7 +17,6 @@ import FormatMarker from "@/components/formats/FormatMarker";
 import TierSelection from "./TierSelection";
 import ExternalTickets from "./ExternalTickets";
 import { SiteFooter } from "@/components/legal/SiteFooter";
-import FreeOrderForm from "./FreeOrderForm";
 
 import MyDrinks from "./MyDrinks";
 import PendingIntentHandler from "./PendingIntentHandler";
@@ -28,7 +27,8 @@ import { formatTime } from "@/utils/formatTime";
 import { buildEventMetadata } from "./event-metadata";
 import { CalendarIcon, ClockIcon, MapPinIcon, LockClosedIcon, MusicalNoteIcon } from "@/components/ui/Icons";
 import type { UserRole, AccessType } from "@/types/database";
-import { partyEndInstant, turinToday, venueRevealHours } from "@/utils/datetime";
+import { partyEndInstant, turinToday, turinWallClock, venueRevealHours } from "@/utils/datetime";
+import { entryUntilAt } from "@/lib/door/entry-until";
 import { tierClosesAt } from "@/lib/tickets/sales-window";
 import {
   isNightSecret,
@@ -147,6 +147,12 @@ interface PartyWithTiers {
     expires_at?: string | null;
     /** 2026-10-05 — `expires_at` e' la chiusura di default (fine − 2 h). */
     closes_by_default?: boolean;
+    /**
+     * 2026-10-13 (52.4) — l'ora limite del tier come «HH:MM» di Torino,
+     * calcolata qui sul server (`entryUntilAt` + `turinWallClock`). Solo testo
+     * da mostrare: la porta decide da `entry-until.ts`, non da questa stringa.
+     */
+    entry_until_label?: string | null;
   }[];
   /**
    * OGNI biglietto di chi guarda su questa serata, non il primo.
@@ -168,7 +174,6 @@ interface PartyWithTiers {
    * (`D-49-03`), e la colonna lo dichiara nel proprio `COMMENT`.
    */
   userTickets: { id: string; holder_label: string | null }[];
-  userRsvp: { id: string } | null;
   /**
    * Quanti biglietti puo' contenere UN ORDINE su questa serata.
    *
@@ -656,37 +661,33 @@ export default async function EventDetailPage({
           .order("price", { ascending: true })
           .order("created_at", { ascending: true });
 
-        // ── CR-01: un livello a prezzo zero non si disegna su una serata a
-        //    pagamento ────────────────────────────────────────────────────────
+        // ── Tutti i tier, anche quelli a 0 € (52.4, D-52.4-01) ────────────────
         //
-        // Questo blocco gira SOLO quando `access_type === "paid"` (la riga
-        // sopra), quindi un livello a prezzo zero qui e' per costruzione il
-        // livello `RSVP` che REG-06 crea sulle serate `free_rsvp` e che e'
-        // rimasto agganciato alla serata dopo il passaggio a `paid` — da prima
-        // che `ensureFreeRsvpTier` imparasse a chiuderlo, o da una scrittura
-        // che non passa da li'. Ordinati per prezzo crescente, quei livelli
-        // sarebbero i PRIMI dell'elenco: la superficie pubblica della serata
-        // mostrerebbe un'opzione gratuita accanto a quelle a pagamento.
-        //
-        // Il filtro sta dove i livelli si LEGGONO e non dove si disegnano, cosi'
-        // vale per ogni consumatore di `tiers` invece che per il solo
-        // `TierSelection`. E' la terza delle tre guardie di CR-01, e nessuna
-        // delle tre si deduce dalle altre: questa toglie l'opzione dalla vista,
-        // le altre due rifiutano l'acquisto se qualcuno la raggiunge lo stesso.
-        // Serata venduta da un terzo (2026-10-13): un tier a 0 € e' un biglietto
-        // gratuito che emette il venditore, non un ordine gratuito nostro, e si
-        // mostra come gli altri (decisione del proprietario: la serata ha
-        // biglietti gratuiti e a pagamento, entrambi del venditore). Il
-        // salvataggio dall'admin non lo chiude piu' su queste serate
-        // (`ensureFreeRsvpTier`, actions.ts). Sulle serate nostre il filtro
-        // resta: uno 0 € li' sarebbe un ordine gratuito.
+        // Qui stava il filtro di CR-01, che nascondeva uno 0 € sulle serate
+        // nostre perche' poteva essere solo il livello `RSVP` rimasto da una
+        // serata gratuita. Da questa fase un tier a 0 € e' un biglietto
+        // gratuito vero, accanto ai paganti, e si prenota con «Reserve»
+        // (`reserveFreeTickets`): si mostra come gli altri. Le guardie che
+        // restano sono sul server — il preventivo rifiuta uno 0 € diretto a
+        // SumUp (`QUOTE_FREE_TIER_USE_RESERVE`) e la prenotazione rifiuta un
+        // tier che non e' a 0 € (`free_tier_not_free`).
         const isExternal = party.external_tickets_seller !== null;
-        const sellableTiers = (rawTiers ?? []).filter(
-          (tier: { price: number }) => isExternal || tier.price > 0
-        );
+        const sellableTiers = rawTiers ?? [];
 
         tiers = await Promise.all(
-          sellableTiers.map(async (tier: { id: string; name: string; description?: string | null; price: number; quantity: number | null; show_remaining?: boolean; starts_at?: string | null; expires_at?: string | null; sold_out?: boolean }) => {
+          sellableTiers.map(async (rawTier: { id: string; name: string; description?: string | null; price: number; quantity: number | null; show_remaining?: boolean; starts_at?: string | null; expires_at?: string | null; sold_out?: boolean; entry_until?: string | null }) => {
+            // L'ora limite come «HH:MM» di Torino: l'istante lo calcola
+            // `entryUntilAt` (lo stesso della porta), l'ora la legge
+            // `turinWallClock`. Nessuna data e ora incollate a mano.
+            const entryUntilInstant = rawTier.entry_until
+              ? entryUntilAt(party.date, rawTier.entry_until)
+              : null;
+            const tier = {
+              ...rawTier,
+              entry_until_label: entryUntilInstant
+                ? turinWallClock(entryUntilInstant.toISOString())?.time ?? null
+                : null,
+            };
             if (isExternal) {
               // Nessun conteggio: non vendiamo noi. Nessuna chiusura di
               // default a −2 h: il venditore vende fino a quando decide lui, e
@@ -747,7 +748,6 @@ export default async function EventDetailPage({
       // cioe' *questa persona non ha biglietti*, cioe' il controllo d'acquisto
       // riproposto a chi ne ha gia' sei, in silenzio.
       let userTickets: { id: string; holder_label: string | null }[] = [];
-      let userRsvp: { id: string } | null = null;
 
       if (isAuthenticated && user) {
         // ── «HO GIA' PRENOTATO» E «HO GIA' UN BIGLIETTO» SONO LA STESSA COSA ──
@@ -757,10 +757,10 @@ export default async function EventDetailPage({
         // persona e' gia' dentro?» si fa su `tickets` **anche** su una serata
         // gratuita, e si fa come la si fa sul percorso pagato. Fino a ieri qui
         // si leggeva una riga di `rsvps`, che era l'unico segno esistente.
-        if (
-          party.access_type === "paid" ||
-          party.access_type === "free_rsvp"
-        ) {
+        // Dal 2026-10-13 (52.4) la serata gratuita con prenotazione non esiste
+        // piu' come tipo: un biglietto gratuito e' un tier a 0 € di una serata
+        // `paid`, quindi la domanda si fa solo li'.
+        if (party.access_type === "paid") {
           const { data: ticketRows, error: ticketsError } = await supabase
             .from("tickets")
             .select("id, holder_label")
@@ -795,34 +795,6 @@ export default async function EventDetailPage({
             });
           }
         }
-
-        if (party.access_type === "free_rsvp") {
-          // ── LA PRENOTAZIONE STORICA SI CONTINUA A LEGGERE ──────────────────
-          //
-          // `rsvps` non riceve **nessuna scrittura nuova** (`D-50-20`,
-          // `D-50-22`): questa e' una lettura, e resta perche' chi ha prenotato
-          // prima di oggi non deve vedersi sparire la propria prenotazione
-          // dalla pagina. Quando lo storico sara' vuoto questo ramo potra'
-          // sparire con lui — e in produzione, contato dal piano 50-01, la
-          // tabella e' gia' **vuota**: qui descrive un insieme vuoto, e sta in
-          // piedi per il laboratorio e per le righe che potessero esistere
-          // altrove.
-          //
-          // L'errore non si scarta piu'. Scartato, una lettura caduta diceva
-          // *questa persona non ha prenotato* — cioe' faceva sparire una
-          // prenotazione vera senza che nessuno lo sapesse, che e' il difetto
-          // che il resto di questo file ha gia' corretto due volte.
-          const { data: rsvp, error: rsvpRowError } = await supabase
-            .from("rsvps")
-            .select("id")
-            .eq("party_id", party.id)
-            .eq("user_id", user.id)
-            .maybeSingle();
-          if (rsvpRowError) {
-            logUnreadableCount("event_detail.party_user_rsvp", rsvpRowError);
-          }
-          userRsvp = rsvp;
-        }
       }
 
       // Calculate spots left
@@ -843,60 +815,12 @@ export default async function EventDetailPage({
             spotsLeft = null;
             spotsUnknown = true;
           } else {
+            // 52.4, D-52.4-03 — la somma conta i biglietti di TUTTI i tier,
+            // gratuiti e paganti insieme: la capienza misura chi sta nella
+            // stanza. E' solo un numero da mostrare (D-52.4-06): nessuna
+            // prenotazione si ferma su di esso.
             const totalSold = tiers.reduce((sum, t) => sum + t.sold, 0);
             spotsLeft = party.capacity - totalSold;
-          }
-        } else if (party.access_type === "free_rsvp") {
-          // ── LA CAPIENZA DI UNA SERATA GRATUITA HA DUE SORGENTI ─────────────
-          //
-          // **I biglietti** emessi dal livello a prezzo zero — da oggi una
-          // prenotazione e' un ordine a totale zero e produce biglietti veri
-          // (`REG-06`) — **e le righe storiche di `rsvps`**, che nessuno scrive
-          // piu' ma che sono persone che hanno detto di venire.
-          //
-          // **La seconda meta' e' storia, e sparira' con lo storico.** Finche'
-          // esiste, toglierla renderebbe la capienza sbagliata **per difetto**:
-          // si mostrerebbero posti liberi che non ci sono, e si prenderebbero
-          // prenotazioni per una stanza gia' piena. E' `D-50-22`, e in
-          // produzione descrive gia' un insieme vuoto — `rsvps` e' stata
-          // contata a zero dal piano 50-01 — ma il codice non lo da' per
-          // scontato: una tabella vuota oggi non e' una tabella che non puo'
-          // avere righe.
-          //
-          // I biglietti si contano **per serata** e non per livello: la
-          // capienza misura chi sta nella stanza, e su una serata gratuita ogni
-          // biglietto nasce dal livello a prezzo zero. Filtrare per livello
-          // farebbe sparire dal conto un biglietto emesso da qualunque altra
-          // strada — cioe' sbaglierebbe nel verso che vende un posto che non
-          // c'e'.
-          const { count: freeTicketCount, error: freeTicketError } =
-            await serviceClient
-              .from("tickets")
-              .select("*", { count: "exact", head: true })
-              .eq("party_id", party.id);
-
-          const { count: rsvpCount, error: rsvpError } = await serviceClient
-            .from("rsvps")
-            .select("*", { count: "exact", head: true })
-            .eq("party_id", party.id);
-
-          // Una somma vale quanto il suo termine piu' debole, ed e' la stessa
-          // regola gia' applicata sopra ai livelli a pagamento: se **una** delle
-          // due letture non e' tornata, il totale non e' una misura e il numero
-          // non si stampa.
-          if (freeTicketError || freeTicketCount === null) {
-            logUnreadableCount(
-              "event_detail.party_free_ticket_count",
-              freeTicketError
-            );
-            spotsLeft = null;
-            spotsUnknown = true;
-          } else if (rsvpError || rsvpCount === null) {
-            logUnreadableCount("event_detail.party_rsvp_count", rsvpError);
-            spotsLeft = null;
-            spotsUnknown = true;
-          } else {
-            spotsLeft = party.capacity - freeTicketCount - rsvpCount;
           }
         }
       }
@@ -933,7 +857,6 @@ export default async function EventDetailPage({
             : null,
         tiers,
         userTickets,
-        userRsvp,
         // Il fallback e' **1 e non 6**, e la scelta e' dichiarata: nessun client
         // Supabase di questo repository e' parametrizzato con `Database`, quindi
         // una colonna rinominata arriverebbe `undefined` senza rumore. Scrivere
@@ -1858,52 +1781,24 @@ export default async function EventDetailPage({
                     isAuthenticated={isAuthenticated}
                     eventSlug={slug}
                     maxTicketsPerOrder={party.maxTicketsPerOrder}
-                  />
-                  </>
-                )}
-
-              {/*
-                ── SERATA GRATUITA: IL MODULO DELL'ORDINE, NON PIU' UN PULSANTE ─
-
-                **Le condizioni erano quelle di prima, parola per parola** —
-                serata futura, `free_rsvp`, e lo stesso pubblico — ed e' la
-                parte che il 2026-09-21 e' stata corretta: `(!isAuthenticated ||
-                isApproved)` non e' uscita per allargare il pubblico, ma perche'
-                con `profiles.status` via `isApproved` vale `false` per
-                chiunque, e la riga avrebbe mostrato il modulo **solo agli
-                anonimi**. Misurato sul laboratorio dal piano 50-05: un socio
-                con la sessione attiva vedeva **zero campi**. Adesso chi ha una
-                sessione prenota esattamente come chi non ce l'ha.
-
-                Il resto e' com'era: al posto di un si'/no c'e' un modulo che
-                produce **biglietti veri** (`REG-06`, `D-50-18`), e chi non ha
-                una sessione non viene piu' spedito a una pagina d'iscrizione
-                che non esiste piu'.
-
-                Chi ha una sessione trova i due campi compilati con cio' che
-                l'account gia' sa. Il nome arriva dai metadati della sessione —
-                **nessuna lettura in piu'**, e in particolare nessuna lettura di
-                una colonna che questa fase sta togliendo.
-
-                Il collegamento «ho gia' un biglietto» lo disegna il blocco
-                sopra, che ora vale anche per una serata gratuita.
-              */}
-              {isUpcoming &&
-                party.access_type === "free_rsvp" &&
-                (
-                  <FreeOrderForm
-                    partyId={party.id}
-                    maxTicketsPerOrder={party.maxTicketsPerOrder}
                     sessionEmail={user?.email ?? null}
                     sessionName={
                       typeof user?.user_metadata?.full_name === "string"
                         ? user.user_metadata.full_name
                         : null
                     }
-                    eventSlug={slug}
                   />
+                  </>
                 )}
 
+              {/*
+                ── I BIGLIETTI GRATUITI STANNO NEL CONTROLLO SOPRA (52.4) ──────
+                Qui stava il modulo separato delle serate gratuite con
+                prenotazione, uscito con questo piano. Dal 2026-10-13 un biglietto gratuito e' un tier a 0 € di una
+                serata `paid`, e `TierSelection` lo prenota con «Reserve»: due
+                moduli che fanno la stessa cosa divergono. Mail e nome della
+                sessione arrivano li', sopra, con la stessa espressione.
+              */}
               {/* Free public party: badge (upcoming only) */}
               {isUpcoming && party.access_type === "free_public" && (
                 <div className="rounded-xl bg-sem-done/10 border border-sem-done/30 px-4 py-3 text-center">

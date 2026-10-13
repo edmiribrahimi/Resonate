@@ -38,6 +38,14 @@ export interface PublicTier {
   closes_by_default?: boolean;
   /** Esaurito a mano da chi organizza (`ticket_tiers.sold_out`): vince su tutto. */
   sold_out?: boolean;
+  /**
+   * 2026-10-13 (52.4, MIX-04) — l'ora limite d'ingresso del tier come «HH:MM»
+   * di Torino, calcolata dalla pagina sul server con `entryUntilAt` +
+   * `turinWallClock`. `null` o assente = nessuna ora limite. Solo testo da
+   * mostrare («Entry until HH:MM»): non entra in nessun calcolo di stato — la
+   * porta decide da `src/lib/door/entry-until.ts`.
+   */
+  entry_until_label?: string | null;
 }
 
 export type TierStatus = "coming_soon" | "available" | "sold_out" | "expired";
