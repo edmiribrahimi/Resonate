@@ -24,26 +24,84 @@
  *            `includes(...)` di rifiuto di host. Nessun'altra riga puo'
  *            costruire un indirizzo di produzione.
  *
+ *            E le COSTANTI di produzione dichiarate fra i marcatori (ogni
+ *            `const X =` il cui valore nomina il ref o un'altra costante di
+ *            produzione: `PROD_BASE`, `PROD_PUBLIC_STORAGE`) non si usano
+ *            fuori dai marcatori: una `fetch(\`${PROD_BASE}/…\`, { method:
+ *            "POST" })` scritta sotto `PROD-READ-END` e' un indirizzo di
+ *            produzione costruito fuori dal recinto (52.3-REVIEW WR-07).
+ *
+ * `read_only: true` CONTA SOLO DENTRO IL CORPO DELLA STESSA CHIAMATA: il testo
+ * della `fetch(` che contiene il `method: "POST"` si delimita contando le
+ * parentesi, a commenti tolti, e deve portare `body: JSON.stringify({ … read_only:
+ * true … })`. Prima bastava una riga con `read_only: true` nelle 12 righe dopo
+ * il metodo — anche in un commento o in un'altra proprieta' (WR-07).
+ *
  * Esce 1 alla prima categoria violata (con tutte le righe di quella categoria),
  * 0 con «read-only OK». Non esegue lo script controllato e non apre la rete.
  *
- * USO  node scripts/check-seed-readonly.mjs scripts/seed-lab-music.mjs
+ * USO  node scripts/check-seed-readonly.mjs [file]
+ *      senza argomento controlla `scripts/seed-lab-music.mjs`: e' la forma
+ *      `node <path>` con cui `npm run verify` lo lancia (`verify:seed-readonly`).
  */
 
 import { readFileSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const file = process.argv[2];
-if (!file) {
-  console.error("uso: node scripts/check-seed-readonly.mjs <file>");
-  process.exit(2);
+const file =
+  process.argv[2] ?? join(dirname(fileURLToPath(import.meta.url)), "seed-lab-music.mjs");
+
+const source = readFileSync(file, "utf8");
+const lines = source.split("\n");
+
+/**
+ * The same text with every comment blanked to spaces, line structure kept:
+ * `//` to end of line (not when preceded by `:`, so `https://` survives) and
+ * `/* … *\/` across lines. Strings are not parsed: good enough for a file
+ * whose comments do not contain quotes that open strings, and a comment that
+ * fools it can only make the check STRICTER (a hidden `read_only` stays
+ * hidden).
+ */
+function blankComments(text) {
+  let out = "";
+  let i = 0;
+  while (i < text.length) {
+    if (text[i] === "/" && text[i + 1] === "*") {
+      const end = text.indexOf("*/", i + 2);
+      const stop = end === -1 ? text.length : end + 2;
+      out += text.slice(i, stop).replace(/[^\n]/g, " ");
+      i = stop;
+      continue;
+    }
+    if (text[i] === "/" && text[i + 1] === "/" && text[i - 1] !== ":") {
+      let stop = text.indexOf("\n", i);
+      if (stop === -1) stop = text.length;
+      out += " ".repeat(stop - i);
+      i = stop;
+      continue;
+    }
+    out += text[i];
+    i++;
+  }
+  return out;
 }
-
-const lines = readFileSync(file, "utf8").split("\n");
+const code = blankComments(source);
+const codeLines = code.split("\n");
+/** Offset of the start of each line in `code`. */
+const lineStart = [];
+{
+  let off = 0;
+  for (const l of codeLines) {
+    lineStart.push(off);
+    off += l.length + 1;
+  }
+}
 const BEGIN = "// PROD-READ-BEGIN";
 const END = "// PROD-READ-END";
 
 function fail(category, details) {
-  console.error(`FAIL [${category}] ${file}`);
+  console.error(`FAIL [${category}] ${relative(process.cwd(), file) || file}`);
   for (const d of details) console.error(`  ${d}`);
   process.exit(1);
 }
@@ -66,12 +124,30 @@ const [e] = ends;
 const inside = (i) => i > b && i < e;
 
 /* ── method ── */
-// Una chiamata finisce, al piu' tardi, alla prima riga che chiude la fetch
-// (`});` o `})`) — il corpo `read_only: true` deve stare prima di quella.
+// La chiamata e' la `fetch(` piu' vicina che precede il metodo, delimitata
+// contando le parentesi sul testo senza commenti; `read_only: true` deve stare
+// nel suo `body: JSON.stringify({ … })`.
 const methodRe = /\bmethod\s*:\s*(['"`])?([A-Za-z]+)?\1?/;
+const READ_ONLY_BODY = /\bbody\s*:\s*JSON\.stringify\(\s*\{[^{}]*\bread_only\s*:\s*true\b[^{}]*\}\s*\)/;
+
+function enclosingCall(lineIndex) {
+  const methodAt = lineStart[lineIndex];
+  const open = code.lastIndexOf("fetch(", methodAt);
+  if (open === -1 || open < lineStart[b]) return null;
+  let depth = 0;
+  for (let k = open + "fetch".length; k < code.length; k++) {
+    if (code[k] === "(") depth++;
+    else if (code[k] === ")") {
+      depth--;
+      if (depth === 0) return k > methodAt ? code.slice(open, k + 1) : null;
+    }
+  }
+  return null;
+}
+
 const methodViolations = [];
 for (let i = b + 1; i < e; i++) {
-  const m = lines[i].match(methodRe);
+  const m = codeLines[i].match(methodRe);
   if (!m) continue;
   const verb = (m[2] || "").toUpperCase();
   if (!m[1] || !m[2]) {
@@ -80,16 +156,11 @@ for (let i = b + 1; i < e; i++) {
   }
   if (verb === "GET") continue;
   if (verb === "POST") {
-    let ok = false;
-    for (let j = i; j < e && j < i + 12; j++) {
-      if (/read_only\s*:\s*true/.test(lines[j])) {
-        ok = true;
-        break;
-      }
-      if (j > i && /^\s*}\s*\)/.test(lines[j])) break;
-    }
-    if (ok) continue;
-    methodViolations.push(`riga ${i + 1}: POST senza read_only: true — ${lines[i].trim()}`);
+    const call = enclosingCall(i);
+    if (call !== null && READ_ONLY_BODY.test(call)) continue;
+    methodViolations.push(
+      `riga ${i + 1}: POST senza read_only: true nel corpo della stessa fetch — ${lines[i].trim()}`
+    );
     continue;
   }
   methodViolations.push(`riga ${i + 1}: metodo ${verb} — ${lines[i].trim()}`);
@@ -99,7 +170,7 @@ if (methodViolations.length) fail("method", methodViolations);
 /* ── client ── */
 const clientViolations = [];
 for (let i = b + 1; i < e; i++) {
-  if (/createClient/.test(lines[i])) clientViolations.push(`riga ${i + 1}: ${lines[i].trim()}`);
+  if (/createClient/.test(codeLines[i])) clientViolations.push(`riga ${i + 1}: ${lines[i].trim()}`);
 }
 if (clientViolations.length) fail("client", clientViolations);
 
@@ -130,6 +201,34 @@ lines.forEach((l, i) => {
   if (allowed.some((re) => re.test(l))) return;
   hostViolations.push(`riga ${i + 1}: ${l.trim()}`);
 });
+
+// Le costanti di produzione dichiarate fra i marcatori, AL PRIMO LIVELLO (le
+// variabili locali di una funzione non escono dalla funzione): il loro valore
+// nomina il ref (per nome o letterale) o un'altra costante gia' riconosciuta.
+const prodConsts = [];
+for (let i = b + 1; i < e; i++) {
+  const m = codeLines[i].match(/^(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=(.*)$/);
+  if (!m) continue;
+  const init = m[2];
+  if (
+    /\bPRODUCTION_REF\b/.test(init) ||
+    init.includes(literalRef) ||
+    prodConsts.some((n) => new RegExp(`\\b${n}\\b`).test(init))
+  ) {
+    prodConsts.push(m[1]);
+  }
+}
+codeLines.forEach((l, i) => {
+  if (inside(i) || i === b || i === e) return;
+  for (const n of prodConsts) {
+    if (new RegExp(`\\b${n.replace(/\$/g, "\\$")}\\b`).test(l)) {
+      hostViolations.push(`riga ${i + 1}: costante di produzione ${n} usata fuori dai marcatori — ${lines[i].trim()}`);
+    }
+  }
+});
 if (hostViolations.length) fail("host", hostViolations);
 
-console.log(`read-only OK — ${file} (${e - b - 1} righe fra i marcatori)`);
+console.log(
+  `read-only OK — ${relative(process.cwd(), file) || file} (${e - b - 1} righe fra i marcatori; ` +
+    `costanti di produzione confinate: ${prodConsts.join(", ") || "nessuna"})`
+);

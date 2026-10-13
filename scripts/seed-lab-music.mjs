@@ -15,7 +15,8 @@
  *    anon, URL pubblici dello storage) o una POST all'endpoint SQL della
  *    Management API con `read_only: true`. Nessun client Supabase verso la
  *    produzione. Lo prova `scripts/check-seed-readonly.mjs`, eseguibile, con
- *    una mutazione vista fallire.
+ *    una mutazione vista fallire — e dal 2026-10-14 agganciato a `npm run
+ *    verify` come `verify:seed-readonly` (52.3-REVIEW WR-07).
  * 3. Le funzioni di scrittura conoscono solo il laboratorio, e rifiutano un
  *    indirizzo che contenga il ref di produzione.
  * ─────────────────────────────────────────────────────────────────────────────

@@ -339,6 +339,16 @@ const OFFLINE = [
   ["verify:no-viewport-read", false, "Phase 41 — G7"],
   ["verify:external-tickets", false, "quick 2026-10-13 — serata venduta da un terzo"],
   [
+    "verify:seed-readonly", false,
+    "52.3-REVIEW WR-07 — the lab seed (scripts/seed-lab-music.mjs) READS production " +
+      "and production has no PITR: this static check proves every request between the " +
+      "PROD-READ markers is a GET or a POST whose OWN body carries read_only: true, no " +
+      "Supabase client is built there, and neither the production ref nor a production " +
+      "constant (PROD_BASE, PROD_PUBLIC_STORAGE) is used outside them. It does not run " +
+      "the seed and opens no connection, so it runs everywhere. A green says the file's " +
+      "SHAPE is read-only, not that the Management API honours read_only",
+  ],
+  [
     "verify:comment-stripper", false,
     "Phase 41.1 — wave 0. It measures the MODULE the other ten gates import, not " +
       "the tree: eight comment shapes, each of which has blinded or false-reddened " +
