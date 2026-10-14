@@ -1008,7 +1008,7 @@ Management; una sede si crea da Venues.
 **Verifica, in un repo senza test:** vedi CUT-05.
 
 **Depends on:** Phase 52.3 chiusa (la barra con Music e' la base da cui si toglie). Nessun'altra.
-**Plans:** 6/13 plans executed
+**Plans:** 7/13 plans executed
 
 Onde: 1 = 53-01, 53-02, 53-03 · 2 = 53-04, 53-05, 53-06, 53-13 · 3 = 53-07 · 4 = 53-08 · 5 = 53-09 · 6 = 53-10 · 7 = 53-11 · 8 = 53-12
 
@@ -1024,7 +1024,7 @@ Plans:
 - [x] 53-04-PLAN.md — Check-in nel pannello per organizer/master, in barra per lo staff assegnato; via la riga spenta (CUT-02) — onda 2
 - [x] 53-05-PLAN.md — i gate seguono la cancellazione: nove script fuori, Manifesto ristretto, 11/20, rosso riconosciuto per forma (CUT-01) — onda 2
 - [x] 53-06-PLAN.md — la prosa dei file sopravvissuti smette di citare le sezioni tolte (CUT-01) — onda 2
-- [ ] 53-13-PLAN.md — `vercel.json` a sette cron e la persona li conta nello stesso commit; base del budget della fase (CUT-04, D-53-02, D-53-08) — onda 2
+- [x] 53-13-PLAN.md — `vercel.json` a sette cron e la persona li conta nello stesso commit; base del budget della fase (CUT-04, D-53-02, D-53-08) — onda 2
 
 **Wave 3** *(blocked on Wave 2 completion)*
 

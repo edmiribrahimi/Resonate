@@ -4,13 +4,13 @@ milestone: v1.6
 milestone_name: Piattaforma, non community
 status: ready_to_execute
 stopped_at: Completed 53-06-PLAN.md (09ab2d68); next 53-13
-last_updated: "2026-10-14T10:35:48.884Z"
+last_updated: "2026-10-14T10:37:56.995Z"
 last_activity: 2026-10-14
 progress:
   total_phases: 12
   completed_phases: 10
   total_plans: 170
-  completed_plans: 168
+  completed_plans: 169
   percent: 83
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 53 (meno-strumenti-la-porta-dentro-management-inserted) — EXECUTING
-Plan: 7 of 13
+Plan: 8 of 13
 Next: `/gsd-execute-phase 53` (prima `/clear`). Onda 1 = 01 (cancellazione del codice, commit «1/2» rosso mai spinto + «2/2» verde) + 02 (Venues: «New venue» sull'analogo di Artists) + 03 (procedure P-53-A..G e `lab-apply-migration.mjs` su `/database/migrations`). Onda 2 = 04 (Check-in nel pannello, D-53-01/06) + 05 (script e gate) + 06 (prosa dei file che restano) + 13 (`vercel.json` a 7 cron, persona 1.33.1, BASE del budget). Onda 3 = 07 (migration di sola rimozione, 10 tabelle, policy Manifesto riscritta PRIMA delle chiavi, `purge-production-tools.mjs`). Onda 4 = 08 [BLOCKING] laboratorio (deploy → righe per chiave → migration → P-53-F). Onda 5 = 09 (persona, CUT-04, 1.34.0, saldo ≤ 0). Onda 6 = 10 (procedure sul lab + revisione del proprietario dal telefono, autonomous: false). Onda 7 = 11 (produzione su «vai» di prima mano, NON DELEGABILE: registro → righe → migration → `vercel env rm` ×3; niente Instant Rollback). Onda 8 = 12 (CUT-06 DOC-01..04, 1.35.0, VERIFICATION). Decisioni chiuse il 2026-10-14: D-53-04 Manifesto resta; D-53-05 nessuna copia di archivio visual e spunte TASK; D-53-06 StaffNav non riceve Check-in. Ramo di lavoro previsto dai piani: `feat/53-meno-strumenti`.
 
 **52.2 chiusa e osservata (2026-10-01 08:28Z).** `close-pending-orders` 08:01Z: 1 considerato, `never_attempted`, checkout disattivato; `reconcile-refunds` 08:13Z: silenzio = nulla da riconciliare (non logga un riepilogo quando non fa nulla: nota per la 52.1); 0 pending residui, 0 refunds, 0 mail. CART-03 e RFD-02 osservati.
@@ -683,7 +683,7 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-10-14T10:35:45.075Z
+**Last session:** 2026-10-14T10:37:56.991Z
 **Stopped at:** Completed 53-06-PLAN.md (09ab2d68); next 53-13
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
