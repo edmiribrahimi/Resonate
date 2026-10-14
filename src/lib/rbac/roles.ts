@@ -134,12 +134,11 @@ export type { UserRole };
 //
 //   · `link` — Events, Check-in, Account. Porta a un indirizzo, ed e' l'unica
 //     delle tre che la mappa e la guardia devono mantenere.
-//   · ~~`disabled`~~ — TASK (D-52-03) stava qui come voce spenta della barra.
-//     **E' uscita dalla barra il 2026-10-05** (piano 52.3-19, decisione del
-//     proprietario: *«nascondiamo task dalla barra (attualmente inutilizzato) e
-//     lasciamolo solo nel pannello management. così c'è spazio per music anche
-//     per chi lavora.»*). La forma spenta vive ora in `PanelEntry`, qui sotto,
-//     con la stessa disciplina: **nessun `href`, per costruzione**.
+//   · ~~`disabled`~~ — la voce spenta dello strumento dei compiti (D-52-03)
+//     stava qui. E' uscita dalla barra il 2026-10-05 (piano 52.3-19) ed e'
+//     passata in coda al pannello; **il 2026-10-14 e' uscita anche da li'**, con
+//     la fase 53 (CUT-01, decisione del proprietario: *«sono strumenti
+//     inutili»*). La forma spenta non esiste piu' in nessuno dei due tipi.
 //   · `panel` — Management. Non porta da nessuna parte: apre il pannello, il
 //     cui contenuto e' `panel` qui sotto. Anche lei senza `href`.
 //
@@ -170,22 +169,19 @@ export type BarEntry =
  * Una riga del pannello Management: un indirizzo e un'etichetta, niente icona
  * (UI-SPEC §B.1 — una voce per riga, nessuna icona, nessuna intestazione).
  *
- * **Due forme dal 2026-10-05** (piano 52.3-19): `link`, come prima, e
- * `disabled` — la riga TASK, uscita dalla barra ed entrata qui. La riga spenta
- * **non ha `href` per costruzione**: TASK non ha una rotta (fase 53), quindi
- * nascondere o spostare la voce non lascia scoperta nessuna pagina e nessuna
- * guardia server cambia (`access-gating.md`, coerenza navigazione/permessi).
+ * **Di nuovo una forma sola dal 2026-10-14** (fase 53, CUT-01). Dal 2026-10-05
+ * al 2026-10-14 ne aveva due: `link` e una riga spenta senza `href`, che teneva
+ * il posto allo strumento dei compiti promesso alla fase 53. La fase 53 ha
+ * deciso che quello strumento non si costruisce, e la riga e' uscita con il
+ * suo ramo. `kind` resta, con un valore solo, perche' e' la stessa parola che
+ * `BarEntry` usa per le sue voci-link e i due tipi si leggono insieme in
+ * `AppNav.tsx`.
  */
-export type PanelEntry =
-  | {
-      readonly kind: "link";
-      readonly href: Route;
-      readonly label: string;
-    }
-  | {
-      readonly kind: "disabled";
-      readonly label: "TASK";
-    };
+export type PanelEntry = {
+  readonly kind: "link";
+  readonly href: Route;
+  readonly label: string;
+};
 
 /** Cio' che la funzione pura restituisce: la barra e il pannello, insieme. */
 export interface Navigation {
@@ -238,10 +234,11 @@ interface LinkDeclaration {
   // ── E neanche il campo dei ruoli, dalla fase 52 ──────────────────────────
   //
   // Le tre voci-link lo mettevano tutte a `null`: nessuna era filtrata per
-  // ruolo. L'unica voce della barra che il ruolo decide e' TASK (D-52-24), che
-  // **non e' un link** e porta il proprio elenco (`TASK_ROLES` qui sotto). Un
-  // campo che ogni voce riempie con la stessa risposta non e' una domanda: e'
-  // un modulo da firmare.
+  // ruolo. L'unica voce che il ruolo decideva era la riga spenta dei compiti
+  // (D-52-24), che **non era un link** e portava il proprio elenco di ruoli;
+  // e' uscita il 2026-10-14 (fase 53, CUT-01) con quell'elenco. Un campo che
+  // ogni voce riempie con la stessa risposta non e' una domanda: e' un modulo
+  // da firmare.
   /** Requires authentication */
   requireAuth: boolean;
   /**
@@ -337,12 +334,20 @@ const CHECK_IN: LinkDeclaration = {
   // refusal anywhere, which is the asymmetry `checkin-offline.md` optimises
   // for: a false refusal happens in front of a queue, an extra entry does not.
   //
-  // ── Phase 52 leaves this entry exactly where it was (D-52-05)
+  // ── Phase 52 left this entry exactly where it was (D-52-05) — and phase
+  //    53 moves it for whoever holds the door by role (D-53-01)
   //
-  // Same predicate, same address, same place — second, after Events. It is
-  // **absent**, never drawn switched off, for somebody without the key: an
-  // entry switched off for a permission would be a second verdict on the
-  // operator, in the bar, in front of whoever is looking at the phone.
+  // Same predicate, same address — second, after Events. It is **absent**,
+  // never drawn switched off, for somebody without the key: an entry switched
+  // off for a permission would be a second verdict on the operator, in the
+  // bar, in front of whoever is looking at the phone.
+  //
+  // **Since 2026-10-14 this declaration is drawn in the bar only for somebody
+  // who holds `door.operate` by live assignment and NOT by role** — today, the
+  // staff rostered to a night. Whoever holds it by role (organizer, master)
+  // finds Check-in as a row of the Management panel (`panelFor`). The
+  // reasoning is in `getNavigation`'s docblock; the predicate below is
+  // untouched.
   //
   // ── This is a visibility change and nothing else
   //
@@ -384,34 +389,17 @@ const ACCOUNT: LinkDeclaration = {
   capability: null,
 };
 
-/**
- * I ruoli che vedono TASK spenta — D-52-03, allargato al `master` da D-52-24.
- *
- * **Dal 2026-10-05 decide la riga del pannello, non piu' una voce della barra**
- * (piano 52.3-19). E la riga entra **solo in un pannello gia' non vuoto**: uno
- * `staff`, che non ha strumenti, non riceve un pannello col solo TASK — quindi
- * **lo staff non vede piu' TASK da nessuna parte**. La fase 53, che accende i
- * task (TASK-01, e il badge di TASK-04), deve ricollocarli sapendolo.
- *
- * **L'unico filtro per ruolo della navigazione**, e scritto come tale. TASK e' la
- * voce di chi lavorera' sui task nella fase 53 (organizer e staff, TASK-01); il
- * `master` la vede perche' tiene tutto, e la sua barra mostra la forma finale.
- * L'`attendee` non la vede: non ha task, e una voce spenta che non si accendera'
- * mai per lui e' una promessa falsa.
- *
- * E' la regola di D-50-09 — sessione, ruolo, capability — nel suo secondo
- * termine. Non e' un quarto criterio.
- */
-const TASK_ROLES = [
-  "master",
-  "organizer",
-  "staff",
-] as const satisfies readonly UserRole[];
-
-const TASK: PanelEntry = {
-  kind: "disabled",
-  label: "TASK",
-};
+// ── QUI STAVA LA RIGA SPENTA DEL PANNELLO — uscita il 2026-10-14 ──────────
+//
+// Fase 53, CUT-01, decisione del proprietario: *«sono strumenti inutili»*. Qui
+// stavano l'elenco dei ruoli che la vedevano (master, organizer, staff — l'unico
+// filtro per ruolo della navigazione) e la riga stessa, spenta e senza `href`,
+// che teneva il posto allo strumento dei compiti: la fase 52 scriveva che *la
+// fase 53 decide*. **La fase 53 ha deciso, e la promessa si chiude cosi'**:
+// nessuno strumento dei compiti, nessuna riga che lo annunci, nessun badge da
+// collocare. Il nome dell'elenco e della costante non si ricopia qui, perche'
+// un commento che recita l'identificatore appena cancellato tiene rosso il grep
+// che prova la cancellazione.
 
 const MANAGEMENT: BarEntry = {
   kind: "panel",
@@ -429,8 +417,8 @@ const MANAGEMENT: BarEntry = {
  * Il contenuto del pannello Management — D-52-09, in ordine alfabetico
  * (D-52-27).
  *
- * `visibleStaffTabs(capabilities)` piu' Account. **Per ruolo, non per
- * assegnazione**: `visibleStaffTabs` legge le sole capability di ruolo, ed e'
+ * `visibleStaffTabs(capabilities)`, piu' **Check-in** se `door.operate` e'
+ * tenuta, piu' Account. **Per ruolo, non per assegnazione**: `visibleStaffTabs` legge le sole capability di ruolo, ed e'
  * giusto — il middleware apre gli strumenti solo per ruolo, nessuna loro voce
  * e' `assignmentOpenable`. Uno `staff` assegnato stasera trova Check-in in
  * barra (per assegnazione); dal 2026-10-02 (DBT-13) non tiene piu' alcuna voce
@@ -450,6 +438,30 @@ function panelFor(capabilities: readonly CapabilityKey[]): PanelEntry[] {
     href: tab.href,
     label: tab.label,
   }));
+
+  // ── Check-in nel pannello per chi tiene la porta PER RUOLO (D-53-01) ────
+  //
+  // 2026-10-14, fase 53, CUT-02, parole del proprietario: *«per lo staff
+  // assegnato a una serata in corso Check-in resta in barra, perche' e' il suo
+  // unico strumento; per organizer e master sta in Management»*. `capabilities`
+  // qui sono **solo di ruolo**, quindi questa riga e' «tenuta per ruolo →
+  // pannello» e nient'altro; la barra (`getNavigation`) prende il caso
+  // complementare, «tenuta solo per assegnazione → barra». Una derivazione,
+  // scritta in due righe che si escludono, senza nominare un ruolo.
+  //
+  // Stesso indirizzo della voce di barra (`DOOR_HREF`, guardato dal tipo in
+  // cima al file), stessa pagina, stessa guardia server: cambia DOVE si
+  // disegna, non chi la raggiunge. Nessuna asserzione a caricamento: la guardia
+  // e' gia' il tipo di `DOOR_HREF`.
+  //
+  // **Detto, non dedotto:** oggi nessun ruolo tiene `door.operate` senza altri
+  // strumenti (lo tengono per ruolo `organizer` e `master`, lo `staff` mai). Se
+  // un giorno accadesse, quel ruolo riceverebbe comunque un pannello — Check-in
+  // e Account — perche' la riga entra PRIMA del controllo del vuoto: la porta
+  // non resterebbe senza voce.
+  if (capabilities.includes(CAP.DOOR_OPERATE)) {
+    entries.push({ kind: "link", href: DOOR_HREF, label: "Check-in" });
+  }
 
   if (entries.length === 0) {
     return [];
@@ -524,15 +536,17 @@ function toLink(
 /**
  * La barra e il pannello, da sessione, ruolo e capability — una funzione pura.
  *
- * ── Gli esiti, riscritti UNA VOLTA ANCORA (fase 52, 52-07) ────────────────
+ * ── Gli esiti, riscritti UNA VOLTA ANCORA (fase 53, 53-04) ────────────────
  *
- * **Quarta riscrittura.** La prima (fino alla fase 50) contava tre schede per
+ * **Quinta riscrittura.** La prima (fino alla fase 50) contava tre schede per
  * l'anonimo e distingueva quattro righe per stato di approvazione; la seconda
  * (50-06) tolse `Home` e le tre righe dello stato; la terza (50-09) tolse il
- * parametro che le produceva. Questa riscrive la barra intera: quattro voci per
- * chi lavora, il pannello per il resto (D-52-01..05, D-52-24). Un docblock che
- * descrive un esito che non si verifica piu' e' peggio di un docblock assente,
- * perche' chi lo legge ci costruisce sopra invece di andare a guardare.
+ * parametro che le produceva; la quarta (fase 52, 52-07) riscrisse la barra
+ * intera con il pannello. Questa sposta Check-in nel pannello per chi tiene la
+ * porta per ruolo e toglie la riga spenta dei compiti (D-53-01, CUT-01, CUT-02).
+ * Un docblock che descrive un esito che non si verifica piu' e' peggio di un
+ * docblock assente, perche' chi lo legge ci costruisce sopra invece di andare a
+ * guardare.
  *
  * | Soggetto | Barra, in quest'ordine | Pannello |
  * |---|---|---|
@@ -540,22 +554,37 @@ function toLink(
  * | `attendee` | Events · Account | — |
  * | `staff` non assegnato | Events · Account | — |
  * | `staff` assegnato a una serata in corso | Events · Check-in · Account | — |
- * | `organizer` | Events · Check-in · Management | 9 strumenti + Account, poi TASK spenta |
- * | `master` | Events · Check-in · Management | 10 strumenti + Account, poi TASK spenta |
+ * | `organizer` | Events · Management | 6 strumenti + Check-in + Account = 8 righe |
+ * | `master` | Events · Management | 7 strumenti + Check-in + Account = 9 righe |
+ * | `organizer` / `master` anche assegnati | come sopra: **il ruolo vince**, la voce resta nel pannello | come sopra |
  * | contesto fallito | Events · Account (→ `/login`) | — |
  *
- * *(2026-10-02, DBT-13: Gallery e' uscita da ogni pannello con la gallery, e lo
- * `staff`, che nel pannello aveva solo quella, ha Account in barra.)*
+ * I conteggi sono ricontati sul codice il 2026-10-14, dopo il taglio della fase
+ * 53 (Calendar, Location e Visual usciti con le loro chiavi, piano 53-01): gli
+ * strumenti dell'`organizer` sono Artists, Formats, Manage events, Manifesto,
+ * Members, Venues; il `master` ha in piu' Newsletter. Il pannello, ordinato per
+ * etichetta (D-52-27), e' per l'`organizer`: Account · Artists · **Check-in** ·
+ * Formats · Manage events · Manifesto · Members · Venues — Check-in cade fra
+ * Artists e Formats.
  *
- * *(2026-10-05, piano 52.3-19, decisione del proprietario: **TASK e' uscita
- * dalla barra di ogni ruolo** ed e' una riga spenta in coda al pannello di
- * organizer e master. TASK non ha una rotta — nessun `href` per costruzione —
- * quindi nessuna guardia cambia. **Lo staff non la vede piu' da nessuna parte**:
- * non ha pannello, e la riga non crea un pannello. La fase 53 deve saperlo.)*
+ * ── D-52-05 rovesciata, con la sua ragione e la data ────────────────────────
+ *
+ * **D-52-05 diceva: Check-in seconda voce della barra per chiunque tenga la
+ * porta, ruolo o assegnazione.** Il 2026-10-14 (D-53-01, decisione del
+ * proprietario) la regola si divide: **per chi tiene la porta per ruolo la
+ * porta e' uno strumento fra gli altri**, e sta nel pannello Management; **per
+ * lo staff assegnato e' l'unico strumento**, e resta in barra, all'indice 1,
+ * esattamente com'era. La derivazione e' una sola: «tenuta per ruolo →
+ * pannello» in `panelFor`, «tenuta solo per assegnazione → barra» qui sotto.
+ * Non nomina un ruolo e non aggiunge un quarto criterio. Per organizer e master
+ * raggiungere la porta costa un tocco in piu' (Management → Check-in): e' la
+ * decisione, ed e' scritta qui perche' non sembri una svista. La striscia degli
+ * strumenti (`StaffNav`) e l'elenco `STAFF_TABS` **non** ricevono Check-in
+ * (D-53-06): nessuna superficie nuova per lo staff.
  *
  * **A interruttore Music acceso** (`NEXT_PUBLIC_MUSIC_PAGE_ENABLED=true`, fase
- * 52.3, MUS-02) la voce Music entra **subito dopo Check-in** — la porta resta
- * seconda per chi lavora:
+ * 52.3, MUS-02) la voce Music entra **subito dopo Check-in** dove Check-in c'e',
+ * subito dopo Events altrimenti:
  *
  * | Soggetto | Barra, interruttore acceso |
  * |---|---|
@@ -563,40 +592,24 @@ function toLink(
  * | `attendee` | Events · Music · Account |
  * | `staff` non assegnato | Events · Music · Account |
  * | `staff` assegnato a una serata in corso | Events · Check-in · Music · Account |
- * | `organizer` / `master` | Events · Check-in · Music · Management |
+ * | `organizer` / `master` | Events · Music · Management |
  *
  * **A interruttore spento vale la prima tabella**, riga per riga: nessuna voce
  * Music per nessun soggetto, e nessuna voce spostata.
  *
- * **La misura della pillola sul telefono** — 2026-10-03 (piano 52.3-09): a
- * cinque voci (con TASK) le righe di chi lavora NON ci stavano (388 / 401 px di
- * contenuto contro 326 / 341 utili a 360 / 375). Rimisurata il 2026-10-05
- * (piano 52.3-19) senza TASK: vedi la tabella qui sotto. O-6 resta del
- * proprietario: niente etichette accorciate, niente icone tolte, niente
- * scorrimento — e Check-in resta seconda in ogni caso.
- *
- * **Misura del 2026-10-05, laboratorio** (piano 52.3-19; Chrome headless via
- * CDP, `mobile: true`, DPR 2; pillola = riquadro di `ROW_PHONE`, disponibile =
- * `innerWidth - 2rem`; contenuto = `scrollWidth`). A interruttore acceso le
- * righe a quattro voci chiedevano ancora 344 px (Management) e 357 px (porta,
- * Account) contro 326 / 341 utili: si applica UNA regola dichiarata in
- * `AppNav.tsx` (`ENTRY_PHONE_DENSE`: voci-link `px-3` invece di `px-5` solo con
- * `bar.length >= 4`, mai per larghezza dello schermo). Numeri dopo la regola:
- *
- * | Soggetto | Interruttore | Barra | Pillola / disponibile a 360 | a 375 | Check-in |
- * |---|---|---|---|---|---|
- * | anonimo | acceso | Events · Music · Account | 269.3 / 328 | 269.3 / 343 | — |
- * | `attendee` | acceso | Events · Music · Account | 269.3 / 328 | 269.3 / 343 | — |
- * | `staff` non assegnato | acceso | Events · Music · Account | 269.3 / 328 | 269.3 / 343 | — |
- * | `staff` assegnato, su `/door` | acceso | Events · Check-in · Music · Account | 300.6 / 328 | 300.6 / 343 | indice 1 |
- * | `organizer` | acceso | Events · Check-in · Music · Management | 303.6 / 328 | 303.6 / 343 | indice 1 |
- * | `master` (anche su `/door`) | acceso | Events · Check-in · Music · Management | 303.6 / 328 | 303.6 / 343 | indice 1 |
- * | anonimo, `attendee`, `staff` non assegnato | spento | Events · Account | 185.3 / 328 | 185.3 / 343 | — |
- * | `staff` assegnato, su `/door` | spento | Events · Check-in · Account | 280.6 / 328 | 280.6 / 343 | indice 1 |
- * | `organizer` / `master` | spento | Events · Check-in · Management | 267.6 / 328 | 267.6 / 343 | indice 1 |
- *
- * Nessuna riga con `scrollWidth > clientWidth`; nessuna voce TASK in nessuna
- * barra. Le barre a tre voci tengono le classi di prima.
+ * **La densita', da rimisurare e non da dedurre.** La regola di `AppNav.tsx`
+ * (`ENTRY_PHONE_DENSE`: voci-link `px-3` invece di `px-5` solo con
+ * `bar.length >= 4`) non cambia. Con Check-in nel pannello, la barra di
+ * organizer e master scende a **tre** voci e torna `px-5`, come quella
+ * dell'anonimo; lo staff assegnato resta a quattro e denso. Le misure che
+ * stavano qui (laboratorio, 2026-10-05, piano 52.3-19: per esempio 303.6 px di
+ * pillola per organizer e master a quattro voci, 300.6 px per lo staff
+ * assegnato, contro 328 / 343 disponibili a 360 / 375) **descrivono la barra
+ * di prima** per organizer e master; quella nuova si rimisura con lo stesso
+ * metodo (Chrome headless via CDP, `mobile: true`, DPR 2; pillola = riquadro di
+ * `ROW_PHONE`, disponibile = `innerWidth - 2rem`, contenuto = `scrollWidth`) in
+ * **P-53-B** (`53-PROCEDURES.md`). Fino a quella misura, nessun numero per la
+ * barra a tre voci di chi lavora e' scritto qui.
  *
  * **Il contesto fallito non arriva qui come un ruolo.** `getAccessContext()`
  * **lancia** con la categoria `capabilities.resolve_failed` quando
@@ -609,20 +622,29 @@ function toLink(
  *
  * **Una conseguenza da leggere prima di chiamarla un difetto.** Uno `staff`
  * non tiene alcuna voce del pannello — l'unica era Gallery, uscita il
- * 2026-10-02 (DBT-13) — quindi il pannello e' vuoto e la sua barra e'
- * **Events · Account** (con Check-in fra le due se assegnato stasera). E' la derivazione che si comporta bene, non una
+ * 2026-10-02 (DBT-13), e Check-in entra nel pannello solo per ruolo — quindi
+ * il pannello e' vuoto e la sua barra e' **Events · Account** (con Check-in fra
+ * le due se assegnato stasera). E' la derivazione che si comporta bene, non una
  * voce persa: la presenza del pannello discende dalle capability, e chi non ne
  * ha non riceve un pannello con il solo Account.
  *
  * **Cosa NON e' cambiato, e va tenuto contro la riparazione sbagliata.** Il
  * ramo delle capability di Check-in e' intatto (`admits`): ruolo **o**
  * assegnazione viva, `null` che rifiuta — lo **stesso predicato del
- * middleware**. Aggiungere qui un controllo di qualunque tipo sulla porta e' la
- * riparazione che chiude la porta.
+ * middleware**. La fase 53 non lo tocca: la condizione in piu' sulla voce di
+ * barra (`!capabilities.includes(CAP.DOOR_OPERATE)`) decide **dove** la voce
+ * si disegna, non **se** chi guarda raggiunge la porta — chi la tiene per
+ * ruolo la trova nel pannello, con lo stesso indirizzo. Aggiungere qui un
+ * controllo di qualunque tipo sulla porta e' la riparazione che chiude la
+ * porta.
  *
  * **La barra si filtra su tre cose, ed e' l'elenco intero** (D-50-09):
- * sessione, ruolo, capability. Il ruolo decide la riga TASK del pannello; le capability decidono
- * Check-in e il pannello; la sessione decide l'indirizzo di Account. Un quarto
+ * sessione, ruolo, capability. Le capability decidono Check-in (barra o
+ * pannello) e il pannello; la sessione decide l'indirizzo di Account. **Il
+ * ruolo, dal 2026-10-14, non decide piu' alcuna voce**: decideva la sola riga
+ * spenta dei compiti, uscita con la fase 53. `role` resta nella firma perche'
+ * da lui si legge la sessione (`isAuthenticated = role !== null`) e perche' i
+ * 14 punti di montaggio la chiamano cosi'. Un quarto
  * criterio qui dentro e' una decisione d'accesso, non una rifinitura — e la
  * presenza del pannello, che potrebbe sembrarlo, e' derivata (D-52-04).
  * **Nemmeno `musicPageEnabled()` e' un quarto criterio** (fase 52.3): e' un
@@ -640,9 +662,12 @@ function toLink(
  * 13 mounts** after plan 34-05 folded every work surface into a single mount,
  * and still 13 after Phase 42 and phase 50. **Re-measured on 2026-10-03, phase
  * 52.3: 14 mount sites** — the fourteenth is `/music` (plan 52.3-05), counted
- * with `grep -rln "<AppNav" src | grep -v roles.ts`. All fourteen call
- * `getAccessContext()`, which is the premise the paragraph on the failed
- * context above rests on.
+ * with `grep -rln "<AppNav" src | grep -v roles.ts`. **Re-measured on
+ * 2026-10-14, phase 53 (plan 53-04): still 14**, with `rg -l "<AppNav" src |
+ * rg -v roles.ts | wc -l` — the surfaces removed by plan 53-01 (Calendar,
+ * Location, Visual) were work pages under the single `(work)` mount, so the
+ * count did not move. All fourteen call `getAccessContext()`, which is the
+ * premise the paragraph on the failed context above rests on.
  *
  * @param capabilities the keys the subject holds by role
  * @param liveAssignmentCapabilities the coarser set held by a live per-night
@@ -659,8 +684,17 @@ export function getNavigation(
   const panel = panelFor(capabilities);
   const bar: BarEntry[] = [toLink(EVENTS, isAuthenticated)];
 
+  // D-53-01: in barra solo per chi tiene la porta per ASSEGNAZIONE e non per
+  // ruolo. Chi la tiene per ruolo la trova nel pannello (`panelFor`). `admits`
+  // e' invariato: questa condizione sceglie il posto, non l'accesso.
   if (
-    admits(CHECK_IN, isAuthenticated, capabilities, liveAssignmentCapabilities)
+    admits(
+      CHECK_IN,
+      isAuthenticated,
+      capabilities,
+      liveAssignmentCapabilities
+    ) &&
+    !capabilities.includes(CAP.DOOR_OPERATE)
   ) {
     bar.push(toLink(CHECK_IN, isAuthenticated));
   }
@@ -669,19 +703,9 @@ export function getNavigation(
   // questa riga sopra il blocco di Check-in — ed e' una decisione del proprietario.
   if (musicPageEnabled()) bar.push(toLink(MUSIC, isAuthenticated));
 
-  // Management o Account si decide sul pannello degli STRUMENTI, prima di TASK:
-  // la presenza del pannello resta derivata dalle sole capability (D-52-04).
+  // Management o Account si decide sul pannello: la sua presenza resta
+  // derivata dalle sole capability (D-52-04).
   bar.push(panel.length > 0 ? MANAGEMENT : toLink(ACCOUNT, isAuthenticated));
-
-  // TASK (2026-10-05, piano 52.3-19): riga spenta in coda a un pannello GIA'
-  // non vuoto, mai una voce della barra, mai la ragione di un pannello.
-  if (
-    panel.length > 0 &&
-    role !== null &&
-    (TASK_ROLES as readonly UserRole[]).includes(role)
-  ) {
-    panel.push(TASK);
-  }
 
   return { bar, panel };
 }

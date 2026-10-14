@@ -17,14 +17,16 @@ import { FOCUS_RING } from "@/components/ui/Button";
  *
  * ── What the bar carries, since phase 52 (D-52-01..05) ───────────────────────
  *
- * Whoever works sees, in this order: **Events · Check-in · Management** (Check-in
- * only where `getNavigation` admits it, Account instead of Management for whoever
- * has no tools), with **Music** right after Check-in while the Music switch is
- * on. Everybody else — an `attendee`, an anonymous visitor — sees **Events ·
- * Account** (Music between them with the switch on). Management opens a panel
- * instead of going anywhere. **TASK left the bar on 2026-10-05** (plan 52.3-19,
- * owner's decision): it is a switched-off row at the end of the Management
- * panel, drawn in the column and in the sheet below. Home does not exist (D-52-02).
+ * Whoever works by role (organizer, master) sees **Events · Management**, with
+ * **Check-in as a row of the Management panel** since 2026-10-14 (phase 53,
+ * D-53-01). Staff rostered to a night sees **Events · Check-in · Account**:
+ * for them the door is the only tool, and it stays in the bar at index 1.
+ * **Music** follows Check-in where Check-in is in the bar, Events otherwise,
+ * while the Music switch is on. Everybody else — an `attendee`, an anonymous
+ * visitor — sees **Events · Account** (Music between them with the switch on).
+ * Management opens a panel instead of going anywhere. The switched-off row
+ * that held a place for a task tool left the panel on 2026-10-14 (phase 53,
+ * CUT-01): the panel has one kind of row, a link. Home does not exist (D-52-02).
  * **Who sees what is decided by `getNavigation` in `src/lib/rbac/roles.ts`**,
  * a pure function over session, role and capability; this file only draws what
  * it returns.
@@ -189,14 +191,9 @@ const icons: Record<string, ReactNode> = {
       <path strokeLinecap="round" strokeLinejoin="round" d="m9 9 10.5-3m0 6.553v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 1 1-.99-3.467l2.31-.66a2.25 2.25 0 0 0 1.632-2.163Zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 0 1-.99-3.467l2.31-.66A2.25 2.25 0 0 0 9 15.553Z" />
     </svg>
   ),
-  // Phase 52 — TASK (D-52-03). Heroicons v2 outline, same form as the above.
-  // Unused since 2026-10-05 (TASK left the bar, plan 52.3-19); kept for phase
-  // 53, which decides where the task entry and its icon go.
-  "clipboard-document-check": (
-    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M11.35 3.836c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m8.9-4.414c.376.023.75.05 1.124.08 1.131.094 1.976 1.057 1.976 2.192V16.5A2.25 2.25 0 0 1 18 18.75h-2.25m-7.5-10.5H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V18.75m-7.5-10.5h6.375c.621 0 1.125.504 1.125 1.125v9.375m-8.25-3 1.5 1.5 3-3.75" />
-    </svg>
-  ),
+  // The task tool's icon stood here, kept by phase 52 for phase 53 to place.
+  // Phase 53 decided the tool is not built (CUT-01, 2026-10-14), so the icon
+  // left with the row that would have used it.
   // Phase 52 — Management, closed (D-52-07).
   "squares-2x2": (
     <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -310,7 +307,7 @@ const ENTRY_RESPONSIVE = `${ENTRY_PHONE} ${ENTRY_COLUMN_RESTATEMENT}`;
 /**
  * The density rule — ONE declared rule, 2026-10-05 (plan 52.3-19).
  *
- * Measured on the lab with the Music switch on, after TASK left the bar: the
+ * Measured on the lab with the Music switch on, after the task row left the bar: the
  * rows of whoever works still asked for 344 px (Management) or 357 px (Account,
  * the door) of content against 326 / 341 usable at 360 / 375 px. The rule: the
  * phone pill's LINK entries take `px-3` instead of `px-5` **only when the bar
@@ -319,6 +316,11 @@ const ENTRY_RESPONSIVE = `${ENTRY_PHONE} ${ENTRY_COLUMN_RESTATEMENT}`;
  * every bar with the switch off — keeps the classes it had. From `md:` nothing
  * changes: the column restatement rewrites the padding. No label shortened, no
  * icon dropped, no scrolling. It goes to the owner as a choice (plan 52.3-20).
+ *
+ * **Phase 53 does not touch the rule (2026-10-14, D-53-01).** With Check-in in
+ * the Management panel, the bars of organizer and master drop to THREE entries
+ * and take `px-5` again; the rostered staff's bar stays at four and dense. The
+ * new widths are re-measured in P-53-B (`53-PROCEDURES.md`), not deduced here.
  */
 const ENTRY_PHONE_DENSE =
   "relative isolate my-1 flex min-h-11 flex-none flex-col items-center justify-center gap-0.5 px-3 " +
@@ -326,8 +328,9 @@ const ENTRY_PHONE_DENSE =
 
 const ENTRY_RESPONSIVE_DENSE = `${ENTRY_PHONE_DENSE} ${ENTRY_COLUMN_RESTATEMENT}`;
 
-// `COLUMN_TIER` — the column-tier restatement of the bar's TASK entry — left
-// with that entry on 2026-10-05 (plan 52.3-19): nothing else used it.
+// `COLUMN_TIER` — the column-tier restatement of the bar's switched-off task
+// entry — left with that entry on 2026-10-05 (plan 52.3-19): nothing else
+// used it.
 
 /** 2 px. An underline in the bar; a leading edge in the column. */
 // The phone indicator is the FILL behind the active entry, not a line under
@@ -344,7 +347,7 @@ const INDICATOR_RESPONSIVE =
  *
  * A current row speaks in three channels — `--accent`, this 2 px edge, and
  * `aria-current="page"` — with no icon, heading or group separator: `Account`
- * and `Gallery` read as rows like the tools (D-52-07). The column row's edge
+ * and `Check-in` read as rows like the tools (D-52-07, D-53-01). The column row's edge
  * is also the column Management button's.
  */
 const INDICATOR_EDGE = "absolute inset-y-1 start-0 w-0.5 rounded-full bg-accent";
@@ -353,9 +356,9 @@ const INDICATOR_SHEET_ROW = "absolute inset-y-2 start-0 w-0.5 rounded-full bg-ac
 
 /**
  * The icon well — 52-UI-SPEC.md §A.2. **Every** entry carries it, with a
- * transparent border. It was sized so the icons sat at the height of TASK's
- * dashed well; TASK left the bar on 2026-10-05 (plan 52.3-19), and the well
- * stays so no icon moves.
+ * transparent border. It was sized so the icons sat at the height of the task
+ * entry's dashed well; that entry left the bar on 2026-10-05 (plan 52.3-19),
+ * and the well stays so no icon moves.
  */
 const WELL =
   "relative inline-flex h-7 w-10 items-center justify-center rounded-full border";
@@ -376,13 +379,18 @@ export default function AppNav({
   const isPhone = form === "phone";
 
   // "Am I inside the panel?" — the path starts with the address of one of its
-  // rows. More precise than a `/admin/` prefix: it covers `/gallery` and
-  // `/account`, and it excludes `/admin/scanner`, which is the door.
+  // rows. More precise than a `/admin/` prefix: it covers `/account`.
+  //
+  // **Since 2026-10-14 (D-53-01) it is TRUE on `/door` for organizer and
+  // master**, whose panel carries the Check-in row: from `md:` the Management
+  // column opens by itself on the door and its button reads as current, which
+  // is where they reached it from. At `/admin/scanner` (the permanent address,
+  // D-39-02) no row is highlighted, as already for the bar entry. For rostered
+  // staff nothing changes: they have no panel, and Check-in is in their bar.
+  //
   // The density rule (see ENTRY_PHONE_DENSE): by item count, never by width.
   const dense = bar.length >= 4;
-  const inPanel = panel.some(
-    (entry) => entry.kind === "link" && pathname.startsWith(entry.href)
-  );
+  const inPanel = panel.some((entry) => pathname.startsWith(entry.href));
 
   // ── Two states, one per disclosure (never one state read by width) ───────
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -508,13 +516,12 @@ export default function AppNav({
               );
             }
 
-            // ── TASK used to be drawn here, switched off (D-52-03, D-52-24) ──
+            // ── A switched-off task entry used to be drawn here (D-52-03) ──
             //
-            // The entry left the bar on 2026-10-05 (plan 52.3-19, owner's
-            // decision); it is a switched-off row at the end of the Management
-            // panel (column and sheet below). The badge slot of TASK-04 had its
-            // geometry fixed here for phase 53: phase 53 places the badge on the
-            // panel row instead. No new geometry is invented in this file.
+            // It left the bar on 2026-10-05 (plan 52.3-19) and became a row at
+            // the end of the Management panel; it left the panel too on
+            // 2026-10-14 (phase 53, CUT-01, owner's decision). No task tool is
+            // built, so no badge geometry is owed to anyone.
 
             // ── Management — two buttons, two disclosures, chosen by CSS ────
             //
@@ -595,25 +602,6 @@ export default function AppNav({
                       className="hidden md:flex md:flex-col md:gap-1"
                     >
                       {panel.map((row) => {
-                        if (row.kind === "disabled") {
-                          // TASK, switched off (2026-10-05, plan 52.3-19): a
-                          // `button` with `aria-disabled`, no `onClick`, no
-                          // hover, no `active:`. The non-colour channel of
-                          // «off» is the dashed border, as it was in the bar.
-                          return (
-                            <button
-                              key="task"
-                              type="button"
-                              aria-disabled="true"
-                              className={`relative flex min-h-11 items-center rounded-xl ps-16 pe-4 text-sm cursor-default text-faint ${FOCUS_RING}`}
-                            >
-                              <span className="rounded-full border border-dashed border-faint px-2">
-                                {row.label}
-                              </span>
-                            </button>
-                          );
-                        }
-
                         const isRowActive = pathname.startsWith(row.href);
 
                         return (
@@ -684,22 +672,6 @@ export default function AppNav({
             className={`fixed inset-x-0 z-50 mx-auto max-w-lg overflow-y-auto rounded-t-2xl border-t border-line bg-surface py-2 animate-[management-sheet-in_160ms_ease-out] motion-reduce:animate-none ${sheetBottom} ${sheetMaxHeight} ${phoneOnly}`}
           >
             {panel.map((row) => {
-              if (row.kind === "disabled") {
-                // TASK, switched off — same element as in the column above.
-                return (
-                  <button
-                    key="task"
-                    type="button"
-                    aria-disabled="true"
-                    className={`relative flex min-h-11 items-center px-6 text-sm cursor-default text-faint ${FOCUS_RING}`}
-                  >
-                    <span className="rounded-full border border-dashed border-faint px-2">
-                      {row.label}
-                    </span>
-                  </button>
-                );
-              }
-
               const isRowActive = pathname.startsWith(row.href);
 
               // A tap on a row navigates AND closes — the current row too,
