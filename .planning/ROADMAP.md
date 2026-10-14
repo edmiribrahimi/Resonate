@@ -959,6 +959,7 @@ offline. «Free (RSVP required)» esce dal prodotto, sostituito dal tier a 0 €
 **Plans:** 12/12 plans complete
 
 Plans:
+
 - [x] 52.4-01-PLAN.md — migration (free_rsvp → paid, entry_until, cause della porta) [BLOCKING sul lab] e vocabolario TS della porta
 - [x] 52.4-02-PLAN.md — entryUntilInstant e predicato unico entry-until.ts
 - [x] 52.4-03-PLAN.md — cassa: lo 0 € mai verso SumUp, reserveFreeTickets per tier, nessun blocco per capienza di serata (D-52.4-06), gate verify:external-tickets gruppo D
@@ -1012,18 +1013,41 @@ Management; una sede si crea da Venues.
 Onde: 1 = 53-01, 53-02, 53-03 · 2 = 53-04, 53-05, 53-06, 53-13 · 3 = 53-07 · 4 = 53-08 · 5 = 53-09 · 6 = 53-10 · 7 = 53-11 · 8 = 53-12
 
 Plans:
+**Wave 1**
+
 - [ ] 53-01-PLAN.md — Calendar, Location, Visual e la route dello specchio escono dal codice; undici chiavi, build verde al commit 2/2 (CUT-01) — onda 1
 - [ ] 53-02-PLAN.md — «New venue» in Venues e `createVenue` con rifiuto tipizzato (CUT-03, D-53-09) — onda 1
 - [ ] 53-03-PLAN.md — procedure P-53-A..G e `lab-apply-migration.mjs` su `/database/migrations` (CUT-05, D-53-07) — onda 1
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 53-04-PLAN.md — Check-in nel pannello per organizer/master, in barra per lo staff assegnato; via la riga spenta (CUT-02) — onda 2
 - [ ] 53-05-PLAN.md — i gate seguono la cancellazione: nove script fuori, Manifesto ristretto, 11/20, rosso riconosciuto per forma (CUT-01) — onda 2
 - [ ] 53-06-PLAN.md — la prosa dei file sopravvissuti smette di citare le sezioni tolte (CUT-01) — onda 2
 - [ ] 53-13-PLAN.md — `vercel.json` a sette cron e la persona li conta nello stesso commit; base del budget della fase (CUT-04, D-53-02, D-53-08) — onda 2
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 53-07-PLAN.md — migration di sola rimozione, atto per chiave, seme del lab (CUT-01, D-53-03/04/05) — onda 3
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 53-08-PLAN.md — [BLOCKING] il laboratorio: deploy, dati per chiave, migration annotata, P-53-F — onda 4
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 53-09-PLAN.md — la persona segue la cancellazione, budget rimisurato (CUT-04, D-53-08) — onda 5, dopo il merge su `lab`
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
 - [ ] 53-10-PLAN.md — procedure sul laboratorio e revisione del proprietario dal telefono (CUT-05) — onda 6
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
 - [ ] 53-11-PLAN.md — produzione su «vai»: autorizzazione, deploy, dati, migration, variabili (CUT-01) — onda 7
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
 - [ ] 53-12-PLAN.md — DOC-01..04 e 53-VERIFICATION.md, in fondo (CUT-06, CUT-05) — onda 8
 
 ---

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: ready_to_plan
-stopped_at: "Phase 52.3 complete (23/23, VERIFICATION passed riverificata, revisione 0C/7W corretti, in produzione dal 2026-10-13 sera + fix 2026-10-14 00:44) — next: /gsd-plan-phase 53 «Meno strumenti, la porta dentro Management» (CUT-01..06); 52.1/52.2 chiuse da spuntare; 47, 48, 49, 58 da chiudere sui documenti"
-last_updated: 2026-10-13T22:46:48.769Z
-last_activity: 2026-10-13
+stopped_at: "52.3-20 CHIUSO (7cfa3863): strada D scelta dal proprietario («strada d.», 2026-10-13, fra 20:18 e 20:35 UTC), nessuna riga di codice cambiata, lab su 01daaa8c con /music 200; main (52.4 + biglietteria esterna in produzione) dentro wip/52.3; 14 CHIUSO (2cb7cdff: persona 1.33.0, check H provato per mutazione, 52.3-VERIFICATION human_needed su MUS-09 in attesa dell'atto, seme del lab tenuto); 15 in esecuzione fino al checkpoint «vai-accesa» + conferma del profilo SoundCloud; staff: riscaricare la lista sullo scanner prima della prossima serata"
+last_updated: "2026-10-14T00:03:47.172Z"
+last_activity: 2026-10-14
 progress:
-  total_phases: 16
-  completed_phases: 9
-  total_plans: 173
-  completed_plans: 174
-  percent: 100
+  total_phases: 12
+  completed_phases: 10
+  total_plans: 170
+  completed_plans: 162
+  percent: 83
 ---
 
 # State: Resonate
@@ -402,7 +402,7 @@ Note:
         organizer/approved, organizer/pending seminato a mano, staff, member —
         ne chiude la maggior parte. La fase 36 costruisce superfici pubbliche
         sopra quel modello: il debito non e' suo, ma le sta sotto.
-Last activity: 2026-10-13
+Last activity: 2026-10-14
 
 **Phase 31: EXECUTED, NOT VERIFIED.** 13 of 13 plans, 61 commits on
 `gsd/phase-31-live-defects-at-the-door-and-the-bar`. One of its four blocking
