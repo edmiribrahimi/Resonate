@@ -108,8 +108,9 @@
  * **Route Handlers under `/api/*`** (D-34-13). `door.supervise` gates
  * handlers through `src/lib/door/require-operator.ts`, not through a route
  * rule, and says so below instead of being silently absent. *(`media.upload`
- * did the same through `src/lib/media/may-upload.ts` until it left the
- * catalogue with the gallery on 2026-10-02, plan 52.1-18, DBT-13.)* Bringing `/api/*` under CAP-02 would
+ * did the same through its own upload guard until it left the catalogue with
+ * the gallery on 2026-10-02, plan 52.1-18, DBT-13; the guard itself left on
+ * 2026-10-14 with the visual archive, phase 53.)* Bringing `/api/*` under CAP-02 would
  * mean adding a middleware rule on the **door's scan path**, which is the one
  * path this phase has no business touching. Recorded here as a finding for a
  * later phase, not as an exemption.
@@ -157,8 +158,16 @@ type Binding =
        */
       assignmentOpenable?: true;
       /**
-       * True when the key ALSO gates rows. **Eight entries of the fourteen
-       * carry it**, RE-COUNTED by reading this file on 2026-10-02 (phase 52.1,
+       * True when the key ALSO gates rows. **Five entries of the eleven carry
+       * it**, RE-COUNTED by reading this file on 2026-10-14 (phase 53, CUT-01):
+       * `door.operate`, `register.read`, `party.manage`, `catalogue.manage` and
+       * `production.manifesto.manage`. Three of the four production section keys
+       * left the catalogue with their sections (D-53-02, D-53-04), each with its
+       * flag. *(This line said «Eight entries of the fourteen» from 2026-10-02
+       * to 2026-10-14.)* The earlier counts follow, as written.
+       *
+       * **Eight entries of the fourteen
+       * carried it**, RE-COUNTED by reading this file on 2026-10-02 (phase 52.1,
        * plan 52.1-18, DBT-13): `gallery.view` left the catalogue with its flag,
        * and `staff.manage` lost its only page and moved to the `scope: "table"`
        * branch, where the field does not exist — it still gates rows, and its
@@ -179,12 +188,11 @@ type Binding =
        * The denominator moved and the numerator did not, which is exactly the
        * case a reader would get wrong by arithmetic: phase 45 splits
        * `production.read` into four section keys, and **all four now carry the
-       * flag** — `production.calendar.manage` (the six `SELECT` arms of
-       * `20260817120000_production_section_keys.sql` §3), and
-       * `production.location.manage`, `production.manifesto.manage` and
-       * `production.visual.manage` (the arms of
+       * flag** — the calendar's (the six `SELECT` arms of
+       * `20260817120000_production_section_keys.sql` §3), and Location's, the
+       * manifesto's and the visual's (the arms of
        * `20260817120300_production_sections_access.sql`, applied to production by
-       * plan 45-08).
+       * plan 45-08). Only the manifesto's is still here (2026-10-14).
        *
        * ⚠ Until plan 45-12 the last two of those gated rows and did NOT carry
        * this flag — not as a measured absence, but because the field does not
@@ -212,9 +220,11 @@ type Binding =
     };
 
 /**
- * The fourteen keys, each accounted for (seventeen until phase 51 removed two,
+ * The eleven keys, each accounted for (seventeen until phase 51 removed two,
  * sixteen again since phase 52 added `gallery.view`, fourteen since phase 52.1
- * took `gallery.view` and `media.upload` out with the gallery — DBT-13).
+ * took `gallery.view` and `media.upload` out with the gallery — DBT-13, eleven
+ * since phase 53 took three of the four production section keys out with their
+ * sections — CUT-01, 2026-10-14).
  *
  * `as const satisfies` and not a type annotation, and the difference is the
  * whole second half of CAP-02: `satisfies` keeps the totality error (a key
@@ -535,8 +545,9 @@ export const CAPABILITY_ROUTES = {
       "Gates a Route Handler, not a page; the guard is `src/lib/door/require-operator.ts`. See D-34-13 in the module docblock.",
   },
 
-  // `media.upload` stava qui con `scope: "table"`, guardia in
-  // `src/lib/media/may-upload.ts`. Esce dal catalogo e da `CAP` il 2026-10-02
+  // `media.upload` stava qui con `scope: "table"`, con una guardia propria
+  // (uscita a sua volta il 2026-10-14 con l'archivio del visual, fase 53).
+  // Esce dal catalogo e da `CAP` il 2026-10-02
   // (piano 52.1-18, DBT-13) con la gallery: nessun percorso vivo la leggeva
   // piu', e un `Record` totale non ammette il residuo.
 
@@ -565,216 +576,14 @@ export const CAPABILITY_ROUTES = {
       "Gates an act, not an address: the button sits on `/admin/events/[id]/edit`, already opened by `organizer.access`. The real guard is the server action in `src/app/(admin)/admin/events/[id]/reveal/actions.ts`, which re-asks this key inside itself, and `public.record_venue_reveal_act`, which is executable by `service_role` alone.",
   },
 
-  /**
-   * The production CALENDAR section — phase 44, plan 04; moved to this branch by
-   * plan 44-09; **re-keyed by plan 45-05**, which is the only change here.
-   *
-   * ── The question this key answers ────────────────────────────────────────────
-   *
-   * *May this subject see the production plan?* — the nights the calendar file
-   * holds, back to its earliest entry, their editorial pieces, their checklists,
-   * the days already taken by somebody else's production, and what the last
-   * import did. Those rows are unannounced dates, spaces under negotiation and
-   * the shape of an internal plan, which is why they have a key of their own and
-   * not a fold into a broader one.
-   *
-   * ── The key was renamed and NOTHING ELSE MOVED, which is the point ──────────
-   *
-   * This entry asked `production.read` until this commit. PROD-02 makes
-   * entitlement per SECTION, so the one key becomes four (D-45-04) and the
-   * calendar takes its own. **The routes are the same two, the flag is the same
-   * flag, and the reach of every role is identical before and after** — D-45-04
-   * constraint 3 forbids the grants from narrowing OR widening, so this is a
-   * rename with a declared reach and not a permission change wearing one.
-   *
-   * A reader auditing *who could reach the calendar before, and who can reach it
-   * after* gets the same answer twice, and that is checkable rather than
-   * asserted: `scripts/verify-capabilities.mjs` declares both grants and both
-   * refusals for this key, against a live catalogue.
-   *
-   * ⚠ **And it is a rename in the CODE only.** The database still holds
-   * `production.read` and none of the four, until plan 45-08 applies
-   * `20260817120000_production_section_keys.sql`. That migration is ADDITIVE —
-   * it leaves `production.read` and its two grants exactly where they are — so
-   * there is no instant at which an entitled master is refused. The retirement
-   * waits for the deploy and lands in plan 45-09.
-   *
-   * ── The branch: it stays where 44-09 put it ─────────────────────────────────
-   *
-   * `routes:`, because the two pages ARE on disk. The trap that used to be
-   * written here is still the trap and is now written on the three SIBLING
-   * entries below, where it applies: a page bound to a `scope: "table"` key is
-   * unreachable **for everyone**, with no build error and nothing in a log, since
-   * `resolveRoute` returns `null` and the middleware fails closed.
-   *
-   * `alsoGatesTables: true` is carried across and is **not** optional here. The
-   * key does gate rows — the six `SELECT` policies of
-   * `20260817120000_production_section_keys.sql` §3, which the additive migration
-   * rewrites onto this key — and the flag is optional on this branch, so omitting
-   * it would have produced no error at all, just a declaration that lies by
-   * omission. That is the lie D-34-11 exists to prevent, and carrying the flag
-   * across is the difference between a rename and a quiet loss of a fact.
-   *
-   * ── Two patterns, ONE entry ─────────────────────────────────────────────────
-   *
-   * The dynamic sister address needs its own pattern exactly as `/admin/venues`
-   * and `/admin/venues/[slug]` do — a `Route` pattern is matched segment by
-   * segment and never as a prefix, so `/admin/calendar` opens `/admin/calendar`
-   * and nothing below it. A second entry, or a second key, would be a **second
-   * predicate**: the thing this whole module exists to have exactly one of.
-   *
-   * **The ambiguity check, RE-DERIVED and not inherited — and the derivation is
-   * short because the input did not change.** This commit adds **zero patterns**:
-   * the calendar's two travel across unedited, and the three keys below are on
-   * the branch that declares none. `COMPILED_PATTERNS` is therefore the same
-   * twenty-six it was, and `node scripts/verify-routes.mjs --print-patterns` is
-   * byte-for-byte identical before and after — measured, not assumed. A tie
-   * cannot be introduced by a set that did not grow.
-   *
-   * The per-pattern derivation still holds and is kept, because the next plan to
-   * add an address here will need it: `/admin/calendar` is two literal segments,
-   * and the other two-segment `/admin/*` patterns — `/admin/scanner`,
-   * `/admin/newsletter`, `/admin/artists`, `/admin/venues`, `/admin/members`,
-   * `/admin/events`, `/admin/formats` — are all literal and all differ in their
-   * second segment. `/admin/calendar/[id]` is three segments with one dynamic
-   * tail; the other three-segment patterns are `/admin/venues/[slug]` (one
-   * dynamic, and its second segment is a different literal) and
-   * `/admin/members/register` e `/admin/events/new` (zero dynamic, so the
-   * loop's `dynamicCount` guard skips them before it compares literals). No
-   * tie, on either. *(Un terzo indirizzo a tre segmenti stava in questa riga
-   * fino al 2026-09-21: e' uscito dalla mappa con la fase 50, e un elenco che
-   * prova l'assenza di ambiguita' deve nominare i pattern che esistono.)*
-   *
-   * ⚠ That check is worth the paragraph because of WHEN it fires. The throw at
-   * the foot of this file runs at **module load inside a middleware bundle**, not
-   * at `npm run build` — so a tie is not a broken page, it is a 500 on every
-   * route the middleware covers, the payments webhook and the door's scan path
-   * included. Which is why the deploy rule stands: ship on a day without a night,
-   * and make the first request yourself. Plan 45-08 carries it.
-   *
-   * ── The page arrived with this entry. The TAB followed. ─────────────────────
-   *
-   * `staff-tabs.ts` gained its `Calendar` entry in plan 44-13, and this commit
-   * only re-keys it. The order was forced rather than chosen: `StaffTab.href` is
-   * `Route`, and a static address enters the generated union only once a
-   * `page.tsx` serves it. Page first, tab second — the sequence `/admin/formats`
-   * already walked, and the sequence the three keys below still have to walk. A
-   * map entry whose page is not on disk is a plan not yet run; a TAB whose page
-   * is not on disk is refused by name at build time.
-   *
-   * ── The middleware is UX. The RLS is the boundary. ──────────────────────────
-   *
-   * This entry decides where a **redirect** happens. It stops somebody arriving
-   * on `/admin/calendar`; it stops nobody reading a `production_plan` row. The
-   * boundary is the six `SELECT` policies in the migration, and it is the
-   * boundary whichever branch this entry sits on — which is precisely why the
-   * page reads with the cookie-bound client rather than the service one: a read
-   * that bypasses the policy proves nothing about the policy.
-   *
-   * Phase 44's criterion 4 asks the middleware, the page guard and the row-level
-   * policy to ask the same question of the same definition. It does **not**
-   * promote this file to a security control, and nothing here should be read as
-   * saying it does.
-   */
-  [CAP.PRODUCTION_CALENDAR_MANAGE]: {
-    routes: ["/admin/calendar", "/admin/calendar/[id]"],
-    alsoGatesTables: true,
-  },
-
-  /**
-   * The production LOCATION section — phase 45, plan 05 wrote the key; **plan
-   * 45-11 moved it to this branch, in the same commit as its page.**
-   *
-   * ── The question this key answers ────────────────────────────────────────────
-   *
-   * *May this subject see the scouted spaces?* — 184 places somebody wrote down,
-   * each with a stage, ten graded attributes, four answers only a telephone
-   * closes, and **a street address**. Those rows are the material
-   * `venue-acquisition.md` refuses to let into this repository at all: criteria
-   * in the repo, candidates never. A key of their own, and no fold into a
-   * broader one.
-   *
-   * ── Why the move happens in the SAME COMMIT as the page ─────────────────────
-   *
-   * This entry sat on the `scope: "table"` branch from plan 45-05 until now,
-   * which was the only TRUE declaration available while the key gated rows and
-   * no address. The moment `page.tsx` landed, that declaration became the trap
-   * the three sibling entries still carry in words: **a page bound to a
-   * table-only key is unreachable for EVERYONE.** `resolveRoute` returns `null`,
-   * every caller must treat `null` as a refusal, and the middleware fails
-   * closed — with **no build error and nothing in a log.** This project has no
-   * error tracking at all, so a section down for everybody is a section nobody
-   * learns is down except by opening it.
-   *
-   * The asymmetry decides the order and is the reason this is not a tidy-up
-   * afterwards: a page on disk with no entry here is a build error, loud and
-   * immediate; an entry whose page is not on disk is silent. So the loud
-   * failure is the one allowed to exist for zero commits.
-   *
-   * ── `alsoGatesTables` is carried, and it is NOT optional here ───────────────
-   *
-   * The key does gate rows: the three `SELECT` arms of
-   * `20260817120300_production_sections_access.sql` — on `production_space`,
-   * `production_space_attribute` and `production_open_question` — applied to
-   * production by plan 45-08. The flag is optional on this branch, so omitting
-   * it would have produced no error at all, just a declaration that lies by
-   * omission. That is the lie D-34-11 exists to prevent.
-   *
-   * ── Two patterns, ONE entry ─────────────────────────────────────────────────
-   *
-   * The dynamic sister address needs its own pattern exactly as `/admin/venues`
-   * and `/admin/venues/[slug]` do — a `Route` pattern is matched segment by
-   * segment and never as a prefix, so `/admin/location` opens `/admin/location`
-   * and nothing below it. A second entry, or a second key, would be a **second
-   * predicate**: the thing this module exists to have exactly one of.
-   *
-   * **The ambiguity check, DERIVED and not assumed.** This commit adds the first
-   * two patterns since plan 44-09, taking `COMPILED_PATTERNS` from twenty-six to
-   * twenty-eight, so the derivation is real rather than inherited:
-   *
-   *   · `/admin/location` is two literal segments. The other two-segment
-   *     `/admin/*` patterns — `/admin/scanner`, `/admin/newsletter`,
-   *     `/admin/artists`, `/admin/venues`, `/admin/members`, `/admin/events`,
-   *     `/admin/formats`, `/admin/calendar` — are all literal and all differ in
-   *     their second segment. No tie.
-   *   · `/admin/location/[id]` is three segments with one dynamic tail. The
-   *     other three-segment patterns with one dynamic segment are
-   *     `/admin/venues/[slug]` and `/admin/calendar/[id]`, whose second segments
-   *     are different literals; `/admin/members/register` and
-   *     `/admin/events/new` carry zero dynamic segments, so the loop's
-   *     `dynamicCount` guard skips them before it compares literals. No tie.
-   *     *(Un terzo indirizzo a zero segmenti dinamici stava in questa riga fino
-   *     al 2026-09-21, ed e' uscito dalla mappa con la fase 50.)*
-   *
-   * ⚠ That check is worth the paragraph because of WHEN it fires. The throw at
-   * the foot of this file runs at **module load inside a middleware bundle**, not
-   * at `npm run build` — so a tie is not a broken page, it is a 500 on every
-   * route the middleware covers, the payments webhook and the door's scan path
-   * included. The deploy rule stands: ship on a day without a night, and make
-   * the first request yourself.
-   *
-   * ── The page arrived with this entry. The TAB does NOT follow here. ─────────
-   *
-   * `staff-tabs.ts` gains no `Location` entry in this commit — that is plan
-   * 45-18. The order is forced rather than chosen: `StaffTab.href` is `Route`,
-   * and a static address enters the generated union only once a `page.tsx`
-   * serves it, so page first and tab second is the sequence `/admin/formats` and
-   * `/admin/calendar` both walked. Until the tab lands, the list is reachable by
-   * address and from nothing else.
-   *
-   * ── The middleware is UX. The RLS is the boundary. ──────────────────────────
-   *
-   * This entry decides where a **redirect** happens. It stops somebody arriving
-   * on `/admin/location`; it stops nobody reading a `production_space` row. The
-   * boundary is the three `SELECT` policies — which is precisely why both pages
-   * read with the cookie-bound client rather than the service one: a read that
-   * bypasses the policy proves nothing about the policy, and on this section
-   * what it would serve is a name under negotiation and a street address.
-   */
-  [CAP.PRODUCTION_LOCATION_MANAGE]: {
-    routes: ["/admin/location", "/admin/location/[id]"],
-    alsoGatesTables: true,
-  },
+  // Le voci del calendario di produzione (due indirizzi, `alsoGatesTables`) e
+  // di Location (due indirizzi, `alsoGatesTables`) stavano qui. Escono il
+  // 2026-10-14 (fase 53, CUT-01, D-53-02) con le loro pagine e le loro chiavi:
+  // un `Record` totale non ammette il residuo, e `typedRoutes` rifiuta una voce
+  // che punta a una pagina tolta — e' la prova che chiave, voce e pagina sono
+  // uscite insieme. Le tabelle e le concessioni restano nel database fino alla
+  // migration del piano 53-07, applicata dopo il deploy: questa mappa decide
+  // un redirect, la RLS continua a rifiutare la lettura fino a quel momento.
 
   /**
    * The sound manifesto — the body of rules that can say it is not written.
@@ -804,19 +613,22 @@ export const CAPABILITY_ROUTES = {
    * ── `alsoGatesTables` is carried, and it is NOT optional here ───────────────
    *
    * The key does gate rows: the `SELECT` arms of
-   * `20260817120300_production_sections_access.sql` on `production_section`,
-   * `production_open_question` and `production_visual_asset`, applied to
-   * production by plan 45-08. The flag is optional on this branch, so omitting
-   * it would have produced no error at all — just a declaration that lies by
+   * `20260817120300_production_sections_access.sql` on `production_section` and
+   * `production_open_question` (and, until 2026-10-14, on the visual archive's
+   * table, which left with its section — D-53-04), applied to production by
+   * plan 45-08. The flag is optional on this branch, so omitting it would have
+   * produced no error at all — just a declaration that lies by
    * omission, which is the lie D-34-11 exists to prevent.
    *
    * ── ONE pattern, and the ambiguity check is DERIVED rather than assumed ─────
    *
    * `/admin/manifesto` is two literal segments. The other two-segment `/admin/*`
    * patterns — `/admin/scanner`, `/admin/newsletter`, `/admin/artists`,
-   * `/admin/venues`, `/admin/members`, `/admin/events`, `/admin/formats`,
-   * `/admin/calendar`, `/admin/location` — are all literal and all differ in
-   * their second segment. No tie. There is no dynamic sister: a manifesto
+   * `/admin/venues`, `/admin/members`, `/admin/events`, `/admin/formats` — are
+   * all literal and all differ in their second segment. No tie. *(Re-derived on
+   * 2026-10-14: the two production siblings this list named left with their
+   * sections, and a list that proves the absence of a tie names the patterns
+   * that exist.)* There is no dynamic sister: a manifesto
    * section has no page of its own, the whole body of rules is one screen, and
    * an address per section would be a second predicate for no reader.
    *
@@ -847,86 +659,12 @@ export const CAPABILITY_ROUTES = {
     alsoGatesTables: true,
   },
 
-  /**
-   * The visual system — the capitolato beside the material it governs.
-   *
-   * ── The last of the four section keys to leave the table-only branch ────────
-   *
-   * ⚠ **The block that used to stand here is REMOVED rather than left standing
-   * with a tick beside it.** It warned that a page bound to a `scope: "table"`
-   * key is unreachable for everyone, and it named the plan that would discharge
-   * each obligation: three entries at plan 45-05, two after plan 45-11 moved the
-   * location key, one after this plan moved the manifesto key, and **none now**.
-   * A warning about work already done is how the next reader learns to skim the
-   * warnings.
-   *
-   * The rule it carried is not deleted with it — it is stated once, above, on
-   * every entry that made the move, and it is worth having in one more place
-   * because it is the trap of this whole module: `resolveRoute` returns `null`,
-   * every caller must treat `null` as a refusal, the middleware fails closed, and
-   * there is **no build error and nothing in a log**. This repository has no
-   * error tracking at all, so a surface down for everybody is a surface nobody
-   * learns is down except by opening it. The asymmetry decides the order: a page
-   * on disk with no entry here is a build error, loud and immediate; an entry
-   * whose page is not on disk is silent. So the loud failure is the one allowed
-   * to exist for zero commits.
-   *
-   * **No key that phase 45 put on the `scope: "table"` branch remains there.**
-   * That is a claim about this file and it was checked by reading it rather than
-   * by arithmetic — and the first version of this paragraph got it wrong, which
-   * is why the measurement is written out. Five entries were still on that
-   * branch when phase 45 closed, and **none of them belonged to that phase**:
-   * `master.manage`, `membership.active`, `door.supervise`, `media.upload` and
-   * `venue.reveal`. **Quattro dal 2026-09-22**: `membership.active` e' uscita
-   * dal catalogo con il piano 51-08 (D-51-07), e con lei la sua voce qui.
-   * **Quattro anche dal 2026-10-02, ma non le stesse**: `media.upload` esce con
-   * la gallery (piano 52.1-18, DBT-13) e `staff.manage` ci arriva, perche' la
-   * sua unica pagina, la moderazione dei media, e' uscita con lei —
-   * `master.manage`, `door.supervise`, `staff.manage` e `venue.reveal`.
-   * Each gates rows and opens no address, which is what that branch is for; the
-   * four section keys were the only ones parked there waiting for a page, and all
-   * four have one now.
-   *
-   * ── `alsoGatesTables` is carried, and it is NOT optional here ───────────────
-   *
-   * The key gates rows: the `SELECT` arms of
-   * `20260817120300_production_sections_access.sql` on `production_section`,
-   * `production_open_question` and `production_visual_asset`, applied to
-   * production by plan 45-08. The flag is optional on this branch, so omitting it
-   * would have produced no error — just a declaration that lies by omission.
-   *
-   * ── ONE pattern, and the ambiguity check is DERIVED rather than assumed ─────
-   *
-   * `/admin/visual` is two literal segments. The other two-segment `/admin/*`
-   * patterns — `/admin/scanner`, `/admin/newsletter`, `/admin/artists`,
-   * `/admin/venues`, `/admin/members`, `/admin/events`, `/admin/formats`,
-   * `/admin/calendar`, `/admin/location`, `/admin/manifesto` — are all literal
-   * and all differ in their second segment. No tie. No dynamic sister: the
-   * capitolato is one document on one screen.
-   *
-   * ⚠ The throw at the foot of this file runs at **module load inside a
-   * middleware bundle**, not at `npm run build`, so a tie is a 500 on every route
-   * the middleware covers — the payments webhook and the door's scan path
-   * included. Ship on a day without a night, and make the first request yourself.
-   *
-   * ── The page arrived with this entry. The TAB does NOT follow here. ─────────
-   *
-   * `staff-tabs.ts` gains no `Visual` entry in this commit — that is plan 45-18,
-   * and the order is forced: `StaffTab.href` is `Route`, and a static address
-   * enters the generated union only once a `page.tsx` serves it.
-   *
-   * ── The middleware is UX. The RLS is the boundary. ──────────────────────────
-   *
-   * This entry stops somebody arriving on `/admin/visual`; it stops nobody
-   * reading a `production_visual_asset` row. The boundary is the `SELECT`
-   * policies — which is why the page reads with the cookie-bound client, and why
-   * what it must not be able to reach at all (a venue, a space under negotiation)
-   * is absent from its queries rather than filtered out of them.
-   */
-  [CAP.PRODUCTION_VISUAL_MANAGE]: {
-    routes: ["/admin/visual"],
-    alsoGatesTables: true,
-  },
+  // La voce del visual (un indirizzo, `alsoGatesTables`) stava qui. Esce il
+  // 2026-10-14 con la sua pagina, l'archivio e la sua chiave (fase 53, CUT-01,
+  // D-53-04): il manifesto resta, ed e' ora l'unica sezione di produzione. La
+  // misura del ramo `scope: "table"` che la sua docblock portava resta vera:
+  // nessuna chiave di sezione e' parcheggiata li', ne' lo e' mai stata la
+  // superstite.
 
   // `gallery.view` stava qui (`routes: ["/gallery"]`, `alsoGatesTables: true`;
   // fase 52, D-52-12 / D-52-13 / D-52-14). Esce il 2026-10-02 (piano 52.1-18,

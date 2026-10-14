@@ -1,5 +1,5 @@
 /**
- * The ten staff tabs — address, label, and the capability that opens the
+ * The seven staff tabs — address, label, and the capability that opens the
  * address — declared once, for both staff menus.
  *
  * Before this module there were **three** hand-maintained menus, not the two
@@ -86,15 +86,22 @@ export interface StaffTab {
 }
 
 /**
- * The ten, in declared order — which since phase 52 is no longer the order
- * they are drawn (see below). (Eight until 2026-08-14, when the
+ * The seven, in declared order — which since phase 52 is no longer the order
+ * they are drawn (see below). (Ten until 2026-10-14, when Calendar, Location
+ * and Visual left with their sections — phase 53, CUT-01; eight until
+ * 2026-08-14, when the
  * owner removed Finance and Analytics — see the note where they stood; six
  * until phase 44, when Calendar landed after its pages did; seven until phase
  * 45, when the calendar stopped being the only production section.)
  *
  * ── The order is a grouping, and it is deliberate ───────────────────────────
  *
- * Calendar, Location, Manifesto and Visual sit consecutively, between the four
+ * ⚠ **Since 2026-10-14 there is one production tab, not four** (phase 53,
+ * CUT-01): the grouping this paragraph and the next describe is history, kept
+ * because the reasoning about a menu read as a grouping still applies to the
+ * next tab that lands beside Manifesto.
+ *
+ * Calendar, Location, Manifesto and Visual sat consecutively, between the four
  * catalogue tabs and Newsletter. **A navigation is read as a grouping whether
  * or not it was meant as one**, so four adjacent entries say *these are one
  * surface with four rooms* — which is exactly what D-45-04 decided them to be:
@@ -134,10 +141,11 @@ export interface StaffTab {
  *
  * The Formats entry arrived with phase 36 and **was** the only one here asking
  * neither `organizer.access` nor `admin.access`. It is now one of five: the four
- * production sections each ask their own key, and the sentence is corrected
+ * production sections each asked their own key, and the sentence is corrected
  * rather than deleted because a comment that still says *the only one* teaches
- * the next reader to count wrong. Five distinct keys are named below, and
- * `CAP.PRODUCTION_*` is four of them.
+ * the next reader to count wrong. Since 2026-10-14 it is one of two: Manifesto
+ * is the only production section left, and two keys other than
+ * `organizer.access` and `admin.access` are named below.
  */
 const DECLARED = [
   // "Manage events", not "Events" — D-52-10, phase 52. The bar's first entry is
@@ -176,91 +184,14 @@ const DECLARED = [
   // what the map binds to this address, and it `requires_approved`, so a pending
   // organizer is neither drawn the tab nor let through to the page.
   { href: "/admin/formats", label: "Formats", capability: CAP.CATALOGUE_MANAGE },
-  // ── THE CALENDAR TAB, AND WHY HIDING IT PROTECTS NOTHING ──────────────────
+  // ── Calendar and Location stood here, each with its own key ──────────────
   //
-  // Same landing rule as Formats above, and for the same reason: the pages
-  // exist on disk (phase 44, plan 09) at `(work)/calendar/page.tsx` and
-  // `(work)/calendar/[id]/page.tsx`, so both static addresses are in the
-  // generated union and this entry compiles without either rejected
-  // workaround. Neither was used here and neither becomes acceptable because
-  // a second tab now wants it.
-  //
-  // **Hiding this tab protects nothing**, and it needs saying here more than
-  // on any other entry above. What this surface holds IS the secret — dates
-  // not yet announced and spaces still under negotiation — so a reader who
-  // never sees the link is not thereby refused the rows. Three things refuse a
-  // door-assigned staff account, and none of them is the absence of a link:
-  // the middleware entry for `production.calendar.manage`, the page's own
-  // guard, and the six RLS policies rewritten onto that key by
-  // `20260817120000_production_section_keys.sql` §3. A surface whose whole
-  // content is a secret is exactly where somebody would be tempted to believe
-  // the menu is doing the work, so: it is not.
-  //
-  // ── Re-keyed by plan 45-05, and NO TAB IS ADDED HERE ──────────────────────
-  //
-  // The capability moved from `production.read` to the calendar's own section
-  // key. One line, and the loop below is what makes it safe: it asks
-  // `resolveRoute` what the map says about this same address and throws at
-  // module load if the two disagree, so a tab left on the retired key would
-  // fail `next build` by name rather than draw a link nobody can follow.
-  //
-  // ── The three sibling sections, which used to be a warning here ───────────
-  //
-  // This paragraph used to say they got **no tab in this commit**, and named
-  // plan 45-18 as the one that would add them. That plan is this one, the three
-  // entries stand below, and a warning about work already done is how the next
-  // reader learns to skim the warnings. What is kept is the rule the warning
-  // carried, because it is the rule that FORCED the order rather than a
-  // scheduling preference: `StaffTab.href` is `Route`, a static address enters
-  // the generated union only once a `page.tsx` serves it, so the three pages
-  // (plans 45-11 and 45-12) had to land before these three lines could compile.
-  // The two workarounds are rejected in writing above and STAY rejected — they
-  // did not become acceptable because three tabs wanted them instead of one.
-  //
-  // `production.calendar.manage`, and it ignores status (D-44-27, carried
-  // unchanged through the split by D-45-04 constraint 3) — unlike
-  // `catalogue.manage` on the line above, which `requires_approved`.
-  {
-    href: "/admin/calendar",
-    label: "Calendar",
-    capability: CAP.PRODUCTION_CALENDAR_MANAGE,
-  },
-  // ── THE LOCATION TAB, AND WHY HIDING IT PROTECTS NOTHING ──────────────────
-  //
-  // **What this surface holds is the narrowest material in the product**, and
-  // the sentence has to be re-derived here rather than borrowed from the
-  // calendar's: this is not a list of dates, it is 184 spaces **nobody has
-  // phoned**, every one of them at the lowest acquisition stage, and every one
-  // of them carrying a **street address** (D-45-24). `venue-acquisition.md`
-  // refuses to let a single one of those names into this repository at all —
-  // criteria here, candidates never — and the product is the one place they are
-  // allowed to exist. A reader who never sees this link is therefore not
-  // refused a menu; they are not refused the rows, which is a different
-  // sentence and the only one that matters.
-  //
-  // Three things refuse an account that does not hold this key, and **none of
-  // them is the absence of a link**:
-  //   1. the middleware, through the `production.location.manage` entry in
-  //      `capability-routes.ts`, which covers `/admin/location` AND
-  //      `/admin/location/[id]` — the detail address is where the address of a
-  //      space is drawn, so a map entry that stopped at the list would refuse
-  //      the index and serve the record;
-  //   2. the page's own guard — `(work)/location/page.tsx:99-101` and its
-  //      sister on the detail — which redirects to `/dashboard`;
-  //   3. the row-level policies: `production_space_select_location` and
-  //      `production_space_attribute_select_location`
-  //      (`20260817120300_production_sections_access.sql`), plus the register's
-  //      `production_open_question_select_location` and the brand-wide arm that
-  //      admits any of the three section keys.
-  //
-  // Only the third is a boundary on the DATA. It is also the only one this
-  // phase could measure against real rows: 184 and 1840 read by an entitled
-  // role, zero and zero by an unentitled one.
-  {
-    href: "/admin/location",
-    label: "Location",
-    capability: CAP.PRODUCTION_LOCATION_MANAGE,
-  },
+  // Removed on 2026-10-14 (phase 53, CUT-01, D-53-02) with their pages and
+  // their keys. Their paragraphs said why hiding each tab protected nothing —
+  // the middleware, the page guard and the row-level policies did — and that
+  // rule is still the one the Manifesto entry below states in its own words.
+  // The tables and their policies stay in the database until the migration of
+  // plan 53-07; the policies keep refusing the rows until then.
   // ── THE MANIFESTO TAB, AND WHY HIDING IT PROTECTS NOTHING ─────────────────
   //
   // **What this surface holds is not a secret at all — it is an authority.**
@@ -292,38 +223,11 @@ const DECLARED = [
     label: "Manifesto",
     capability: CAP.PRODUCTION_MANIFESTO_MANAGE,
   },
-  // ── THE VISUAL TAB, AND WHY HIDING IT PROTECTS NOTHING ────────────────────
+  // ── Visual stood here, with its own key ───────────────────────────────────
   //
-  // **What this surface holds leaves the perimeter by design**, and that is the
-  // third distinct reason on this list. The capitolato is written to be handed
-  // to an external designer, and the archive beside it holds **photographs of
-  // recognisable people** — so the risk here is neither disclosure of a secret
-  // nor authorship of a brand, it is that a document travels. It is also the
-  // one section whose objects live outside Postgres.
-  //
-  // Four things refuse an account that does not hold this key, and **none of
-  // them is the absence of a link**:
-  //   1. the middleware, through the `production.visual.manage` entry;
-  //   2. the page's own guard — `(work)/visual/page.tsx:122-124`;
-  //   3. the row-level policies `production_section_select_visual`,
-  //      `production_visual_asset_select_visual` and
-  //      `production_open_question_select_visual`, plus the brand-wide arm;
-  //   4. and one this section has and the other three do not —
-  //      `visual_archive_select_visual` on `storage.objects`, scoped to the
-  //      PRIVATE `visual-archive` bucket
-  //      (`20260817120400_visual_archive_bucket.sql`). A signed URL expires; a
-  //      public bucket would have made the object reachable to anybody who can
-  //      derive a key, which is the shape that argument was had over and
-  //      settled against.
-  //
-  // What none of the four covers is a document that has already been produced
-  // and sent. Nothing records that one left (DEF-45-09), so the refusals above
-  // govern the door and not what walked through it.
-  {
-    href: "/admin/visual",
-    label: "Visual",
-    capability: CAP.PRODUCTION_VISUAL_MANAGE,
-  },
+  // Removed on 2026-10-14 with its page, its archive and its key (phase 53,
+  // CUT-01, D-53-04). The manifesto is the one production section left, and
+  // the brand-wide question it shared with this one now has one surface.
   { href: "/admin/newsletter", label: "Newsletter", capability: CAP.ADMIN_ACCESS },
   // ── Finance and Analytics were removed here, and their pages with them ──────
   //
@@ -370,7 +274,7 @@ for (const tab of DECLARED) {
   }
 }
 
-/** The ten, verified against the map. */
+/** The seven, verified against the map (recounted on 2026-10-14). */
 export const STAFF_TABS: readonly StaffTab[] = DECLARED;
 
 /**

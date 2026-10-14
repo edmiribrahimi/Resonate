@@ -1,5 +1,6 @@
 /**
- * The fifteen capability keys, named once.
+ * The eleven capability keys, named once (recounted on 2026-10-14; the
+ * count below this paragraph is the one each era wrote, and is history).
  *
  * This module is the source. It imports nothing — not even
  * `@/types/database`, which imports *from here* — for the same reason
@@ -158,53 +159,24 @@
  * for a key that no longer exists, which answers false with no error and no log
  * line, and the calendar is down for the length of a deploy.
  *
- * ── The fourteenth: `PRODUCTION_CALENDAR_MANAGE` ─────────────────────────────
+ * ── The fourteenth, sixteenth and seventeenth left on 2026-10-14 ─────────────
  *
- * It answers *may this subject read and write the production calendar section* —
- * the six `production_*` tables whose rows are unannounced dates, spaces under
- * negotiation and the shape of an internal plan. `manage` and not `read` because
- * D-45-06 says whoever reads a section writes it, and `read` would under-claim
- * what the key opens.
+ * Three of the four section keys answered *may this subject read and write* the
+ * production calendar, the visual system and the location list. They left the
+ * code with their sections (phase 53, CUT-01, D-53-02, D-53-04): the pages, the
+ * actions and the cron that read them are gone, and a key no live path asks
+ * for is a dormant grant somebody reconnects tomorrow without rereading why it
+ * existed — the reason the gallery's two keys left on 2026-10-02.
  *
- * Four existing keys were weighed for it and each is wrong in a DIFFERENT
- * DIRECTION — plus a fifth, which is the reuse this phase exists to undo:
+ * Their reasoning stood here, one key per section, and it is not restated: the
+ * rule it applied — four keys so that ONE can be taken away without the others
+ * — is stated at the top of this file and is what made this removal a matter
+ * of deleting three entries rather than redesigning one. The catalogue keeps
+ * the three rows until the migration of plan 53-07, applied AFTER the deploy
+ * that carries this commit, for the order `production.read`'s retirement
+ * followed below: the code that stops asking leaves first.
  *
- *   - On `production.read` itself, kept for all four sections. It cannot refuse
- *     ONE section, which is the whole of PROD-02, and keeping it would make the
- *     four sections a naming exercise.
- *   - On `ORGANIZER_ACCESS` (`organizer.access`) the question is *may they reach
- *     the organizer area* — a routing question about the account. Reusing it
- *     makes the calendar reachable by every organizer PERMANENTLY and leaves
- *     nothing to take away the day one collaborator should hold one section and
- *     no other. Un-widening later is the direction `meta-gates.md` permits only
- *     with an explicit, documented authorisation, so the reuse would not be a
- *     shortcut — it would be a decision nobody took, taken irreversibly.
- *   - On `CATALOGUE_MANAGE` (`catalogue.manage`) the shape would be right and the
- *     question wrong: *may they create an artist or a venue* is not *may they
- *     read what is planned*, and merging them ties calendar reach to a catalogue
- *     grant.
- *   - On `ADMIN_ACCESS` (`admin.access`) it would be master-only. D-45-03 wants
- *     the organizer as well, so this one is wrong in the OPPOSITE direction from
- *     the other three: too narrow rather than too wide.
- *   - On `STAFF_MANAGE` (`staff.manage`) it would inherit
- *     `requires_approved = false` for the DOOR's reason — a pending organizer
- *     must not be refused in front of a queue — and **nobody is standing in a
- *     queue in front of a calendar**. This key ALSO carries `false`, and the
- *     coincidence is the trap: it arrives from D-44-27 and from nothing else, so
- *     the day the door's reason is revisited this key must not move with it.
- *
- * `requires_approved = false`, and D-45-04 constraint 3 forbids this split from
- * changing it in either direction: master and organizer held the calendar before
- * and hold it after. That flag is a BET, written out in full — and byte-identical
- * to the migration's — in `CAP_DESCRIPTIONS` below: it holds only while no signup
- * path can create a pending organizer, and the day one is reopened this flag is
- * reconsidered in the same commit that reopens it.
- *
- * `staff` and `member` hold no grant, and the refusals are asserted rather than
- * assumed: `scripts/verify-capabilities.mjs` side 5 declares all four pairs. A
- * member of staff rostered to a night's door enters to let people in — not to
- * read unannounced dates and open negotiations, which do not expire with the
- * night the way an assignment does.
+ * The ordinals are not renumbered. The manifesto's key stays the fifteenth.
  *
  * ── The fifteenth: `PRODUCTION_MANIFESTO_MANAGE` ─────────────────────────────
  *
@@ -234,68 +206,15 @@
  * `requires_approved = false` (D-45-20, the owner), and the BET it rests on is in
  * its description below, in the migration's own words.
  *
- * ── The sixteenth: `PRODUCTION_VISUAL_MANAGE` ────────────────────────────────
+ * ── Which branch the remaining one sits on ───────────────────────────────────
  *
- * It answers *may this subject read and write the visual system section* — the
- * capitolato, beside the produced pieces and the photo archive a listing is
- * pulled from. The directions:
- *
- *   - On `production.read`, a section whose content becomes a PUBLICATION would
- *     share a key with a section whose content must never be published. Those are
- *     opposite obligations on the same grant.
- *   - On `ORGANIZER_ACCESS`, permanent for every organizer, with nothing to
- *     remove for an external designer who should hold the capitolato and no
- *     calendar. That is the same collaborator, arriving from the other side.
- *   - On `CATALOGUE_MANAGE`, wrong question and the wrong `requires_approved`,
- *     exactly as above.
- *   - On `ADMIN_ACCESS`, master-only: too narrow.
- *   - On `STAFF_MANAGE`, the door's `false` arriving for the door's reason, which
- *     does not travel here.
- *
- * `requires_approved = false` (D-45-20, the owner); the BET is in its description.
- *
- * ── The seventeenth: `PRODUCTION_LOCATION_MANAGE` ────────────────────────────
- *
- * It answers *may this subject read and write the location section* — scouted
- * spaces with their stage, the attributes a per-format score is computed from,
- * and the four answers that close a to-verify column. **Every row is a space
- * nobody has phoned, and one of its columns is a street address** (D-45-24),
- * which makes this the narrowest-audience section of the four IN INTENT even
- * though D-45-03 gives all four the same two roles. The directions:
- *
- *   - On `production.read`, this section could never be refused on its own — and
- *     it is the one whose refusal costs the most if it is ever loosened, because
- *     a space under negotiation named outside the people negotiating is a
- *     negotiation made public, and a publication does not un-publish.
- *   - On `ORGANIZER_ACCESS`, permanent and un-removable, on the section that most
- *     needs to be removable.
- *   - On `CATALOGUE_MANAGE` the confusion would be worse than shape-versus-
- *     question: `venues` holds acquired spaces and this section holds spaces that
- *     are not acquired, so one grant would erase the distinction
- *     `venue-acquisition.md` exists to keep.
- *   - On `ADMIN_ACCESS`, master-only: too narrow for D-45-03.
- *   - On `STAFF_MANAGE`, the door's `false` for the door's reason. Nobody is
- *     standing in a queue in front of a scouting list.
- *
- * `requires_approved = false` (D-45-20, the owner); the BET is in its description.
- *
- * ── Which branch each of the four sits on, and the trap on three of them ─────
- *
- * `PRODUCTION_CALENDAR_MANAGE` keeps the calendar's two addresses on the
- * `routes:` branch with `alsoGatesTables: true` — the entry plan 44-09 already
- * moved there, unchanged in substance.
- *
- * The other three land on the `scope: "table"` branch, because **their pages are
- * not on disk yet**: 45-11 creates the location surface, 45-12 the manifesto and
- * the visual one, and each of those plans moves its own entry. Until then the
- * declaration is honest rather than aspirational — and the trap is written into
- * each entry in `src/lib/routes/capability-routes.ts`: a page bound to a
- * table-only key is unreachable **for everyone**, with no build error and nothing
- * in a log, because `resolveRoute` returns `null` and the middleware fails closed.
+ * `PRODUCTION_MANIFESTO_MANAGE` is on the `routes:` branch with
+ * `alsoGatesTables: true`: its page is on disk, and the entry in
+ * `src/lib/routes/capability-routes.ts` names it.
  */
 
 /**
- * The sixteen keys. Spelled exactly as the rows of `private.capabilities`
+ * The eleven keys. Spelled exactly as the rows of `private.capabilities`
  * (`supabase/migrations/20260807000000_capability_model.sql` section 7,
  * `20260808002000_membership_register.sql` section 1 for the ninth,
  * `20260809001000_assignment_resolver.sql` section 1 for the tenth to twelfth,
@@ -321,13 +240,20 @@
  * RIMOZIONE): `gallery.view` e `media.upload` escono con la gallery
  * (D-52.1-17), qui e in `20261001120200_gallery_removal.sql` (M-D) nello stesso
  * piano. `media.upload` non resta come asse non usato perche' **nessun percorso
- * vivo la legge**: l'archivio del visual chiede `production.visual.manage`
- * (`src/lib/media/may-upload.ts`, `mayUploadToVisualSection`), la cover
+ * vivo la legge**: l'archivio del visual chiedeva la chiave della sua sezione
+ * (con una guardia propria, uscita con l'archivio il 2026-10-14), la cover
  * `staff.manage` piu' `assertMayManageEvent` (`/api/media/finalize-cover`,
  * piano 52.1-13). Una chiave senza lettori e' una concessione dormiente che
  * domani qualcuno ricollega a un percorso senza rileggere perche' esisteva. I
  * paragrafi sopra che la nominano sono storia, e restano: gli ordinali non si
  * rinumerano.
+ *
+ * **Undici dal 2026-10-14** (fase 53, CUT-01, D-53-02, D-53-04 — una
+ * RIMOZIONE): tre delle quattro chiavi di sezione escono con il calendario, il
+ * visual e Location; resta quella del manifesto. Il catalogo le tiene fino alla
+ * migration del piano 53-07, applicata dopo il deploy: fino a li'
+ * `verify:capabilities` e' ROSSO contro ogni database, per costruzione, e lo
+ * chiude quel piano — non una costante corretta a mano nello script.
  */
 export const CAP = {
   /** P1 — the 34 policies gating on `is_admin_or_organizer()`. Status ignored. */
@@ -359,29 +285,11 @@ export const CAP = {
   /** Reveal a night's secret venue by hand. Role AND approved. */
   VENUE_REVEAL: "venue.reveal",
   /**
-   * Read and write the production CALENDAR section. Role alone, status IGNORED —
-   * D-44-27, and not `staff.manage`'s door reason. Not `organizer.access`: that
-   * is the area. One of four, so that one can be taken away without the others.
-   */
-  PRODUCTION_CALENDAR_MANAGE: "production.calendar.manage",
-  /**
    * Read and write the sound MANIFESTO section. Role alone, status IGNORED —
    * D-45-20. Its page arrives in plan 45-12; until then its route entry is
    * table-only, which opens no address for anybody.
    */
   PRODUCTION_MANIFESTO_MANAGE: "production.manifesto.manage",
-  /**
-   * Read and write the VISUAL system section — the capitolato. Role alone,
-   * status IGNORED — D-45-20. Its page arrives in plan 45-12.
-   */
-  PRODUCTION_VISUAL_MANAGE: "production.visual.manage",
-  /**
-   * Read and write the LOCATION section: spaces nobody has phoned, one of whose
-   * columns is a street address. Role alone, status IGNORED — D-45-20. The
-   * narrowest-audience section of the four in intent, though not in grants. Its
-   * page arrives in plan 45-11.
-   */
-  PRODUCTION_LOCATION_MANAGE: "production.location.manage",
 } as const;
 
 export type CapabilityKey = (typeof CAP)[keyof typeof CAP];
@@ -440,20 +348,15 @@ export const CAP_DESCRIPTIONS: Record<CapabilityKey, string> = {
     "Manage one night's operational surfaces: that night's review, its door register, its guest list. Scoped to a single date, which is why it is not organizer.access.",
   "venue.reveal":
     "Reveal a night's secret venue by hand, before the automatic window, and send the address to everyone entitled to it. Requires an APPROVED staff role on both grants (D-37-14) because the act is irreversible — staff.manage ignores status ON PURPOSE, so a pending organizer is not refused in front of a queue, and that reason does not exist here.",
-  // ── The four below are BYTE-IDENTICAL to the description column of the four
-  // rows in `20260817120000_production_section_keys.sql` section 1, and that is
+  // ── The one below is BYTE-IDENTICAL to the description column of its row in
+  // `20260817120000_production_section_keys.sql` section 1 (four rows until
+  // 2026-10-14, when three left with their sections — D-53-02), and that is
   // a rule rather than a courtesy: a capability key has no SQL mirror the
   // compiler can hold, so `npm run build` proves neither the row nor the string.
   // The only thing that compares them is `scripts/verify-capabilities.mjs`, and
   // it needs a live database. Edit one of these and the migration is edited in
   // the same commit — or the sentence a permission decision is explained with
   // starts depending on which of the two a reader happened to open.
-  "production.calendar.manage":
-    "Read and write the production calendar section: the six production tables, whose rows are unannounced dates, spaces under negotiation and the shape of an internal plan. It is the calendar own section key, minted by the split of production.read into four section keys (D-45-04), and the grants are unchanged — master and organizer held the calendar before the split and hold it after. requires_approved is FALSE on both grants (D-44-27, the owner), which D-45-04 constraint 3 forbids changing here: organizer accounts are created inside the app by an admin or an organizer and nobody signs up any more, so pending is about to stop varying and gating on a value that no longer varies is debt rather than safety. That is a BET on the signup path staying closed: reopen a path that can create a pending organizer and this flag is reconsidered in the same commit. It is NOT staff.manage ignoring status for the door reason — nobody is standing in a queue in front of a calendar.",
   "production.manifesto.manage":
     "Read and write the sound manifesto section: which formats have a written manifesto, which carry declared coordinates without one, and which are not decided at all, together with the register of the questions still open. One key covers both directions (D-45-06), which is why the verb is manage and not read. Granted to master and organizer (D-45-03). requires_approved is FALSE (D-45-20, the owner) because organizer accounts are created inside the app by an admin or an organizer and nobody signs up any more, so pending is about to stop varying and gating on a value that no longer varies is debt rather than safety. That is a BET on the signup path staying closed: reopen a path that can create a pending organizer and this flag is reconsidered in the same commit. It is NOT staff.manage ignoring status for the door reason — nobody is standing in a queue in front of a manifesto.",
-  "production.visual.manage":
-    "Read and write the visual system section: the capitolato — palette, typography, the grid-safe zone, the publication order, what is fixed and what is variable — beside the produced pieces and the photo archive a listing is pulled from. One key covers both directions (D-45-06), which is why the verb is manage and not read. Granted to master and organizer (D-45-03). requires_approved is FALSE (D-45-20, the owner) because organizer accounts are created inside the app by an admin or an organizer and nobody signs up any more, so pending is about to stop varying and gating on a value that no longer varies is debt rather than safety. That is a BET on the signup path staying closed: reopen a path that can create a pending organizer and this flag is reconsidered in the same commit. It is NOT staff.manage ignoring status for the door reason — nobody is standing in a queue in front of a capitolato.",
-  "production.location.manage":
-    "Read and write the location section: scouted spaces with their stage, the attributes a per-format score is computed from, and the four answers that close a to-verify column. Every row is a space nobody has phoned, and one of its columns is a street address (D-45-24) — which makes this the narrowest-audience section of the four in intent, even though D-45-03 gives all four the same two roles. One key covers both directions (D-45-06), which is why the verb is manage and not read. requires_approved is FALSE (D-45-20, the owner) because organizer accounts are created inside the app by an admin or an organizer and nobody signs up any more, so pending is about to stop varying and gating on a value that no longer varies is debt rather than safety. That is a BET on the signup path staying closed: reopen a path that can create a pending organizer and this flag is reconsidered in the same commit. It is NOT staff.manage ignoring status for the door reason — nobody is standing in a queue in front of a scouting list.",
 };

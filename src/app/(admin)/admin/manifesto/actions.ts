@@ -33,8 +33,10 @@ import type { SectionKind } from "@/lib/production/sections/vocabulary";
  * What the two legitimately share lives in
  * `src/lib/production/sections/write-contract.ts`, which is a **plain module**:
  * a union of refusal names, three shapes, and the checks that run before the
- * database is asked. `may-upload.ts:27-34` records why a predicate must not be
- * left in a `"use server"` file — it publishes an oracle.
+ * database is asked. A predicate must not be left in a `"use server"` file:
+ * every export there is an endpoint, so a predicate exported from one publishes
+ * an oracle. *(The module that recorded that reason left on 2026-10-14 with
+ * the visual archive, D-53-04; the reason did not.)*
  *
  * ── The section is PINNED here, and it is not an argument ───────────────────
  *
