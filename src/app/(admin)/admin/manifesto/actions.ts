@@ -183,18 +183,17 @@ async function assertManifestoSection(): Promise<{ userId: string }> {
 type SectionClient = ReturnType<typeof getServiceClient>;
 
 /**
- * Both surfaces that draw what this module writes.
+ * The one surface that draws what this module writes.
  *
- * The visual page is here too, and it is not an overreach: a brand-wide register
- * entry — one with no section — is drawn on **both** authored surfaces, because
- * a question about the spelling or the order of publication belongs to neither
- * body of rules alone. Revalidating a path is cache invalidation and grants
- * nothing; leaving it out would leave the other surface showing a question
- * somebody has already closed.
+ * Until 2026-10-14 there were two: a brand-wide register entry — one with no
+ * section — was drawn on both authored surfaces, so both were revalidated. The
+ * second surface left with its section (CUT-01, D-53-04), and the brand-wide
+ * question now has one place to be shown and closed. Revalidating a path is
+ * cache invalidation and grants nothing; a path that no longer exists would be
+ * a call that does nothing and reads as if something were kept in step.
  */
 function revalidateSection() {
   revalidatePath("/admin/manifesto");
-  revalidatePath("/admin/visual");
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
