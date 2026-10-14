@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: ready_to_execute
-stopped_at: "Phase 53 pianificata il 2026-10-14 (13 piani in 8 onde, checker passato al secondo giro, commit 87bef807; CONTEXT con D-53-04..06 chiuse dal proprietario: Manifesto resta, nessuna copia prima di buttare, Check-in dello staff solo in barra) — next: /gsd-execute-phase 53 (prima /clear); 52.1/52.2 chiuse da spuntare; 47, 48, 49, 58 da chiudere sui documenti"
-last_updated: "2026-10-14T00:03:47.172Z"
+stopped_at: Completed 53-01-PLAN.md (b7bb6e15 1/2, 711c1e1d 2/2 build verde); next 53-02, 53-03
+last_updated: "2026-10-14T10:09:50.209Z"
 last_activity: 2026-10-14
 progress:
   total_phases: 12
   completed_phases: 10
   total_plans: 170
-  completed_plans: 162
+  completed_plans: 163
   percent: 83
 ---
 
@@ -30,12 +30,12 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 53 — Meno strumenti, la porta dentro Management (inserita il 2026-10-14, pianificata lo stesso giorno: 13 piani in 8 onde, pronta da eseguire). Chiuse e in produzione: 52.4 (2026-10-13) e 52.3 (2026-10-14).
+**Current Focus:** Phase 53 — Meno strumenti, la porta dentro Management (inserita e pianificata il 2026-10-14, 13 piani in 8 onde; 53-01 eseguito). Chiuse e in produzione: 52.4 (2026-10-13) e 52.3 (2026-10-14).
 
 ## Current Position
 
-Phase: 53 (meno-strumenti-la-porta-dentro-management-inserted) — pianificata, 13 piani in 8 onde (0 eseguiti)
-Plan: Not started (prossimo: 53-01, 53-02, 53-03 in onda 1)
+Phase: 53 (meno-strumenti-la-porta-dentro-management-inserted) — EXECUTING
+Plan: 2 of 13
 Next: `/gsd-execute-phase 53` (prima `/clear`). Onda 1 = 01 (cancellazione del codice, commit «1/2» rosso mai spinto + «2/2» verde) + 02 (Venues: «New venue» sull'analogo di Artists) + 03 (procedure P-53-A..G e `lab-apply-migration.mjs` su `/database/migrations`). Onda 2 = 04 (Check-in nel pannello, D-53-01/06) + 05 (script e gate) + 06 (prosa dei file che restano) + 13 (`vercel.json` a 7 cron, persona 1.33.1, BASE del budget). Onda 3 = 07 (migration di sola rimozione, 10 tabelle, policy Manifesto riscritta PRIMA delle chiavi, `purge-production-tools.mjs`). Onda 4 = 08 [BLOCKING] laboratorio (deploy → righe per chiave → migration → P-53-F). Onda 5 = 09 (persona, CUT-04, 1.34.0, saldo ≤ 0). Onda 6 = 10 (procedure sul lab + revisione del proprietario dal telefono, autonomous: false). Onda 7 = 11 (produzione su «vai» di prima mano, NON DELEGABILE: registro → righe → migration → `vercel env rm` ×3; niente Instant Rollback). Onda 8 = 12 (CUT-06 DOC-01..04, 1.35.0, VERIFICATION). Decisioni chiuse il 2026-10-14: D-53-04 Manifesto resta; D-53-05 nessuna copia di archivio visual e spunte TASK; D-53-06 StaffNav non riceve Check-in. Ramo di lavoro previsto dai piani: `feat/53-meno-strumenti`.
 
 **52.2 chiusa e osservata (2026-10-01 08:28Z).** `close-pending-orders` 08:01Z: 1 considerato, `never_attempted`, checkout disattivato; `reconcile-refunds` 08:13Z: silenzio = nulla da riconciliare (non logga un riepilogo quando non fa nulla: nota per la 52.1); 0 pending residui, 0 refunds, 0 mail. CART-03 e RFD-02 osservati.
@@ -410,7 +410,7 @@ checkpoints is now closed (the migration is applied); three remain, plus the RLS
 half of the fourth. `31-VALIDATION.md` keeps `nyquist_compliant: false`
 deliberately.
 
-Progress: [█████████░] 93%
+Progress: [██████████] 96%
           phase 32 — 11 plans, 0 executed
 
 ## Decisions
@@ -555,6 +555,7 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase 52.4]: 52.4-11: «Admit anyway» sotto la barra di navigazione a 412 px, decisione del proprietario in attesa
 - [Phase 52.4]: 52.4-12: produzione su «vai» del proprietario 2026-10-13 20:56 Torino — due migration 20:59, main 450b3098, deploy Ready 21:47
 - [Roadmap]: 2026-10-14: fasi 53-57 CANCELLATE dal proprietario («strumenti inutili»); nuova fase 53 «Meno strumenti, la porta dentro Management» (CUT-01..05): via TASK/Location/Visual/Calendar, Check-in in Management, Venues crea una sede; D-53-01 CHIUSA (staff assegnato tiene Check-in in barra; organizer/master in Management); Calendar confermato; DOC-01..04 della 57 dentro la 53 come CUT-06
+- [Phase 53]: 53-01: le tre chiavi di sezione (calendario, Location, visual) escono dal codice prima che dal catalogo; il database le tiene fino alla migration 53-07, dopo il deploy; verify:capabilities rosso per costruzione fino a li'
 
 ## Accumulated Context
 
@@ -676,8 +677,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-10-13T19:51:11.839Z
-**Stopped at:** 52.3-20 CHIUSO (7cfa3863): strada D scelta dal proprietario («strada d.», 2026-10-13, fra 20:18 e 20:35 UTC), nessuna riga di codice cambiata, lab su 01daaa8c con /music 200; main (52.4 + biglietteria esterna in produzione) dentro wip/52.3; 14 CHIUSO (2cb7cdff: persona 1.33.0, check H provato per mutazione, 52.3-VERIFICATION human_needed su MUS-09 in attesa dell'atto, seme del lab tenuto); 15 in esecuzione fino al checkpoint «vai-accesa» + conferma del profilo SoundCloud; staff: riscaricare la lista sullo scanner prima della prossima serata
+**Last session:** 2026-10-14T10:09:25.100Z
+**Stopped at:** Completed 53-01-PLAN.md (b7bb6e15 1/2, 711c1e1d 2/2 build verde); next 53-02, 53-03
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 

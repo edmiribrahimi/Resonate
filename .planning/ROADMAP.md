@@ -1008,14 +1008,14 @@ Management; una sede si crea da Venues.
 **Verifica, in un repo senza test:** vedi CUT-05.
 
 **Depends on:** Phase 52.3 chiusa (la barra con Music e' la base da cui si toglie). Nessun'altra.
-**Plans:** 13 plans in 8 onde (pianificata il 2026-10-14, rivista lo stesso giorno: 53-13 estratto dal 53-01, onde 4-8 serializzate)
+**Plans:** 1/13 plans executed
 
 Onde: 1 = 53-01, 53-02, 53-03 · 2 = 53-04, 53-05, 53-06, 53-13 · 3 = 53-07 · 4 = 53-08 · 5 = 53-09 · 6 = 53-10 · 7 = 53-11 · 8 = 53-12
 
 Plans:
 **Wave 1**
 
-- [ ] 53-01-PLAN.md — Calendar, Location, Visual e la route dello specchio escono dal codice; undici chiavi, build verde al commit 2/2 (CUT-01) — onda 1
+- [x] 53-01-PLAN.md — Calendar, Location, Visual e la route dello specchio escono dal codice; undici chiavi, build verde al commit 2/2 (CUT-01) — onda 1
 - [ ] 53-02-PLAN.md — «New venue» in Venues e `createVenue` con rifiuto tipizzato (CUT-03, D-53-09) — onda 1
 - [ ] 53-03-PLAN.md — procedure P-53-A..G e `lab-apply-migration.mjs` su `/database/migrations` (CUT-05, D-53-07) — onda 1
 
