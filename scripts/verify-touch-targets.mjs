@@ -1190,9 +1190,10 @@ export const UNREADABLE_BOX_ELEMENTS = [
    *
    * **Deleted because the FILE is deleted, not because the reasons stopped
    * holding** (DBT-13, D-52.1-17). The gallery left the product with plan
-   * 52.1-16 (`MediaUpload.tsx` went with it); the visual archive has its own
-   * `ArchiveUpload.tsx`, which is measured by this gate like any other file and
-   * inherits neither entry. Retired by plan 52.1-29. The second argument — a
+   * 52.1-16 (`MediaUpload.tsx` went with it); the visual archive had its own
+   * upload component, measured by this gate like any other file and inheriting
+   * neither entry, until it left with the visual section in phase 53 — the
+   * cover is now the only upload in the product. Retired by plan 52.1-29. The second argument — a
    * hidden file input is not a shape test for exemption 7 — is the one the next
    * upload component will meet first, which is why it is quoted in full.
    */

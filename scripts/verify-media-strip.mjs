@@ -32,10 +32,12 @@
  * destination) is generalised from `event-media` to `event-images`, the one
  * destination whose default would PUBLISH.
  *
- * The private dj-photograph archive (`visual-archive`, written by
- * `/api/media/finalize-archive`) is NOT a subject of check A·cover: a private
- * bucket written by a second route is a filing question, not a publication,
- * and the strip it gets is check B's — the same module, the same order.
+ * Until 2026-10-14 a private dj-photograph archive, written by a second route,
+ * also called the strip module. It left the product with the visual section
+ * (phase 53, D-53-04): since then the cover route is the module's ONLY caller,
+ * and the cover is the only road by which an image enters the product. Check B
+ * still measures the order in the module, because the next caller will meet it
+ * there.
  *
  * ── WHAT CHANGED ON 2026-10-03, AND WHY (phase 52.3, plan 52.3-03) ─────────
  *
@@ -131,7 +133,7 @@ const MIGRATIONS_DIR = `${ROOT}/supabase/migrations`;
  *
  * Check B compares line numbers **in the file where the strip and the write
  * actually are**. Until plan 45-17 that was the route. A second destination then
- * arrived — the private dj-photograph archive of `20260817120400` — and two
+ * arrived — a private dj-photograph archive, removed again in phase 53 — and two
  * copies of a sequence whose correctness is an ORDER is one copy that will stop
  * stripping. The sequence therefore lives in one module and both routes call it.
  *
@@ -815,7 +817,7 @@ if (pkg.dependencies && typeof pkg.dependencies.sharp === 'string') {
 //
 // Until 2026-10-02 this read the gallery bucket (`event-media`). It reads
 // `event-images` now because the asymmetry it guards did not move, only its
-// subject did: a default that pointed at the private archive would be a filing
+// subject did: a default that pointed at a private bucket would be a filing
 // mistake, recoverable by moving an object; a default that points at the
 // public bucket PUBLISHES a photograph nobody decided to publish, readable by
 // URL with no session, and in this domain an accidental publication is read as

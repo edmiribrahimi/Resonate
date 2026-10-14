@@ -4,9 +4,30 @@
  * criteria 2 and 3, plus D-45-18's log shape, run as a command instead of
  * remembered.
  *
- * WHAT IT ASSERTS, in one sentence: **the three production sections' files
- * agree with five string-level rules that phase 45 wrote down, and with nothing
- * else.**
+ * WHAT IT ASSERTS, in one sentence: **the manifesto section's files agree
+ * with the two string-level rules phase 45 wrote down that still have a surface
+ * to measure, and with nothing else.**
+ *
+ * ── 2026-10-14, PHASE 53 (D-53-04): THREE CHECKS LEFT, TWO STAYED ──────────
+ *
+ * Phase 45 wrote five checks over three production sections. Phase 53 removed
+ * two of those sections from the product — the space scouting and the visual
+ * archive — and with them the only files three of the checks could read:
+ *
+ *   - **A** (the stage beside a space's name) and **B** (the provenance beside
+ *     a score and an attribute) measured the scouting section's renderers. No
+ *     space is named and no score is drawn anywhere in scope any more, so the
+ *     two checks would have measured an absence, and a check that can only be
+ *     green on nothing is not a check.
+ *   - **D** (a format colour never drawn as a palette) read the visual
+ *     section's swatches. Same reason.
+ *
+ * They were removed because their SURFACE left, never because they were red:
+ * no threshold was lowered and no token list narrowed on a check that stayed.
+ * **C** (the void is declared) and **E** (the log shape) measure the manifesto
+ * and stayed whole. They keep their LETTERS, deliberately: the manifesto's own
+ * void renderer cites "check C" in its header as its proof, and a renumbering
+ * would have turned that citation into a pointer at nothing.
  *
  * ── WHAT A GREEN DOES NOT MEAN (cosa un verde NON significa) ────────────────
  *
@@ -18,40 +39,30 @@
  *     `*.spec.*` (`CLAUDE.md` Guardrail 1) — and this file is not one. A green
  *     says the files agree with a contract written in a document. It does not
  *     say a gate is right, and it does not say a screen works.
- *   - **CHECK A PROVES A BADGE IS IN THE TREE, NOT THAT A PERSON CAN READ IT.**
- *     Success criterion 2 says a stage that is not `acquired` is visible as such
- *     *wherever the space is named*. Visible is a judgement about a screen. The
- *     half this file can hold is *rendered*; the other half is procedure **P2**
- *     of `45-PROCEDURES.md`, and until that carries a result the criterion is
- *     open.
  *   - **CHECK C CANNOT TELL DECLARED FROM BROKEN.** A section that names what
  *     is missing and whose call it is, and a section that failed to load, are
  *     the same bytes to a grep. Procedure **P3**.
- *   - **CHECK D IS WEAK AND SAYS SO ABOUT ITSELF.** A swatch at four pixels and
- *     a swatch at two hundred are the same source line, and size is precisely
- *     the thing that turns an identification colour into a palette. Procedure
- *     **P4** is the real gate; this check is a tripwire on the shapes that are
- *     visible to text.
  *   - **AND NOTHING HERE OPENS A SESSION.** Whether a section is refused to
  *     somebody the capability model does not admit belongs to
  *     `scripts/verify-refusal.mjs` and to procedure P1. Every check below reads
  *     files.
  *
- * ── THE SCOPE, AND WHY IT IS SEVEN DIRECTORIES AND NOT THE WHOLE TREE ──────
+ * ── THE SCOPE, AND WHY IT IS THREE DIRECTORIES AND NOT THE WHOLE TREE ──────
  *
- * The five rules are scoped to the three sections' own files **and to nothing
+ * The rules are scoped to the manifesto section's own files **and to nothing
  * else**. Widening the scan would redden files that never agreed to these rules,
  * and a gate that goes red on a correct tree is a gate somebody disables — this
  * repository has the receipt for that, at `41-GAP-REVIEW-4.md` CR-01 and CR-02.
  *
- * Six of the seven are the measured `(work)` convention (`nextjs-architecture.md`,
+ * Two of the three are the measured `(work)` convention (`nextjs-architecture.md`,
  * R-WORK-ROUTES): route files inside the nested group, every co-located Server
- * Action and client component one level out. The seventh is the shared module
- * directory the three sections read through.
+ * Action and client component one level out. The third is the shared module
+ * directory the section reads through. (Until phase 53 the list held seven: the
+ * same pair for the two sections that left, which went with them.)
  *
- * **A directory that is not on disk is a REFUSAL, never a pass.** At the moment
- * this file is written none of the seven exists, so the correct outcome of the
- * first run is exit 2 with all seven named. A gate that measured nothing and
+ * **A directory that is not on disk is a REFUSAL, never a pass.** When this file
+ * was first written none of the directories existed, so the correct outcome of
+ * the first run was exit 2 with all of them named. A gate that measured nothing and
  * printed a tick is the exact defect this repository's gates exist to prevent,
  * and it is easiest to introduce on the day the thing being measured has not
  * been built yet.
@@ -109,18 +120,14 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
  * ──────────────────────────────────────────────────────────────────────────── */
 
 /**
- * The seven directories, and nothing else.
+ * The three directories, and nothing else.
  *
  * Written as whole paths rather than as a root plus a pattern: a pattern is one
  * edit away from covering the tree, and the edit would not look like a widening.
  */
 const SCOPE = [
-  "src/app/(admin)/admin/(work)/location",
   "src/app/(admin)/admin/(work)/manifesto",
-  "src/app/(admin)/admin/(work)/visual",
-  "src/app/(admin)/admin/location",
   "src/app/(admin)/admin/manifesto",
-  "src/app/(admin)/admin/visual",
   "src/lib/production/sections",
 ];
 
@@ -129,7 +136,7 @@ const EXTENSIONS = new Set([".ts", ".tsx"]);
 
 /**
  * The extension a file must carry to be able to RENDER anything, and therefore
- * the scope of checks A, B, C and D.
+ * the scope of check C.
  *
  * **This is not a convenience narrowing, and it was measured rather than
  * assumed.** The first run of this gate against a probe tree reddened check C on
@@ -148,105 +155,24 @@ const EXTENSIONS = new Set([".ts", ".tsx"]);
 const RENDER_EXTENSION = ".tsx";
 
 /* ────────────────────────────────────────────────────────────────────────────
- * The contract — the single renderers, declared BEFORE the surfaces exist
+ * The contract — the single renderer, declared BEFORE the surface existed
  *
- * This is the whole reason this file is written in wave 2 rather than after the
- * sections are built. `PieceDate.tsx:9-16` is the precedent and states the
- * premise every guarantee rests on: **a second renderer is a second place where
- * the rule can be broken**, and a rule that has to be re-asserted in every file
- * is a rule that will be missed in one of them.
+ * The premise every guarantee below rests on was first stated by the single
+ * renderer of a piece's date, which left with the calendar: **a second renderer
+ * is a second place where the rule can be broken**, and a rule that has to be
+ * re-asserted in every file is a rule that will be missed in one of them.
  *
  * A path below that no file satisfies is a FAILURE once the scope exists — not a
- * pass. The surfaces satisfy this list; the list does not describe them.
+ * pass. The surface satisfies this list; the list does not describe it.
  * ──────────────────────────────────────────────────────────────────────────── */
 
-/** Check A — the only component that may render a space's name. */
-const NAME_RENDERER = "SpaceName.tsx";
-
-/** What it must render beside the name, in its own subtree. */
-const STAGE_BADGE = "StageBadge";
-
-/** The ways a space's name reaches a component. */
+/**
+ * The ways a space's name reaches a component. No longer the subject of a check
+ * of its own (check A left with the scouting section), and kept because check E
+ * still forbids interpolating it into a log: a manifesto is handed to people in
+ * the console, and a space's identity has no business in a line beside it.
+ */
 const NAME_TOKENS = ["space.name", "spaceName", "space_name"];
-
-/* ── DEF-45-07: THE ADDRESS MOVED, THE RULE DID NOT ──────────────────────────
- *
- * The four names below were written in plan 45-06, **before** the surfaces
- * existed, precisely so that the surfaces would have to satisfy them. Plan 45-07
- * then delivered the two renderers under different names, and plan 45-11 named
- * ITS files as the ones to import. Two already-committed contracts disagreed:
- *
- *   this gate asked for   ·  what is on disk   ·  companion asked for
- *   SpaceScore.tsx           ScoreCell.tsx        ScoreProvenance
- *   SpaceAttribute.tsx       AttributeCell.tsx    AttributeAsked
- *
- * The conflict was recorded as DEF-45-07 and left for the plan that completes
- * this gate's scope — 45-12, which is the first plan to see it measured, because
- * a missing directory refuses for all seven and hides the disagreement.
- *
- * ── What was changed, and what deliberately was NOT ─────────────────────────
- *
- * **Only the addresses.** The invariant is byte-for-byte the one plan 45-06
- * wrote: a score cell must render the PROVENANCE of the figure beside it, and an
- * attribute cell must render WHETHER THE QUESTION WAS EVER ASKED. Neither is
- * relaxed, neither is made optional, and the single-renderer rule and its token
- * lists are untouched.
- *
- * The companions are now the identifiers those two files actually carry, chosen
- * because deleting either would break the rule rather than merely rename it:
- * `ScoreCell.tsx` draws the provenance by looking it up in the label map, and
- * `AttributeCell.tsx` branches on the unasked value to draw a sentence instead
- * of a blank. Remove those and the check goes red, which is the whole job.
- *
- * ── Why the gate moved and not the components ──────────────────────────────
- *
- * Renaming two shipped files and inventing two identifiers that do not exist
- * would be rewriting a closed plan's delivery, and 45-11 imports those files by
- * name. Against that: **a gate bound to a file that does not exist is
- * indistinguishable from an absent gate**, with the aggravation that it looks
- * guarded. This phase has the receipt already — 45-06's own mutation run found
- * check C red on `vocabulary.ts`, correct code, and recorded that a red on a
- * correct tree is how a gate gets switched off, taking the true reds with it.
- *
- * The honest cost, stated: a gate edited after the fact to match the tree is one
- * edit away from becoming a rubber stamp. The defence is that this edit changes
- * *where to look* and not *what must be true* — and that the difference is
- * legible in this diff, which is why it is written here rather than in a commit
- * message alone.
- * ─────────────────────────────────────────────────────────────────────────── */
-
-/** Check B — the only component that may render a computed per-format score. */
-const SCORE_RENDERER = "ScoreCell.tsx";
-
-/**
- * What it must render beside the score.
- *
- * Two identifiers, both load-bearing: the value's own provenance field, and the
- * map that turns it into the word a reader sees. A figure drawn without either
- * is a hypothesis presented as a datum, which `venue-acquisition.md` forbids by
- * name — *derivato non è verificato*.
- */
-const SCORE_PROVENANCE = ["score.provenance", "ATTRIBUTE_PROVENANCE_LABELS"];
-
-/** The ways a computed score reaches a component. */
-const SCORE_TOKENS = ["space.score", "spaceScore", "scoreForFormat", "formatScore"];
-
-/** Check B — the only component that may render one attribute's value. */
-const ATTRIBUTE_RENDERER = "AttributeCell.tsx";
-
-/**
- * The marker that says whether the question behind the value was ever asked.
- *
- * The unasked value and the map that gives it a sentence rather than a dash. A
- * blank cell and an unasked question are the same pixel unless something draws
- * the difference, and on the evening-viability attribute the question is
- * unanswered on 100 of 184 spaces — so a cell that lost this branch would be
- * reporting ignorance as a negative on most of the list.
- */
-const ATTRIBUTE_MARKER = ["not_asked", "ATTRIBUTE_VALUE_LABELS"];
-
-/** The ways an attribute's value reaches a component. */
-const ATTRIBUTE_TOKENS = ["attribute.value", "attributeValue", "attribute_value"];
 
 /** Check C — the only component that may render a section with no body. */
 const VOID_RENDERER = "SectionVoid.tsx";
@@ -258,29 +184,6 @@ const VOID_COLUMNS = ["missing", "decision_owner"];
 /* ────────────────────────────────────────────────────────────────────────────
  * Tokens assembled rather than spelled (DEF-41-01, and the grep-hygiene rule)
  * ──────────────────────────────────────────────────────────────────────────── */
-
-/**
- * The size utilities through which a swatch becomes large enough to read as a
- * palette. Assembled: they are class strings, and this file sits inside the
- * project root.
- */
-const SIZE_PREFIXES = ["w", "h", "size", "min-w", "min-h"].map((one) => one + "-");
-
-/**
- * The step at or above which a swatch stops being a dot on a chip.
- *
- * MEASURED, not chosen: the chip dot the catalogue already draws is three steps
- * (`ColorSwatchPicker.tsx`), and the smallest thing a person reads as a colour
- * FIELD rather than as a marker is eight. A number is written here rather than
- * left to judgement so that the day somebody raises it, the raise is a diff.
- */
-const LARGE_STEP = 8;
-
-/** The full-bleed forms, which carry no step at all. Assembled, same reason. */
-const FULL_BLEED = ["full", "screen", "0"].map((one) => "-" + one);
-
-/** The ways `formats.color` reaches a component. */
-const FORMAT_COLOUR_TOKENS = ["format.color", "formatColor", "format_color", "formats.color"];
 
 /**
  * PostgREST's third error field, assembled from pieces and NEVER spelled.
@@ -339,7 +242,7 @@ function walk(absDir, out) {
 }
 
 console.log("");
-console.log("verify-section-surface — five assertions over the three production sections");
+console.log("verify-section-surface — two assertions over the manifesto section");
 console.log("");
 console.log("  0 = passed  ·  1 = FAILED  ·  2 = REFUSED, and nothing was measured.");
 console.log("");
@@ -350,11 +253,9 @@ if (missing.length > 0) {
     `${missing.length} of ${SCOPE.length} scope directories are not on disk:\n` +
       missing.map((dir) => `         · ${dir}`).join("\n") +
       "\n\n" +
-      "       The five assertions are scoped to these directories, so NOTHING WAS MEASURED.\n" +
-      "       This is the honest outcome before the sections are built, and it is not a\n" +
-      "       defect to repair: a zero here would mean the gate went green on an absence.\n" +
-      "       When a section lands, its directory appears and the checks that read it start\n" +
-      "       measuring. If a section MOVED instead, this list moves with it in the same\n" +
+      "       The assertions are scoped to these directories, so NOTHING WAS MEASURED.\n" +
+      "       A zero here would mean the gate went green on an absence, so this is not a\n" +
+      "       defect to repair by narrowing the list. If the section MOVED, this list moves with it in the same\n" +
       "       commit — a scope that lags the tree is a gate that stopped looking."
   );
 }
@@ -449,7 +350,9 @@ function rendererNamed(name) {
 }
 
 /**
- * The single-renderer assertion, in one place because it is asserted four times.
+ * The single-renderer assertion. Phase 45 asserted it four times; since phase 53
+ * check C is its only caller, and it stays a function because that is the shape
+ * the next single renderer will need.
  *
  * Returns the failures for: the renderer is absent; the renderer does not name
  * its companion; some other file in scope names one of the tokens.
@@ -495,86 +398,12 @@ function singleRenderer({ rendererFile, companions, tokens, what }) {
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
- * The five checks
+ * The two checks — C and E, letters kept from phase 45 (see the header)
  *
  * Each returns `{ id, title, note, limit, failures: [{ rel, line, detail }] }`.
  * `limit` is not decoration: it is the sentence a reader holding a tick needs,
  * and it is printed on a pass as well as on a failure.
  * ──────────────────────────────────────────────────────────────────────────── */
-
-/* ── A ──────────────────────────────────────────────────────────────────────
- *
- * Success criterion 2, in its own words: **a stage that is not `acquired` is
- * visible as such wherever the space is named.** `venue-acquisition.md`'s gate
- * *lo stato prima del nome* is the domain reason, and `una classifica non e' una
- * disponibilita'* is the consequence of getting it wrong: a candidate presented
- * as a venue is a date in the calendar with nowhere to happen.
- *
- * WHAT WOULD TRIP IT: a list row that draws the space's name and leaves the
- * badge to the detail page — the ordinary, well-meant version of this mistake,
- * and the one that puts a name under negotiation on a screen with nothing
- * beside it.
- */
-function checkA() {
-  return {
-    id: "A",
-    title: "the stage stands beside the name, in one renderer",
-    note: `${NAME_RENDERER} is the only file that may render a space's name, and it names ${STAGE_BADGE}`,
-    limit:
-      "a string assertion proves the badge is IN THE TREE. Whether a person reads it as a " +
-      "stage rather than as decoration is procedure P2",
-    failures: singleRenderer({
-      rendererFile: NAME_RENDERER,
-      companions: [STAGE_BADGE],
-      tokens: NAME_TOKENS,
-      what: "a space's name",
-    }),
-  };
-}
-
-/* ── B ──────────────────────────────────────────────────────────────────────
- *
- * D-45-11's two mitigations, which the owner accepted as a stated cost rather
- * than avoided. A score is COMPUTED from attributes and never stored, so the
- * thing that makes it readable is the provenance of its inputs: a score derived
- * from a public listing is a hypothesis, one checked on site for that format is
- * a datum, and `venue-acquisition.md`'s *derivato non e' verificato* says the
- * reader must be able to tell them apart.
- *
- * The second half is the attribute: five of them carry *verifica* per attribute,
- * and a blank cell and an unasked question are the same pixel unless something
- * says which one it is.
- *
- * WHAT WOULD TRIP IT: a summary card that shows the per-format score as a number
- * on its own, because a number is what fits — which is exactly how the score
- * detaches from the attributes it was computed from.
- */
-function checkB() {
-  return {
-    id: "B",
-    title: "the provenance stands beside the value, in one renderer each",
-    note:
-      `${SCORE_RENDERER} names ${SCORE_PROVENANCE.join(" and ")}; ` +
-      `${ATTRIBUTE_RENDERER} names ${ATTRIBUTE_MARKER.join(" and ")}`,
-    limit:
-      "it proves the marker is rendered, never that the distinction is legible. The same " +
-      "half-measure as check A, and the same procedure closes it",
-    failures: [
-      ...singleRenderer({
-        rendererFile: SCORE_RENDERER,
-        companions: SCORE_PROVENANCE,
-        tokens: SCORE_TOKENS,
-        what: "a computed per-format score",
-      }),
-      ...singleRenderer({
-        rendererFile: ATTRIBUTE_RENDERER,
-        companions: ATTRIBUTE_MARKER,
-        tokens: ATTRIBUTE_TOKENS,
-        what: "an attribute's value",
-      }),
-    ],
-  };
-}
 
 /* ── C ──────────────────────────────────────────────────────────────────────
  *
@@ -624,73 +453,6 @@ function checkC() {
   };
 }
 
-/* ── D ──────────────────────────────────────────────────────────────────────
- *
- * D-45-16, and this check is **weak on purpose and says so**.
- *
- * `formats.color` is `NOT NULL`, so every format carries an identification
- * colour, including the one that has no palette. Drawn large, that value becomes
- * a palette nobody decided — `brand-visual-system.md`'s *il colore non si
- * eredita*, and the way a format loses its identity before having one.
- *
- * WHY IT IS WEAK, stated rather than discovered: a swatch at four pixels and a
- * swatch at two hundred are the same source line. This check reads the size
- * utilities that are visible as text on the same line as the value; it is blind
- * to a size computed at run time, held in a variants map, or set in a style
- * attribute. **Procedure P4 is the real gate**, and it exists because no
- * assertion over source can reach this one.
- *
- * WHAT WOULD TRIP IT: a header block that fills the panel with the format's
- * colour to make the section look finished.
- */
-function checkD() {
-  const failures = [];
-  const largeSteps = [];
-  for (let step = LARGE_STEP; step <= 96; step += 1) largeSteps.push("-" + String(step));
-
-  for (const file of surface) {
-    if (!file.renders) continue;
-    for (let i = 0; i < file.lines.length; i += 1) {
-      const line = file.lines[i];
-      if (!FORMAT_COLOUR_TOKENS.some((token) => line.includes(token))) continue;
-      for (const prefix of SIZE_PREFIXES) {
-        for (const at of indicesOf(line, prefix)) {
-          // The character before the prefix decides whether this is a utility or
-          // the tail of a longer word. Without it the shorter prefixes match
-          // inside ordinary identifiers, and a gate that reddens on correct code
-          // is a gate somebody disables — which is the failure that costs most,
-          // because it takes the four true findings with it.
-          const before = at === 0 ? " " : line[at - 1];
-          if (/[A-Za-z0-9_-]/.test(before)) continue;
-          const tail = line.slice(at + prefix.length - 1);
-          const large =
-            largeSteps.some((step) => tail.startsWith(step)) ||
-            FULL_BLEED.some((form) => tail.startsWith(form));
-          if (!large) continue;
-          failures.push({
-            rel: file.rel,
-            line: i + 1,
-            detail:
-              "a format's identification colour on the same line as a size utility at or " +
-              `above ${LARGE_STEP} steps — drawn that big it reads as a palette`,
-          });
-        }
-      }
-    }
-  }
-
-  return {
-    id: "D",
-    title: "a format colour is never drawn as a palette",
-    note: "line-scoped, and it reads utilities that are visible as text",
-    limit:
-      "WEAK, and deliberately so. A swatch at four pixels and one at two hundred are the " +
-      "same source line; size is exactly what turns an identification colour into a " +
-      "palette, and no grep sees size. Procedure P4 is the gate this one only points at",
-    failures,
-  };
-}
-
 /* ── E ──────────────────────────────────────────────────────────────────────
  *
  * D-45-18, promoted to Critical by D-45-21.
@@ -705,7 +467,7 @@ function checkD() {
  * nobody looks — which makes it a place an address can sit for months.
  *
  * WHAT WOULD TRIP IT: the shortest correct-looking catch in the language,
- * `console.error("[location.save_failed]", error)`, written by somebody who has
+ * `console.error("[manifesto.save_failed]", error)`, written by somebody who has
  * read the other twenty sites and copied the shape.
  */
 function checkE() {
@@ -783,13 +545,13 @@ function checkE() {
  * The run
  * ──────────────────────────────────────────────────────────────────────────── */
 
-const CHECKS = [checkA, checkB, checkC, checkD, checkE];
+const CHECKS = [checkC, checkE];
 
 console.log(`  scope:  ${SCOPE.length} directories`);
 for (const dir of SCOPE) console.log(`          · ${dir}`);
 console.log(
   `  files:  ${surface.length}, of which ${surface.filter((f) => f.renders).length} can render ` +
-    "(checks A–D); comments blanked by scripts/lib/comments.mjs"
+    "(check C); comments blanked by scripts/lib/comments.mjs"
 );
 console.log("");
 
@@ -817,11 +579,11 @@ if (failed.length > 0) {
   process.exit(1);
 }
 
-console.log("  SECTION_SURFACE_OK — 5 check(s) passed.");
+console.log(`  SECTION_SURFACE_OK — ${CHECKS.length} check(s) passed.`);
 console.log(
   "\n  Read the header before treating this as verification. These are string assertions\n" +
     "  over source files: none renders an element, none measures a pixel, and none opens a\n" +
-    "  session. The four judgements they cannot make are written down as procedures P1 to\n" +
-    "  P4 in 45-PROCEDURES.md, and until those carry a result the questions are open.\n"
+    "  session. The judgements they cannot make are written down as procedures P1 and P3\n" +
+    "  in 45-PROCEDURES.md, and until those carry a result the questions are open.\n"
 );
 process.exit(0);

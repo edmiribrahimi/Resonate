@@ -591,7 +591,7 @@ console.log("");
  *
  * Allineare il nome era meta' della riparazione. L'altra meta' e' che
  * `resolveNext` rifiuta per difetto: con l'elenco com'era, chi veniva rimbalzato
- * da `/admin/calendar` sarebbe arrivato con un `next` rifiutato e sarebbe finito
+ * da `/admin/artists` sarebbe arrivato con un `next` rifiutato e sarebbe finito
  * su `/dashboard` **lo stesso**, per una ragione diversa.
  *
  * Questo controllo lega le due liste: per ogni prefisso da cui il middleware
@@ -622,7 +622,7 @@ const { PROTECTED_PREFIXES, resolveNext, DEFAULT_NEXT } = await import(
 // vedrebbe la pagina nuova e questa riga andrebbe rivista con lui.
 //
 // ⚠ **I segnaposto dinamici si sostituiscono, perche' il middleware scrive il
-// pathname RISOLTO.** `/admin/location/[id]` non e' un indirizzo: e' un pattern,
+// pathname RISOLTO.** `/admin/venues/[slug]` non e' un indirizzo: e' un pattern,
 // e provarlo cosi' com'e' misurerebbe se le parentesi quadre passano il charset
 // — una domanda che nessuno ha. Al loro posto va cio' che il prodotto genera
 // davvero: un uuid o uno slug, entrambi dentro `[a-z0-9-]`

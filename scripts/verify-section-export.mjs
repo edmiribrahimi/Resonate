@@ -3,10 +3,31 @@
  * verify-section-export.mjs — D-45-17's and D-45-21's structural proof: what the
  * export path reads, and what it demonstrably cannot reach.
  *
- * WHAT IT ASSERTS, in one sentence: **no module the two export documents reach
+ * WHAT IT ASSERTS, in one sentence: **no module the one export document reaches
  * can query a table that holds an address or an unannounced date, and no edge
- * exists in the catalogue between the scouting tables and the one public road to
- * an address.**
+ * exists in the catalogue between the tables that document exports and the one
+ * public road to an address.**
+ *
+ * ── 2026-10-14, PHASE 53 (D-53-04): ONE DOCUMENT, NOT TWO ──────────────────
+ *
+ * Phase 45 wrote this gate over two exports — the manifesto, for whoever plays,
+ * and the designer's brief — and over the scouting tables, which had no export
+ * and had to be kept from the public road. Phase 53 removed the brief, the
+ * scouting section, the calendar and the visual archive from the product. What
+ * changed here, and why each change is not a loosening:
+ *
+ *   - **One entry file.** The second module left with its section; a gate that
+ *     kept asking for it would refuse forever on a correct tree.
+ *   - **The watch on the export directory got STRICTER, not removed.** It used to
+ *     fail on a module named after the scouting section; it now fails on ANY
+ *     module in that directory that is not a declared entry. A new exit route is
+ *     declared here first, by name, or it is a finding.
+ *   - **The pinned names left with their tables.** They were pinned because
+ *     their sections' rows must never leave; those sections no longer exist, and
+ *     the migration of plan 53-07 drops the tables.
+ *   - **The census changed subject.** It asked whether the scouting rows touched
+ *     the public road; it now asks the same question of the manifesto's own two
+ *     tables, which DO leave the perimeter, and expects zero edges.
  *
  * ── WHAT A GREEN DOES NOT MEAN (cosa un verde NON significa) ────────────────
  *
@@ -49,14 +70,13 @@
  * thing being checked, because a check that derives its expectation from its
  * subject cannot fail.
  *
- * ── THE LOCATION SECTION HAS NO EXPORT, AND THIS IS WHERE THAT IS STRUCTURAL ─
+ * ── ONE DOCUMENT LEAVES THE PERIMETER, AND THIS IS WHERE THAT IS STRUCTURAL ─
  *
- * D-45-21 consequence 2: the manifesto and the capitolato leave the perimeter;
- * the location section never does. So there are **two** entry files and there is
- * no third, the two scouting tables are on the forbidden list, and a module
- * named after the location section appearing in the export directory is a
- * FAILURE BY NAME rather than a third document the walk would quietly accept.
- * That check runs even when the entry files do not exist, because the day
+ * D-45-21 consequence 2, as it reads after phase 53: the manifesto leaves the
+ * perimeter and nothing else does. So there is **one** entry file and there is
+ * no second, and any other module appearing in the export directory is a
+ * FAILURE BY NAME rather than a second document the walk would quietly accept.
+ * That check runs even when the entry file does not exist, because the day
  * somebody adds one is the day it must fire.
  *
  * ── EXIT CODES ─────────────────────────────────────────────────────────────
@@ -90,29 +110,16 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
  * ════════════════════════════════════════════════════════════════════════════ */
 
 /**
- * The two documents that leave the perimeter, and nothing else.
+ * The one document that leaves the perimeter, and nothing else.
  *
- * The manifesto goes to whoever plays; the capitolato goes to the external
- * designer. Both are exit routes by design, which is why their narrowness has to
- * be a property something checks rather than a habit of whoever wrote the query.
+ * The manifesto goes to whoever plays. It is an exit route by design, which is
+ * why its narrowness has to be a property something checks rather than a habit
+ * of whoever wrote the query.
  */
-const ENTRY_FILES = [
-  "src/lib/production/export/manifesto.ts",
-  "src/lib/production/export/capitolato.ts",
-];
+const ENTRY_FILES = ["src/lib/production/export/manifesto.ts"];
 
-/** The directory the entry files live in — watched for a third document. */
+/** The directory the entry file lives in — watched for a second document. */
 const EXPORT_DIR = "src/lib/production/export";
-
-/**
- * The section that has no export, spelled so the failure names it.
- *
- * D-45-21 consequence 2. A file whose name begins with this in the export
- * directory fails this gate by name — the location section's content does not
- * leave the perimeter, and a module that offered to carry it would be a decision
- * taken in a filename.
- */
-const SECTION_WITHOUT_EXPORT = "location";
 
 /**
  * What each entry module must name — check C, the positive half.
@@ -123,13 +130,17 @@ const SECTION_WITHOUT_EXPORT = "location";
  * negative-only assertion goes green on a file whose query somebody deleted — or
  * on a file that is empty. This one fails in that case.
  *
- * Per `45-RESEARCH.md` §E2. The capitolato also reads the palette, but it reads
- * it out of the token stylesheet at run time (D-45-09) rather than out of a
- * table, so there is no third name here and there must not be one.
+ * Per `45-RESEARCH.md` §E2, re-read on 2026-10-14 against the module itself: it
+ * reads its sections, its open questions and the formats they belong to, and
+ * all three are named — the open questions were read and not declared until
+ * phase 53, a positive check that covered less than the module did.
  */
 const DECLARED_READS = {
-  "src/lib/production/export/manifesto.ts": ["production_section", "formats"],
-  "src/lib/production/export/capitolato.ts": ["production_section"],
+  "src/lib/production/export/manifesto.ts": [
+    "production_section",
+    "production_open_question",
+    "formats",
+  ],
 };
 
 /** The service client. An export that bypasses a policy can carry another section's rows. */
@@ -153,9 +164,14 @@ const DANGEROUS_COLUMN_RE = /^(address|venue[a-z_]*|date|start_time)$/i;
 const SQL_SOURCES = ["supabase/migrations", "supabase/schema.sql"];
 
 /**
- * The pre-registered baseline of the DERIVED list, measured 2026-08-17.
+ * The pre-registered baseline of the DERIVED list, measured 2026-08-17 and
+ * re-cut on 2026-10-14 by phase 53.
  *
- * Nine tables, each carrying at least one dangerous column. Written down so the
+ * Nine tables then, each carrying at least one dangerous column; five now. The
+ * four that left are the calendar's and the scouting section's, removed from the
+ * baseline in the same commit as their sections — the parser reads CREATE and
+ * not DROP, so it may still DERIVE them from the old migrations, and an
+ * over-inclusive forbidden list is the safe direction. Written down so the
  * list can be compared rather than admired: **a derived list that SHRANK is a
  * finding**, because the two ways it shrinks are a table being dropped and the
  * parser quietly failing to read a file — and the second prints a shorter list
@@ -166,10 +182,6 @@ const SQL_SOURCES = ["supabase/migrations", "supabase/schema.sql"];
 const DERIVED_BASELINE = [
   "event_parties",
   "events",
-  "production_commitment",
-  "production_piece",
-  "production_plan",
-  "production_space",
   "rsvps",
   "tickets",
   "venues",
@@ -179,21 +191,15 @@ const DERIVED_BASELINE = [
  * The names forbidden by DECISION rather than by a column, with the reason each.
  *
  * The derivation covers a table that carries an address or a date. It does not
- * cover a table that carries neither and is forbidden anyway, and four are:
- * three belong to the calendar section, whose rows are internal plans, and one is
- * the scouting attribute table, whose rows describe a space under negotiation
- * without ever naming a street.
+ * cover a table that carries neither and is forbidden anyway. Until phase 53 four
+ * were; all four belonged to the sections that left, and the list is EMPTY and
+ * kept — the next table forbidden by decision is pinned here, with its reason.
  *
  * They are pinned rather than derived, and saying so is the point: a pinned name
  * is a decision somebody made, a derived name is a fact about the schema, and a
  * reader is owed the difference.
  */
-const PINNED = [
-  ["production_checklist_item", "the calendar section's rows — an internal plan, not a document"],
-  ["production_import_run", "the calendar section's import ledger"],
-  ["production_space_attribute", "scouting — D-45-21 consequence 2, the section with no export"],
-  ["production_visual_asset", "the visual section's own assets, which are not the capitolato"],
-];
+const PINNED = [];
 
 /* ── reading source ───────────────────────────────────────────────────────── */
 
@@ -441,13 +447,14 @@ if (lost.length > 0) {
 
 if (existsSync(join(ROOT, EXPORT_DIR))) {
   for (const name of readdirSync(join(ROOT, EXPORT_DIR))) {
-    if (!name.toLowerCase().startsWith(SECTION_WITHOUT_EXPORT)) continue;
+    if (ENTRY_FILES.includes(`${EXPORT_DIR}/${name}`)) continue;
     fail(
       "A",
       `${EXPORT_DIR}/${name}`,
-      "the location section has no export (D-45-21 consequence 2). Its content does not " +
-        "leave the perimeter, and a module in this directory named after it is that " +
-        "decision being reversed in a filename"
+      "a module in the export directory that is not a declared entry. Only the manifesto " +
+        "leaves the perimeter (D-45-21, as phase 53 left it); a second document is a new " +
+        "exit route, and it is declared in ENTRY_FILES first or it is that decision being " +
+        "taken in a filename"
     );
   }
 }
@@ -464,8 +471,7 @@ if (absentEntries.length > 0) {
       `${absentEntries.length} of ${ENTRY_FILES.length} export modules are not on disk:\n` +
       absentEntries.map((rel) => `           · ${rel}`).join("\n") +
       "\n           Checks A, B, C and E are scoped to them, so NOTHING WAS MEASURED about " +
-      "what the\n           export reads. They land in plan 45-16; until then this refusal " +
-      "is the honest state\n           and a zero here would be a green over an absence.",
+      "what the\n           export reads. A zero here would be a green over an absence.",
   });
 }
 
@@ -551,15 +557,19 @@ for (const entry of presentEntries) {
  * ════════════════════════════════════════════════════════════════════════════ */
 
 /**
- * The scouting tables, and the tables that stand on the public road.
+ * The manifesto's own tables, and the tables that stand on the public road.
  *
  * `public.venue_for_parties` walks `event_parties → events → venues` and reads
  * nothing else (`20260810161000_venues_read_narrowed.sql:371-397`). So the
- * question this census asks is narrow and answerable: **does any edge exist from
- * the road's three tables into either scouting table, or from any view or
- * function that names both?**
+ * question this census asks is narrow and answerable: **does any edge exist
+ * between the road's three tables and the two tables the export reads, in either
+ * direction, or any view or function that names both?**
+ *
+ * Until phase 53 the subject was the scouting tables, which had no export; they
+ * left with their section (D-53-04), and the question moved to the tables that
+ * DO leave the perimeter — the ones it matters most for.
  */
-const SCOUTING_TABLES = ["production_space", "production_space_attribute"];
+const EXPORTED_TABLES = ["production_section", "production_open_question"];
 const ROAD_TABLES = ["venues", "events", "event_parties"];
 
 /**
@@ -569,35 +579,20 @@ const ROAD_TABLES = ["venues", "events", "event_parties"];
  * `verify-capabilities.mjs:190-200` and `rls-baseline.mjs:113-130` both state: a
  * check that reads its expectation off the thing it is checking cannot fail.
  *
- * **One edge is expected, by name, and its DIRECTION is the whole reason it is
- * safe.** `production_space.promoted_venue_id → venues` points OUTWARD: scouting
- * to venues, recorded when a space is acquired and a venue row is created for it
- * (D-45-10). The road walks the other way — parties to events to venues — and
- * never arrives at scouting. **Its presence is a pass and its absence is a
- * finding**, because an absence means the promotion path was removed or renamed
- * and this expectation was not read.
- *
- * Everything else is expected to be empty: no foreign key from the road's tables
- * into scouting, no view in `public` naming both, no function in `public` naming
- * both. If a promotion function is ever added, it is declared here **by name**
- * before it is written — not discovered by this gate going red and somebody
- * widening the query.
+ * **Zero edges are expected, in either direction.** The phase-45 version expected
+ * exactly one, outward from scouting to venues; that edge left with its table.
+ * If an edge is ever wanted, it is declared here **by name** before it is
+ * written — not discovered by this gate going red and somebody widening the
+ * query.
  */
-const EXPECTED_EDGE = {
-  table: "production_space",
-  column: "promoted_venue_id",
-  references: "venues",
-  why: "the promotion act, pointing outward; the road never traverses it",
-};
-
 /** No function in `public` may name both sides. None is expected today. */
 const EXPECTED_BRIDGE_FUNCTIONS = [];
 
 /** The census, as one SQL string. Catalogue only — it reads no row of any table. */
 const CENSUS_SQL = `
-  with scouting(name) as (values ${SCOUTING_TABLES.map((t) => `('${t}')`).join(", ")}),
+  with exported(name) as (values ${EXPORTED_TABLES.map((t) => `('${t}')`).join(", ")}),
        road(name) as (values ${ROAD_TABLES.map((t) => `('${t}')`).join(", ")})
-  select 'fk_into_scouting' as finding,
+  select 'fk_into_exported' as finding,
          c.conname as name,
          src.relname as detail,
          tgt.relname as other
@@ -606,27 +601,27 @@ const CENSUS_SQL = `
     join pg_class tgt on tgt.oid = c.confrelid
    where c.contype = 'f'
      and src.relname in (select name from road)
-     and tgt.relname in (select name from scouting)
+     and tgt.relname in (select name from exported)
   union all
-  select 'fk_out_of_scouting', c.conname, src.relname, tgt.relname
+  select 'fk_out_of_exported', c.conname, src.relname, tgt.relname
     from pg_constraint c
     join pg_class src on src.oid = c.conrelid
     join pg_class tgt on tgt.oid = c.confrelid
    where c.contype = 'f'
-     and src.relname in (select name from scouting)
+     and src.relname in (select name from exported)
      and tgt.relname in (select name from road)
   union all
   select 'view_naming_both', v.viewname, v.schemaname, ''
     from pg_views v
    where v.schemaname = 'public'
-     and exists (select 1 from scouting s where v.definition like '%' || s.name || '%')
+     and exists (select 1 from exported s where v.definition like '%' || s.name || '%')
      and exists (select 1 from road r where v.definition like '%' || r.name || '%')
   union all
   select 'function_naming_both', p.proname, n.nspname, ''
     from pg_proc p
     join pg_namespace n on n.oid = p.pronamespace
    where n.nspname = 'public'
-     and exists (select 1 from scouting s where pg_get_functiondef(p.oid) like '%' || s.name || '%')
+     and exists (select 1 from exported s where pg_get_functiondef(p.oid) like '%' || s.name || '%')
      and exists (select 1 from road r where pg_get_functiondef(p.oid) like '%' || r.name || '%')
 `;
 
@@ -750,35 +745,16 @@ if (census === null) {
   console.log("    not measured — see the refusals below.");
 } else {
   const rows = Array.isArray(census) ? census : [];
-  const outward = rows.filter((r) => r.finding === "fk_out_of_scouting");
-  const expected = outward.some(
-    (r) => r.detail === EXPECTED_EDGE.table && r.other === EXPECTED_EDGE.references
-  );
-
-  if (!expected) {
-    fail(
-      "census",
-      `${EXPECTED_EDGE.table}.${EXPECTED_EDGE.column}`,
-      `the ONE expected edge is absent — ${EXPECTED_EDGE.why}. Its absence means the ` +
-        "promotion path was removed or renamed and this expectation was not read with it. " +
-        "That is a finding, not a cleaner result"
-    );
-  }
 
   for (const row of rows) {
-    if (row.finding === "fk_out_of_scouting") continue;
     fail(
       "census",
       `${row.detail}.${row.name}`,
-      `${row.finding} — an edge between scouting and the public road to an address`
+      `${row.finding} — an edge between a table the manifesto exports and the public road to an address`
     );
   }
 
-  console.log(`    ${rows.length} catalogue row(s) matched the census.`);
-  console.log(
-    `    the one expected edge (${EXPECTED_EDGE.table}.${EXPECTED_EDGE.column} → ` +
-      `${EXPECTED_EDGE.references}) was ${expected ? "present" : "ABSENT"}.`
-  );
+  console.log(`    ${rows.length} catalogue row(s) matched the census; zero are expected.`);
   console.log(
     `    functions declared as bridges: ${
       EXPECTED_BRIDGE_FUNCTIONS.length === 0 ? "none, and none is expected" : EXPECTED_BRIDGE_FUNCTIONS.join(", ")

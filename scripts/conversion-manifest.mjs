@@ -294,23 +294,19 @@ export const PHASE_42_PATHS = [];
  *
  * Shape: `[glob, reason]` — the same shape `PHASE_42_PATHS` carries, matched the
  * same way by the same helper in the consumer.
+ *
+ * **2026-10-14, phase 53 (D-53-04): one entry left of four.** Three of the four
+ * fenced directories — the production calendar, the space archive and the visual
+ * archive, five page files between them — were REMOVED from the product, not
+ * converted. They leave this list in the same commit as their pages leave the
+ * tree, which is the other exit this list has always implied: a glob matching
+ * no page file refuses, so a fence cannot outlive its surface. Nothing here was
+ * declared converted on the way out, and the manifesto's fence stands as it was.
  */
 export const PENDING_SURFACES = [
   [
-    "src/app/(admin)/admin/(work)/calendar/**",
-    "the production calendar and its detail page — built by PHASE 44, and its debt: two page files that render, that no plan has walked, and that this phase neither converts nor claims. Phase 42 converts the scanner and takes colour, contrast and type only; absorbing six surfaces it did not build would be a scope change, and a scope change is an owner's decision and not a planning adjustment. NOT AN APPROVAL: nothing here says the markup behind these two pages is right, only that nobody measured it. The entry leaves this list in the SAME COMMIT as its CONVERTED entry arrives, which is the only exit — and a glob here that stops matching any page.tsx is a REFUSAL, because a fence that can silently match nothing is a fence that never dissolves. Recorded as DEF-42-01 with the run that found it",
-  ],
-  [
-    "src/app/(admin)/admin/(work)/location/**",
-    "the venue archive and its detail page — built by PHASE 45, and its debt, on the same terms as the calendar entry above: two page files that render, unmeasured, fenced by name and not declared converted. NOT AN APPROVAL. The exit is one CONVERTED entry per surface, in the commit that converts it, and until then this line is the written form of nobody having looked. Recorded as DEF-42-01",
-  ],
-  [
     "src/app/(admin)/admin/(work)/manifesto/**",
     "the sound manifesto section — built by PHASE 45, and its debt. One page file, rendering, on no converted list. NOT AN APPROVAL: unmeasured, fenced, and it leaves this list in the same commit as its CONVERTED entry. Recorded as DEF-42-01",
-  ],
-  [
-    "src/app/(admin)/admin/(work)/visual/**",
-    "the visual system section — built by PHASE 45, and its debt. One page file, rendering, on no converted list. NOT AN APPROVAL: unmeasured, fenced, and it leaves this list in the same commit as its CONVERTED entry. Recorded as DEF-42-01",
   ],
 ];
 
@@ -963,6 +959,18 @@ export const CONVERTED = [
    * and the arithmetic closes with no residue — which is the condition check F
    * exists to keep true rather than to assert once. Across the whole of
    * `src/app` the list holds **34** entries.
+   *
+   * **RE-MEASURED 2026-10-14 by plan 53-05, because that count is history and a
+   * stale count is read as a current one.** Phase 53 removed five page files
+   * under `admin/(work)/` — the production calendar, the space archive and the
+   * visual archive, with their detail pages — and the work pages that arrived
+   * since 2026-08-18 were each declared in the commit that converted them.
+   * Counted on this tree today with `find 'src/app/(admin)/admin/(work)' -name
+   * page.tsx`: **20** page files under `admin/(work)/`, of which **1** is the
+   * redirect this list explains at length, **18** are declared here, and **1** —
+   * the manifesto — is fenced by `PENDING_SURFACES` as debt of the phase that
+   * built it. 1 + 18 + 1 = 20, with no residue. Across the whole of `src/app`
+   * the list holds **36** entries.
    *
    * That count is also the precondition the layout shim's removal was waiting
    * for: `src/app/(admin)/admin/(work)/layout.tsx` stopped applying the leading

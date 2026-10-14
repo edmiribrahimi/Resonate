@@ -79,6 +79,13 @@
  *      Three gates are not run here now, for three different reasons, and a
  *      reader of a green is told all three.
  *
+ *   2d. **2026-10-14, phase 53: `NEEDS_MATERIAL` IS EMPTY, AND STAYS DECLARED.**
+ *      The calendar mirror left the product with its import and its gate, so the
+ *      one name that list held went with it, in the same commit as its
+ *      `package.json` entry. The list is kept, empty, because the argument in 2b
+ *      is still true of the next gate that reads gitignored material: it goes
+ *      here, with its reason, and not into `NEEDS_SERVER`.
+ *
  * ── WHAT A GREEN HERE DOES NOT MEAN ─────────────────────────────────────────
  *
  *   - **IT IS NOT A TEST RUN.** There is no test runner for the product
@@ -254,50 +261,6 @@ const OFFLINE = [
       "and nothing about the capability model was measured. That is its honest " +
       "state on any machine that does not hold them, and it is not a pass",
   ],
-  [
-    "verify:ics-reachable", false,
-    "B-2 dell'audit v1.5 — src/lib/production/ics/ non ha importatori statici e il " +
-      "suo unico consumatore e' un import() costruito a runtime. verify:ics li tocca " +
-      "ma sta in NEEDS_MATERIAL e non viene mai lanciato qui: questo gate non chiede " +
-      "materiale, quindi gira ovunque e non esce mai 2",
-  ],
-  [
-    "verify:ics-grammar", false,
-    "Phase 58 — the grammar of the calendar's titles, on titles it builds itself. It " +
-      "belongs HERE and not in NEEDS_MATERIAL beside verify:ics, and the difference is " +
-      "the whole reason that third list exists: verify:ics measures the real file, so " +
-      "it reads a gitignored directory that exists on one machine and REFUSES on every " +
-      "other. This one constructs its own titles, aliases, nights and pipeline rules " +
-      "from words that are already public, opens no docs/, no database and no " +
-      "connection, and builds no Date — so it runs everywhere and NEVER exits 2. " +
-      "IT IS RED ON PURPOSE FROM THE COMMIT THAT REGISTERED IT, and the red is bounded " +
-      "and named: 3 of its 18 cases (T1, T2, F1) assert ICS-08 and ICS-08b — the bare " +
-      "Timetable and the seventh piece kind — which are plan 58-06's work, in the wave " +
-      "after the one that put this line here. The other 15 are green, and the count " +
-      "that matters is the second one: ZERO GUESSED. A MISSED is the reader attributing " +
-      "less than it should; a GUESSED is it attributing a series, a progressivo or a " +
-      "night the title never carried, and that one is the grave direction because a " +
-      "progressivo is a monotone guard already printed on a poster. If this gate ever " +
-      "reports a GUESSED, stop and read it before anything else",
-  ],
-  [
-    "verify:mirror-guards", false,
-    "Phase 58 — le guardie dello specchio, su casi che il gate costruisce dentro di se'. " +
-      "STA QUI e non in NEEDS_MATERIAL accanto a verify:ics, ed e' la stessa distinzione " +
-      "che regge verify:ics-grammar: non apre docs/, non chiede credenziali e non ne " +
-      "passa nessuna ai processi figli — l'ambiente del figlio e' costruito per " +
-      "INCLUSIONE, solo PATH e HOME, quindi nessun segreto entra e nessuno puo' uscire da " +
-      "un messaggio d'errore. Gira ovunque e NON ESCE MAI 2. Misura due famiglie: il " +
-      "predicato puro della guardia del feed (sette casi, compreso quello esattamente al " +
-      "margine, costruito dalla soglia LETTA dal modulo e mai copiata qui) e i tre rifiuti " +
-      "dell'importatore, di cui asserisce SOLO uscita e categoria — del referto del figlio " +
-      "non stampa una riga, perche' quel figlio e' lo script che apre il calendario. " +
-      "UN CASO E' DICHIARATO RIMANDATO e non simulato: R4, il progressivo che torna " +
-      "diverso, che legge l'istantanea e quindi il database — va misurato in P-58-B con " +
-      "tre asserzioni insieme, uscita 2, categoria, e ZERO scritture lette dal catalogo. " +
-      "Un verde qui NON dice che lo specchio sia sicuro: dice che queste strade non " +
-      "portano a una scrittura",
-  ],
   ["verify:no-header-identity", false, ""],
   ["verify:no-credit-account", false, ""],
   ["verify:media-strip", false, ""],
@@ -356,22 +319,13 @@ const OFFLINE = [
       "matrix before believing any REMAINING count printed above",
   ],
   [
-    "verify:calendar-surface", false,
-    "Phase 44 — the ten assertions of 44-UI-SPEC.md §15. It belongs in this list and " +
-      "NOT in NEEDS_MATERIAL beside verify:ics, and the difference is the whole reason " +
-      "that third list exists: this gate reads tracked source under src/ and needs no " +
-      "docs/ and no server, so it runs on every machine. String assertions only — a " +
-      "green here says nothing about whether a proposed date reads as settled",
-  ],
-  [
     "verify:section-surface", false,
-    "Phase 45 — the mechanical half of success criteria 2 and 3, plus D-45-18's log " +
-      "shape, over the three production sections' seven directories. It is genuinely " +
-      "offline: it reads tracked source and needs no server, no docs/ and no credential. " +
-      "Until those directories exist it REFUSES (exit 2) and names each one that is " +
-      "missing — which is the honest state before the sections are built, and is not a " +
-      "pass. String assertions only: a green says a badge is in the tree, never that a " +
-      "person can read it as a stage",
+    "Phase 45, narrowed by phase 53 (D-53-04) — the void is declared, plus D-45-18's " +
+      "log shape, over the one production section that remains, the manifesto, and its " +
+      "three directories. It is genuinely offline: it reads tracked source and needs no " +
+      "server, no docs/ and no credential. If one of those directories is missing it " +
+      "REFUSES (exit 2) and names it — which is not a pass. String assertions only: a " +
+      "green says the void is written in the tree, never that a person reads it as one",
   ],
   [
     "verify:section-export", false,
@@ -379,7 +333,7 @@ const OFFLINE = [
       "though HALF of it needs credentials, and that is the same honest state " +
       "verify:capabilities already carries here: without SUPABASE_ACCESS_TOKEN its " +
       "reachability census REFUSES (exit 2) and nothing about reachability was measured. " +
-      "The other half — the import-closure walk from the two export modules — is offline " +
+      "The other half — the import-closure walk from the one export module left, the manifesto's — is offline " +
       "and runs everywhere. It reports its two refusals BY CAUSE, because a missing entry " +
       "file and a missing credential send a reader to look in different places",
   ],
@@ -428,14 +382,6 @@ const NEEDS_SERVER = [
 
 /** Shape: `[npmScriptName, reason]`. */
 const NEEDS_MATERIAL = [
-  [
-    "verify:ics",
-    "scripts/verify-ics-import.mjs reads the production calendar out of docs/, which " +
-      "is gitignored and therefore exists on the owner's machine and nowhere else. It " +
-      "refuses (exit 2) everywhere else, so running it here would print a REFUSED on " +
-      "every run of every other machine. Run it by hand where the material is: " +
-      "`npm run verify:ics`",
-  ],
 ];
 
 /* ────────────────────────────────────────────────────────────────────────────

@@ -176,54 +176,54 @@ function selfCheck() {
  * change. A table named here that the database does not carry is a REFUSAL for
  * its row: not a pass, and not a failure.
  *
- * ⚠ WHAT THIS RUN CAN AND CANNOT SAY, AND THE TWO ARE DIFFERENT SENTENCES.
- * `production_pipeline_rule` carries the sixteen rows saying which pieces a
- * format owes, and it is the ONE row of this instrument that discriminates. The
- * other five calendar tables and ALL FIVE NEW ONES carry zero rows, so the
- * entitled answer and the unentitled answer are byte-identical there and the
- * honest report is REFUSED — not measured. Seeding early to turn those into
- * passes is not available: the seed is authorisation A3 and plan 45-10.
+ * ── 2026-10-14, PHASE 53 (D-53-01, D-53-04): TWO ROWS LEFT OF FIVE ──────────
  *
- * ⚠ AND ONE TABLE IS NOT ONE ARM. `production_section` carries BOTH authored
+ * The calendar, the space archive and the visual archive left the product, and
+ * their tables leave the catalogue with the migration of plan 53-07. Their three
+ * rows left this list in the same phase as the code that read them — a row
+ * naming a table the database no longer carries would refuse forever, and a
+ * permanent refusal is a row nobody reads. The two that stay are the manifesto's
+ * own tables. **This file was rewritten and NOT run**: running it mints a session
+ * on a real person's identity, and phase 53 holds no authorisation for that act.
+ *
+ * ⚠ WHAT THIS RUN CAN AND CANNOT SAY, AND THE TWO ARE DIFFERENT SENTENCES.
+ * Until phase 53 the one row of this instrument that discriminated was a
+ * calendar table carrying the rules of which pieces a format owes; it left with
+ * the calendar. A table carrying zero rows makes the entitled answer and the
+ * unentitled answer byte-identical, and the honest report there is REFUSED —
+ * not measured. Seeding early to turn those into passes is not available: a
+ * seed is an authorisation of its own.
+ *
+ * ⚠ AND ONE TABLE IS NOT ONE ARM. `production_section` carried BOTH authored
  * sections, distinguished by its `section` column and armed twice, by column;
- * `production_open_question` spans all four sections and carries FIVE arms — one
- * per section plus the brand-wide one for the null. Ten arms over five tables,
- * read back from `pg_policies` on 2026-08-17. This instrument counts TABLES, so
+ * `production_open_question` spanned all four sections and carried FIVE arms —
+ * one per section plus the brand-wide one for the null. Ten arms over five
+ * tables, read back from `pg_policies` on 2026-08-17. After the migration of
+ * plan 53-07 the arms that asked the three removed keys go with them; what each
+ * table carries then is read back from `pg_policies` in that plan, not here. This instrument counts TABLES, so
  * its row count is not the arm count, and neither number stands in for *a viewer
  * holding one section is refused the others* — which under D-45-03 has no subject
  * in production and is closed by procedure P1 in a throwaway environment.
  */
 const SECTION_TARGETS = [
   {
-    section: "calendar",
-    note: "the fourth section (D-45-04). Six tables, one SELECT policy each, every qual asking the same key today",
-    tables: [
-      "production_plan",
-      "production_piece",
-      "production_commitment",
-      "production_checklist_item",
-      "production_import_run",
-      "production_pipeline_rule",
-    ],
-  },
-  {
-    section: "location",
-    note: "the narrowest-audience section in intent (D-45-24): every row is a space nobody has phoned, and one column is a street address. Two tables, one arm each, both asking production.location.manage",
-    tables: ["production_space", "production_space_attribute"],
-  },
-  {
-    section: "manifesto and visual",
-    note: "ONE table holding BOTH authored sections, distinguished by its section column and armed TWICE — production.manifesto.manage on the manifesto rows, production.visual.manage on the visual ones. The two arms are disjoint on that column, so their OR admits each row to the holder of that row's key and to nobody else",
+    section: "manifesto",
+    note: "ONE table that held BOTH authored sections, distinguished by its section column and armed per section. Since phase 53 the manifesto is the only authored section left, asking production.manifesto.manage on its rows",
     tables: ["production_section"],
   },
+  /*
+   * ── THREE GROUPS STOOD HERE UNTIL 2026-10-14, AND THEIR SURFACES ARE GONE ──
+   *
+   * The calendar (six tables), the space archive (two tables) and the visual
+   * archive (one table), each with its own note on why its rows must not travel.
+   * Removed in phase 53 (D-53-01, D-53-04) together with the sections; the tables
+   * leave the catalogue with the migration of plan 53-07. Their names are not
+   * copied here: a list of removed tables in a script is a list somebody greps
+   * for and finds alive.
+   */
   {
-    section: "visual",
-    note: "the produced pieces and the photograph archive a listing is pulled from. One arm, asking production.visual.manage. The BYTES those rows point at are a separate question with a separate answer — the private bucket of 20260817120400_visual_archive_bucket.sql",
-    tables: ["production_visual_asset"],
-  },
-  {
-    section: "the register, which spans all four",
-    note: "FIVE arms on one table: one per section, each asking that section's own key, plus the brand-wide arm written with IS NULL because section = 'x' on a null column is NULL and would have made the register's most general entries invisible to everybody with no error anywhere",
+    section: "the register",
+    note: "until phase 53 FIVE arms on one table, one per section plus the brand-wide arm; after the migration of plan 53-07, the manifesto's arm and the brand-wide one. The brand-wide arm is written with IS NULL because section = 'x' on a null column is NULL and would have made the register's most general entries invisible to everybody with no error anywhere",
     tables: ["production_open_question"],
   },
   /*
@@ -654,7 +654,7 @@ if (exitCode === 1) {
       "     This is not a pass and it is not a defect to repair: on a table holding zero\n" +
       "     rows the entitled answer and the unentitled answer are identical, so the pair\n" +
       "     cannot discriminate and the honest report is that the measurement did not\n" +
-      "     happen. Re-running it will not change that. Importing the calendar will."
+      "     happen. Re-running it will not change that. Rows in the manifesto's tables will."
   );
 } else {
   console.log("  ══ VERDICT: the pair held on every declared row. ══");
@@ -679,9 +679,10 @@ console.log(
     "    What CAN be proven, and it is a different sentence, is that **the policies ask\n" +
     "    different keys** — read from `pg_policies`, through the Management API, which is\n" +
     "    a catalogue read and not a session. That sentence became TRUE on 2026-08-17, when\n" +
-    "    plan 45-08 applied the split: the six calendar arms ask production.calendar.manage\n" +
-    "    and the ten arms on the five new tables ask four different section keys, all read\n" +
-    "    back from pg_policies and recorded in 45-08-SUMMARY.md.\n" +
+    "    plan 45-08 applied the split: the calendar's arms asked the calendar's own key\n" +
+    "    and the ten arms on the five new tables asked four different section keys, all\n" +
+    "    read back from pg_policies and recorded in 45-08-SUMMARY.md. (Phase 53 removed\n" +
+    "    three of those sections; the sentence is kept as the record it is.)\n" +
     "\n" +
     "    ⚠ AND IT IS STILL NOT CRITERION 1. *Four policies name four different keys* is a\n" +
     "    STRUCTURAL fact about the catalogue; *a viewer holding one section is refused the\n" +

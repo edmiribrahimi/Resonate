@@ -203,8 +203,10 @@ const SRC_DIR = `${ROOT}/src`;
  *
  * PROD-02 makes entitlement per SECTION, so one capability answering four
  * questions becomes four answering one each (D-45-04): `production.read` is
- * removed and `production.calendar.manage`, `production.manifesto.manage`,
- * `production.visual.manage` and `production.location.manage` are added.
+ * removed and four keys of the shape `production.<section>.manage` are added —
+ * one each for the calendar, the manifesto, the visual system and the location
+ * list. *(Three of the four left on 2026-10-14 with their sections, phase 53:
+ * see the last paragraph of this block.)*
  * 14 − 1 + 4 = 17. It is the same legitimate reason as every move before it —
  * the MODEL changed, in a plan, with its grants and its policies.
  *
@@ -298,7 +300,7 @@ const SRC_DIR = `${ROOT}/src`;
  * **Le cinque concessioni che escono**: `gallery.view` a master, organizer e
  * staff; `media.upload` a master e organizer. `media.upload` non resta come asse
  * non usato perche' nessun percorso vivo la legge piu' — l'archivio del visual
- * chiede `production.visual.manage`, la cover `staff.manage` piu'
+ * chiedeva la chiave della sezione visual (uscita anch'essa, fase 53), la cover `staff.manage` piu'
  * `assertMayManageEvent` — e una chiave senza lettori e' una concessione
  * dormiente.
  *
@@ -316,8 +318,35 @@ const SRC_DIR = `${ROOT}/src`;
  * dice 14 (e 31 concessioni dove dice 26), ed e' il gate che funziona. **Non si
  * ripara editando questa costante.** Se un run in quell'intervallo riporta 14,
  * M-D e' stata applicata prima del deploy: e' un reperto, non un sollievo.
+ *
+ * ── Da 14 a 11 il 2026-10-14, fase 53 — ed e' una RIMOZIONE ─────────────────
+ *
+ * Il calendario di produzione, l'archivio delle sedi in valutazione e quello del
+ * visual escono dal prodotto (D-53-01, D-53-04), e con loro le tre chiavi di
+ * sezione che li aprivano — la chiave del calendario, quella delle location e
+ * quella del visual, tolte dall'oggetto `CAP` e da `capability-routes.ts` nel
+ * piano 53-01, **nella stessa fase** in cui e' scritta la migration che le toglie
+ * dal catalogo (`20261014120000_production_tools_removal.sql`, piano 53-07).
+ * 14 − 3 = 11. Resta, delle quattro chiavi di sezione nate con il piano 45-05,
+ * solo quella del manifesto.
+ *
+ * **Le sei concessioni che escono**: ognuna delle tre a master e a organizer.
+ * Nessuna delle tre era concessa a `staff` o ad `attendee`, quindi escono anche
+ * sei rifiuti. `staff` **resta a zero concessioni per ruolo**, come dal
+ * 2026-10-02: la porta e' dell'assegnazione alla serata, non del ruolo. Master
+ * 11, organizer 9, staff 0, attendee 0.
+ *
+ * ⚠ ROSSO CONTRO LA PRODUZIONE E IL LABORATORIO finche' la migration del piano
+ * 53-07 non e' applicata: laboratorio nel piano 53-08, produzione nel piano
+ * 53-11, ognuno DOPO il deploy del codice li'. E' l'ordine di ogni rimozione:
+ * prima il codice smette di chiedere le chiavi, poi il catalogo le perde. Fino
+ * ad allora un run riporta 14 dove questo file dice 11 (e 26 concessioni dove
+ * dice 20), ed e' il gate che funziona — l'output lo nomina con la riga
+ * «DECLARED RED INTERVAL (phase 53», riconoscendolo per FORMA. **Non si ripara
+ * editando questa costante.** Se un run prima del deploy riporta 11, la
+ * migration e' stata applicata prima del codice: e' un reperto, non un sollievo.
  */
-const EXPECTED_KEY_COUNT = 14;
+const EXPECTED_KEY_COUNT = 11;
 
 /**
  * ── The pre-registered grant declaration (phase decision D-02) ─────────────
@@ -479,10 +508,11 @@ const ROLE_GRANTS = {
     // from D-44-27 for the calendar and D-45-20 for the other three, and from
     // nothing else. Four rows agreeing on a value for the same reason must still
     // not be made to move with the door's two, which agree on it for another.
-    'production.calendar.manage': 'GRANTED',
+    // La chiave del calendario stava qui, GRANTED — uscita con il calendario il
+    // 2026-10-14 (fase 53, D-53-01).
     'production.manifesto.manage': 'GRANTED',
-    'production.visual.manage': 'GRANTED',
-    'production.location.manage': 'GRANTED',
+    // Le chiavi del visual e delle location stavano qui, GRANTED — uscite con le
+    // loro sezioni il 2026-10-14 (fase 53, D-53-04).
     // `gallery.view` stava qui, GRANTED (D-52-12, plan 52-06) — uscita con la
     // gallery il 2026-10-02 (piano 52.1-18, DBT-13).
   },
@@ -538,10 +568,11 @@ const ROLE_GRANTS = {
     // Plan 45-05, D-45-04: `production.read` is removed and four section keys
     // take its place. The organizer held the calendar before the split and holds
     // it after — the reach does not move in either direction.
-    'production.calendar.manage': 'GRANTED',
+    // La chiave del calendario stava qui, GRANTED — uscita con il calendario il
+    // 2026-10-14 (fase 53, D-53-01).
     'production.manifesto.manage': 'GRANTED',
-    'production.visual.manage': 'GRANTED',
-    'production.location.manage': 'GRANTED',
+    // Le chiavi del visual e delle location stavano qui, GRANTED — uscite con le
+    // loro sezioni il 2026-10-14 (fase 53, D-53-04).
     // `gallery.view` stava qui, GRANTED (D-52-12, plan 52-06) — uscita con la
     // gallery il 2026-10-02 (piano 52.1-18, DBT-13).
   },
@@ -672,21 +703,20 @@ const ROLE_GRANTS = {
     // the shape of an internal plan — none of which is a night's work, and none
     // of which expires the way an assignment does. A row here would let somebody
     // who worked one door read every future date, permanently.
-    'production.calendar.manage': 'REFUSED',
+    // La chiave del calendario stava qui, REFUSED — uscita con il calendario il
+    // 2026-10-14 (fase 53, D-53-01). Il rifiuto non si e' allentato: e' sparita
+    // la superficie a cui si poteva essere ammessi.
+    //
     // Refused (D-03). The manifesto is written for whoever goes to the console
     // and LEAVES THE PERIMETER when it does. *How a format sounds* is not a
     // question the door asks, and a document built to be handed to a third party
     // is not one to widen the read of casually.
     'production.manifesto.manage': 'REFUSED',
-    // Refused (D-03). The capitolato names spaces and carries the rules a
-    // material must obey before it is published. A section whose content becomes
-    // a publication is not a per-night surface.
-    'production.visual.manage': 'REFUSED',
-    // Refused (D-03), AND THIS IS THE REFUSAL THAT COSTS THE MOST IF IT IS EVER
-    // LOOSENED. Every row is a space nobody has phoned, carrying a street
-    // address. A space under negotiation named outside the people negotiating is
-    // a negotiation made public, and a publication does not un-publish.
-    'production.location.manage': 'REFUSED',
+    // Le chiavi del visual e delle location stavano qui, REFUSED — uscite con le
+    // loro sezioni il 2026-10-14 (fase 53, D-53-04). Quella delle location era il
+    // rifiuto che sarebbe costato di piu' se allentato: sedi in trattativa, con
+    // l'indirizzo. Esce perche' le righe che proteggeva escono, non perche' il
+    // rifiuto sia stato rivisto.
     // ── DAL 2026-10-02 LO STAFF TORNA A ZERO (piano 52.1-18, DBT-13) ────────
     //
     // `gallery.view` e' uscita con la gallery. Il paragrafo che segue resta
@@ -761,10 +791,9 @@ const ROLE_GRANTS = {
     // out is that mechanism running in reverse. Nothing else in the model would
     // say no — which is why these four lines, and not a comment, are where the
     // refusal exists.
-    'production.calendar.manage': 'REFUSED',
+    // Le chiavi del calendario, del visual e delle location stavano qui, REFUSED
+    // — uscite con le loro sezioni il 2026-10-14 (fase 53, D-53-01, D-53-04).
     'production.manifesto.manage': 'REFUSED',
-    'production.visual.manage': 'REFUSED',
-    'production.location.manage': 'REFUSED',
     // Refused, plan 52-06 (D-52-12), AND THIS IS THE PAIR NAV-07 EXISTS FOR.
     // Un `attendee` con questa riga vedrebbe l'intero archivio delle serate —
     // comprese le foto scattate dentro una sede segreta, di serate a cui non ha
@@ -908,10 +937,30 @@ const ROLE_GRANTS = {
 // ⚠ ROSSO CONTRO LA PRODUZIONE E IL LABORATORIO finche' M-D
 // (`20261001120200_gallery_removal.sql`) non e' applicata: laboratorio nel piano
 // **52.1-20**, produzione nel piano **52.1-25**. Non si ripara editando questi
-// numeri.
-const EXPECTED_PAIR_COUNT = 56;
-const EXPECTED_GRANT_COUNT = 26;
-const EXPECTED_REFUSAL_COUNT = 30;
+// numeri. *(Applicata in produzione dal piano 52.1-25: quell'intervallo e'
+// chiuso.)*
+//
+// ── 2026-10-14, fase 53: TRE CHIAVI ESCONO ──────────────────────────────────
+//
+// SOTTRATTA IN CODA, non riscritta sopra. 44 = 4 ruoli × **11** chiavi: 56 − 12.
+// Concessioni: 26 − 6 = **20** (le tre chiavi di sezione uscenti, a master e a
+// organizer). Rifiuti: 30 − 6 = **24** (le stesse tre, a staff e ad attendee).
+// Per ruolo, camminando `ROLE_GRANTS`: master 11, organizer 9, **staff 0**,
+// attendee 0 — 20.
+//
+//   56/26/30 → 44/20/24   phase 53, three CAPABILITIES removed (2026-10-14)
+//
+// Stessa firma della mossa precedente — concessioni e rifiuti scendono nello
+// stesso verso, di sei ciascuno — e nessun ruolo cambia portata su cio' che
+// resta: le tre superfici che queste chiavi aprivano non esistono piu'.
+//
+// ⚠ ROSSO CONTRO LA PRODUZIONE E IL LABORATORIO finche' la migration del piano
+// 53-07 (`20261014120000_production_tools_removal.sql`) non e' applicata:
+// laboratorio nel piano **53-08**, produzione nel piano **53-11**. Non si ripara
+// editando questi numeri.
+const EXPECTED_PAIR_COUNT = 44;
+const EXPECTED_GRANT_COUNT = 20;
+const EXPECTED_REFUSAL_COUNT = 24;
 
 /**
  * The two markers a pair carries in `ROLE_GRANTS`.
@@ -1467,27 +1516,35 @@ async function run(target, targetLabel) {
           'design decision with a grant row and a policy or a route behind it, and it belongs in ' +
           'a plan. Look at the model, NOT at EXPECTED_KEY_COUNT.'
       );
-    // ── L'intervallo rosso di DBT-13, nominato nell'output (piano 52.1-18) ──
+    // L'intervallo rosso di DBT-13 (piano 52.1-18) si e' chiuso con il piano
+    // 52.1-25, che ha applicato M-D in produzione: il suo riconoscimento e' uscito.
     //
-    // Si riconosce per FORMA, non per numero: il TS ha le 14 attese e il
-    // database ha esattamente quelle piu' le due che M-D toglie. Qualunque altra
-    // forma di rosso resta senza questa riga — un nome dato a un rosso diverso
-    // da quello dichiarato sarebbe un modo di non guardarlo.
-    const DBT13_LEAVING = ['gallery.view', 'media.upload'];
+    // ── L'intervallo rosso della fase 53, nominato nell'output (D-53-03) ────
+    //
+    // Si riconosce per FORMA, non per numero e non per nome: il TS ha le 11
+    // attese, al database non ne manca nessuna, e ne ha esattamente TRE in piu',
+    // tutte della forma `production.*.manage` — mentre il TS tiene ancora una
+    // chiave `production.` (quella del manifesto), perche' il prefisso da solo
+    // non direbbe che il codice ha tolto TUTTE le chiavi di produzione. Le tre
+    // chiavi uscenti non sono nominate qui: il file non ne ha piu' bisogno, e
+    // l'output del controllo le stampa gia' dal catalogo. Qualunque altra forma
+    // di rosso resta senza questa riga — un nome dato a un rosso diverso da
+    // quello dichiarato sarebbe un modo di non guardarlo.
     const dbExtra = dbKeys.filter((k) => !tsKeys.includes(k));
     const dbMissing = tsKeys.filter((k) => !dbKeys.includes(k));
     if (
       tsKeys.length === EXPECTED_KEY_COUNT &&
       dbMissing.length === 0 &&
-      dbExtra.length === DBT13_LEAVING.length &&
-      DBT13_LEAVING.every((k) => dbExtra.includes(k))
+      dbExtra.length === 3 &&
+      dbExtra.every((k) => k.startsWith('production.') && k.endsWith('.manage')) &&
+      tsKeys.some((k) => k.startsWith('production.'))
     )
       problems.push(
-        'DECLARED RED INTERVAL (plan 52.1-18, DBT-13): the code dropped gallery.view and ' +
-          'media.upload; the catalogue loses them with M-D, ' +
-          'supabase/migrations/20261001120200_gallery_removal.sql — on the lab in plan 52.1-20, ' +
-          'in production in plan 52.1-25, each AFTER the deploy of the code. This red closes by ' +
-          'applying M-D, never by editing EXPECTED_KEY_COUNT.'
+        'DECLARED RED INTERVAL (phase 53, D-53-03): the code dropped three production keys; ' +
+          'the catalogue loses them with ' +
+          'supabase/migrations/20261014120000_production_tools_removal.sql — on the lab in ' +
+          'plan 53-08, in production in plan 53-11, each AFTER the deploy of the code. This red ' +
+          'closes by applying the migration, never by editing EXPECTED_KEY_COUNT.'
       );
     check(
       `0 · both declarations hold the pre-registered ${EXPECTED_KEY_COUNT} keys`,
