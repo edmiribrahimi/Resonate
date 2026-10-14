@@ -1008,7 +1008,7 @@ Management; una sede si crea da Venues.
 **Verifica, in un repo senza test:** vedi CUT-05.
 
 **Depends on:** Phase 52.3 chiusa (la barra con Music e' la base da cui si toglie). Nessun'altra.
-**Plans:** 7/13 plans executed
+**Plans:** 8/13 plans executed
 
 Onde: 1 = 53-01, 53-02, 53-03 · 2 = 53-04, 53-05, 53-06, 53-13 · 3 = 53-07 · 4 = 53-08 · 5 = 53-09 · 6 = 53-10 · 7 = 53-11 · 8 = 53-12
 
@@ -1028,7 +1028,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 53-07-PLAN.md — migration di sola rimozione, atto per chiave, seme del lab (CUT-01, D-53-03/04/05) — onda 3
+- [x] 53-07-PLAN.md — migration di sola rimozione, atto per chiave, seme del lab (CUT-01, D-53-03/04/05) — onda 3
 
 **Wave 4** *(blocked on Wave 3 completion)*
 

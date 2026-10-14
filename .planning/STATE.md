@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: ready_to_execute
-stopped_at: Completed 53-06-PLAN.md (09ab2d68); next 53-13
-last_updated: "2026-10-14T10:37:56.995Z"
+stopped_at: Completed 53-07-PLAN.md (0bcc7ab0); next 53-08 [BLOCKING] laboratorio
+last_updated: "2026-10-14T10:49:06.404Z"
 last_activity: 2026-10-14
 progress:
   total_phases: 12
   completed_phases: 10
   total_plans: 170
-  completed_plans: 169
+  completed_plans: 170
   percent: 83
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 53 (meno-strumenti-la-porta-dentro-management-inserted) — EXECUTING
-Plan: 8 of 13
+Plan: 9 of 13
 Next: `/gsd-execute-phase 53` (prima `/clear`). Onda 1 = 01 (cancellazione del codice, commit «1/2» rosso mai spinto + «2/2» verde) + 02 (Venues: «New venue» sull'analogo di Artists) + 03 (procedure P-53-A..G e `lab-apply-migration.mjs` su `/database/migrations`). Onda 2 = 04 (Check-in nel pannello, D-53-01/06) + 05 (script e gate) + 06 (prosa dei file che restano) + 13 (`vercel.json` a 7 cron, persona 1.33.1, BASE del budget). Onda 3 = 07 (migration di sola rimozione, 10 tabelle, policy Manifesto riscritta PRIMA delle chiavi, `purge-production-tools.mjs`). Onda 4 = 08 [BLOCKING] laboratorio (deploy → righe per chiave → migration → P-53-F). Onda 5 = 09 (persona, CUT-04, 1.34.0, saldo ≤ 0). Onda 6 = 10 (procedure sul lab + revisione del proprietario dal telefono, autonomous: false). Onda 7 = 11 (produzione su «vai» di prima mano, NON DELEGABILE: registro → righe → migration → `vercel env rm` ×3; niente Instant Rollback). Onda 8 = 12 (CUT-06 DOC-01..04, 1.35.0, VERIFICATION). Decisioni chiuse il 2026-10-14: D-53-04 Manifesto resta; D-53-05 nessuna copia di archivio visual e spunte TASK; D-53-06 StaffNav non riceve Check-in. Ramo di lavoro previsto dai piani: `feat/53-meno-strumenti`.
 
 **52.2 chiusa e osservata (2026-10-01 08:28Z).** `close-pending-orders` 08:01Z: 1 considerato, `never_attempted`, checkout disattivato; `reconcile-refunds` 08:13Z: silenzio = nulla da riconciliare (non logga un riepilogo quando non fa nulla: nota per la 52.1); 0 pending residui, 0 refunds, 0 mail. CART-03 e RFD-02 osservati.
@@ -410,7 +410,7 @@ checkpoints is now closed (the migration is applied); three remain, plus the RLS
 half of the fourth. `31-VALIDATION.md` keeps `nyquist_compliant: false`
 deliberately.
 
-Progress: [██████████] 99%
+Progress: [██████████] 100%
           phase 32 — 11 plans, 0 executed
 
 ## Decisions
@@ -562,6 +562,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase 53]: Fase 53-05: verify-capabilities a 11/20, rosso della fase 53 riconosciuto per forma fino alla migration 53-07 (lab 53-08, prod 53-11)
 - [Phase 53]: Fase 53-05: gate di Manifesto ristretti (C ed E tenuti con le loro lettere); verify-section-export a un documento, censimento sulle tabelle del manifesto
 - [Phase 53]: Fase 53-06: PERIMETER_NOTICE invariato (contenuto consegnato, non commento); upload-limits.ts senza importatori e same-format senza chiamanti, rimozione differita
+- [Phase 53]: Fase 53-07: migration 20261014120000 di sola rimozione, dieci tabelle (non undici); brand-wide riscritta sulla sola chiave del manifesto alla riga 209, prima del DELETE delle chiavi alla 313 (D-53-04); il DO rilegge anche pg_proc e la ripartizione 11/9/0/0
+- [Phase 53]: Fase 53-07: purge-production-tools senza istantanee (D-53-05), censimento a due fonti, ricattura per passo (census_moved), UUID oscurati negli errori; migration e seme del lab nello stesso commit (0bcc7ab0)
 
 ## Accumulated Context
 
@@ -683,8 +685,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-10-14T10:37:56.991Z
-**Stopped at:** Completed 53-06-PLAN.md (09ab2d68); next 53-13
+**Last session:** 2026-10-14T10:49:06.399Z
+**Stopped at:** Completed 53-07-PLAN.md (0bcc7ab0); next 53-08 [BLOCKING] laboratorio
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
