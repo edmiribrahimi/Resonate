@@ -7,20 +7,25 @@
  * Two reasons, and they point at two different readers.
  *
  * **For the compiler:** every export of a `"use server"` module is a public
- * endpoint with a convenient signature. `may-upload.ts:27-34` records the
- * consequence of leaving a predicate in one — it publishes an oracle. The two
- * arms that call the serialisers are two files for that same reason (one per
- * capability key, D-45-06), and what they legitimately share has to live
- * somewhere neither of them publishes. That is this file, exactly as
- * `write-contract.ts` is that file for the write path.
+ * endpoint with a convenient signature, and a predicate left in one publishes
+ * an oracle. What the export arm shares with the serialiser has to live
+ * somewhere the arm does not publish. That is this file, exactly as
+ * `write-contract.ts` is that file for the write path. *(Until 2026-10-14 there
+ * were two arms, one per capability key, D-45-06; since phase 53, D-53-04, there
+ * is one export — the sound manifesto.)*
  *
  * **For a person counting files:** `scripts/verify-section-export.mjs` watches
  * `src/lib/production/export` and fails BY NAME on a module named after the
  * location section, because D-45-21 consequence 2 says that section's content
- * never leaves. The clearest form of *there are two documents and there is no
- * third* is a directory holding exactly two files, both of them documents. A
- * contract module sitting there would be a third thing to explain to whoever
+ * never leaves. The clearest form of *there is one document and nothing else
+ * leaves* is a directory holding exactly one file, and that file a document. A
+ * contract module sitting there would be a second thing to explain to whoever
  * counts. So it sits here, beside the write contract it mirrors.
+ *
+ * The capitolato handed to the external designer is production material kept
+ * outside the product (`brand-visual-system.md`, gate *capitolato, non file*):
+ * it is not an export of this product, and since 2026-10-14 no code here
+ * assembles it.
  *
  * ── Two refusals, and neither of them degrades ──────────────────────────────
  *
@@ -40,14 +45,14 @@
  * reads that all answered, or nothing is produced and the refusal says which
  * read did not answer.
  *
- * ⚠ **The palette is the one thing that does NOT follow this rule**, and the
- * difference is deliberate rather than an inconsistency. A palette that could not
- * be read is rendered INTO the capitolato as a named, visible failure, because
- * the document is still the document without its colour table and because a
- * designer who reads *the palette could not be read, do not guess* behaves
- * correctly, whereas one handed a document with no palette section at all reaches
- * for the nearest colours. That is `brand-visual-system.md`'s gate *il colore non
- * si eredita* defended on the far side of the perimeter.
+ * ⚠ **One exception was recorded here, and it left with its document.** Until
+ * 2026-10-14 the designer's document rendered an unreadable palette INTO itself
+ * as a named, visible failure rather than refusing — a reader told *the palette
+ * could not be read, do not guess* behaves correctly, one handed no palette
+ * reaches for the nearest colours (`brand-visual-system.md`, gate *il colore non
+ * si eredita*). That document is no longer produced here; the principle — a
+ * failure rendered into the document rather than dropped out of it — is what
+ * `export/manifesto.ts` applies to the rules it withholds.
  */
 
 /**
@@ -115,24 +120,28 @@ export type ExportResult =
   | { readonly ok: false; readonly reason: ExportRefusal };
 
 /**
- * What NEITHER document carries, written once so the two cannot say it
- * differently.
+ * What the document does NOT carry, written once as a constant.
  *
- * ── Why this is one constant and not two paragraphs ─────────────────────────
+ * ── Why this is a constant and not a paragraph ──────────────────────────────
  *
- * The manifesto goes to whoever steps into the booth; the capitolato goes to the
- * external designer. Two documents, two audiences, **one list of things that must
- * not travel** — `sound-manifesto.md`'s gate *il brief esce dal perimetro* names
- * exactly three, and `brand-visual-system.md`'s gate *capitolato, non file* names
- * the first of them again for the second document. Written twice they would
- * drift, and the drift would be invisible because nothing compares two paragraphs
- * of prose.
+ * The manifesto goes to whoever steps into the booth, and there is **one list of
+ * things that must not travel** — `sound-manifesto.md`'s gate *il brief esce dal
+ * perimetro* names exactly three. It was written once because, until 2026-10-14,
+ * a second document for the external designer shared it; since phase 53
+ * (D-53-04) the manifesto is the only document produced here. The constant
+ * stays one constant so that whichever document is added next inherits it
+ * rather than restating it.
+ *
+ * ⚠ The text of the notice below still speaks of *these documents* in the
+ * plural. It is the content of the produced document, not a comment, and it was
+ * left unchanged on purpose by a prose-only plan (53-06): rewording it changes
+ * what the owner hands over.
  *
  * ── The first two are structural. The third is not, and it says so. ─────────
  *
- * Neither serialiser reads a table that holds an address or a date, so the first
+ * The serialiser reads no table that holds an address or a date, so the first
  * two lines below are facts about what the code can reach — provable by
- * `scripts/verify-section-export.mjs` walking the import closure from each
+ * `scripts/verify-section-export.mjs` walking the import closure from the
  * document, and not by anybody being careful.
  *
  * **The third cannot be reached that way.** A name typed into the body of a rule

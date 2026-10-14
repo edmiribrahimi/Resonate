@@ -26,12 +26,12 @@ import { Badge } from "@/components/ui/Chip";
  * refused for a measured reason: that token holds the same value as one
  * format's identification colour (`verify-semantic-separation.mjs:35-39`), so a
  * mark in that hue cannot tell a reader *be careful here* from *this is that
- * format*. On the two surfaces whose whole subject is formats, that ambiguity
- * would be at its worst. Every warning on this page is therefore carried by the
+ * format*. On a surface whose whole subject is formats, that ambiguity would be
+ * at its worst. Every warning on this page is therefore carried by the
  * badge's word and by the sentence beside it, and by no colour at all.
  *
  * The rule generalises and is worth stating once: **anything that would have
- * been a hue on these two surfaces carries text.**
+ * been a hue on this surface carries text.**
  *
  * ── It names the role that closes it ────────────────────────────────────────
  *
@@ -47,7 +47,7 @@ import { Badge } from "@/components/ui/Chip";
  * ── What it must not carry ──────────────────────────────────────────────────
  *
  * The question text is authored prose that leaves the perimeter as easily as
- * the rest of these two sections. It is written as a **criterion** — *is the
+ * the rest of this section. It is written as a **criterion** — *is the
  * sound one manifesto or one per venue* — and never as a candidate: no space
  * under negotiation, no unannounced date, no line-up. That rule is enforced by
  * whoever writes the row, and it is repeated here because this is the component

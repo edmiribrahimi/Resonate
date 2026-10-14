@@ -20,14 +20,18 @@
  * upload accepted by the browser and refused after it has been sent — the worst
  * place to put a type error, because by then somebody has waited for it.
  *
- * The video types are **not** here. They belong to the gallery path only, they
- * live in the two files that use them, and nothing strips them: the archive
- * accepts no video at all, because nothing that cannot be stripped may be kept
- * in an archive that is drawn on months later.
+ * The video types are **not** here, and no path accepts them any more: nothing
+ * in this repository strips a video, and nothing that cannot be stripped is
+ * written.
+ *
+ * ⚠ Since 2026-10-14 (phase 53) this module has **no importer**: its two
+ * uploaders left, the gallery's on 2026-10-02 and the editorial archive's on
+ * 2026-10-14. It is kept unchanged by a prose-only plan (53-06); removing it is
+ * a code change and is recorded as deferred.
  */
 
 /**
- * The image types both upload surfaces accept, and the mirror of
+ * The image types a photograph uploader accepts, and the mirror of
  * `STRIPPABLE_MIME_TYPES` in `src/lib/media/strip-metadata.ts` — read from those
  * lines rather than rewritten from memory.
  */
@@ -39,13 +43,12 @@ export const PHOTO_ACCEPT_STRING = PHOTO_MIME_TYPES.join(",");
 /**
  * The ceiling for one photograph, in bytes.
  *
- * 50 MB, and it is the number `MediaUpload.tsx` already enforced — hoisted here
- * rather than restated, so the archive's uploader could not quietly pick a
- * different one. It is well above the 4.5 MB a Vercel Function accepts as a
- * request body, which is exactly why neither uploader sends the bytes through a
- * request: they deposit into the private quarantine bucket and post a key. The
- * reasoning and its source are in the header of
- * `src/app/api/media/finalize/route.ts`.
+ * 50 MB, the number the gallery's uploader enforced — hoisted here rather than
+ * restated, so a second uploader could not quietly pick a different one. It is
+ * well above the 4.5 MB a Vercel Function accepts as a request body, which is
+ * exactly why no uploader sends the bytes through a request: they deposit into
+ * the private quarantine bucket and post a key. The reasoning is in the header
+ * of `src/app/api/media/finalize-cover/route.ts`.
  */
 export const MAX_PHOTO_BYTES = 50 * 1024 * 1024;
 

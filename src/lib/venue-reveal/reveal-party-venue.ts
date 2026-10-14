@@ -18,16 +18,16 @@ import {
  * The plan's acceptance criterion reads the FIRST LINE of this file looking for
  * `server-only`. Written in the usual order — docblock first, imports after —
  * the check would read prose and fail on a file that satisfies it. Same
- * discipline, and the same reason, as `src/lib/media/may-upload.ts:7-15`.
+ * discipline, and the same reason, as `src/lib/media/strip-metadata.ts:1-15`.
  *
  * ── Why it is a module and not an export of an `actions.ts` ──────────────────
  * A file marked `"use server"` publishes **every** export as a public endpoint.
  * `countVenueRevealRecipients` exported from there would be an oracle answering
  * *"how many people would receive this night's address?"* to anyone who calls
- * it. `may-upload.ts:28-34` is the repository's only precedent for this shape
- * and it carries the same paragraph — with one difference worth naming: that
- * one is a **predicate**, this one is an **executor with an irreversible
- * external effect**. The argument for a single definition is therefore
+ * it. `src/lib/production/sections/write-contract.ts` is a living precedent
+ * for this shape and carries the same paragraph — with one difference worth
+ * naming: that one holds **checks**, this one is an **executor with an
+ * irreversible external effect**. The argument for a single definition is therefore
  * stronger here, not weaker: two copies of the deduplication would mean two
  * different numbers for the same act that cannot be undone.
  *

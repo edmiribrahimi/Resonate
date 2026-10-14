@@ -9,10 +9,10 @@ import {
  * What state a section's content is in, as a **word**.
  *
  * *Written* · *coordinates declared* · *not decided* — the three
- * `SECTION_STATES` publishes, drawn by the **one** component both authored
- * sections use. It is the shape `StageBadge.tsx` already has one directory over,
- * adopted whole rather than re-argued, and the three paragraphs below are its
- * three reasons applied to a different question.
+ * `SECTION_STATES` publishes, drawn by the **one** component the authored
+ * section uses. The shape was adopted whole from the badge of a production
+ * section that left on 2026-10-14 (phase 53); the three paragraphs below are its
+ * three reasons, applied to this question, and they did not leave with it.
  *
  * ── Why no colour, when three ordered states are the classic case for one ────
  *
@@ -61,12 +61,12 @@ import {
  * constrained becomes indistinguishable from one that is unwritten and free —
  * and a format that reads as free gets written by whoever is under deadline.
  *
- * ── Where this file lives, and why it is not under `visual/` too ─────────────
+ * ── Why there is exactly one of it ──────────────────────────────────────────
  *
- * Both authored sections draw this badge and there is exactly one of it: the
- * visual surface imports it from here. The directory is the one plan 45-12's
- * file list named; the alternative is a second badge, which is a second place
- * the three states can drift to two.
+ * Until 2026-10-14 two authored sections drew this badge, and the second one
+ * imported it from here. Since phase 53 (D-53-04) the manifesto is the only
+ * authored section left. The rule it served still holds: a second badge would be
+ * a second place the three states can drift to two.
  */
 export function SectionStateBadge({ state }: { state: SectionState }) {
   return (

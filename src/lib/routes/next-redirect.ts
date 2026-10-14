@@ -140,12 +140,12 @@ const NEXT_ALLOW_LIST: readonly RegExp[] = [
   // a protected address with `?redirect=`, which this file's reader never looks
   // at — so the destination was lost and everybody landed on `/dashboard`
   // (blocker D7). Aligning the name was only half the repair: with the list as
-  // it stood, a caller bounced off `/admin/calendar` would have arrived with a
+  // it stood, a caller bounced off `/admin/artists` would have arrived with a
   // `next` this list refuses and landed on `/dashboard` anyway.
   //
   // **What the addition does and does not grant.** This is a destination filter,
   // not an access control — the sentence at the top of this file, and it matters
-  // most here. Landing on `/admin/calendar` does not mean being admitted to it:
+  // most here. Landing on `/admin/artists` does not mean being admitted to it:
   // the page's own capability check and the RLS decide that, exactly as they did
   // before. What this list decides is only whether somebody who was already
   // going there gets taken back there after signing in.

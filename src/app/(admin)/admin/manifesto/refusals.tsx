@@ -126,7 +126,7 @@ export function OutcomeLine({ outcome }: { outcome: Outcome | null }) {
   );
 }
 
-/** The recessed sentence face, shared with the read surfaces of both sections. */
+/** The recessed sentence face, shared with the section's read surface. */
 export const SENTENCE = "text-sm text-muted";
 
 /**
@@ -134,7 +134,7 @@ export const SENTENCE = "text-sm text-muted";
  *
  * ⚠ No colour. `formats.color` is `NOT NULL`, so every format carries an
  * identification colour including the one that has no palette — and drawn at any
- * size on a surface about the visual system it becomes a palette nobody decided.
+ * size on a surface about a format's identity it becomes a palette nobody decided.
  * The safe size for a value that is not part of the palette is none, so the
  * column does not travel this far.
  */

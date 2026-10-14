@@ -24,17 +24,20 @@ import {
 import type { SaveSection } from "@/lib/production/sections/write-contract";
 
 /**
- * The authoring half of an authored section — **one** form, mounted by both
- * surfaces, taking its act as a prop.
+ * The authoring half of an authored section — **one** form, taking its act as
+ * a prop.
  *
- * ── One component and two callers, and the reason is a default ──────────────
+ * ── One component, one caller, and the act still arrives as a prop ──────────
  *
- * A second copy of this form would be a second place a state default could creep
- * back in, and the whole of criterion 3 on the write side is that no default
- * exists anywhere. So the two pages import this file and hand over their own
- * module's `saveSection`: the sound manifesto's, which asks the manifesto key,
- * and the visual capitolato's, which asks the visual key. **This file imports
- * neither module**, and it could not choose between them if it wanted to.
+ * Since 2026-10-14 (phase 53, D-53-04) there is one authored section, the sound
+ * manifesto, with its own key: the other authored page left with the three
+ * production sections that went out that day. The act still arrives as a prop
+ * and not as an import, and the reason survives the second caller: a copy of
+ * this form would be a second place a state default could creep back in, and
+ * the whole of criterion 3 on the write side is that no default exists
+ * anywhere. The page hands over its module's `saveSection`, which asks the
+ * manifesto key. **This file imports no action module**, so it cannot choose a
+ * key on anybody's behalf.
  *
  * ── THE STATE CONTROL CHOOSES NOTHING FOR THE AUTHOR ────────────────────────
  *
@@ -52,15 +55,14 @@ import type { SaveSection } from "@/lib/production/sections/write-contract";
  *     not, and those bind.
  *
  * The cost is that the control cannot be left alone and the save is inert until
- * somebody chooses. That is the point, and it is the shape `SpaceForm.tsx`'s
- * provenance control takes one directory over, for the same reason: **the
- * control starts on nothing every time, including where the row already holds a
- * value.** Carrying the stored state forward would let a rule keep *written*
+ * somebody chooses. That is the point, and the rule is stated once for every
+ * control in this product whose shape the author chooses: **the control starts
+ * on nothing every time, including where the row already holds a value.** Carrying the stored state forward would let a rule keep *written*
  * through an edit that emptied it — a decision the surface would have taken on
  * somebody's behalf.
  *
  * What the recorded state IS, is drawn beside the control as a word, by the one
- * badge both surfaces use. Showing it is not choosing it.
+ * badge the section uses. Showing it is not choosing it.
  *
  * ── The three states ask for three different things ─────────────────────────
  *
@@ -101,8 +103,8 @@ import type { SaveSection } from "@/lib/production/sections/write-contract";
  *   * **It supplies no text.** No default title, no suggested gap, no adjective
  *     describing a sound, a genre or a palette, and no colour borrowed from the
  *     format that has one.
- *   * **It names no space.** The capitolato leaves the perimeter, and there is
- *     no venue field here, on either surface.
+ *   * **It names no space.** The manifesto leaves the perimeter, and there is
+ *     no venue field here.
  *   * **It deletes nothing.** Neither act has a delete path and neither will.
  */
 
@@ -140,8 +142,8 @@ export function SectionForm({
 }: {
   /**
    * The act, handed over by the page. The manifesto page passes its module's
-   * `saveSection` and the visual page passes its own — one form, two keys, and
-   * this file can reach neither module.
+   * `saveSection`, which asks the manifesto key — and this file cannot reach
+   * the module itself.
    */
   save: SaveSection;
   /**

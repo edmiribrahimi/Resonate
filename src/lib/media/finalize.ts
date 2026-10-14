@@ -13,23 +13,23 @@ import {
  * finalize.ts — pick the bytes up, STRIP them, write them to the destination
  * that was named. One implementation, and the destinations are arguments.
  *
- * ── THE DESTINATIONS THAT EXIST, named by what they are (plan 52.1-13) ──────
+ * ── THE DESTINATION THAT EXISTS, named by what it is (plan 52.1-13) ────────
  *
- *   * **private — the visual archive** (`/api/media/finalize-archive`): dj
- *     photographs filed for months, no anonymous read arm, signed reads only.
  *   * **public — the event cover** (`/api/media/finalize-cover`, D-52.1-18):
  *     `event-images` is `public = true`, so what lands there is readable by URL
- *     with no session at all. It is the ONLY public destination of this module,
- *     which is why its caller also names a server-generated key
- *     (`covers/<uuid>.jpg`) and the `cover-jpeg` encoding.
- *   * the gallery (`/api/media/finalize`, `event-media`) still calls this module
- *     until it is removed (DBT-13). Since 2026-09-23 that bucket is **private**,
- *     read through signed URLs: the old prose here that called it "the public
- *     bucket" was false from that day (DBT-07) and has been rewritten.
+ *     with no session at all. Its caller names a server-generated key
+ *     (`covers/<uuid>.jpg`, or `livecuts/<uuid>.jpg` for a LiveCut cover) and
+ *     the `cover-jpeg` encoding.
+ *
+ * Since 2026-10-14 (phase 53, D-53-04) the cover is the **only** caller of this
+ * module, and the only path through the quarantine and the stripper. The
+ * gallery's caller left with the gallery (DBT-13, 2026-10-02), and the private
+ * editorial archive's caller left with its section on 2026-10-14. The module
+ * keeps the destination as an argument anyway: the next caller will have a
+ * different bucket, and that is exactly the moment a default would be tempting.
  *
  * ── WHY THE IMPORTS SIT ABOVE THIS BLOCK ────────────────────────────────────
- * Same discipline, and the same reason, as `may-upload.ts:1-15` and
- * `strip-metadata.ts:1-15`: `import "server-only"` is asserted by reading the
+ * Same discipline, and the same reason, as `strip-metadata.ts:1-15`: `import "server-only"` is asserted by reading the
  * head of the file, and a file written docblock-first would fail a check it
  * satisfies.
  *
@@ -40,30 +40,27 @@ import {
  * stripper cannot treat; and the destination is a **required argument with no
  * default anywhere in this file**.
  *
- * ── WHY IT EXISTS AT ALL, which is a fact about the SECOND destination ──────
+ * ── WHY IT IS A MODULE, with one caller left ────────────────────────────────
  *
- * Plan 45-17 files dj photographs into a private archive bucket. The obvious
- * shape — a second route with its own download, its own strip and its own write
- * — is two copies of a sequence whose correctness is an ORDER. Two copies of an
- * order is one copy that will stop stripping, and it will stop stripping in the
- * copy nobody is reading, months after the plan that wrote it closed. So the
- * sequence lives here once, and `/api/media/finalize` and
- * `/api/media/finalize-archive` are two callers that differ in **where they
- * write** and **who they let past the stripper** — and in nothing else.
+ * It was written (plan 45-17) when a second destination arrived: a second route
+ * with its own download, its own strip and its own write would have been two
+ * copies of a sequence whose correctness is an ORDER — and two copies of an
+ * order is one copy that will stop stripping, in the copy nobody is reading.
+ * Since 2026-10-14 there is one caller, and the sequence still lives here once:
+ * a caller differs only in **where it writes** and **who it lets past the
+ * stripper**, never in the order.
  *
  * ── THE DESTINATION HAS NO DEFAULT, AND THAT IS THE FILE'S SHARPEST RULE ────
  *
  * `destinationBucket`, `destinationKey` and `encoding` are required fields of
  * the request. There is no default, no fallback and no `??` for any of them
  * anywhere below, because **a default destination is exactly the bug that
- * publishes an archive photograph**. The destinations of this product differ in
- * the one way that cannot be undone: `event-images` is `public = true` and
- * readable by URL with no session at all
- * (`20260225100000_phase5_events.sql`), the archive is private with no
- * anonymous read arm (`20260817120400_visual_archive_bucket.sql`). A caller who
- * forgot to name a destination and got the public one would have published
- * material nobody decided to publish — and in this domain an accidental
- * publication is read as an announcement.
+ * publishes a private photograph**. Buckets differ in the one way that cannot
+ * be undone: `event-images` is `public = true` and readable by URL with no
+ * session at all (`20260225100000_phase5_events.sql`), while a private bucket
+ * has no anonymous read arm. A caller who forgot to name a destination and got
+ * the public one would have published material nobody decided to publish — and
+ * in this domain an accidental publication is read as an announcement.
  *
  * The KEY has no default for a second reason (plan 52.1-13): until then the
  * module wrote at the quarantine key, `<caller id>/<random>.<ext>`, which is
@@ -75,8 +72,9 @@ import {
  *
  * ── WHY THE BYTES DO NOT TRAVEL THROUGH THE CALLER'S REQUEST ────────────────
  *
- * Both callers are Vercel Functions, and the two numbers that force the shape
- * are written where a reader will meet them: `finalize/route.ts:28-50`. This
+ * The caller is a Vercel Function, and the two numbers that force the shape
+ * (a 4.5 MB request body against a larger photograph) are written where a
+ * reader will meet them, in the header of `finalize-cover/route.ts`. This
  * module receives an object **key**, never a file, and reads the bytes out of
  * the private quarantine bucket with the service role.
  *
@@ -88,16 +86,15 @@ import {
  * of its own and must never be given one** — a predicate here would be a second
  * answer to a question each route already asks with its own key, and two
  * answers to one question is how a route gets a verdict it did not ask for.
- * Each caller asks its predicate FIRST and reaches this module only after.
+ * The caller asks its predicate FIRST and reaches this module only after.
  *
  * ── THE LOG FORM ────────────────────────────────────────────────────────────
  *
  * `code=… message=…`, and **never the object key**. A key travels in a signed
- * URL, in a request log and in an error message, it outlives the row, and on the
- * archive path its user-supplied portion is chosen by whoever uploads. The
- * migration that created the archive bucket asks for keys that carry no artist
- * name, no venue word and no uncommunicated date; this file's contribution is
- * simply never to echo one. There is **no error tracking in this product**
+ * URL, in a request log and in an error message, it outlives the row, and the
+ * quarantine key's portion is chosen by whoever uploads. A key must carry no
+ * artist name, no venue word and no uncommunicated date; this file's
+ * contribution is simply never to echo one. There is **no error tracking in this product**
  * (`meta-gates.md`), so what a caller returns is the only place a refusal exists
  * for a human being — which is why every failure below leaves as a categorised
  * value rather than as a thrown message.
@@ -166,15 +163,14 @@ export type FinalizeStepRefusal =
 /**
  * What a caller does about bytes the stripper cannot treat.
  *
- * **`null` is the archive's answer and the safe one**: a type outside
+ * **`null` is the cover's answer and the safe one**: a type outside
  * `STRIPPABLE_MIME_TYPES` is refused, nothing is written, and the reason says
- * which. That is not caution, it is the archive's own contract — the bucket
- * accepts the three strippable image types and no others, *because nothing that
- * cannot be stripped may be kept in an archive that is drawn on months later*
- * (`20260817120400_visual_archive_bucket.sql`, section 1).
+ * which. That is not caution, it is the rule for any destination: *nothing that
+ * cannot be stripped is written*, because the bytes are the only place the
+ * coordinates of a shot live. Since 2026-10-14 every caller passes `null`.
  *
- * A function is the **published** path's answer, and only because this product
- * accepts video there and nothing in this repository sanitises a video: `sharp`
+ * A function was the gallery's answer, and only because that path accepted
+ * video and nothing in this repository sanitises a video: `sharp`
  * decodes still images, while an MP4 or a MOV carries the shot's coordinates and
  * time in a `udta` atom. That limit is declared and dated (plan 35-14, entry 6),
  * not glossed. The gate receives the real bytes precisely so it can check the
@@ -186,7 +182,7 @@ export type FinalizeStepRefusal =
  *
  * ⚠ **A gate that always answers `ok` is a strip switched off.** If one is ever
  * written, it belongs beside a paragraph naming the type it admits and the
- * reason nothing can strip it — as `/api/media/finalize`'s does.
+ * reason nothing can strip it — as the gallery's route did until it left.
  */
 export type UnstrippableGate<R extends string> = (
   bytes: Buffer,
@@ -378,7 +374,7 @@ export async function finalizeStrippedUpload<R extends string>(
     writtenType = mimeType;
   } else {
     // No gate, and the stripper cannot treat this type. Refused, and nothing was
-    // written. This is the archive's whole answer to video.
+    // written. This is the whole answer to video.
     return { ok: false, reason: MEDIA_FINALIZE_TYPE_NOT_ACCEPTED };
   }
 

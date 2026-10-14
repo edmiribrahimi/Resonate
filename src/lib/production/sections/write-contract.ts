@@ -8,15 +8,16 @@ import { SECTION_STATES, type SectionState } from "./vocabulary";
  *
  * Every export of a `"use server"` module is a **public endpoint with a
  * convenient signature**, invocable with a forged body by anybody who can reach
- * the deployment. `may-upload.ts:27-34` records the consequence of leaving a
- * predicate in one: it publishes an oracle — a caller learns the answer to a
- * question the surface never meant to answer, without ever reaching the act.
+ * the deployment. Leaving a predicate in one publishes an oracle — a caller
+ * learns the answer to a question the surface never meant to answer, without
+ * ever reaching the act.
  *
- * The two section modules are deliberately **two** — one per capability key,
- * because D-45-06 makes the key that reads a section the key that writes it, and
- * a single shared `"use server"` module would publish the manifesto's write
- * endpoints to a holder of the visual key. What they legitimately share is what
- * is in this file: a union of refusal names, three result shapes, and the shape
+ * Section modules are **one per capability key**, because D-45-06 makes the key
+ * that reads a section the key that writes it, and a single shared
+ * `"use server"` module would publish one section's write endpoints to a holder
+ * of another section's key. Since 2026-10-14 (phase 53, D-53-04) the manifesto's
+ * is the only section module left; the rule binds whichever is added next. What
+ * a section module shares with this contract is what is in this file: a union of refusal names, three result shapes, and the shape
  * checks that run **before** anything is asked of the database. None of it is a
  * server action, none of it touches a client, and none of it answers a question
  * about entitlement.

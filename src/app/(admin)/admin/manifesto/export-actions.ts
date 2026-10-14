@@ -39,8 +39,8 @@ import type { ExportResult } from "@/lib/production/sections/export-contract";
  *
  * Being imported from a page a capability opened protects nothing
  * (`nextjs-architecture.md`, gate *server action autorizzata*). It is called
- * FIRST, and it is not exported, for the reason `calendar/actions.ts:78-82`
- * gives — an exported predicate is an oracle.
+ * FIRST, and it is not exported, because an exported predicate is an
+ * endpoint that answers whether a caller holds the key — an oracle.
  *
  * ⚠ **There is no identity check here, and the absence is deliberate.** The
  * sibling write module throws a second, separate category when the access

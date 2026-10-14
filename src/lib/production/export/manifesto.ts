@@ -72,12 +72,13 @@
  * anything is missing — so a register that did not answer refuses the whole
  * document rather than producing a quieter one.
  *
- * ── And there is no third document ─────────────────────────────────────────
+ * ── And there is no second document ────────────────────────────────────────
  *
- * The location section has **no export**, and never will (D-45-21 consequence 2):
- * the manifesto and the capitolato leave the perimeter, and scouting does not. A
- * module named after it appearing beside this one fails the gate **by name**,
- * before any walk, whether or not these two files exist.
+ * Scouting has **no export**, and never will (D-45-21 consequence 2): the
+ * manifesto leaves the perimeter, and scouting does not. The scouting section
+ * left the product on 2026-10-14 (phase 53, D-53-04), and so did the designer's
+ * document that used to sit beside this one. A module named after scouting
+ * appearing beside this one fails the gate **by name**, before any walk.
  */
 
 import "server-only";
@@ -435,8 +436,9 @@ function body(text: string | null): string {
  * There is no error tracking in this product, and this document leaves the
  * building: a rule that vanished between the record and the brief would be
  * unobservable from either end. So the omission is **counted and named**, which
- * is the position `export-contract.ts` already takes about the palette — a
- * failure rendered INTO the document rather than dropped out of it — for the same
+ * is the position `export-contract.ts` records for the palette of a document
+ * that left on 2026-10-14 — a failure rendered INTO the document rather than
+ * dropped out of it — for the same
  * reason: a reader told *something is missing, ask* behaves correctly, and a
  * reader who was told nothing reaches for the nearest answer.
  *

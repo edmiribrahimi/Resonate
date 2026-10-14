@@ -56,17 +56,15 @@ import {
  * ── WHY THE BYTES DO NOT TRAVEL THROUGH THIS REQUEST ────────────────────────
  *
  * A Vercel Function refuses a body over 4.5 MB, and the cover limit is 5 MB;
- * the two numbers, with their source, are at
- * `src/app/api/media/finalize/route.ts:28-50`. The browser deposits into the
- * private quarantine bucket (`event_media_quarantine_insert_staff`, which asks
+ * those two numbers are the whole reason for the shape. The browser deposits
+ * into the private quarantine bucket (`event_media_quarantine_insert_staff`, which asks
  * `staff.manage` — the same key this route asks) and posts the key.
  *
- * ── THE GUARD, and why it is not the visual section's key ───────────────────
+ * ── THE GUARD, and why it is the night's key ────────────────────────────────
  *
  * `assertStaffManage` + `assertMayManageEvent`: the cover of a night is changed
  * by whoever manages that night — the same pair every server action on events
- * asks — not by `production.visual.manage`, which is the archive's key. Asked
- * BEFORE a single byte is touched.
+ * asks — and by no editorial key. Asked BEFORE a single byte is touched.
  *
  * ── FAIL CLOSED ─────────────────────────────────────────────────────────────
  *
@@ -99,7 +97,7 @@ import {
 
 export const runtime = "nodejs";
 
-/** `sharp` is native code: written out, never inherited. Same note as the archive route. */
+/** `sharp` is native code: written out, never inherited. */
 export const dynamic = "force-dynamic";
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -156,7 +154,7 @@ const COVER_HTTP = {
 /**
  * The fate of the quarantine object per outcome — a second total record, not
  * derived from the status. *Ask again* keeps the transit copy; every terminal
- * outcome removes it. Same table as the archive route.
+ * outcome removes it.
  *
  * `already_published` removes: the key is a fresh uuid, so a collision means a
  * retry of a write that already landed, and the next attempt mints a new key.
@@ -232,7 +230,7 @@ function describe(cause: unknown): string {
 }
 
 export async function POST(request: Request) {
-  /** Set only after the ownership check: see the archive route for why. */
+  /** Set only after the ownership check, so a refusal never removes an object the caller does not own. */
   let ownedQuarantinePath: string | null = null;
   /** `null` means success, or not decided yet. Written only by `refuse()`. */
   let decided: CoverRefusal | null = null;

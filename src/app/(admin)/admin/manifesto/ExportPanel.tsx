@@ -18,15 +18,16 @@ import type {
 } from "@/lib/production/sections/export-contract";
 
 /**
- * The one control that hands a document over — **one component, two callers.**
+ * The one control that hands a document over.
  *
- * ── Why one component and two callers ───────────────────────────────────────
+ * ── Why the act arrives as a prop ──────────────────────────────────────────
  *
- * A second copy would be a second place the sentence below could be softened, or
- * left off, and that sentence is the only mitigation standing between an author's
- * prose and somebody outside the project. So this file imports neither arm and
- * could not choose between them if it wanted to: the act arrives as a **prop**,
- * from the page whose key was already asked to draw it.
+ * Since 2026-10-14 (phase 53, D-53-04) there is one document, the sound
+ * manifesto. The act still arrives as a **prop**, from the page whose key was
+ * already asked to draw it, and this file imports no arm: a copy of this control
+ * would be a second place the sentence below could be softened, or left off, and
+ * that sentence is the only mitigation standing between an author's prose and
+ * somebody outside the project.
  *
  * ── The file is built HERE, in the browser, and no route serves it ──────────
  *
@@ -50,7 +51,7 @@ import type {
  *
  * `scripts/verify-section-export.mjs` proves what the serialisers can **reach**.
  * It reads imports and query strings; it cannot read prose. An address or a date
- * cannot arrive in either document because no query in them touches a table that
+ * cannot arrive in the document because no query in them touches a table that
  * holds one — but **a line-up somebody typed into the body of a rule travels with
  * that rule**, and no closure walk will ever see it.
  *
@@ -86,8 +87,8 @@ export function ExportPanel({
   handedTo,
 }: {
   /**
-   * The act, handed over by the page. Each section passes its own arm, which
-   * asks its own key — this file imports neither and cannot reach either.
+   * The act, handed over by the page: the manifesto's arm, which asks its own
+   * key — this file imports no arm and cannot reach one.
    */
   produce: () => Promise<ExportResult>;
   /** What the document is called in a sentence, e.g. *the sound manifesto*. */

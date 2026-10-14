@@ -214,8 +214,10 @@ const REENCODE: Record<StrippableMime, (pipeline: Sharp) => Sharp> = {
  * caller, with no default (plan 52.1-13, D-52.1-18).
  *
  *   `same-format`  re-encode into the format that was decoded, at the size that
- *                  was decoded. The archive of the visual section and, while it
- *                  exists, the gallery: a PNG stays a PNG.
+ *                  was decoded: a PNG stays a PNG. Since 2026-10-14 (phase 53)
+ *                  no caller asks for it — its last user, a private editorial
+ *                  archive, left that day. It stays in the union because
+ *                  narrowing a type is a code change, not prose.
  *   `cover-jpeg`   the event cover. Rotate, shrink to {@link COVER_MAX_EDGE_PX}
  *                  on the long side, encode as JPEG. The cover is the one image
  *                  of a night that sits on a PUBLIC bucket, readable by URL with

@@ -27,8 +27,9 @@ import type { SectionKind } from "@/lib/production/sections/vocabulary";
  * export of a `"use server"` module is a **public endpoint with a convenient
  * signature**, so a single shared module holding both sections' acts would
  * publish this section's write endpoints to a holder of the other section's key
- * — and no build, no policy and no log would say so. The sibling one directory
- * over asks its own key and neither imports the other's gate.
+ * — and no build, no policy and no log would say so. *(The sibling module left
+ * on 2026-10-14 with its section, D-53-04: this module is the only one left,
+ * and the rule binds whichever section is added next.)*
  *
  * What the two legitimately share lives in
  * `src/lib/production/sections/write-contract.ts`, which is a **plain module**:
@@ -54,8 +55,8 @@ import type { SectionKind } from "@/lib/production/sections/vocabulary";
  * (`nextjs-architecture.md`, gate *server action autorizzata*). The gate is
  * called FIRST in each export and the service client is constructed AFTER it: an
  * ordering slip turns an act into an unauthenticated write path, and no build
- * would see it. The gate is **not exported**, for the reason
- * `calendar/actions.ts:78-82` gives.
+ * would see it. The gate is **not exported**: an exported predicate is an
+ * endpoint that answers whether a caller holds the key — an oracle.
  *
  * ── Why the SERVICE client, with the proof that no untrusted input reaches it ─
  *
@@ -147,7 +148,8 @@ function mayTouchQuestion(section: string | null): boolean {
  * ──────────────────────────────────────────────────────────────────────────── */
 
 /**
- * Shape copied from `location/actions.ts:170-188`, including the two separate
+ * Shape inherited from a section gate that left on 2026-10-14 (phase 53),
+ * including the two separate
  * throw categories: an unresolvable identity is **not** a refusal on the merits
  * — it means the migration that puts the caller's id in the payload is not
  * applied — and collapsing the two is the pattern `meta-gates.md` forbids.

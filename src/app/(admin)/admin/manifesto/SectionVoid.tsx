@@ -4,11 +4,11 @@ import type { ProductionSection } from "@/types/database";
  * The **only** renderer of a section that has no body — the void, drawn as
  * content rather than as an absence.
  *
- * > No other file under the six section directories may draw a section whose
- * > state is the undecided one. That is the single-renderer rule `ScoreCell.tsx`
- * > and `AttributeCell.tsx` already state for their own values, and
- * > `scripts/verify-section-surface.mjs` check C asserts it here **by this
- * > file's name**, together with the two columns this component must name.
+ * > No other file in the section's directories may draw a section whose state
+ * > is the undecided one: **one renderer for the undecided state**, so the void
+ * > cannot be drawn two ways. `scripts/verify-section-surface.mjs` check C
+ * > asserts it here **by this file's name**, together with the two columns this
+ * > component must name.
  *
  * ── This is success criterion 3 in pixels ───────────────────────────────────
  *

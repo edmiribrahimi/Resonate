@@ -587,7 +587,7 @@ export async function updateSession(request: NextRequest) {
   // ⚠ **Renaming the parameter alone would have repaired nothing.** The login
   // page passes what it reads through `resolveNext`, an allow-list, and that
   // list held only `/dashboard`, `/set-password` and the two event paths — so a
-  // caller bounced off `/admin/calendar` would have arrived with a `next` the
+  // caller bounced off `/admin/artists` would have arrived with a `next` the
   // guard refuses, and landed on `/dashboard` exactly as before, for a different
   // reason. The census this repair owed found the other half.
   //
