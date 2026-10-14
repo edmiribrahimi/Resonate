@@ -532,10 +532,18 @@ async function reset() {
   // tutti. La regola 3 di questo file applicata a se stessa: **un insieme di
   // cascate si rilegge dal catalogo**, e il catalogo non ha piu' quella tabella.
   //
-  // `artists`, `production_plan` e `production_space` sono qui per completezza:
-  // hanno anch'esse una chiave bloccante verso `venues`, `event_parties` o
-  // `auth.users`, e oggi sono vuote sul laboratorio — cioe' esattamente la
-  // condizione in cui una riga mancante non si nota.
+  // `artists` e' qui per completezza: ha anch'essa una chiave bloccante verso
+  // `venues`, `event_parties` o `auth.users`, e oggi e' vuota sul laboratorio —
+  // cioe' esattamente la condizione in cui una riga mancante non si nota.
+  //
+  // **Altre due righe stavano qui e non ci sono piu'.** La tabella dei piani
+  // del calendario e quella degli spazi di Location sono uscite dallo schema il
+  // 2026-10-14 (fase 53, CUT-01, migration `20261014120000`). Sono uscite anche
+  // da questo elenco **nello stesso atto**, per la stessa ragione della tabella
+  // delle presenze: un `delete from` su una tabella inesistente prende `42P01`,
+  // e `--reset` si fermerebbe a meta'. Fra questo commit e la migration sul
+  // laboratorio (piano 53-08) le due tabelle esistono ancora ma sono svuotate
+  // per chiave dallo strumento di rimozione della fase 53, prima della migration.
   const tabelle = [
     "ticket_orders",
     "pending_purchases",
@@ -544,11 +552,9 @@ async function reset() {
     "tickets",
     "ticket_tiers",
     "party_assignments",
-    "production_plan",
     "event_parties",
     "events",
     "artists",
-    "production_space",
     "venues",
     "guest_list_entries",
     "profiles",
