@@ -117,20 +117,17 @@ Per ogni nuovo percorso d'errore o blocco `catch`:
 
 **E c'e' un vincolo in piu', verificato il 2026-08-05: non esiste alcun error
 tracking.** `package.json` non ha dipendenze di monitoraggio, quindi **nessun
-errore di produzione raggiunge un essere umano da solo**. Gli **otto** cron girano
+errore di produzione raggiunge un essere umano da solo**. I **sette** cron girano
 **di prima mattina** — con orari dichiarati in `vercel.json` fra le 06:00 e le
 09:00 UTC, cioe' fra le 08:00 e le 11:00 a Torino d'estate, ognuno con il
 proprio scarto del piano Hobby — il webhook dei pagamenti gira quando gira, e se
 falliscono non lo sa nessuno finche' qualcuno non nota l'effetto.
 
-> **2026-09-30 — questa riga diceva «i sei cron», ed era di nuovo un conteggio
-> scaduto.** `vercel.json` ne dichiarava gia' **sette** dal giorno in cui e'
-> entrato `retry-failed-orders` (07:15 UTC), e la fase 52.2 aggiunge
-> `close-pending-orders` (07:05 UTC): **otto** voci in `vercel.json` e otto
-> directory sotto `src/app/api/cron/`, contate su entrambe le fonti prima di
-> scrivere. La riga e' corretta **nello stesso commit** che aggiunge l'ottava
-> voce: chi aggiunge un cron aggiorna questo numero, o il precedente del
-> 2026-08-25 si ripete. La fascia resta quella del mattino: nessuno di notte.
+> **2026-10-14 — sette voci in `vercel.json` e sette directory sotto
+> `src/app/api/cron/`, contate su entrambe le fonti dopo l'uscita dello
+> specchio (fase 53, D-53-02).** Chi aggiunge o toglie un cron corregge questo
+> numero **nello stesso commit**, o il precedente del 2026-08-25 si ripete. La
+> fascia resta quella del mattino: nessuno di notte.
 
 > **2026-08-25 — questa riga diceva «i quattro cron girano di notte»: sbagliati
 > il numero e l'ora.** Nessun cron gira di notte, per scelta: una notte va 22:00

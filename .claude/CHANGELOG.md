@@ -3,6 +3,50 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.33.1] - 2026-10-14
+
+### Fixed — sette cron: `meta-gates.md`, `ticketing-payments.md`
+
+**Cosa e' cambiato.**
+
+- **`meta-gates.md`** — «Gli **otto** cron» → «I **sette** cron». Il riquadro del
+  2026-09-30 («questa riga diceva «i sei cron»») e' riscritto piu' corto con la
+  data di oggi: resta il fatto (sette voci in `vercel.json`, sette directory sotto
+  `src/app/api/cron/`, contate su entrambe le fonti) e la regola (*chi aggiunge o
+  toglie un cron corregge questo numero nello stesso commit*); esce la narrazione.
+  Il riquadro del 2026-08-25 e la fascia del mattino restano. Nessuna regola tolta.
+- **`ticketing-payments.md`** — gate *cron non atomico*: «**otto** al 2026-09-30» →
+  «**sette** al 2026-10-14», e l'elenco senza lo specchio. Il resto invariato.
+
+**Perche'.** Fase 53, D-53-02 (CUT-04): lo specchio del calendario esce dal
+prodotto. La route e' uscita nel piano 53-01; la voce di `vercel.json` esce in
+questo stesso commit, insieme al numero della persona. Conteggio su due fonti prima
+di scrivere: 7 voci `path` in `vercel.json`, 7 directory sotto `src/app/api/cron/`.
+Nessun orario toccato.
+
+**Caso peggiore rimisurato.** Invariati file e moduli:
+**`src/app/(admin)/admin/scanner/DoorSurface.tsx`**, 5 file (`CLAUDE.md`,
+`meta-gates`, `access-gating`, `checkin-offline`, `nextjs-architecture`). Prima
+(1.33.0, base della fase 53): **53.794 byte ≈ 14.943 token**, margine 57. Dopo:
+**53.536 byte ≈ 14.871 token su 15.000, margine 129** — `meta-gates.md` da 10.557
+a 10.299 byte (−258). `ticketing-payments.md` da 9.500 a 9.480 byte (non e' nel
+caso peggiore).
+
+**Scenario di carico e scatto — `meta-gates.md`.** File reale: `vercel.json`.
+Moduli attesi: `time-and-scheduling.md` (primario, per frontmatter),
+`ticketing-payments.md` (supplementare per la tabella di priorita'),
+`meta-gates.md` (sempre caricato), `CLAUDE.md`. Modifica-tipo che fa scattare il
+gate: aggiungere o togliere una voce `crons` senza correggere «I **sette** cron»
+nello stesso commit, o aggiungerla con un orario fra le 22:00 e le 06:00 locali.
+
+**Scenario di carico e scatto — `ticketing-payments.md`.** File reale:
+`src/app/api/cron/close-pending-orders/route.ts`. Moduli attesi:
+`ticketing-payments.md` (primario), `comms-analytics.md` e
+`time-and-scheduling.md` (supplementari per la tabella di priorita'),
+`meta-gates.md`, `CLAUDE.md`. Modifica-tipo che fa scattare il gate: aggiungere un
+cron che scrive in due passi senza aggiornare l'elenco del gate *cron non
+atomico*.
+
 ## [1.33.0] - 2026-10-13
 
 ### Changed — la pagina Music e i LiveCut del profilo artista caricano il segreto del venue: `venue-secrecy.md`, `meta-gates.md`, `sound-manifesto.md`, `CLAUDE.md`
