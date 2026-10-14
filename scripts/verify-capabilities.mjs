@@ -66,7 +66,8 @@
  *       green does not evidence the binding. Only `npm run build` evidences it.
  *   (b) **Two keys were already asked for before this phase.**
  *       `door.supervise` by `src/lib/door/require-operator.ts` and
- *       `media.upload` by `src/lib/media/may-upload.ts`. Both are
+ *       `media.upload` by the archive upload guard under `src/lib/media/` (that
+ *       module left in phase 53, the key in phase 52.1). Both were
  *       `scope: "table"` in the map — they gate Route Handlers, not addresses
  *       (D-34-13) — so side 4 is green for them **because their guards landed,
  *       not because any route did**.
