@@ -1,15 +1,21 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { createVenue } from "@/app/(admin)/admin/venues/actions";
+import {
+  createVenue,
+  type CreateVenueRefusal,
+} from "@/app/(admin)/admin/venues/actions";
 import { Button, FOCUS_RING } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Input, Textarea } from "@/components/ui/Input";
 
 /**
- * Create a venue profile — the dialog the event form mounts when a name the
- * organiser typed matches nothing.
+ * Create a venue profile. Two mounts since phase 53 (CUT-03): the event form
+ * opens it when a name the organiser typed matches nothing, and passes that
+ * name, read-only; `NewVenueButton` opens it from the venues catalogue without
+ * a name, and the dialog asks for one. The write is the same `createVenue`
+ * under the same gate either way (D-53-09).
  *
  * ── The shell is no longer here ──────────────────────────────────────────────
  *
@@ -36,14 +42,14 @@ import { Input, Textarea } from "@/components/ui/Input";
  * The secrecy flag is the event form's field and is not reachable from this
  * file at all.
  *
- * ── Initial focus: the close control, which is what it already was ───────────
+ * ── Initial focus: depends on the mount ─────────────────────────────────────
  *
- * No `data-initial-focus` marker is declared, so `Dialog` falls back to the
- * close control (`Dialog.tsx:246-258`). That is the same element the user agent
- * focused before this conversion — it is first in the DOM — so the focus target
- * did not move. The analog declares the marker on its Cancel; a form dialog gets
- * nothing from moving focus between two equally harmless controls, and not
- * moving it is the smaller claim.
+ * Opened from the catalogue, the name is the first thing to type, so the
+ * editable name field carries the `data-initial-focus` marker — and only that
+ * branch carries it. Opened from the event form, the name is read-only and no
+ * marker is declared, so `Dialog` falls back to the close control
+ * (`Dialog.tsx`), exactly as before phase 53: on that mount the focus target
+ * did not move.
  *
  * ── The refusal, and the half of it this file cannot reach ───────────────────
  *
@@ -55,18 +61,18 @@ import { Input, Textarea } from "@/components/ui/Input";
  * repository's own precedent not to repeat — and worse than it looks, because
  * **Next redacts the message of an error thrown out of a Server Action in a
  * production build**, so every server-side cause arrived as the same generic
- * paragraph. Three causes are distinguishable from here and each gets its own
+ * paragraph. Two causes are distinguishable from the client side — the photo
+ * upload, and a request that never reached the server — and each gets its own
  * sentence, branched on the **stage** the failure happened in rather than on
- * message text, which is the same discipline `CreateFormatModal.tsx:340-353`
- * applies to its two throwing paths.
+ * message text, which is the same discipline `CreateFormatModal.tsx` applies
+ * to its two throwing paths.
  *
- * **The fourth distinction is not available from this file.** Telling a
- * duplicate name from a missing name from a refused write needs
- * `createVenue` to return a typed refusal instead of throwing — the argument
- * `admin/venues/actions.ts:186-202` already makes for `updateVenue` — and that
- * action is not on this plan's authorised file list. It is recorded as owed
- * rather than half-done here, because a conversion commit is the wrong place to
- * change what a write returns.
+ * **The server-side distinctions are paid since 2026-10-14** (phase 53,
+ * D-53-09). They used to be recorded here as owed: telling a duplicate name
+ * from a missing name from a refused write needed `createVenue` to return a
+ * typed refusal instead of throwing. It now does ({@link CreateVenueRefusal}),
+ * and {@link REFUSAL_SENTENCES} gives each of its five values its own sentence —
+ * the same shape `updateVenue` already had.
  */
 
 /**
@@ -79,11 +85,33 @@ import { Input, Textarea } from "@/components/ui/Input";
  */
 const FORM_ID = "create-venue-form";
 
+/**
+ * One sentence per refusal `createVenue` can return. Each one says what
+ * happened and that nothing was created. None of them names a venue or an
+ * address: a refusal is copy, and copy about venues is where an address leaks.
+ */
+const REFUSAL_SENTENCES: Record<CreateVenueRefusal, string> = {
+  not_permitted:
+    "Your account cannot create venues. Nothing was created.",
+  identity_missing:
+    "We could not confirm who you are — sign in again. Nothing was created.",
+  name_missing: "A venue needs a name. Nothing was created.",
+  name_taken:
+    "A venue with this name already exists. Nothing was created — pick it from the list instead.",
+  write_failed:
+    "The venue was not saved. Nothing was created — try again.",
+};
+
 /** Where a failure happened. It is what the sentences below branch on. */
 type Stage = "photo" | "create";
 
 interface CreateVenueModalProps {
-  name: string;
+  /**
+   * The name carried in from the event form, rendered read-only. When omitted,
+   * the dialog is opened from the venues catalogue and asks for the name
+   * itself — the one difference between the two mounts.
+   */
+  name?: string;
   open: boolean;
   onClose: () => void;
   onCreated: (id: string, slug: string) => void;
@@ -100,6 +128,8 @@ export default function CreateVenueModal({
 }: CreateVenueModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const nameIsEditable = name === undefined;
+  const [typedName, setTypedName] = useState("");
   const [bio, setBio] = useState("");
   const [address, setAddress] = useState("");
   const [googleMapsUrl, setGoogleMapsUrl] = useState("");
@@ -110,6 +140,26 @@ export default function CreateVenueModal({
   const [imageError, setImageError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Reset every field when the dialog opens. With a second mount the dialog can
+  // be used several times in a row from the catalogue, and a successful create
+  // closes it through `onCreated`, not through `resetAndClose` — so without
+  // this the previous venue's address would be pre-filled into the next one.
+  useEffect(() => {
+    if (open) {
+      setTypedName("");
+      setBio("");
+      setAddress("");
+      setGoogleMapsUrl("");
+      setInstagramUrl("");
+      setWebsiteUrl("");
+      setImageFile(null);
+      setImagePreview(null);
+      setImageError(null);
+      setError(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }, [open]);
 
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -179,7 +229,9 @@ export default function CreateVenueModal({
       return "Could not create the profile. The request never reached the server. Nothing was created — check the connection and try again.";
     }
 
-    return "Could not create the profile. The server refused the write, and in a production build its own reason does not reach this screen. Nothing was created. Check that no other venue already holds this name, and that this account still has permission to manage the catalogue.";
+    // Every refusal on the merits now arrives as a value, not a throw, so what
+    // still lands here is a fault the action did not anticipate.
+    return "Could not create the profile. The server failed before it could answer, and in a production build its own reason does not reach this screen. Nothing was created — try again.";
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -198,7 +250,7 @@ export default function CreateVenueModal({
       stage = "create";
 
       const formData = new FormData();
-      formData.set("name", name);
+      formData.set("name", name ?? typedName.trim());
       formData.set("bio", bio);
       formData.set("address", address);
       formData.set("google_maps_url", googleMapsUrl);
@@ -207,6 +259,10 @@ export default function CreateVenueModal({
       formData.set("website_url", websiteUrl);
 
       const result = await createVenue(formData);
+      if (!result.ok) {
+        setError(REFUSAL_SENTENCES[result.reason]);
+        return;
+      }
       onCreated(result.id, result.slug);
     } catch (err) {
       setError(describeFailure(stage, err));
@@ -222,6 +278,7 @@ export default function CreateVenueModal({
    * the last half-typed bio on screen at the next open.
    */
   function resetAndClose() {
+    setTypedName("");
     setBio("");
     setAddress("");
     setGoogleMapsUrl("");
@@ -248,7 +305,7 @@ export default function CreateVenueModal({
             type="submit"
             form={FORM_ID}
             className="flex-1"
-            disabled={isSubmitting}
+            disabled={isSubmitting || (nameIsEditable && !typedName.trim())}
           >
             {isSubmitting ? "Creating..." : "Create Profile"}
           </Button>
@@ -263,15 +320,31 @@ export default function CreateVenueModal({
       }
     >
       <form id={FORM_ID} onSubmit={handleSubmit} className="space-y-4">
-        {/* Name — carried in from the event form, not editable here. */}
-        <Input
-          id="venue-name"
-          label="Name"
-          type="text"
-          value={name}
-          readOnly
-          className="opacity-70"
-        />
+        {/*
+          Name — carried in from the event form and rendered read-only, or typed
+          here when the dialog is opened from the venues catalogue.
+        */}
+        {nameIsEditable ? (
+          <Input
+            id="venue-name"
+            label="Name"
+            type="text"
+            value={typedName}
+            onChange={(e) => setTypedName(e.target.value)}
+            required
+            maxLength={120}
+            data-initial-focus
+          />
+        ) : (
+          <Input
+            id="venue-name"
+            label="Name"
+            type="text"
+            value={name}
+            readOnly
+            className="opacity-70"
+          />
+        )}
 
         <Textarea
           id="venue-bio"

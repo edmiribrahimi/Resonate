@@ -114,12 +114,60 @@ export async function checkVenueExists(name: string) {
 }
 
 /**
- * Create a venue profile. Approved organizers and master only.
+ * Every way `createVenue` can refuse, one value each — D-53-09, phase 53.
+ *
+ * Same argument as {@link UpdateVenueRefusal} below: Next redacts the message
+ * of an error thrown out of a Server Action in a production build, and this
+ * product has no error tracking (`meta-gates.md`), so a thrown refusal reached
+ * the person pressing as one generic paragraph for every cause. Since phase 53
+ * the action has two entry points — the event form and "New venue" on the
+ * catalogue — and both read these values, one sentence each.
+ */
+export type CreateVenueRefusal =
+  /**
+   * The gate said no: the caller does not hold `catalogue.manage`. The venues
+   * page is reachable under `organizer.access`, a different key, so this is a
+   * reachable refusal on an ordinary press, not an attack shape.
+   */
+  | "not_permitted"
+  /**
+   * Nobody could be identified. **Not a refusal on the merits** — the
+   * capability payload carried no `user_id`. Kept apart from the value above
+   * for exactly that reason.
+   */
+  | "identity_missing"
+  /** The name arrived empty after trimming. Nothing was written. */
+  | "name_missing"
+  /**
+   * The database refused with `23505`: another venue already holds this
+   * name. Nothing was written.
+   */
+  | "name_taken"
+  /**
+   * Any other database failure, including a row-level refusal. Nothing was
+   * written; the code is logged under `[venues.create_failed]`.
+   */
+  | "write_failed";
+
+export type CreateVenueResult =
+  | { ok: true; id: string; slug: string }
+  | { ok: false; reason: CreateVenueRefusal };
+
+/**
+ * Create a venue profile. Organizers and master only (`catalogue.manage`).
  *
  * This writes `venues.address` and `venues.google_maps_url` — a venue-secret
  * write surface (`venue-secrecy.md`).
+ *
+ * It **returns** its refusals ({@link CreateVenueRefusal}) instead of throwing
+ * them (D-53-09). The set of callers whose write succeeds is unchanged: the
+ * gate is the same `assertCatalogueManage()`, the client is the same cookie
+ * client, and RLS (`venues_insert_organizer`) still has the last word. Only
+ * what a refused caller gets to READ has changed.
  */
-export async function createVenue(formData: FormData) {
+export async function createVenue(
+  formData: FormData
+): Promise<CreateVenueResult> {
   // ⚠️ `createClient()` — the COOKIE client, on purpose. Under it the P3 RLS
   // policy on `venues` is a second, independent refusal of an unapproved
   // caller. `getServiceClient()` bypasses every row-level policy, so swapping
@@ -129,11 +177,28 @@ export async function createVenue(formData: FormData) {
   // survivable before, when the gate asked `staff.manage` and this line was the
   // whole defence. Do not swap it.
   const supabase = await createClient();
-  const { userId } = await assertCatalogueManage();
+
+  // The gate throws — it is shared with `updateVenue` — so its two categories
+  // are turned into values here, at the boundary that redacts, exactly as
+  // `updateVenue` does. Reading `err.message` is safe in THIS position: the
+  // throw has not crossed the Server Action boundary yet.
+  let userId: string;
+  try {
+    ({ userId } = await assertCatalogueManage());
+  } catch (err) {
+    const category = err instanceof Error ? err.message : "";
+    if (category === "forbidden.catalogue_manage_required") {
+      return { ok: false, reason: "not_permitted" };
+    }
+    if (category === "capabilities.identity_missing") {
+      return { ok: false, reason: "identity_missing" };
+    }
+    throw err;
+  }
 
   const name = (formData.get("name") as string)?.trim();
   if (!name) {
-    throw new Error("Venue name is required");
+    return { ok: false, reason: "name_missing" };
   }
 
   const bio = (formData.get("bio") as string)?.trim() || null;
@@ -172,15 +237,21 @@ export async function createVenue(formData: FormData) {
     .single();
 
   if (error) {
-    // Handle unique constraint violation
+    // Branching on the CODE, never on the message: the code is the contract.
     if (error.code === "23505") {
-      throw new Error("A venue with this name already exists");
+      return { ok: false, reason: "name_taken" };
     }
-    throw new Error(`Failed to create venue: ${error.message}`);
+    // The code and nothing else. Not the message and not the details: either
+    // can echo the rejected row, and the rows of `public.venues` are names and
+    // addresses — this log must not carry a venue's name or where it is.
+    console.error(
+      `[venues.create_failed] insert refused: ${error.code ?? "unknown"}`
+    );
+    return { ok: false, reason: "write_failed" };
   }
 
   revalidatePath("/admin/venues");
-  return { success: true, id: venue.id, slug: venue.slug };
+  return { ok: true, id: venue.id, slug: venue.slug };
 }
 
 /**
@@ -258,9 +329,9 @@ export async function updateVenue(
   // Do not swap it.
   const supabase = await createClient();
 
-  // The gate still throws — it is shared with `createVenue`, whose signature is
-  // not this plan's to change — so its two categories are turned into values
-  // here, at the boundary that redacts.
+  // The gate still throws — it is shared with `createVenue`, which since phase
+  // 53 translates it the same way — so its two categories are turned into
+  // values here, at the boundary that redacts.
   //
   // Reading `err.message` is safe in THIS position and nowhere downstream: the
   // throw never crosses the Server Action boundary, so nothing has redacted it

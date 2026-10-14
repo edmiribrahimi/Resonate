@@ -7,6 +7,7 @@ import { CAP } from "@/lib/capabilities/keys";
 import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle } from "@/components/ui/Typography";
 import { FOCUS_RING } from "@/components/ui/Button";
+import NewVenueButton from "@/components/venues/NewVenueButton";
 
 /**
  * The venues catalogue listing — one file where there were two (D-34-05).
@@ -99,16 +100,18 @@ export default async function AdminVenuesPage() {
       navigation clearance in both tiers, so this page writes none of them.
     */
     <PageShell width="default">
-      <header className="mb-6">
+      <header className="mb-6 flex items-center justify-between gap-4">
         <PageTitle>Venues</PageTitle>
+        <NewVenueButton />
       </header>
 
       {!venues || venues.length === 0 ? (
         /*
           §8.11's empty-state contract — a heading and one sentence naming the
-          next step. `CreateVenueModal` has exactly one importer in the tree
-          (`src/components/events/EventForm.tsx:10`), so a venue is created
-          while a night is written, not from here.
+          next step. Since phase 53 (CUT-03) `CreateVenueModal` has two
+          importers: the event form (a venue created while a night is written)
+          and `NewVenueButton` in the header above, so the next step is on this
+          page. The write and its gate are the same for both (D-53-09).
 
           The sentence says where to go and NOT where any venue is: an empty
           state is copy, and copy about venues is a place an address can leak
@@ -117,8 +120,8 @@ export default async function AdminVenuesPage() {
         <div className="px-6 py-12 text-center">
           <p className="text-base font-semibold text-ink">No venues yet</p>
           <p className="mt-1 text-sm text-muted">
-            A venue is created while a night is written on the event form, and
-            appears here once it exists.
+            Create one with &ldquo;New venue&rdquo; above, or from the venue
+            field of the event form.
           </p>
         </div>
       ) : (
