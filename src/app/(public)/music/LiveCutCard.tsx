@@ -124,21 +124,25 @@ export default function LiveCutCard({
           between two variants). Until then it was a wrapping flex row whose
           items were 44 px tall links kept apart by a 16 px row gap: on a phone
           a b2b wrapped into two rows 44 px apart and read as a blank line.
-          Now each name is an inline link with vertical padding — the hit area
-          stays ~40 px tall without touching the line box — and `whitespace-nowrap`
-          keeps a name whole: the title breaks only before or after a name.
-          Adjacent rows' hit areas overlap, as text links on two lines always do.
+          Now each name is an inline-block link: the browser never breaks inside
+          it and always may break before it, so the title breaks only between
+          names. Vertical padding gives the hit area (~44 px) and the matching
+          negative margin keeps the line box at 24 px. Adjacent rows' hit areas
+          overlap, as text links on two lines always do. Inline-block, not a
+          plain inline with `whitespace-nowrap`: Safari iOS ignored the break
+          opportunity before the nowrap inline and ran the line under the play
+          button (owner's screenshot, 2026-11-05 19:48).
         */}
         <Heading id={titleId} className="text-base font-semibold leading-6 text-ink">
           {liveCut.artists.map((artist, index) => (
             <span key={artist.slug}>
               {index > 0 && <span className="text-sm font-normal text-muted"> {joiner} </span>}
               {artist.slug === currentArtistSlug ? (
-                <span className="whitespace-nowrap normal-case">{artist.name}</span>
+                <span className="inline-block whitespace-nowrap normal-case">{artist.name}</span>
               ) : (
                 <Link
                   href={`/artists/${artist.slug}`}
-                  className={`inline whitespace-nowrap py-2.5 normal-case hover:underline underline-offset-4 ${FOCUS_RING}`}
+                  className={`-my-2.5 inline-block whitespace-nowrap py-2.5 normal-case hover:underline underline-offset-4 ${FOCUS_RING}`}
                 >
                   {artist.name}
                 </Link>
