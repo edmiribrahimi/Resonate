@@ -260,12 +260,16 @@ export async function listPublishedLiveCuts(): Promise<MusicListResult> {
   }
 
   const nights = [...nightsById.values()];
-  // Timetable order: `part_number`, NEVER clock time — 00:30 would sort before 22:00.
+  // Feed order inside a night: the LAST part on top, `part_number` descending —
+  // owner's decision, 2026-11-05. The page reads newest-first between nights,
+  // and the same direction holds inside one: scrolling down always goes back
+  // in time, as on the SoundCloud profile. Still `part_number`, NEVER clock
+  // time — 00:30 would sort before 22:00.
   // Then `partCount`: the published parts of the event, counted HERE — after
   // grouping, before any filter — so `filterNights` copies it and never
   // recomputes it on a filtered list.
   for (const block of nights) {
-    block.liveCuts.sort((a, b) => a.partNumber - b.partNumber);
+    block.liveCuts.sort((a, b) => b.partNumber - a.partNumber);
     for (const view of block.liveCuts) view.partCount = block.liveCuts.length;
   }
   nights.sort(compareNightsDesc);
@@ -317,8 +321,8 @@ export function filterNights(
  * slot of events that already happened — so filtering the whole read in memory
  * costs nothing worth a second home for the same columns.
  *
- * Order: event newest first, then `part_number` — the order of the read itself,
- * flattened. `partCount` stays the count of the WHOLE event (set before any
+ * Order: event newest first, then `part_number` descending (last part on
+ * top, 2026-11-05) — the order of the read itself, flattened. `partCount` stays the count of the WHOLE event (set before any
  * filter), so the `PT` badge follows the event's rule (≥2 parts), never the
  * number of parts this artist played.
  *
