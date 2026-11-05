@@ -119,21 +119,26 @@ export default function LiveCutCard({
           )}
         </div>
 
-        <Heading
-          id={titleId}
-          className="flex flex-wrap items-center gap-x-1 gap-y-4 text-base font-semibold text-ink"
-        >
+        {/*
+          The title flows as text (owner's choice, 2026-11-05, chosen on the lab
+          between two variants). Until then it was a wrapping flex row whose
+          items were 44 px tall links kept apart by a 16 px row gap: on a phone
+          a b2b wrapped into two rows 44 px apart and read as a blank line.
+          Now each name is an inline link with vertical padding — the hit area
+          stays ~40 px tall without touching the line box — and `whitespace-nowrap`
+          keeps a name whole: the title breaks only before or after a name.
+          Adjacent rows' hit areas overlap, as text links on two lines always do.
+        */}
+        <Heading id={titleId} className="text-base font-semibold leading-6 text-ink">
           {liveCut.artists.map((artist, index) => (
-            <span key={artist.slug} className="contents">
-              {index > 0 && (
-                <span className="text-sm font-normal text-muted">{joiner}</span>
-              )}
+            <span key={artist.slug}>
+              {index > 0 && <span className="text-sm font-normal text-muted"> {joiner} </span>}
               {artist.slug === currentArtistSlug ? (
-                <span className="inline-flex items-center normal-case">{artist.name}</span>
+                <span className="whitespace-nowrap normal-case">{artist.name}</span>
               ) : (
                 <Link
                   href={`/artists/${artist.slug}`}
-                  className={`-my-2 inline-flex min-h-11 items-center normal-case hover:underline underline-offset-4 ${FOCUS_RING}`}
+                  className={`inline whitespace-nowrap py-2.5 normal-case hover:underline underline-offset-4 ${FOCUS_RING}`}
                 >
                   {artist.name}
                 </Link>
